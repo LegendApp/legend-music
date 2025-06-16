@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Editor</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+
+
+        #app {
+            overflow: hidden;
+        }
+
+        .milkdown {
+            background-color: transparent !important;
+        }
+
+        .milkdown .ProseMirror {
+            padding: 12px 12px 16px 12px !important;
+        }
+
+        .milkdown .ProseMirror[data-placeholder]::before {
+            content: attr(data-placeholder);
+            pointer-events: none;
+            color: rgba(150, 150, 150, 0.5);
+            position: absolute;
+        }
+    </style>
+    <script type="module">
+        import { Crepe } from "@milkdown/crepe";
+        import "@milkdown/crepe/theme/common/style.css";
+        import "@milkdown/crepe/theme/nord-dark.css";
+        import "@milkdown-lab/plugin-menu/style.css"
+        import { $ctx } from '@milkdown/utils';
+        // import { menu, menuDefaultConfig } from '@milkdown-lab/plugin-menu'
+
+        let editor = null;
+        let resizeObserver = null;
+
+        window.initializeEditor = (text, placeholderText, bg) =>
+        {
+            document.body.style.backgroundColor = bg;
+
+            const crepe = new Crepe({
+                root: document.getElementById("app"),
+                defaultValue: text,
+                featureConfigs: {
+                    [Crepe.Feature.Placeholder]: {
+                        text: placeholderText,
+                        mode: 'doc'
+                    },
+                },
+            });
+
+            // crepe.editor.config(menuDefaultConfig)
+            // crepe.editor.use(menu)
+
+            crepe.create().then(() =>
+            {
+                console.log("Editor created");
+                window.crepe = crepe;
+
+                // Set up event listeners for changes
+                crepe.on((listener) =>
+                {
+                    // Listen for markdown content updates
+                    listener.markdownUpdated((ctx, markdown) =>
+                    {
+                        window.ReactNativeWebView?.postMessage(JSON.stringify({
+                            type: 'contentChanged',
+                            content: markdown
+                        }));
+
+                        // After content changes, report size in next frame to ensure DOM is updated
+                        requestAnimationFrame(reportSize);
+                    });
+
+                    // // Listen for document updates
+                    // listener.updated(() =>
+                    // {
+                    //     console.log("Document updated");
+                    // });
+
+                    // Focus and blur events
+                    listener.focus(() =>
+                    {
+                        window.ReactNativeWebView?.postMessage(JSON.stringify({
+                            type: 'focus'
+                        }));
+                    });
+
+                    listener.blur(() =>
+                    {
+                        window.ReactNativeWebView?.postMessage(JSON.stringify({
+                            type: 'blur'
+                        }));
+                    });
+                });
+
+                // Set up resize observer to track changes in the app div size
+                setupResizeObserver();
+
+                // Initial size report
+                reportSize();
+
+                // Let React Native know the editor is ready
+                window.ReactNativeWebView?.postMessage(JSON.stringify({
+                    type: 'editorReady'
+                }));
+            });
+
+            // For cleanup if needed
+            window.destroyEditor = () =>
+            {
+                if (resizeObserver) {
+                    resizeObserver.disconnect();
+                    resizeObserver = null;
+                }
+
+                if (window.crepe) {
+                    window.crepe.destroy();
+                    window.crepe = null;
+                }
+            };
+        }
+
+        function setupResizeObserver ()
+        {
+            const appElement = document.getElementById("app");
+
+            if (resizeObserver) {
+                resizeObserver.disconnect();
+            }
+
+            resizeObserver = new ResizeObserver((entries) =>
+            {
+                reportSize();
+            });
+
+            resizeObserver.observe(appElement);
+        }
+
+        function reportSize ()
+        {
+            const appElement = document.getElementById("app");
+            if (appElement) {
+                const height = appElement.offsetHeight;
+                window.ReactNativeWebView?.postMessage(JSON.stringify({
+                    type: 'resize',
+                    height: height
+                }));
+            }
+        }
+
+    </script>
+</head>
+
+<body>
+    <div id="app"></div>
+</body>
+
+</html>

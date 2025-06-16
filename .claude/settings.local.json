@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mv:*)",
+      "Bash(bun run lint:*)"
+    ],
+    "deny": []
+  }
+}

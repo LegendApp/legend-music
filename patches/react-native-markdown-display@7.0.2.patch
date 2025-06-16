@@ -1,0 +1,21 @@
+diff --git a/src/lib/renderRules.js b/src/lib/renderRules.js
+index 6f2ed8d41f316f3bf4116ccd40ea3c0513748edf..8a276ad714a7b82dc400903ecd5dd5609c4ad445 100644
+--- a/src/lib/renderRules.js
++++ b/src/lib/renderRules.js
+@@ -284,7 +284,6 @@ const renderRules = {
+ 
+     const imageProps = {
+       indicator: true,
+-      key: node.key,
+       style: styles._VIEW_SAFE_image,
+       source: {
+         uri: show === true ? src : `${defaultImageHandler}${src}`,
+@@ -296,7 +295,7 @@ const renderRules = {
+       imageProps.accessibilityLabel = alt;
+     }
+ 
+-    return <FitImage {...imageProps} />;
++    return <FitImage key={node.key} {...imageProps} />;
+   },
+ 
+   // Text Output

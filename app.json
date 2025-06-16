@@ -1,0 +1,9 @@
+{
+    "name": "LegendMusic",
+    "displayName": "LegendMusic",
+    "expo": {
+        "name": "LegendMusic",
+        "slug": "legend-music",
+        "plugins": ["expo-file-system"]
+    }
+}

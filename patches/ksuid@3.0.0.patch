@@ -1,0 +1,34 @@
+diff --git a/index.js b/index.js
+index 6fa59dfb5b505d9ce144675394967118791d6f2d..3635de474a356df7cdb743327ecb16920d772a2b 100644
+--- a/index.js
++++ b/index.js
+@@ -1,9 +1,15 @@
+ 'use strict'
+-const { randomBytes } = require('crypto')
+-const { inspect: { custom: customInspectSymbol }, promisify } = require('util')
++const Buffer = require("@craftzdog/react-native-buffer").Buffer;
++const { NativeModules } = require('react-native');
+ const base62 = require('./base62')
+ 
+-const asyncRandomBytes = promisify(randomBytes)
++const randomBytes = (size) => {
++  if (NativeModules.RNGetRandomValues) {
++    return Buffer(NativeModules.RNGetRandomValues.getRandomBase64(size));
++  } else {
++    throw new Error('Native module not found')
++  }
++};
+ 
+ // KSUID's epoch starts more recently so that the 32-bit number space gives a
+ // significantly higher useful lifetime of around 136 years from March 2014.
+@@ -99,10 +105,6 @@ class KSUID {
+     return this.string
+   }
+ 
+-  [customInspectSymbol] () {
+-    return this.toString()
+-  }
+-
+   static async random (time = Date.now()) {
+     const payload = await asyncRandomBytes(PAYLOAD_BYTE_LENGTH)
+     return new KSUID(fromParts(Number(time), payload))

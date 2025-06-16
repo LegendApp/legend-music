@@ -1,0 +1,112 @@
+import { observer, use$, useObservable } from "@legendapp/state/react";
+import { vars } from "nativewind";
+import { createContext, type ReactNode, useContext } from "react";
+import { View } from "react-native";
+
+import { createJSONManager } from "@/utils/JSONManager";
+import { colors } from "./colors";
+
+// Define theme types
+type ThemeType = "light" | "dark";
+type ThemeContextType = {
+    currentTheme: ThemeType;
+    setTheme: (theme: ThemeType) => void;
+    resetTheme: () => void;
+};
+
+interface ThemeSettings {
+    currentTheme: ThemeType;
+    customColors: {
+        light: typeof colors.light;
+        dark: typeof colors.dark;
+    };
+}
+
+function clone<T>(value: T): T {
+    return JSON.parse(JSON.stringify(value));
+}
+
+// Create a global observable for theme state
+export const themeState$ = createJSONManager<ThemeSettings>({
+    filename: "theme",
+    initialValue: {
+        currentTheme: "dark" as ThemeType,
+        customColors: clone(colors),
+    },
+    saveDefaultToFile: true,
+});
+
+// Create theme variables for each theme
+const getThemes = (theme$: typeof themeState$) => {
+    const { light, dark } = use$(theme$.customColors);
+    return {
+        light: vars({
+            "--background-primary": light.background.primary,
+            "--background-secondary": light.background.secondary,
+            "--background-tertiary": light.background.tertiary,
+            "--background-destructive": light.background.destructive,
+            "--background-inverse": light.background.inverse,
+            "--text-primary": light.text.primary,
+            "--text-secondary": light.text.secondary,
+            "--text-tertiary": light.text.tertiary,
+            "--accent-primary": light.accent.primary,
+            "--accent-secondary": light.accent.secondary,
+            "--border-primary": light.border.primary,
+            "--border-popup": light.border.popup,
+        }),
+        dark: vars({
+            "--background-primary": dark.background.primary,
+            "--background-secondary": dark.background.secondary,
+            "--background-tertiary": dark.background.tertiary,
+            "--background-destructive": dark.background.destructive,
+            "--background-inverse": dark.background.inverse,
+            "--text-primary": dark.text.primary,
+            "--text-secondary": dark.text.secondary,
+            "--text-tertiary": dark.text.tertiary,
+            "--accent-primary": dark.accent.primary,
+            "--accent-secondary": dark.accent.secondary,
+            "--border-primary": dark.border.primary,
+            "--border-popup": dark.border.popup,
+        }),
+    };
+};
+
+// Create context for theme
+const ThemeContext = createContext<ThemeContextType>(undefined as any);
+
+// Theme provider component
+export const ThemeProvider = observer(({ children }: { children: ReactNode }) => {
+    const theme$ = useObservable(themeState$);
+
+    const setTheme = (theme: ThemeType) => {
+        theme$.currentTheme.set(theme);
+    };
+
+    const resetTheme = () => {
+        theme$.customColors.set(clone(colors));
+    };
+
+    // Context value
+    const contextValue: ThemeContextType = {
+        currentTheme: theme$.currentTheme.get(),
+        setTheme,
+        resetTheme,
+    };
+
+    return (
+        <ThemeContext.Provider value={contextValue}>
+            <View className="flex-1" style={getThemes(theme$)[theme$.currentTheme.get()]}>
+                {children}
+            </View>
+        </ThemeContext.Provider>
+    );
+});
+
+// Hook to use theme
+export const useTheme = () => {
+    const context = useContext(ThemeContext);
+    if (!context) {
+        throw new Error("useTheme must be used within a ThemeProvider");
+    }
+    return context;
+};
