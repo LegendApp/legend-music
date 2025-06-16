@@ -16,7 +16,6 @@ export function PlaylistSelector() {
         controls.navigateToPlaylist(playlist.id);
     };
 
-    console.log(availablePlaylists)
 
     return (
         <View className="mx-6 mt-6 mb-4">

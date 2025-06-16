@@ -22,7 +22,7 @@ export interface SelectPropsBase<T> {
 }
 
 export interface SelectProps<T> extends SelectPropsBase<T> {
-    selected$?: ObservableParam<T>;
+    selected$?: ObservableParam<NoInfer<T>>;
     selected?: T;
     onSelectItem?: (item: NoInfer<T>) => void;
 }

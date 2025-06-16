@@ -42,14 +42,14 @@ const injectedJavaScript = `
     function extractAvailablePlaylists() {
         try {
             const playlists = [];
-            
+
             // Try to find playlists in the navigation/sidebar
             const playlistElements = document.querySelectorAll('ytmusic-guide-entry-renderer[guide-entry-type="playlist"], ytmusic-guide-entry-renderer[guide-entry-type="PLAYLIST"]');
-            
+
             playlistElements.forEach((element, index) => {
                 const titleEl = element.querySelector('.guide-entry-title, .title, [class*="title"]');
                 const thumbnailEl = element.querySelector('img');
-                
+
                 if (titleEl) {
                     const title = titleEl.textContent?.trim() || '';
                     if (title && title !== 'Home' && title !== 'Explore' && title !== 'Library') {
@@ -62,20 +62,20 @@ const injectedJavaScript = `
                     }
                 }
             });
-            
+
             // Also try to find playlists in the library section
             if (playlists.length === 0) {
                 const libraryPlaylists = document.querySelectorAll('ytmusic-responsive-list-item-renderer[class*="playlist"], ytmusic-two-row-item-renderer[class*="playlist"]');
-                
+
                 libraryPlaylists.forEach((element, index) => {
                     const titleEl = element.querySelector('.title, [class*="title"]');
                     const thumbnailEl = element.querySelector('img');
                     const subtitleEl = element.querySelector('.subtitle, [class*="subtitle"]');
-                    
+
                     if (titleEl) {
                         const title = titleEl.textContent?.trim() || '';
                         const subtitle = subtitleEl?.textContent?.trim() || '';
-                        
+
                         if (title) {
                             playlists.push({
                                 id: 'library_playlist_' + index,
@@ -87,7 +87,7 @@ const injectedJavaScript = `
                     }
                 });
             }
-            
+
             // Add some default playlists if none found
             if (playlists.length === 0) {
                 playlists.push(
@@ -96,7 +96,7 @@ const injectedJavaScript = `
                     { id: 'queue', title: 'Queue', thumbnail: '', trackCount: 0 }
                 );
             }
-            
+
             console.log('Found playlists:', playlists.length);
             return playlists;
         } catch (error) {
@@ -233,7 +233,7 @@ const injectedJavaScript = `
 
             // Get playlist info
             const { playlist, currentTrackIndex } = extractPlaylistInfo();
-            
+
             // Get available playlists (only update occasionally to avoid performance issues)
             const availablePlaylists = extractAvailablePlaylists();
 
@@ -284,17 +284,29 @@ const injectedJavaScript = `
     window.ytMusicControls = {
         playPause: function() {
             const button = document.querySelector('#play-pause-button button');
-            if (button) button.click();
+            if (button) {
+                button.click();
+                return true;
+            }
+            return false;
         },
 
         next: function() {
             const button = document.querySelector('.next-button button[aria-label="Next"]');
-            if (button) button.click();
+            if (button) {
+                button.click();
+                return true;
+            }
+            return false;
         },
 
         previous: function() {
             const button = document.querySelector('.previous-button button[aria-label="Previous"]');
-            if (button) button.click();
+            if (button) {
+                button.click();
+                return true;
+            }
+            return false;
         },
 
         setVolume: function(volume) {
@@ -302,7 +314,9 @@ const injectedJavaScript = `
             if (slider) {
                 slider.value = volume;
                 slider.dispatchEvent(new Event('input', { bubbles: true }));
+                return true;
             }
+            return false;
         },
 
         seek: function(seconds) {
@@ -310,30 +324,75 @@ const injectedJavaScript = `
             if (progressBar) {
                 progressBar.value = seconds;
                 progressBar.dispatchEvent(new Event('input', { bubbles: true }));
+                return true;
             }
+            return false;
         },
 
         playTrackAtIndex: function(index) {
-            // Try to find and click the track at the given index
-            const queueItems = document.querySelectorAll('ytmusic-player-queue-item, .ytmusic-player-queue-item, [class*="queue"] .song-item, .queue-item');
+            console.log('Attempting to play track at index:', index);
 
+            // Strategy 1: Try queue items first (most reliable)
+            const queueItems = document.querySelectorAll('ytmusic-player-queue-item ytmusic-play-button-renderer');
             if (queueItems[index]) {
+                console.log('Clicking queue item at index:', index);
                 queueItems[index].click();
-                return;
+                return true;
             }
 
-            // Try alternative selectors for playlist items
-            const playlistItems = document.querySelectorAll('ytmusic-responsive-list-item-renderer, .ytmusic-responsive-list-item-renderer, [class*="playlist"] .song-item');
+            // Strategy 2: Try up next items
+            const upNextItems = document.querySelectorAll('ytmusic-player-queue ytmusic-responsive-list-item-renderer');
+            if (upNextItems[index]) {
+                console.log('Clicking up next item at index:', index);
+                upNextItems[index].click();
+                return true;
+            }
 
+            // Strategy 3: Try playlist page items
+            const playlistItems = document.querySelectorAll('ytmusic-responsive-list-item-renderer');
             if (playlistItems[index]) {
-                playlistItems[index].click();
+                console.log('Clicking playlist item at index:', index);
+                // Look for play button within the item
+                const playButton = playlistItems[index].querySelector('[aria-label*="Play"], [title*="Play"], .play-button, [class*="play"]');
+                if (playButton) {
+                    playButton.click();
+                    return true;
+                } else {
+                    // Fall back to clicking the item itself
+                    playlistItems[index].click();
+                    return true;
+                }
             }
+
+            // Strategy 4: Try to find any clickable music items
+            const musicItems = document.querySelectorAll('[class*="music"], [class*="song"], [class*="track"]');
+            if (musicItems[index]) {
+                console.log('Clicking music item at index:', index);
+                musicItems[index].click();
+                return true;
+            }
+
+            // Strategy 5: Try to click any row-like items that might be tracks
+            const rowItems = document.querySelectorAll('ytmusic-shelf-renderer ytmusic-responsive-list-item-renderer, [role="row"], .song-row, .track-row');
+            if (rowItems[index]) {
+                console.log('Clicking row item at index:', index);
+                const playButton = rowItems[index].querySelector('[aria-label*="Play"], [title*="Play"]');
+                if (playButton) {
+                    playButton.click();
+                } else {
+                    rowItems[index].click();
+                }
+                return true;
+            }
+
+            console.log('Could not find track at index:', index);
+            return false;
         },
-        
+
         navigateToPlaylist: function(playlistId) {
             // Try to find and click the playlist in the navigation
             const playlistElements = document.querySelectorAll('ytmusic-guide-entry-renderer[guide-entry-type="playlist"], ytmusic-guide-entry-renderer[guide-entry-type="PLAYLIST"]');
-            
+
             for (let element of playlistElements) {
                 const titleEl = element.querySelector('.guide-entry-title, .title, [class*="title"]');
                 if (titleEl && playlistId.includes(titleEl.textContent?.trim())) {
@@ -341,7 +400,7 @@ const injectedJavaScript = `
                     return;
                 }
             }
-            
+
             // Try to navigate to common playlists
             if (playlistId === 'liked') {
                 const likedButton = document.querySelector('[aria-label*="Liked"], [title*="Liked"]');
@@ -463,6 +522,7 @@ export function YouTubeMusicPlayer() {
                 ref={localWebViewRef}
                 source={{ uri: "https://music.youtube.com" }}
                 javaScriptEnabled={true}
+                webviewDebuggingEnabled
                 domStorageEnabled={true}
                 startInLoadingState={true}
                 mixedContentMode="compatibility"
