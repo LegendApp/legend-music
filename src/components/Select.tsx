@@ -15,6 +15,7 @@ export interface SelectPropsBase<T> {
     triggerClassName?: string;
     closeOnSelect?: boolean;
     unstyled?: boolean;
+    withCheckbox?: boolean;
     getItemKey: (item: NoInfer<T>) => string;
     renderItem: (item: NoInfer<T>) => ReactNode;
     renderItemText?: (item: NoInfer<T>) => string;
@@ -66,6 +67,7 @@ export function SelectMultiple<T>({
     className,
     closeOnSelect = false,
     unstyled = false,
+    withCheckbox,
     onSelectItem,
 }: SelectMultipleProps<T>) {
     const selectedItems = use$<T[]>(selectedItems$);
@@ -91,7 +93,7 @@ export function SelectMultiple<T>({
     const renderItems = () => {
         return items.map((item) => (
             <DropdownMenu.Item key={getItemKey(item)} onSelect={() => handleSelectItem(item)}>
-                {renderWithCheckbox(item)}
+                {withCheckbox ? renderWithCheckbox(item) : renderItem(item)}
             </DropdownMenu.Item>
         ));
     };

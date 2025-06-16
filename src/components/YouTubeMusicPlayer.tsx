@@ -1,7 +1,7 @@
-import { useObservable } from '@legendapp/state/react';
-import React, { useRef } from 'react';
-import { View } from 'react-native';
-import { WebView } from 'react-native-webview';
+import { useObservable } from "@legendapp/state/react";
+import React, { useRef } from "react";
+import { View } from "react-native";
+import { WebView } from "react-native-webview";
 
 interface Track {
     title: string;
@@ -16,6 +16,13 @@ interface PlaylistTrack extends Track {
     index: number;
 }
 
+interface YTMusicPlaylist {
+    id: string;
+    title: string;
+    thumbnail?: string;
+    trackCount?: number;
+}
+
 interface PlayerState {
     isPlaying: boolean;
     currentTrack: Track | null;
@@ -24,27 +31,98 @@ interface PlayerState {
     error: string | null;
     playlist: PlaylistTrack[];
     currentTrackIndex: number;
+    availablePlaylists: YTMusicPlaylist[];
+    currentPlaylistId?: string;
 }
 
 const injectedJavaScript = `
 (function() {
     let lastState = {};
 
+    function extractAvailablePlaylists() {
+        try {
+            const playlists = [];
+            
+            // Try to find playlists in the navigation/sidebar
+            const playlistElements = document.querySelectorAll('ytmusic-guide-entry-renderer[guide-entry-type="playlist"], ytmusic-guide-entry-renderer[guide-entry-type="PLAYLIST"]');
+            
+            playlistElements.forEach((element, index) => {
+                const titleEl = element.querySelector('.guide-entry-title, .title, [class*="title"]');
+                const thumbnailEl = element.querySelector('img');
+                
+                if (titleEl) {
+                    const title = titleEl.textContent?.trim() || '';
+                    if (title && title !== 'Home' && title !== 'Explore' && title !== 'Library') {
+                        playlists.push({
+                            id: 'playlist_' + index,
+                            title: title,
+                            thumbnail: thumbnailEl?.src || '',
+                            trackCount: 0
+                        });
+                    }
+                }
+            });
+            
+            // Also try to find playlists in the library section
+            if (playlists.length === 0) {
+                const libraryPlaylists = document.querySelectorAll('ytmusic-responsive-list-item-renderer[class*="playlist"], ytmusic-two-row-item-renderer[class*="playlist"]');
+                
+                libraryPlaylists.forEach((element, index) => {
+                    const titleEl = element.querySelector('.title, [class*="title"]');
+                    const thumbnailEl = element.querySelector('img');
+                    const subtitleEl = element.querySelector('.subtitle, [class*="subtitle"]');
+                    
+                    if (titleEl) {
+                        const title = titleEl.textContent?.trim() || '';
+                        const subtitle = subtitleEl?.textContent?.trim() || '';
+                        
+                        if (title) {
+                            playlists.push({
+                                id: 'library_playlist_' + index,
+                                title: title,
+                                thumbnail: thumbnailEl?.src || '',
+                                trackCount: subtitle.includes('song') ? parseInt(subtitle) || 0 : 0
+                            });
+                        }
+                    }
+                });
+            }
+            
+            // Add some default playlists if none found
+            if (playlists.length === 0) {
+                playlists.push(
+                    { id: 'liked', title: 'Liked Songs', thumbnail: '', trackCount: 0 },
+                    { id: 'history', title: 'History', thumbnail: '', trackCount: 0 },
+                    { id: 'queue', title: 'Queue', thumbnail: '', trackCount: 0 }
+                );
+            }
+            
+            console.log('Found playlists:', playlists.length);
+            return playlists;
+        } catch (error) {
+            console.error('Error extracting playlists:', error);
+            return [
+                { id: 'liked', title: 'Liked Songs', thumbnail: '', trackCount: 0 },
+                { id: 'history', title: 'History', thumbnail: '', trackCount: 0 }
+            ];
+        }
+    }
+
     function extractPlaylistInfo() {
         try {
             const playlist = [];
             let currentTrackIndex = -1;
-            
+
             // Try multiple strategies to find playlist items
             let items = [];
-            
+
             // Strategy 1: Try to get queue items (most reliable for current playlist)
             const queueItems = document.querySelectorAll('ytmusic-player-queue-item');
             if (queueItems.length > 0) {
                 items = Array.from(queueItems);
                 console.log('Found queue items:', items.length);
             }
-            
+
             // Strategy 2: Try to find Up Next section
             if (items.length === 0) {
                 const upNextItems = document.querySelectorAll('ytmusic-player-queue ytmusic-responsive-list-item-renderer');
@@ -53,7 +131,7 @@ const injectedJavaScript = `
                     console.log('Found up next items:', items.length);
                 }
             }
-            
+
             // Strategy 3: Try general playlist items on the page
             if (items.length === 0) {
                 const playlistItems = document.querySelectorAll('ytmusic-responsive-list-item-renderer');
@@ -62,25 +140,25 @@ const injectedJavaScript = `
                     console.log('Found general playlist items:', items.length);
                 }
             }
-            
+
             // Strategy 4: Try any music items
             if (items.length === 0) {
                 const musicItems = document.querySelectorAll('[class*="music"], [class*="song"], [class*="track"]');
                 items = Array.from(musicItems).slice(0, 10);
                 console.log('Found music items:', items.length);
             }
-            
+
             // Process found items
             items.forEach((item, index) => {
                 const titleEl = item.querySelector('.title, [class*="title"], .song-title, h3, h4');
                 const artistEl = item.querySelector('.byline, [class*="byline"], .artist, [class*="artist"], .subtitle');
                 const durationEl = item.querySelector('.duration, [class*="duration"], .time');
                 const thumbnailEl = item.querySelector('img');
-                
+
                 if (titleEl && artistEl) {
                     const title = titleEl.textContent?.trim() || '';
                     const artist = artistEl.textContent?.trim() || '';
-                    
+
                     // Only skip if it's completely empty or just whitespace
                     if (title && artist && title !== artist) {
                         playlist.push({
@@ -89,12 +167,12 @@ const injectedJavaScript = `
                             duration: durationEl?.textContent?.trim() || '',
                             thumbnail: thumbnailEl?.src || '',
                             index: index,
-                            isPlaying: item.classList.contains('playing') || 
+                            isPlaying: item.classList.contains('playing') ||
                                      item.getAttribute('aria-selected') === 'true' ||
                                      item.classList.contains('selected')
                         });
-                        
-                        if (item.classList.contains('playing') || 
+
+                        if (item.classList.contains('playing') ||
                             item.getAttribute('aria-selected') === 'true' ||
                             item.classList.contains('selected')) {
                             currentTrackIndex = playlist.length - 1;
@@ -102,7 +180,7 @@ const injectedJavaScript = `
                     }
                 }
             });
-            
+
             console.log('Final playlist:', playlist.length, 'items');
             return { playlist, currentTrackIndex };
         } catch (error) {
@@ -116,7 +194,30 @@ const injectedJavaScript = `
             // Get current track info
             const titleElement = document.querySelector('.title.style-scope.ytmusic-player-bar');
             const artistElement = document.querySelector('.byline.style-scope.ytmusic-player-bar');
-            const thumbnailElement = document.querySelector('.image.style-scope.ytmusic-player-bar img');
+
+            // Try multiple selectors for the current playing track image
+            let thumbnailElement = document.querySelector('.thumbnail.style-scope.ytmusic-player img');
+            if (!thumbnailElement) {
+                // Alternative selectors for the player bar image
+                thumbnailElement = document.querySelector('.image.style-scope.ytmusic-player-bar img');
+            }
+            if (!thumbnailElement) {
+                thumbnailElement = document.querySelector('ytmusic-player-bar img');
+            }
+            if (!thumbnailElement) {
+                thumbnailElement = document.querySelector('#player-bar img');
+            }
+            if (!thumbnailElement) {
+                thumbnailElement = document.querySelector('.player-bar img');
+            }
+            if (!thumbnailElement) {
+                // Try the mini player image
+                thumbnailElement = document.querySelector('.mini-player img');
+            }
+            if (!thumbnailElement) {
+                // Try any image in the player area
+                thumbnailElement = document.querySelector('[class*="player"] img, [id*="player"] img');
+            }
 
             // Get play/pause state
             const playButton = document.querySelector('#play-pause-button button');
@@ -129,9 +230,22 @@ const injectedJavaScript = `
             // Get duration
             const durationElement = document.querySelector('#right-controls .time-info');
             const duration = durationElement?.textContent?.trim() || '0:00';
-            
+
             // Get playlist info
             const { playlist, currentTrackIndex } = extractPlaylistInfo();
+            
+            // Get available playlists (only update occasionally to avoid performance issues)
+            const availablePlaylists = extractAvailablePlaylists();
+
+            // Get the best quality thumbnail URL
+            let thumbnailUrl = '';
+            if (thumbnailElement?.src) {
+                thumbnailUrl = thumbnailElement.src;
+                // Try to get higher quality version
+                if (thumbnailUrl.includes('=w')) {
+                    thumbnailUrl = thumbnailUrl.replace(/=w\d+-h\d+/, '=w500-h500');
+                }
+            }
 
             const currentState = {
                 isPlaying,
@@ -139,11 +253,13 @@ const injectedJavaScript = `
                     title: titleElement?.textContent?.trim() || '',
                     artist: artistElement?.textContent?.trim() || '',
                     duration: duration,
-                    thumbnail: thumbnailElement?.src || ''
+                    thumbnail: thumbnailUrl
                 },
                 currentTime,
                 playlist,
                 currentTrackIndex,
+                availablePlaylists,
+                currentPlaylistId: undefined, // Will be detected from current page
                 isLoading: false,
                 error: null
             };
@@ -196,21 +312,43 @@ const injectedJavaScript = `
                 progressBar.dispatchEvent(new Event('input', { bubbles: true }));
             }
         },
-        
+
         playTrackAtIndex: function(index) {
             // Try to find and click the track at the given index
             const queueItems = document.querySelectorAll('ytmusic-player-queue-item, .ytmusic-player-queue-item, [class*="queue"] .song-item, .queue-item');
-            
+
             if (queueItems[index]) {
                 queueItems[index].click();
                 return;
             }
-            
+
             // Try alternative selectors for playlist items
             const playlistItems = document.querySelectorAll('ytmusic-responsive-list-item-renderer, .ytmusic-responsive-list-item-renderer, [class*="playlist"] .song-item');
-            
+
             if (playlistItems[index]) {
                 playlistItems[index].click();
+            }
+        },
+        
+        navigateToPlaylist: function(playlistId) {
+            // Try to find and click the playlist in the navigation
+            const playlistElements = document.querySelectorAll('ytmusic-guide-entry-renderer[guide-entry-type="playlist"], ytmusic-guide-entry-renderer[guide-entry-type="PLAYLIST"]');
+            
+            for (let element of playlistElements) {
+                const titleEl = element.querySelector('.guide-entry-title, .title, [class*="title"]');
+                if (titleEl && playlistId.includes(titleEl.textContent?.trim())) {
+                    element.click();
+                    return;
+                }
+            }
+            
+            // Try to navigate to common playlists
+            if (playlistId === 'liked') {
+                const likedButton = document.querySelector('[aria-label*="Liked"], [title*="Liked"]');
+                if (likedButton) likedButton.click();
+            } else if (playlistId === 'history') {
+                const historyButton = document.querySelector('[aria-label*="History"], [title*="History"]');
+                if (historyButton) historyButton.click();
             }
         }
     };
@@ -257,28 +395,31 @@ const injectedJavaScript = `
 const playerState$ = useObservable<PlayerState>({
     isPlaying: false,
     currentTrack: null,
-    currentTime: '0:00',
+    currentTime: "0:00",
     isLoading: true,
     error: null,
     playlist: [],
     currentTrackIndex: -1,
+    availablePlaylists: [],
+    currentPlaylistId: undefined,
 });
 
 let webViewRef: React.MutableRefObject<WebView | null> | null = null;
 
 const executeCommand = (command: string, ...args: any[]) => {
-    const script = `window.ytMusicControls.${command}(${args.map(arg => JSON.stringify(arg)).join(', ')}); true;`;
+    const script = `window.ytMusicControls.${command}(${args.map((arg) => JSON.stringify(arg)).join(", ")}); true;`;
     webViewRef?.current?.injectJavaScript(script);
 };
 
 // Expose control methods
 const controls = {
-    playPause: () => executeCommand('playPause'),
-    next: () => executeCommand('next'),
-    previous: () => executeCommand('previous'),
-    setVolume: (volume: number) => executeCommand('setVolume', volume),
-    seek: (seconds: number) => executeCommand('seek', seconds),
-    playTrackAtIndex: (index: number) => executeCommand('playTrackAtIndex', index),
+    playPause: () => executeCommand("playPause"),
+    next: () => executeCommand("next"),
+    previous: () => executeCommand("previous"),
+    setVolume: (volume: number) => executeCommand("setVolume", volume),
+    seek: (seconds: number) => executeCommand("seek", seconds),
+    playTrackAtIndex: (index: number) => executeCommand("playTrackAtIndex", index),
+    navigateToPlaylist: (playlistId: string) => executeCommand("navigateToPlaylist", playlistId),
 };
 
 export function YouTubeMusicPlayer() {
@@ -296,23 +437,23 @@ export function YouTubeMusicPlayer() {
         try {
             const message = JSON.parse(event.nativeEvent.data);
 
-            console.log({ message})
+            console.log({ message });
 
             switch (message.type) {
-                case 'playerState':
+                case "playerState":
                     playerState$.assign(message.data);
                     break;
-                case 'error':
+                case "error":
                     playerState$.error.set(message.data.error);
                     playerState$.isLoading.set(false);
                     break;
-                case 'injectionComplete':
+                case "injectionComplete":
                     playerState$.isLoading.set(false);
                     break;
             }
         } catch (error) {
-            console.error('Failed to parse WebView message:', error);
-            playerState$.error.set('Failed to parse player message');
+            console.error("Failed to parse WebView message:", error);
+            playerState$.error.set("Failed to parse player message");
         }
     };
 
@@ -320,7 +461,7 @@ export function YouTubeMusicPlayer() {
         <View className="flex-1">
             <WebView
                 ref={localWebViewRef}
-                source={{ uri: 'https://music.youtube.com' }}
+                source={{ uri: "https://music.youtube.com" }}
                 javaScriptEnabled={true}
                 domStorageEnabled={true}
                 startInLoadingState={true}
@@ -346,4 +487,4 @@ export function YouTubeMusicPlayer() {
 
 // Export player state and controls for use in other components
 export { playerState$, controls };
-export type { Track, PlaylistTrack, PlayerState };
+export type { Track, PlaylistTrack, PlayerState, YTMusicPlaylist };
