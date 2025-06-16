@@ -78,12 +78,12 @@ const injectedJavaScript = `
         },
 
         next: function() {
-            const button = document.querySelector('[aria-label="Next song"]');
+            const button = document.querySelector('.next-button button[aria-label="Next"]');
             if (button) button.click();
         },
 
         previous: function() {
-            const button = document.querySelector('[aria-label="Previous song"]');
+            const button = document.querySelector('.previous-button button[aria-label="Previous"]');
             if (button) button.click();
         },
 
