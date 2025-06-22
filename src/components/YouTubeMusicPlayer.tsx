@@ -21,6 +21,7 @@ interface YTMusicPlaylist {
     title: string;
     thumbnail?: string;
     trackCount?: number;
+    creator?: string;
 }
 
 interface PlayerState {
@@ -43,67 +44,112 @@ const injectedJavaScript = `
         try {
             const playlists = [];
 
-            // Try to find playlists in the navigation/sidebar
-            const playlistElements = document.querySelectorAll('ytmusic-guide-entry-renderer[guide-entry-type="playlist"], ytmusic-guide-entry-renderer[guide-entry-type="PLAYLIST"]');
-
-            playlistElements.forEach((element, index) => {
-                const titleEl = element.querySelector('.guide-entry-title, .title, [class*="title"]');
+            // Strategy 1: Extract playlists from sidebar guide entries
+            const sidebarPlaylists = document.querySelectorAll('ytmusic-guide-entry-renderer[play-button-state="default"]');
+            
+            sidebarPlaylists.forEach((element, index) => {
+                const titleEl = element.querySelector('.title-column .title-group .title');
+                const creatorEl = element.querySelector('.title-column .subtitle-group .subtitle');
                 const thumbnailEl = element.querySelector('img');
-
+                const linkEl = element.querySelector('tp-yt-paper-item[href]');
+                
                 if (titleEl) {
                     const title = titleEl.textContent?.trim() || '';
+                    const creator = creatorEl?.textContent?.trim() || '';
+                    const href = linkEl?.getAttribute('href') || '';
+                    
+                    // Extract playlist ID from href (e.g., "playlist?list=PLnWuRxn_At6...")
+                    let playlistId = 'sidebar_' + index;
+                    if (href.includes('playlist?list=')) {
+                        playlistId = href.split('playlist?list=')[1].split('&')[0];
+                    } else if (href.includes('library/')) {
+                        playlistId = href.split('library/')[1] || 'library';
+                    }
+                    
                     if (title && title !== 'Home' && title !== 'Explore' && title !== 'Library') {
                         playlists.push({
-                            id: 'playlist_' + index,
+                            id: playlistId,
                             title: title,
                             thumbnail: thumbnailEl?.src || '',
-                            trackCount: 0
+                            trackCount: 0,
+                            creator: creator
                         });
                     }
                 }
             });
 
-            // Also try to find playlists in the library section
-            if (playlists.length === 0) {
-                const libraryPlaylists = document.querySelectorAll('ytmusic-responsive-list-item-renderer[class*="playlist"], ytmusic-two-row-item-renderer[class*="playlist"]');
-
-                libraryPlaylists.forEach((element, index) => {
-                    const titleEl = element.querySelector('.title, [class*="title"]');
-                    const thumbnailEl = element.querySelector('img');
-                    const subtitleEl = element.querySelector('.subtitle, [class*="subtitle"]');
-
-                    if (titleEl) {
-                        const title = titleEl.textContent?.trim() || '';
-                        const subtitle = subtitleEl?.textContent?.trim() || '';
-
-                        if (title) {
-                            playlists.push({
-                                id: 'library_playlist_' + index,
-                                title: title,
-                                thumbnail: thumbnailEl?.src || '',
-                                trackCount: subtitle.includes('song') ? parseInt(subtitle) || 0 : 0
-                            });
+            // Strategy 2: Extract playlists from main library grid
+            const gridPlaylists = document.querySelectorAll('ytmusic-two-row-item-renderer');
+            
+            gridPlaylists.forEach((element, index) => {
+                const titleEl = element.querySelector('.title-group .title a, .title-group .title');
+                const thumbnailEl = element.querySelector('ytmusic-thumbnail-renderer img');
+                const subtitleEl = element.querySelector('.substring-group .subtitle');
+                const linkEl = element.querySelector('a[href*="playlist?list="]');
+                
+                if (titleEl) {
+                    const title = titleEl.textContent?.trim() || '';
+                    const subtitle = subtitleEl?.textContent?.trim() || '';
+                    
+                    // Extract playlist ID from href
+                    let playlistId = 'grid_' + index;
+                    if (linkEl) {
+                        const href = linkEl.getAttribute('href') || '';
+                        if (href.includes('playlist?list=')) {
+                            playlistId = href.split('playlist?list=')[1].split('&')[0];
                         }
                     }
+                    
+                    // Extract track count from subtitle (e.g., "Playlist • Creator • 25 songs")
+                    let trackCount = 0;
+                    const trackMatch = subtitle.match(/(\d+)\s+(songs?|tracks?)/i);
+                    if (trackMatch) {
+                        trackCount = parseInt(trackMatch[1]) || 0;
+                    }
+                    
+                    // Extract creator from subtitle
+                    let creator = '';
+                    const creatorEl = subtitleEl?.querySelector('a[href*="channel/"]');
+                    if (creatorEl) {
+                        creator = creatorEl.textContent?.trim() || '';
+                    }
+                    
+                    if (title) {
+                        playlists.push({
+                            id: playlistId,
+                            title: title,
+                            thumbnail: thumbnailEl?.src || '',
+                            trackCount: trackCount,
+                            creator: creator
+                        });
+                    }
+                }
+            });
+
+            // Strategy 3: Add Liked Music if not found
+            const hasLikedMusic = playlists.some(p => p.id === 'LM' || p.title.toLowerCase().includes('liked'));
+            if (!hasLikedMusic) {
+                playlists.unshift({
+                    id: 'LM',
+                    title: 'Liked Music',
+                    thumbnail: 'https://www.gstatic.com/youtube/media/ytm/images/pbg/liked-music-@576.png',
+                    trackCount: 0,
+                    creator: ''
                 });
             }
 
-            // Add some default playlists if none found
-            if (playlists.length === 0) {
-                playlists.push(
-                    { id: 'liked', title: 'Liked Songs', thumbnail: '', trackCount: 0 },
-                    { id: 'history', title: 'History', thumbnail: '', trackCount: 0 },
-                    { id: 'queue', title: 'Queue', thumbnail: '', trackCount: 0 }
-                );
-            }
+            // Remove duplicates based on ID
+            const uniquePlaylists = playlists.filter((playlist, index, self) => 
+                index === self.findIndex(p => p.id === playlist.id)
+            );
 
-            console.log('Found playlists:', playlists.length);
-            return playlists;
+            console.log('Found playlists:', uniquePlaylists.length, uniquePlaylists.map(p => p.title));
+            return uniquePlaylists;
         } catch (error) {
             console.error('Error extracting playlists:', error);
             return [
-                { id: 'liked', title: 'Liked Songs', thumbnail: '', trackCount: 0 },
-                { id: 'history', title: 'History', thumbnail: '', trackCount: 0 }
+                { id: 'LM', title: 'Liked Music', thumbnail: '', trackCount: 0, creator: '' },
+                { id: 'history', title: 'History', thumbnail: '', trackCount: 0, creator: '' }
             ];
         }
     }
@@ -390,25 +436,59 @@ const injectedJavaScript = `
         },
 
         navigateToPlaylist: function(playlistId) {
-            // Try to find and click the playlist in the navigation
-            const playlistElements = document.querySelectorAll('ytmusic-guide-entry-renderer[guide-entry-type="playlist"], ytmusic-guide-entry-renderer[guide-entry-type="PLAYLIST"]');
-
-            for (let element of playlistElements) {
-                const titleEl = element.querySelector('.guide-entry-title, .title, [class*="title"]');
-                if (titleEl && playlistId.includes(titleEl.textContent?.trim())) {
-                    element.click();
-                    return;
+            console.log('Navigating to playlist:', playlistId);
+            
+            // Strategy 1: Direct navigation using playlist ID if it looks like a real YouTube playlist ID
+            if (playlistId.startsWith('PL') || playlistId === 'LM') {
+                const url = playlistId === 'LM' ? 
+                    '/library/liked_music' : 
+                    '/playlist?list=' + playlistId;
+                window.location.href = url;
+                return true;
+            }
+            
+            // Strategy 2: Try to find and click the playlist in the sidebar
+            const sidebarPlaylists = document.querySelectorAll('ytmusic-guide-entry-renderer[play-button-state="default"]');
+            for (let element of sidebarPlaylists) {
+                const linkEl = element.querySelector('tp-yt-paper-item[href]');
+                const href = linkEl?.getAttribute('href') || '';
+                
+                if (href.includes('playlist?list=' + playlistId) || 
+                    href.includes(playlistId) ||
+                    (playlistId === 'library' && href.includes('library/'))) {
+                    linkEl?.click();
+                    return true;
                 }
             }
-
-            // Try to navigate to common playlists
-            if (playlistId === 'liked') {
-                const likedButton = document.querySelector('[aria-label*="Liked"], [title*="Liked"]');
-                if (likedButton) likedButton.click();
-            } else if (playlistId === 'history') {
-                const historyButton = document.querySelector('[aria-label*="History"], [title*="History"]');
-                if (historyButton) historyButton.click();
+            
+            // Strategy 3: Try to find and click in the main grid
+            const gridPlaylists = document.querySelectorAll('ytmusic-two-row-item-renderer a[href*="playlist?list="]');
+            for (let element of gridPlaylists) {
+                const href = element.getAttribute('href') || '';
+                if (href.includes('playlist?list=' + playlistId)) {
+                    element.click();
+                    return true;
+                }
             }
+            
+            // Strategy 4: Navigate to common special playlists
+            if (playlistId === 'LM' || playlistId.toLowerCase().includes('liked')) {
+                window.location.href = '/library/liked_music';
+                return true;
+            } else if (playlistId.toLowerCase().includes('history')) {
+                window.location.href = '/library/history';
+                return true;
+            } else if (playlistId.toLowerCase().includes('queue')) {
+                // Try to open the queue/up next
+                const queueButton = document.querySelector('[aria-label*="Queue"], [title*="Queue"], #player-queue-button');
+                if (queueButton) {
+                    queueButton.click();
+                    return true;
+                }
+            }
+            
+            console.log('Could not navigate to playlist:', playlistId);
+            return false;
         }
     };
 
@@ -538,7 +618,7 @@ export function YouTubeMusicPlayer() {
                     playerState$.error.set(`WebView error: ${error.nativeEvent.description}`);
                     playerState$.isLoading.set(false);
                 }}
-                userAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                userAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:123.0) LegendMusic/1.0 Gecko/20100101 Firefox/123.0"
                 className="flex-1"
             />
         </View>

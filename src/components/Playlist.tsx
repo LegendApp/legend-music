@@ -2,6 +2,7 @@ import { use$, useObservable } from "@legendapp/state/react";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 import { controls, playerState$ } from "@/components/YouTubeMusicPlayer";
+import { cn } from "@/utils/cn";
 
 export function Playlist() {
     const playerState = use$(playerState$);
@@ -21,7 +22,7 @@ export function Playlist() {
     };
 
     return (
-        <View className="flex-1">
+        <View className="flex-1 mt-4">
             {playlist.length === 0 ? (
                 <View className="flex-1 items-center justify-center">
                     <Text className="text-white/60 text-base">
@@ -34,13 +35,14 @@ export function Playlist() {
                     {playlist.map((track, index) => (
                         <TouchableOpacity
                             key={index}
-                            className={`flex-row items-center px-6 py-4 ${
+                            className={cn(
+                                "flex-row items-center px-4 py-2",
                                 index === currentTrackIndex
                                     ? "bg-white/10"
                                     : clickedTrackIndex === index
                                       ? "bg-orange-500/20"
-                                      : ""
-                            }`}
+                                      : "",
+                            )}
                             onPress={() => handleTrackClick(index)}
                         >
                             <Text className="text-white/60 text-base w-8">{index + 1}</Text>
@@ -48,7 +50,7 @@ export function Playlist() {
                             {track.thumbnail ? (
                                 <Image
                                     source={{ uri: track.thumbnail }}
-                                    className="w-12 h-12 rounded-lg ml-4"
+                                    className="size-9 rounded-lg"
                                     resizeMode="cover"
                                 />
                             ) : (
@@ -58,7 +60,7 @@ export function Playlist() {
                             )}
 
                             <View className="flex-1 ml-4">
-                                <Text className="text-white text-base font-medium mb-1">{track.title}</Text>
+                                <Text className="text-white text-base font-medium">{track.title}</Text>
                                 <Text className="text-white/70 text-sm">{track.artist}</Text>
                             </View>
 

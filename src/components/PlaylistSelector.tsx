@@ -1,8 +1,8 @@
-import { useObservable, use$ } from "@legendapp/state/react";
-import { View, Text } from "react-native";
+import { use$, useObservable } from "@legendapp/state/react";
+import { Text, View } from "react-native";
 
 import { Select } from "@/components/Select";
-import { playerState$, controls, type YTMusicPlaylist } from "@/components/YouTubeMusicPlayer";
+import { type YTMusicPlaylist, controls, playerState$ } from "@/components/YouTubeMusicPlayer";
 
 export function PlaylistSelector() {
     const playerState = use$(playerState$);
@@ -16,9 +16,8 @@ export function PlaylistSelector() {
         controls.navigateToPlaylist(playlist.id);
     };
 
-
     return (
-        <View className="mx-6 mt-6 mb-4">
+        <View className="mx-6 mt-4">
             {availablePlaylists.length > 0 ? (
                 <Select
                     items={availablePlaylists}
@@ -28,18 +27,14 @@ export function PlaylistSelector() {
                     getItemKey={(playlist) => playlist.id}
                     renderItem={(playlist) => (
                         <View className="flex-row items-center w-80">
-                            <Text className="text-white text-base font-medium flex-1">
-                                {playlist.title}
-                            </Text>
+                            <Text className="text-white text-base font-medium flex-1">{playlist.title}</Text>
                             {playlist.trackCount !== undefined && (
-                                <Text className="text-white/60 text-sm ml-2">
-                                    {playlist.trackCount} songs
-                                </Text>
+                                <Text className="text-white/60 text-sm ml-2">{playlist.trackCount} songs</Text>
                             )}
                         </View>
                     )}
                     renderItemText={(playlist) => playlist.title}
-                    className="bg-white/20 rounded-2xl"
+                    className="rounded-2xl"
                     triggerClassName="px-6 py-4"
                 />
             ) : (

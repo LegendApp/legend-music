@@ -3,7 +3,8 @@
     "allow": [
       "Bash(mv:*)",
       "Bash(bun run lint:*)",
-      "Bash(bunx biome check:*)"
+      "Bash(bunx biome check:*)",
+      "Bash(rg:*)"
     ],
     "deny": []
   }
