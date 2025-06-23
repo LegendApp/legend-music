@@ -4,36 +4,36 @@ import { View } from "react-native";
 import { WebView } from "react-native-webview";
 
 interface Track {
-    title: string;
-    artist: string;
-    duration: string;
-    thumbnail: string;
-    id?: string;
+	title: string;
+	artist: string;
+	duration: string;
+	thumbnail: string;
+	id?: string;
 }
 
 interface PlaylistTrack extends Track {
-    isPlaying?: boolean;
-    index: number;
+	isPlaying?: boolean;
+	index: number;
 }
 
 interface YTMusicPlaylist {
-    id: string;
-    title: string;
-    thumbnail?: string;
-    trackCount?: number;
-    creator?: string;
+	id: string;
+	title: string;
+	thumbnail?: string;
+	trackCount?: number;
+	creator?: string;
 }
 
 interface PlayerState {
-    isPlaying: boolean;
-    currentTrack: Track | null;
-    currentTime: string;
-    isLoading: boolean;
-    error: string | null;
-    playlist: PlaylistTrack[];
-    currentTrackIndex: number;
-    availablePlaylists: YTMusicPlaylist[];
-    currentPlaylistId?: string;
+	isPlaying: boolean;
+	currentTrack: Track | null;
+	currentTime: string;
+	isLoading: boolean;
+	error: string | null;
+	playlist: PlaylistTrack[];
+	currentTrackIndex: number;
+	availablePlaylists: YTMusicPlaylist[];
+	currentPlaylistId?: string;
 }
 
 const injectedJavaScript = `
@@ -46,18 +46,18 @@ const injectedJavaScript = `
 
             // Strategy 1: Extract playlists from sidebar guide entries
             const sidebarPlaylists = document.querySelectorAll('ytmusic-guide-entry-renderer[play-button-state="default"]');
-            
+
             sidebarPlaylists.forEach((element, index) => {
                 const titleEl = element.querySelector('.title-column .title-group .title');
                 const creatorEl = element.querySelector('.title-column .subtitle-group .subtitle');
                 const thumbnailEl = element.querySelector('img');
                 const linkEl = element.querySelector('tp-yt-paper-item[href]');
-                
+
                 if (titleEl) {
                     const title = titleEl.textContent?.trim() || '';
                     const creator = creatorEl?.textContent?.trim() || '';
                     const href = linkEl?.getAttribute('href') || '';
-                    
+
                     // Extract playlist ID from href (e.g., "playlist?list=PLnWuRxn_At6...")
                     let playlistId = 'sidebar_' + index;
                     if (href.includes('playlist?list=')) {
@@ -65,7 +65,7 @@ const injectedJavaScript = `
                     } else if (href.includes('library/')) {
                         playlistId = href.split('library/')[1] || 'library';
                     }
-                    
+
                     if (title && title !== 'Home' && title !== 'Explore' && title !== 'Library') {
                         playlists.push({
                             id: playlistId,
@@ -80,17 +80,17 @@ const injectedJavaScript = `
 
             // Strategy 2: Extract playlists from main library grid
             const gridPlaylists = document.querySelectorAll('ytmusic-two-row-item-renderer');
-            
+
             gridPlaylists.forEach((element, index) => {
                 const titleEl = element.querySelector('.title-group .title a, .title-group .title');
                 const thumbnailEl = element.querySelector('ytmusic-thumbnail-renderer img');
                 const subtitleEl = element.querySelector('.substring-group .subtitle');
                 const linkEl = element.querySelector('a[href*="playlist?list="]');
-                
+
                 if (titleEl) {
                     const title = titleEl.textContent?.trim() || '';
                     const subtitle = subtitleEl?.textContent?.trim() || '';
-                    
+
                     // Extract playlist ID from href
                     let playlistId = 'grid_' + index;
                     if (linkEl) {
@@ -99,21 +99,21 @@ const injectedJavaScript = `
                             playlistId = href.split('playlist?list=')[1].split('&')[0];
                         }
                     }
-                    
+
                     // Extract track count from subtitle (e.g., "Playlist • Creator • 25 songs")
                     let trackCount = 0;
                     const trackMatch = subtitle.match(/(\d+)\s+(songs?|tracks?)/i);
                     if (trackMatch) {
                         trackCount = parseInt(trackMatch[1]) || 0;
                     }
-                    
+
                     // Extract creator from subtitle
                     let creator = '';
                     const creatorEl = subtitleEl?.querySelector('a[href*="channel/"]');
                     if (creatorEl) {
                         creator = creatorEl.textContent?.trim() || '';
                     }
-                    
+
                     if (title) {
                         playlists.push({
                             id: playlistId,
@@ -139,7 +139,7 @@ const injectedJavaScript = `
             }
 
             // Remove duplicates based on ID
-            const uniquePlaylists = playlists.filter((playlist, index, self) => 
+            const uniquePlaylists = playlists.filter((playlist, index, self) =>
                 index === self.findIndex(p => p.id === playlist.id)
             );
 
@@ -159,75 +159,95 @@ const injectedJavaScript = `
             const playlist = [];
             let currentTrackIndex = -1;
 
-            // Try multiple strategies to find playlist items
+            // Try strategies in order, use only the first one that returns results
             let items = [];
+            let strategy = '';
 
             // Strategy 1: Try to get queue items (most reliable for current playlist)
-            const queueItems = document.querySelectorAll('ytmusic-player-queue-item');
+            const allQueueItems = document.querySelectorAll('ytmusic-player-queue-item');
+            const queueItems = Array.from(allQueueItems).filter(item => !item.closest('#counterpart-renderer'));
             if (queueItems.length > 0) {
                 items = Array.from(queueItems);
-                console.log('Found queue items:', items.length);
-            }
-
-            // Strategy 2: Try to find Up Next section
-            if (items.length === 0) {
-                const upNextItems = document.querySelectorAll('ytmusic-player-queue ytmusic-responsive-list-item-renderer');
-                if (upNextItems.length > 0) {
-                    items = Array.from(upNextItems);
-                    console.log('Found up next items:', items.length);
+                strategy = 'queue';
+                console.log('Using ONLY queue items:', items.length);
+            } else {
+                // Strategy 2: Try to find playlist page items (when viewing a specific playlist)
+                const playlistPageItems = document.querySelectorAll('ytmusic-playlist-shelf-renderer ytmusic-responsive-list-item-renderer');
+                if (playlistPageItems.length > 0) {
+                    items = Array.from(playlistPageItems);
+                    strategy = 'playlist-page';
+                    console.log('Using ONLY playlist page items:', items.length);
+                } else {
+                    // Strategy 3: Try to find Up Next section
+                    const upNextItems = document.querySelectorAll('ytmusic-player-queue ytmusic-responsive-list-item-renderer');
+                    if (upNextItems.length > 0) {
+                        items = Array.from(upNextItems);
+                        strategy = 'up-next';
+                        console.log('Using ONLY up next items:', items.length);
+                    } else {
+                        // Strategy 4: Try general responsive list items (but be more selective)
+                        const generalItems = document.querySelectorAll('ytmusic-shelf-renderer ytmusic-responsive-list-item-renderer');
+                        if (generalItems.length > 0) {
+                            items = Array.from(generalItems).slice(0, 20); // Limit to avoid too many items
+                            strategy = 'general-shelf';
+                            console.log('Using ONLY general shelf items:', items.length);
+                        }
+                    }
                 }
             }
 
-            // Strategy 3: Try general playlist items on the page
-            if (items.length === 0) {
-                const playlistItems = document.querySelectorAll('ytmusic-responsive-list-item-renderer');
-                if (playlistItems.length > 0) {
-                    items = Array.from(playlistItems).slice(0, 20); // Limit to avoid too many items
-                    console.log('Found general playlist items:', items.length);
-                }
-            }
-
-            // Strategy 4: Try any music items
-            if (items.length === 0) {
-                const musicItems = document.querySelectorAll('[class*="music"], [class*="song"], [class*="track"]');
-                items = Array.from(musicItems).slice(0, 10);
-                console.log('Found music items:', items.length);
-            }
-
-            // Process found items
+            // Process ALL items from the single selected source
             items.forEach((item, index) => {
-                const titleEl = item.querySelector('.title, [class*="title"], .song-title, h3, h4');
-                const artistEl = item.querySelector('.byline, [class*="byline"], .artist, [class*="artist"], .subtitle');
-                const durationEl = item.querySelector('.duration, [class*="duration"], .time');
+                let titleEl, artistEl, durationEl;
+
+                if (strategy === 'queue') {
+                    // More specific selectors for queue items
+                    titleEl = item.querySelector('.song-title, .title');
+                    artistEl = item.querySelector('.byline a, .byline, .artist');
+                    durationEl = item.querySelector('.duration-text, .duration');
+                } else {
+                    // General selectors for other strategies
+                    titleEl = item.querySelector('.title-group .title a, .title-group .title, .title');
+                    artistEl = item.querySelector('.subtitle-group .subtitle a, .byline a, .byline, .subtitle');
+                    durationEl = item.querySelector('.duration, [class*="duration"], .time');
+                }
+
                 const thumbnailEl = item.querySelector('img');
 
                 if (titleEl && artistEl) {
-                    const title = titleEl.textContent?.trim() || '';
-                    const artist = artistEl.textContent?.trim() || '';
+                    let title = titleEl.textContent?.trim() || '';
+                    let artist = artistEl.textContent?.trim() || '';
+                    const duration = durationEl?.textContent?.trim() || '';
 
-                    // Only skip if it's completely empty or just whitespace
+                    // Clean up artist text (remove extra info like "• Album • Year")
+                    if (artist.includes('•')) {
+                        artist = artist.split('•')[0].trim();
+                    }
+
+                    // Only add if not empty and title != artist
                     if (title && artist && title !== artist) {
+                        const isPlaying = item.classList.contains('playing') ||
+                                        item.getAttribute('aria-selected') === 'true' ||
+                                        item.classList.contains('selected') ||
+                                        item.querySelector('[class*="playing"]') !== null;
+
                         playlist.push({
                             title: title,
                             artist: artist,
-                            duration: durationEl?.textContent?.trim() || '',
+                            duration: duration,
                             thumbnail: thumbnailEl?.src || '',
-                            index: index,
-                            isPlaying: item.classList.contains('playing') ||
-                                     item.getAttribute('aria-selected') === 'true' ||
-                                     item.classList.contains('selected')
+                            index: index, // Use original index from the source
+                            isPlaying: isPlaying
                         });
 
-                        if (item.classList.contains('playing') ||
-                            item.getAttribute('aria-selected') === 'true' ||
-                            item.classList.contains('selected')) {
+                        if (isPlaying) {
                             currentTrackIndex = playlist.length - 1;
                         }
                     }
                 }
             });
 
-            console.log('Final playlist:', playlist.length, 'items');
+            console.log('Final playlist (' + strategy + '):', playlist.length, 'items from single source');
             return { playlist, currentTrackIndex };
         } catch (error) {
             console.error('Error extracting playlist:', error);
@@ -437,13 +457,13 @@ const injectedJavaScript = `
 
         navigateToPlaylist: function(playlistId) {
             console.log('Navigating to playlist:', playlistId);
-            
+
             try {
                 // Strategy 0: Handle sidebar_ prefixed IDs by clicking at specific index
                 if (playlistId.startsWith('sidebar_')) {
                     const index = parseInt(playlistId.split('sidebar_')[1]);
                     console.log('Clicking sidebar playlist at index:', index);
-                    
+
                     const sidebarPlaylists = document.querySelectorAll('ytmusic-guide-entry-renderer[play-button-state="default"]');
                     if (sidebarPlaylists[index]) {
                         const linkEl = sidebarPlaylists[index].querySelector('tp-yt-paper-item[href]');
@@ -462,14 +482,14 @@ const injectedJavaScript = `
                         return false;
                     }
                 }
-                
+
                 // Strategy 1: Direct navigation using playlist ID if it looks like a real YouTube playlist ID
                 if (playlistId.startsWith('PL') || playlistId === 'LM') {
-                    const url = playlistId === 'LM' ? 
-                        '/library/liked_music' : 
+                    const url = playlistId === 'LM' ?
+                        '/library/liked_music' :
                         '/playlist?list=' + playlistId;
                     console.log('Direct navigation to:', url);
-                    
+
                     // Try multiple navigation methods
                     try {
                         window.location.assign(url);
@@ -479,20 +499,20 @@ const injectedJavaScript = `
                     }
                     return true;
                 }
-                
+
                 // Strategy 2: Try to find and click the playlist in the sidebar
                 console.log('Searching sidebar playlists...');
                 const sidebarPlaylists = document.querySelectorAll('ytmusic-guide-entry-renderer[play-button-state="default"]');
                 console.log('Found sidebar playlist elements:', sidebarPlaylists.length);
-                
+
                 for (let i = 0; i < sidebarPlaylists.length; i++) {
                     const element = sidebarPlaylists[i];
                     const linkEl = element.querySelector('tp-yt-paper-item[href]');
                     const href = linkEl?.getAttribute('href') || '';
-                    
+
                     console.log('Checking sidebar element', i, 'href:', href);
-                    
-                    if (href.includes('playlist?list=' + playlistId) || 
+
+                    if (href.includes('playlist?list=' + playlistId) ||
                         href.includes(playlistId) ||
                         (playlistId === 'library' && href.includes('library/'))) {
                         console.log('Found matching sidebar playlist, clicking...');
@@ -500,25 +520,25 @@ const injectedJavaScript = `
                         return true;
                     }
                 }
-                
+
                 // Strategy 3: Try to find and click in the main grid
                 console.log('Searching grid playlists...');
                 const gridPlaylists = document.querySelectorAll('ytmusic-two-row-item-renderer a[href*="playlist?list="]');
                 console.log('Found grid playlist elements:', gridPlaylists.length);
-                
+
                 for (let i = 0; i < gridPlaylists.length; i++) {
                     const element = gridPlaylists[i];
                     const href = element.getAttribute('href') || '';
-                    
+
                     console.log('Checking grid element', i, 'href:', href);
-                    
+
                     if (href.includes('playlist?list=' + playlistId)) {
                         console.log('Found matching grid playlist, clicking...');
                         element.click();
                         return true;
                     }
                 }
-                
+
                 // Strategy 4: Navigate to common special playlists
                 if (playlistId === 'LM' || playlistId.toLowerCase().includes('liked')) {
                     console.log('Navigating to liked music...');
@@ -544,7 +564,7 @@ const injectedJavaScript = `
                         return true;
                     }
                 }
-                
+
                 // Strategy 5: Last resort - try to navigate to any playlist with matching ID parts
                 console.log('Last resort: trying partial ID match navigation...');
                 if (playlistId.length > 3) {
@@ -557,7 +577,7 @@ const injectedJavaScript = `
                     }
                     return true;
                 }
-                
+
                 console.log('Could not navigate to playlist:', playlistId);
                 return false;
             } catch (error) {
@@ -607,97 +627,101 @@ const injectedJavaScript = `
 
 // Create observable player state outside component for global access
 const playerState$ = useObservable<PlayerState>({
-    isPlaying: false,
-    currentTrack: null,
-    currentTime: "0:00",
-    isLoading: true,
-    error: null,
-    playlist: [],
-    currentTrackIndex: -1,
-    availablePlaylists: [],
-    currentPlaylistId: undefined,
+	isPlaying: false,
+	currentTrack: null,
+	currentTime: "0:00",
+	isLoading: true,
+	error: null,
+	playlist: [],
+	currentTrackIndex: -1,
+	availablePlaylists: [],
+	currentPlaylistId: undefined,
 });
 
 let webViewRef: React.MutableRefObject<WebView | null> | null = null;
 
 const executeCommand = (command: string, ...args: any[]) => {
-    const script = `window.ytMusicControls.${command}(${args.map((arg) => JSON.stringify(arg)).join(", ")}); true;`;
-    webViewRef?.current?.injectJavaScript(script);
+	const script = `window.ytMusicControls.${command}(${args.map((arg) => JSON.stringify(arg)).join(", ")}); true;`;
+	webViewRef?.current?.injectJavaScript(script);
 };
 
 // Expose control methods
 const controls = {
-    playPause: () => executeCommand("playPause"),
-    next: () => executeCommand("next"),
-    previous: () => executeCommand("previous"),
-    setVolume: (volume: number) => executeCommand("setVolume", volume),
-    seek: (seconds: number) => executeCommand("seek", seconds),
-    playTrackAtIndex: (index: number) => executeCommand("playTrackAtIndex", index),
-    navigateToPlaylist: (playlistId: string) => executeCommand("navigateToPlaylist", playlistId),
+	playPause: () => executeCommand("playPause"),
+	next: () => executeCommand("next"),
+	previous: () => executeCommand("previous"),
+	setVolume: (volume: number) => executeCommand("setVolume", volume),
+	seek: (seconds: number) => executeCommand("seek", seconds),
+	playTrackAtIndex: (index: number) =>
+		executeCommand("playTrackAtIndex", index),
+	navigateToPlaylist: (playlistId: string) =>
+		executeCommand("navigateToPlaylist", playlistId),
 };
 
 export function YouTubeMusicPlayer() {
-    const localWebViewRef = useRef<WebView>(null);
+	const localWebViewRef = useRef<WebView>(null);
 
-    // Set the global ref to this instance
-    React.useEffect(() => {
-        webViewRef = localWebViewRef;
-        return () => {
-            webViewRef = null;
-        };
-    }, []);
+	// Set the global ref to this instance
+	React.useEffect(() => {
+		webViewRef = localWebViewRef;
+		return () => {
+			webViewRef = null;
+		};
+	}, []);
 
-    const handleMessage = (event: any) => {
-        try {
-            const message = JSON.parse(event.nativeEvent.data);
+	const handleMessage = (event: any) => {
+		try {
+			const message = JSON.parse(event.nativeEvent.data);
 
-            console.log({ message });
+			console.log({ message });
 
-            switch (message.type) {
-                case "playerState":
-                    playerState$.assign(message.data);
-                    break;
-                case "error":
-                    playerState$.error.set(message.data.error);
-                    playerState$.isLoading.set(false);
-                    break;
-                case "injectionComplete":
-                    playerState$.isLoading.set(false);
-                    break;
-            }
-        } catch (error) {
-            console.error("Failed to parse WebView message:", error);
-            playerState$.error.set("Failed to parse player message");
-        }
-    };
+			switch (message.type) {
+				case "playerState":
+					playerState$.assign(message.data);
+					break;
+				case "error":
+					playerState$.error.set(message.data.error);
+					playerState$.isLoading.set(false);
+					break;
+				case "injectionComplete":
+					playerState$.isLoading.set(false);
+					break;
+			}
+		} catch (error) {
+			console.error("Failed to parse WebView message:", error);
+			playerState$.error.set("Failed to parse player message");
+		}
+	};
 
-    return (
-        <View className="flex-1">
-            <WebView
-                ref={localWebViewRef}
-                source={{ uri: "https://music.youtube.com" }}
-                javaScriptEnabled={true}
-                webviewDebuggingEnabled
-                domStorageEnabled={true}
-                startInLoadingState={true}
-                mixedContentMode="compatibility"
-                allowsInlineMediaPlayback={true}
-                mediaPlaybackRequiresUserAction={false}
-                injectedJavaScript={injectedJavaScript}
-                onMessage={handleMessage}
-                onLoadStart={() => playerState$.isLoading.set(true)}
-                onLoadEnd={() => {
-                    // Injection will set loading to false
-                }}
-                onError={(error) => {
-                    playerState$.error.set(`WebView error: ${error.nativeEvent.description}`);
-                    playerState$.isLoading.set(false);
-                }}
-                userAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:123.0) LegendMusic/1.0 Gecko/20100101 Firefox/123.0"
-                className="flex-1"
-            />
-        </View>
-    );
+	return (
+		<View className="flex-1">
+			<WebView
+				ref={localWebViewRef}
+				source={{ uri: "https://music.youtube.com" }}
+				javaScriptEnabled={true}
+				webviewDebuggingEnabled
+				domStorageEnabled={true}
+				startInLoadingState={true}
+				mixedContentMode="compatibility"
+				allowsInlineMediaPlayback={true}
+				mediaPlaybackRequiresUserAction={false}
+				injectedJavaScript={injectedJavaScript}
+				onMessage={handleMessage}
+				onLoadStart={() => playerState$.isLoading.set(true)}
+				onLoadEnd={() => {
+					// Injection will set loading to false
+				}}
+				onError={(error) => {
+					playerState$.error.set(
+						`WebView error: ${error.nativeEvent.description}`,
+					);
+					playerState$.isLoading.set(false);
+				}}
+				userAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:123.0) LegendMusic/1.0 Gecko/20100101 Firefox/123.0"
+				className="flex-1"
+			/>
+		</View>
+	);
 }
 
 // Export player state and controls for use in other components
