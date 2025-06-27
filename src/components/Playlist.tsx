@@ -64,7 +64,7 @@ export function Playlist() {
 								: localMusicState.error
 									? "Error scanning local files"
 									: "No local MP3 files found"
-							: playerState.isLoading
+							: playerState.isLoading && playerState.availablePlaylists.length === 0
 								? "Loading playlist..."
 								: "No playlist available"}
 					</Text>

@@ -87,8 +87,10 @@ export function CustomSlider({
 
 	// Animated style for the thumb
 	const thumbAnimatedStyle = useAnimatedStyle(() => {
+		const height = thumbHeight.value;
 		return {
-			height: thumbHeight.value,
+			height: height,
+			top: -height / 2, // Center the line by moving it up by half its height
 		};
 	});
 
@@ -120,7 +122,6 @@ export function CustomSlider({
 							{
 								left: `${progress * 100}%`,
 								marginLeft: -1, // Half of line width
-								top: -5.5, // Center vertically around the track
 								opacity: disabled ? 0.5 : isHovered ? 1 : 0,
 							},
 						]}

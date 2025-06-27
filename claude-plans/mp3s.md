@@ -9,8 +9,8 @@
 
 ## Steps
 
-[] The vertical line in the slider should animate from the center
-[] It currently says "Loading playlists" when the app opens until youtube music loads. But if we have cached playlists, show them immediately.
+[x] The vertical line in the slider should animate from the center
+[x] It currently says "Loading playlists" when the app opens until youtube music loads. But if we have cached playlists, show them immediately.
 
 ## Plan for later (do not do these yet)
 

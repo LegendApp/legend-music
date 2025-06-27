@@ -818,6 +818,25 @@ const injectedJavaScript = `
 })();
 `;
 
+// Load cached playlists synchronously
+const loadCachedYTMPlaylists = (): YTMusicPlaylist[] => {
+	try {
+		const allPlaylists = getAllPlaylists();
+		const ytmPlaylists = allPlaylists.filter((p) => p.type === "ytm");
+		
+		return ytmPlaylists.map((p) => ({
+			id: p.id,
+			title: p.name,
+			trackCount: p.count,
+			thumbnail: "", // Will be updated when available from web interface
+			creator: "YouTube Music",
+		}));
+	} catch (error) {
+		console.warn("Failed to load cached playlists on startup:", error);
+		return [];
+	}
+};
+
 // Create observable player state outside component for global access
 const playerState$ = useObservable<PlayerState>({
 	isPlaying: false,
@@ -827,7 +846,7 @@ const playerState$ = useObservable<PlayerState>({
 	error: null,
 	playlist: [],
 	currentTrackIndex: -1,
-	availablePlaylists: [],
+	availablePlaylists: loadCachedYTMPlaylists(),
 	currentPlaylistId: undefined,
 });
 
@@ -897,30 +916,13 @@ export function YouTubeMusicPlayer() {
 		};
 	}, []);
 
-	// Load persisted YouTube Music playlists on component mount
+	// Log cached playlists on component mount
 	useEffect(() => {
-		try {
-			const allPlaylists = getAllPlaylists();
-			const ytmPlaylists = allPlaylists.filter((p) => p.type === "ytm");
-
-			// Convert to YTMusicPlaylist format for playerState
-			const formattedPlaylists: YTMusicPlaylist[] = ytmPlaylists.map((p) => ({
-				id: p.id,
-				title: p.name,
-				trackCount: p.count,
-				thumbnail: "", // Will be updated when available from web interface
-				creator: "YouTube Music",
-			}));
-
-			// Pre-populate availablePlaylists with persisted data
-			if (formattedPlaylists.length > 0) {
-				playerState$.availablePlaylists.set(formattedPlaylists);
-				console.log(
-					`Loaded ${formattedPlaylists.length} persisted YouTube Music playlists`,
-				);
-			}
-		} catch (error) {
-			console.error("Failed to load persisted playlists:", error);
+		const cachedPlaylists = playerState$.availablePlaylists.get();
+		if (cachedPlaylists.length > 0) {
+			console.log(
+				`Loaded ${cachedPlaylists.length} persisted YouTube Music playlists on startup`,
+			);
 		}
 	}, []);
 
