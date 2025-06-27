@@ -6,6 +6,7 @@ export interface Playlist {
 	path: string;
 	count: number;
 	type: "file" | "ytm";
+	order: number;
 }
 
 export interface PlaylistsData {

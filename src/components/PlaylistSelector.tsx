@@ -13,25 +13,30 @@ import {
 	localMusicState$,
 	setCurrentPlaylist,
 } from "@/systems/LocalMusicState";
+import { playlistsData$ } from "@/systems/Playlists";
 
 export function PlaylistSelector() {
 	const playerState = use$(playerState$);
 	const localMusicState = use$(localMusicState$);
+	const playlistsObj = use$(playlistsData$.playlists);
+	const playlistsArr = Object.values(playlistsObj).sort(
+		(playlist) => playlist.order,
+	);
 
 	// Create local files playlist
 	const localFilesPlaylist: YTMusicPlaylist = {
 		id: "LOCAL_FILES",
-		title: "Local Files",
+		name: "Local Files",
 		thumbnail: "",
-		trackCount: localMusicState.tracks.length,
+		count: localMusicState.tracks.length,
 		creator: "Local Library",
+		path: "",
+		type: "file",
+		order: -1,
 	};
 
 	// Combine YouTube Music playlists with local files
-	const availablePlaylists = [
-		localFilesPlaylist,
-		...playerState.availablePlaylists,
-	];
+	const availablePlaylists = [localFilesPlaylist, ...playlistsArr];
 
 	// Find currently selected playlist based on currentPlaylistId
 	const currentPlaylistId = localMusicState.currentPlaylistId;
@@ -76,14 +81,14 @@ export function PlaylistSelector() {
 						if (mode === "preview") {
 							return (
 								<Text className="text-white/90 group-hover:text-white text-base font-semibold">
-									{playlist.title}
+									{playlist.name}
 								</Text>
 							);
 						}
 						return (
 							<View className="flex-row items-center">
 								<Text className="text-white text-base font-medium flex-1">
-									{playlist.title}
+									{playlist.name}
 								</Text>
 							</View>
 						);

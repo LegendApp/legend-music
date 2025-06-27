@@ -7,6 +7,7 @@ import {
 	addPlaylist,
 	getAllPlaylists,
 	getPlaylist,
+	type Playlist,
 	updatePlaylist,
 } from "@/systems/Playlists";
 
@@ -23,11 +24,8 @@ interface PlaylistTrack extends Track {
 	index: number;
 }
 
-interface YTMusicPlaylist {
-	id: string;
-	title: string;
+interface YTMusicPlaylist extends Playlist {
 	thumbnail?: string;
-	trackCount?: number;
 	creator?: string;
 }
 
@@ -78,9 +76,9 @@ const injectedJavaScript = `
                     if (title) {
                         playlists.push({
                             id: playlistId,
-                            title: title,
+                            name: title,
                             thumbnail: thumbnailEl?.src || '',
-                            trackCount: 0,
+                            count: 0,
                             creator: creator
                         });
                     }
@@ -138,9 +136,9 @@ const injectedJavaScript = `
                     if (title && hasPlaylistLink && isPlaylistType && !isNotPlaylist) {
                         playlists.push({
                             id: playlistId,
-                            title: title,
+                            name: title,
                             thumbnail: thumbnailEl?.src || '',
-                            trackCount: trackCount,
+                            count: trackCount,
                             creator: creator
                         });
                     }
@@ -150,26 +148,11 @@ const injectedJavaScript = `
             // Strategy 3: Add "Now Playing" at the top and Liked Music if not found
             playlists.unshift({
                 id: 'NOW_PLAYING',
-                title: 'Now Playing',
+                name: 'Now Playing',
                 thumbnail: '',
-                trackCount: 0,
+                count: 0,
                 creator: ''
             });
-
-            const hasLikedMusic = playlists.some(p =>
-                p.id === 'LM' ||
-                p.title.toLowerCase().includes('liked music') ||
-                p.title.toLowerCase() === 'liked music'
-            );
-            if (!hasLikedMusic) {
-                playlists.push({
-                    id: 'LM',
-                    title: 'Liked Music',
-                    thumbnail: 'https://www.gstatic.com/youtube/media/ytm/images/pbg/liked-music-@576.png',
-                    trackCount: 0,
-                    creator: ''
-                });
-            }
 
             // Remove duplicates based on ID or title
             const uniquePlaylists = playlists.filter((playlist, index, self) =>
@@ -184,8 +167,6 @@ const injectedJavaScript = `
         } catch (error) {
             console.error('Error extracting playlists:', error);
             return [
-                { id: 'LM', title: 'Liked Music', thumbnail: '', trackCount: 0, creator: '' },
-                { id: 'history', title: 'History', thumbnail: '', trackCount: 0, creator: '' }
             ];
         }
     }
@@ -823,14 +804,8 @@ const loadCachedYTMPlaylists = (): YTMusicPlaylist[] => {
 	try {
 		const allPlaylists = getAllPlaylists();
 		const ytmPlaylists = allPlaylists.filter((p) => p.type === "ytm");
-		
-		return ytmPlaylists.map((p) => ({
-			id: p.id,
-			title: p.name,
-			trackCount: p.count,
-			thumbnail: "", // Will be updated when available from web interface
-			creator: "YouTube Music",
-		}));
+
+		return ytmPlaylists;
 	} catch (error) {
 		console.warn("Failed to load cached playlists on startup:", error);
 		return [];
@@ -861,26 +836,28 @@ const executeCommand = (command: string, ...args: any[]) => {
 const syncYouTubeMusicPlaylists = (ytmPlaylists: YTMusicPlaylist[]) => {
 	try {
 		batch(() => {
+			let i = 0;
 			for (const ytmPlaylist of ytmPlaylists) {
 				const existingPlaylist = getPlaylist(ytmPlaylist.id);
 
 				if (existingPlaylist) {
 					// Update existing playlist with latest info
 					updatePlaylist(ytmPlaylist.id, {
-						name: ytmPlaylist.title,
-						count: ytmPlaylist.trackCount || 0,
+						name: ytmPlaylist.name,
+						count: ytmPlaylist.count || 0,
 						// Don't update path for YTM playlists as they're web-based
 					});
 				} else {
 					// Add new YouTube Music playlist
 					addPlaylist({
-						id: ytmPlaylist.id,
-						name: ytmPlaylist.title,
-						path: `https://music.youtube.com/playlist?list=${ytmPlaylist.id}`,
-						count: ytmPlaylist.trackCount || 0,
+						...ytmPlaylist,
+						// TODO: Could the path be the actual url for playing the playlist?
+						path: "",
 						type: "ytm",
+						order: i,
 					});
 				}
+				i++;
 			}
 		});
 
