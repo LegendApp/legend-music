@@ -73,7 +73,7 @@ export function CustomSlider({
 				disabled={disabled}
 				className="flex-1 justify-center"
 			>
-				<View className="h-1 bg-white/20 rounded-full mx-2">
+				<View className="h-1 bg-white/20 rounded-full">
 					{/* Progress track */}
 					<View
 						className="h-full rounded-full"
