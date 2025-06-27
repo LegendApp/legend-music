@@ -1,8 +1,7 @@
 import { type Observable, observable } from "@legendapp/state";
 import { type SyncTransform, synced } from "@legendapp/state/sync";
-
-import { type M3UPlaylist, parseM3U, writeM3U } from "@/utils/m3u";
 import { observablePersistExpoFS } from "@/utils/ExpoFSPersistPlugin";
+import { type M3UPlaylist, parseM3U, writeM3U } from "@/utils/m3u";
 
 // Cache for playlist observables to avoid creating duplicates
 const playlistCache = new Map<string, Observable<M3UPlaylist>>();
@@ -21,6 +20,7 @@ const m3uTransform: SyncTransform<M3UPlaylist, string> = {
 	},
 	save: (value: M3UPlaylist) => {
 		try {
+			debugger;
 			return writeM3U(value);
 		} catch (error) {
 			console.error("Failed to write M3U content:", error);
@@ -33,7 +33,9 @@ const m3uTransform: SyncTransform<M3UPlaylist, string> = {
  * Get or create a synced observable for a playlist at the given path
  * The observable automatically persists in M3U format
  */
-export function getPlaylistContent(playlistPath: string): Observable<M3UPlaylist> {
+export function getPlaylistContent(
+	playlistPath: string,
+): Observable<M3UPlaylist> {
 	// Check cache first
 	if (playlistCache.has(playlistPath)) {
 		return playlistCache.get(playlistPath)!;

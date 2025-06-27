@@ -3,6 +3,7 @@ import { useObservable } from "@legendapp/state/react";
 import React, { useEffect, useRef } from "react";
 import { View } from "react-native";
 import { WebView } from "react-native-webview";
+import { getPlaylistContent } from "@/systems/PlaylistContent";
 import {
 	addPlaylist,
 	getAllPlaylists,
@@ -10,8 +11,9 @@ import {
 	type Playlist,
 	updatePlaylist,
 } from "@/systems/Playlists";
-import { getPlaylistContent } from "@/systems/PlaylistContent";
+import { stateSaved$ } from "@/systems/State";
 import type { M3UTrack } from "@/utils/m3u";
+import { parseDurationToSeconds } from "@/utils/m3u";
 
 interface Track {
 	title: string;
@@ -870,18 +872,23 @@ const syncYouTubeMusicPlaylists = (ytmPlaylists: YTMusicPlaylist[]) => {
 };
 
 // Function to update playlist content (M3U format) when tracks are received
-const updatePlaylistContent = (playlistId: string | undefined, tracks: PlaylistTrack[]) => {
+const updatePlaylistContent = (
+	playlistId: string | undefined,
+	tracks: PlaylistTrack[],
+) => {
 	if (!playlistId || tracks.length === 0) {
 		return;
 	}
 
 	try {
 		// Convert YouTube Music tracks to M3U format
-		const m3uTracks: M3UTrack[] = tracks.map(track => ({
-			duration: -1, // YouTube Music doesn't provide duration in seconds
+		const m3uTracks: M3UTrack[] = tracks.map((track) => ({
+			duration: parseDurationToSeconds(track.duration), // Parse MM:SS format to seconds
 			title: track.title,
 			artist: track.artist,
-			filePath: track.id ? `ytm://${track.id}` : `ytm://search/${encodeURIComponent(track.title)}`,
+			filePath: track.id
+				? `ytm://${track.id}`
+				: `ytm://search/${encodeURIComponent(track.title)}`,
 		}));
 
 		// Get the playlist content observable and update it
@@ -890,9 +897,14 @@ const updatePlaylistContent = (playlistId: string | undefined, tracks: PlaylistT
 			tracks: m3uTracks,
 		});
 
-		console.log(`Updated playlist content for ${playlistId} with ${m3uTracks.length} tracks`);
+		console.log(
+			`Updated playlist content for ${playlistId} with ${m3uTracks.length} tracks`,
+		);
 	} catch (error) {
-		console.error(`Failed to update playlist content for ${playlistId}:`, error);
+		console.error(
+			`Failed to update playlist content for ${playlistId}:`,
+			error,
+		);
 	}
 };
 
@@ -953,7 +965,10 @@ export function YouTubeMusicPlayer() {
 
 					// Update playlist content (M3U format) when tracks are received
 					if (newState.playlist && Array.isArray(newState.playlist)) {
-						updatePlaylistContent(newState.currentPlaylistId, newState.playlist);
+						updatePlaylistContent(
+							stateSaved$.playlist.get(),
+							newState.playlist,
+						);
 					}
 					break;
 				}

@@ -1,7 +1,6 @@
 import { use$, useObservable } from "@legendapp/state/react";
-import { useEffect } from "react";
+import { synced } from "@legendapp/state/sync";
 import { Text, View } from "react-native";
-
 import { Playlist } from "@/components/Playlist";
 import { Select } from "@/components/Select";
 import {
@@ -13,7 +12,11 @@ import {
 	localMusicState$,
 	setCurrentPlaylist,
 } from "@/systems/LocalMusicState";
-import { playlistsData$ } from "@/systems/Playlists";
+import {
+	type Playlist as PlaylistType,
+	playlistsData$,
+} from "@/systems/Playlists";
+import { stateSaved$ } from "@/systems/State";
 
 export function PlaylistSelector() {
 	const playerState = use$(playerState$);
@@ -44,18 +47,23 @@ export function PlaylistSelector() {
 		(playlist) => playlist.id === currentPlaylistId,
 	);
 
-	const selectedPlaylist$ = useObservable<YTMusicPlaylist>(
-		selectedPlaylist || undefined,
-	);
+	const selectedPlaylist$ = stateSaved$.playlist;
+	const selected$ = useObservable<PlaylistType>(
+		synced({
+			get: () => {
+				const id = selectedPlaylist$.get();
 
-	// Keep selectedPlaylist$ in sync with currentPlaylistId changes
-	useEffect(() => {
-		selectedPlaylist$.set(selectedPlaylist || undefined);
-	}, [selectedPlaylist]);
+				return availablePlaylists.find((playlist) => playlist.id === id);
+			},
+			set: ({ value }) => {
+				selectedPlaylist$.set(value!.id);
+			},
+		}),
+	);
 
 	const handlePlaylistSelect = (playlist: YTMusicPlaylist) => {
 		console.log("Navigating to playlist:", playlist.id);
-		selectedPlaylist$.set(playlist);
+		selectedPlaylist$.set(playlist.id);
 		setCurrentPlaylist(playlist.id);
 
 		if (playlist.id === "LOCAL_FILES") {
@@ -73,7 +81,7 @@ export function PlaylistSelector() {
 			<View className="px-3 py-1 border-t border-white/10">
 				<Select
 					items={availablePlaylists}
-					selected$={selectedPlaylist$}
+					selected$={selected$}
 					placeholder="Local Files"
 					onSelectItem={handlePlaylistSelect}
 					getItemKey={(playlist) => playlist.id}
