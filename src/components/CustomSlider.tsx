@@ -1,7 +1,11 @@
 import { use$, useObservable } from "@legendapp/state/react";
 import { useEffect } from "react";
 import { Pressable, View } from "react-native";
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import Animated, {
+	useAnimatedStyle,
+	useSharedValue,
+	withTiming,
+} from "react-native-reanimated";
 
 interface CustomSliderProps {
 	value: number;
@@ -30,7 +34,7 @@ export function CustomSlider({
 	const isDragging = use$(isDragging$);
 	const tempValue = use$(tempValue$);
 	const isHovered = use$(isHovered$);
-	
+
 	// Animated value for thumb height
 	const thumbHeight = useSharedValue(1);
 
@@ -121,6 +125,7 @@ export function CustomSlider({
 							thumbAnimatedStyle,
 							{
 								left: `${progress * 100}%`,
+								marginTop: 2,
 								marginLeft: -1, // Half of line width
 								opacity: disabled ? 0.5 : isHovered ? 1 : 0,
 							},
