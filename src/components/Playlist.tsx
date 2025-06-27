@@ -53,6 +53,11 @@ export function Playlist() {
 		}, 1000);
 	};
 
+	// Check if we have playlists available to show
+	const hasAvailablePlaylists = isLocalFilesSelected 
+		? localMusicState.tracks.length > 0 
+		: playerState.availablePlaylists.length > 0;
+
 	return (
 		<View className="flex-1">
 			{playlist.length === 0 ? (
@@ -64,14 +69,18 @@ export function Playlist() {
 								: localMusicState.error
 									? "Error scanning local files"
 									: "No local MP3 files found"
-							: playerState.isLoading && playerState.availablePlaylists.length === 0
+							: !hasAvailablePlaylists && playerState.isLoading
 								? "Loading playlist..."
-								: "No playlist available"}
+								: hasAvailablePlaylists
+									? "Select a playlist to view tracks"
+									: "No playlist available"}
 					</Text>
 					<Text className="text-white/40 text-sm mt-2">
 						{isLocalFilesSelected
 							? "Add MP3 files to /Users/jay/Downloads/mp3"
-							: "Navigate to YouTube Music and play a song"}
+							: hasAvailablePlaylists
+								? "Choose a playlist from the dropdown above"
+								: "Navigate to YouTube Music and play a song"}
 					</Text>
 				</View>
 			) : (
