@@ -20,7 +20,6 @@ const m3uTransform: SyncTransform<M3UPlaylist, string> = {
 	},
 	save: (value: M3UPlaylist) => {
 		try {
-			debugger;
 			return writeM3U(value);
 		} catch (error) {
 			console.error("Failed to write M3U content:", error);
