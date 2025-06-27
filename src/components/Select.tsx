@@ -24,6 +24,7 @@ export interface SelectPropsBase<T> {
 	caretPosition?: "right" | "left";
 	textClassName?: string;
 	caretClassName?: string;
+	maxWidthMatchTrigger?: boolean;
 }
 
 export interface SelectProps<T> extends SelectPropsBase<T> {
@@ -89,6 +90,7 @@ export function SelectMultiple<T>({
 	caretPosition = "right",
 	textClassName,
 	caretClassName,
+	maxWidthMatchTrigger = false,
 }: SelectMultipleProps<T>) {
 	const selectedItems = use$<T[]>(selectedItems$);
 
@@ -163,6 +165,7 @@ export function SelectMultiple<T>({
 				className={className}
 				maxHeightClassName="max-h-96"
 				scrolls={false}
+				maxWidthMatchTrigger={maxWidthMatchTrigger}
 			>
 				<View style={{ maxHeight: 384 }}>
 					<LegendList
@@ -171,7 +174,7 @@ export function SelectMultiple<T>({
 						renderItem={renderListItem}
 						contentContainerStyle={{ padding: 4 }}
 						style={{
-							width: 400,
+							width: maxWidthMatchTrigger ? "100%" : 400,
 							height: "100%",
 						}}
 					/>

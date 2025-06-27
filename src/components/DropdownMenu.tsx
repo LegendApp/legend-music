@@ -200,6 +200,7 @@ interface ContentProps {
 	maxHeightClassName?: `max-h-${number}`;
 	offset?: { x?: number; y?: number };
 	scrolls?: boolean;
+	maxWidthMatchTrigger?: boolean;
 }
 
 function Content({
@@ -208,6 +209,7 @@ function Content({
 	maxHeightClassName,
 	offset = { x: 0, y: 0 },
 	scrolls = true,
+	maxWidthMatchTrigger = false,
 }: ContentProps) {
 	const contextValue = useDropdownContext();
 	const { isOpen$, triggerRef, close } = contextValue;
@@ -241,6 +243,9 @@ function Content({
 							triggerRef.current?.height! +
 							4 +
 							(offset.y || 0),
+						...(maxWidthMatchTrigger && triggerRef.current?.width
+							? { width: triggerRef.current.width }
+							: {}),
 					},
 					ShadowDropdown,
 				]}

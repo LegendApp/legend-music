@@ -1,6 +1,7 @@
 import { use$, useObservable } from "@legendapp/state/react";
 import { useEffect } from "react";
 import { Pressable, View } from "react-native";
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
 interface CustomSliderProps {
 	value: number;
@@ -25,8 +26,13 @@ export function CustomSlider({
 }: CustomSliderProps) {
 	const isDragging$ = useObservable(false);
 	const tempValue$ = useObservable(value);
+	const isHovered$ = useObservable(false);
 	const isDragging = use$(isDragging$);
 	const tempValue = use$(tempValue$);
+	const isHovered = use$(isHovered$);
+	
+	// Animated value for thumb height
+	const thumbHeight = useSharedValue(1);
 
 	// Update temp value when external value changes (but not when dragging)
 	useEffect(() => {
@@ -34,6 +40,11 @@ export function CustomSlider({
 			tempValue$.set(value);
 		}
 	}, [value, isDragging]);
+
+	// Animate thumb height based on hover state
+	useEffect(() => {
+		thumbHeight.value = withTiming(isHovered ? 12 : 1, { duration: 150 });
+	}, [isHovered]);
 
 	const handlePress = (event: any) => {
 		if (disabled) return;
@@ -58,11 +69,28 @@ export function CustomSlider({
 		onSlidingComplete?.(tempValue);
 	};
 
+	const handleHoverIn = () => {
+		if (disabled) return;
+		isHovered$.set(true);
+	};
+
+	const handleHoverOut = () => {
+		if (disabled) return;
+		isHovered$.set(false);
+	};
+
 	// Calculate progress percentage
 	const progress =
 		maximumValue > minimumValue
 			? (tempValue - minimumValue) / (maximumValue - minimumValue)
 			: 0;
+
+	// Animated style for the thumb
+	const thumbAnimatedStyle = useAnimatedStyle(() => {
+		return {
+			height: thumbHeight.value,
+		};
+	});
 
 	return (
 		<View style={[{ height: 40 }, style]}>
@@ -70,6 +98,8 @@ export function CustomSlider({
 				onPress={handlePress}
 				onPressIn={handlePressIn}
 				onPressOut={handlePressOut}
+				onHoverIn={handleHoverIn}
+				onHoverOut={handleHoverOut}
 				disabled={disabled}
 				className="flex-1 justify-center"
 			>
@@ -82,14 +112,18 @@ export function CustomSlider({
 							width: `${progress * 100}%`,
 						}}
 					/>
-					{/* Thumb */}
-					<View
-						className="absolute w-4 h-4 bg-white rounded-full -top-1.5"
-						style={{
-							left: `${progress * 100}%`,
-							marginLeft: -8, // Half of thumb width
-							opacity: disabled ? 0.5 : 1,
-						}}
+					{/* Vertical line thumb */}
+					<Animated.View
+						className="absolute w-0.5 bg-white"
+						style={[
+							thumbAnimatedStyle,
+							{
+								left: `${progress * 100}%`,
+								marginLeft: -1, // Half of line width
+								top: -5.5, // Center vertically around the track
+								opacity: disabled ? 0.5 : isHovered ? 1 : 0,
+							},
+						]}
 					/>
 				</View>
 			</Pressable>

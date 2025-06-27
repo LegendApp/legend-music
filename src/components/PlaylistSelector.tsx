@@ -81,7 +81,7 @@ export function PlaylistSelector() {
 							);
 						}
 						return (
-							<View className="flex-row items-center w-80">
+							<View className="flex-row items-center">
 								<Text className="text-white text-base font-medium flex-1">
 									{playlist.title}
 								</Text>
@@ -93,6 +93,7 @@ export function PlaylistSelector() {
 					caretPosition="right"
 					triggerClassName="hover:bg-white/10 rounded-md h-8 px-2"
 					caretClassName="text-white/70 hover:text-white"
+					maxWidthMatchTrigger={true}
 				/>
 			</View>
 

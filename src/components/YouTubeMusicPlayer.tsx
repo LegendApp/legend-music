@@ -1,7 +1,9 @@
 import { useObservable } from "@legendapp/state/react";
-import React, { useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { View } from "react-native";
 import { WebView } from "react-native-webview";
+
+import { addPlaylist, getAllPlaylists, getPlaylist, updatePlaylist } from "@/systems/Playlists";
 
 interface Track {
 	title: string;
@@ -831,6 +833,37 @@ const executeCommand = (command: string, ...args: any[]) => {
 	webViewRef?.current?.injectJavaScript(script);
 };
 
+// Function to sync YouTube Music playlists with our persistent storage
+const syncYouTubeMusicPlaylists = (ytmPlaylists: YTMusicPlaylist[]) => {
+	try {
+		for (const ytmPlaylist of ytmPlaylists) {
+			const existingPlaylist = getPlaylist(ytmPlaylist.id);
+			
+			if (existingPlaylist) {
+				// Update existing playlist with latest info
+				updatePlaylist(ytmPlaylist.id, {
+					name: ytmPlaylist.title,
+					count: ytmPlaylist.trackCount || 0,
+					// Don't update path for YTM playlists as they're web-based
+				});
+			} else {
+				// Add new YouTube Music playlist
+				addPlaylist({
+					id: ytmPlaylist.id,
+					name: ytmPlaylist.title,
+					path: `https://music.youtube.com/playlist?list=${ytmPlaylist.id}`,
+					count: ytmPlaylist.trackCount || 0,
+					type: "ytm",
+				});
+			}
+		}
+		
+		console.log(`Synced ${ytmPlaylists.length} YouTube Music playlists`);
+	} catch (error) {
+		console.error("Failed to sync YouTube Music playlists:", error);
+	}
+};
+
 // Expose control methods
 const controls = {
 	playPause: () => executeCommand("playPause"),
@@ -857,6 +890,31 @@ export function YouTubeMusicPlayer() {
 		};
 	}, []);
 
+	// Load persisted YouTube Music playlists on component mount
+	useEffect(() => {
+		try {
+			const allPlaylists = getAllPlaylists();
+			const ytmPlaylists = allPlaylists.filter(p => p.type === "ytm");
+			
+			// Convert to YTMusicPlaylist format for playerState
+			const formattedPlaylists: YTMusicPlaylist[] = ytmPlaylists.map(p => ({
+				id: p.id,
+				title: p.name,
+				trackCount: p.count,
+				thumbnail: "", // Will be updated when available from web interface
+				creator: "YouTube Music",
+			}));
+			
+			// Pre-populate availablePlaylists with persisted data
+			if (formattedPlaylists.length > 0) {
+				playerState$.availablePlaylists.set(formattedPlaylists);
+				console.log(`Loaded ${formattedPlaylists.length} persisted YouTube Music playlists`);
+			}
+		} catch (error) {
+			console.error("Failed to load persisted playlists:", error);
+		}
+	}, []);
+
 	const handleMessage = (event: any) => {
 		try {
 			const message = JSON.parse(event.nativeEvent.data);
@@ -865,7 +923,13 @@ export function YouTubeMusicPlayer() {
 
 			switch (message.type) {
 				case "playerState":
-					playerState$.assign(message.data);
+					const newState = message.data;
+					playerState$.assign(newState);
+					
+					// Sync YouTube Music playlists when they're updated
+					if (newState.availablePlaylists && Array.isArray(newState.availablePlaylists)) {
+						syncYouTubeMusicPlaylists(newState.availablePlaylists);
+					}
 					break;
 				case "error":
 					playerState$.error.set(message.data.error);
