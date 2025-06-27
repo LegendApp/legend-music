@@ -54,7 +54,7 @@ export function Playlist() {
 	};
 
 	return (
-		<View className="flex-1 mt-4">
+		<View className="flex-1">
 			{playlist.length === 0 ? (
 				<View className="flex-1 items-center justify-center">
 					<Text className="text-white/60 text-base">

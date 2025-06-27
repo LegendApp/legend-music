@@ -3,7 +3,6 @@ import { View } from "react-native";
 
 import { LocalAudioPlayer } from "@/components/LocalAudioPlayer";
 import { PlaybackArea } from "@/components/PlaybackArea";
-import { Playlist } from "@/components/Playlist";
 import { PlaylistSelector } from "@/components/PlaylistSelector";
 import { YouTubeMusicPlayer } from "@/components/YouTubeMusicPlayer";
 
@@ -14,8 +13,11 @@ export function MainContainer() {
 		<View className="flex-1 flex-row items-stretch">
 			<View className="flex-1">
 				<PlaybackArea />
+				
+				{/* Divider between now playing and playlist areas */}
+				<View className="h-px bg-white/10 mx-6 my-4" />
+				
 				<PlaylistSelector />
-				<Playlist />
 			</View>
 			<View className={ShowYTM ? "flex-1" : "absolute -z-10 inset-0 hidden"}>
 				<YouTubeMusicPlayer />

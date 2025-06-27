@@ -9,8 +9,10 @@
 
 ## Steps
 
-[x] I added a native module for WindowControls inside LegendMusic-macOS. Please make a bridge for that on the React Native side and update TitleBar.tsx to use it rather than access the native module directly.
-[x] Make sure the WindowControls native module is linked in the xcodeproj
+[x] The now playing area and playlist area need some visual separation. Make a nice looking subtle divider. The playlist selector should feel like it's the title bar for the playlist.
+[x] The list of playlists should be stored in an observable array created with createJSONManager. See LocalMusicState.ts for an example of how that's set up. Put it in a Playlists.ts. Each playlist should have a "type" of "file" | "ytm". Each one should have [id, name, path, count].
+[x] Create a reader and writer for the m3u playlist format to transform to a typed JS object.
+[x] There should be an observable object that is a lookup table (a function taking a single string parameter) which returns a synced. That synced should persist with ExpoFSPersistPlugin and have transforms for both load and save in persist to load it from the m3u format and save it to the m3u format.
 
 ## Plan for later (do not do these yet)
 

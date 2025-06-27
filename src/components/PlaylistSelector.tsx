@@ -2,6 +2,7 @@ import { use$, useObservable } from "@legendapp/state/react";
 import { useEffect } from "react";
 import { Text, View } from "react-native";
 
+import { Playlist } from "@/components/Playlist";
 import { Select } from "@/components/Select";
 import {
 	controls,
@@ -62,35 +63,43 @@ export function PlaylistSelector() {
 	};
 
 	return (
-		<View className="mx-6 mt-2">
-			<Select
-				items={availablePlaylists}
-				selected$={selectedPlaylist$}
-				placeholder="Local Files"
-				onSelectItem={handlePlaylistSelect}
-				getItemKey={(playlist) => playlist.id}
-				renderItem={(playlist, mode) => {
-					if (mode === "preview") {
+		<View className="mx-6 mb-3 bg-white/5 rounded-lg border border-white/10 flex-1">
+			{/* Title bar area for playlist */}
+			<View className="px-4 py-3 border-b border-white/10">
+				<Select
+					items={availablePlaylists}
+					selected$={selectedPlaylist$}
+					placeholder="Local Files"
+					onSelectItem={handlePlaylistSelect}
+					getItemKey={(playlist) => playlist.id}
+					renderItem={(playlist, mode) => {
+						if (mode === "preview") {
+							return (
+								<Text className="text-white/90 group-hover:text-white text-base font-semibold">
+									{playlist.title}
+								</Text>
+							);
+						}
 						return (
-							<Text className="text-white/70 group-hover:text-white text-base font-medium">
-								{playlist.title}
-							</Text>
+							<View className="flex-row items-center w-80">
+								<Text className="text-white text-base font-medium flex-1">
+									{playlist.title}
+								</Text>
+							</View>
 						);
-					}
-					return (
-						<View className="flex-row items-center w-80">
-							<Text className="text-white text-base font-medium flex-1">
-								{playlist.title}
-							</Text>
-						</View>
-					);
-				}}
-				unstyled={true}
-				showCaret={true}
-				caretPosition="right"
-				triggerClassName="pl-4 pr-2 hover:bg-white/10 rounded-md h-8"
-				caretClassName="text-white/70 hover:text-white"
-			/>
+					}}
+					unstyled={true}
+					showCaret={true}
+					caretPosition="right"
+					triggerClassName="hover:bg-white/10 rounded-md h-8 px-2"
+					caretClassName="text-white/70 hover:text-white"
+				/>
+			</View>
+			
+			{/* Playlist content */}
+			<View className="flex-1 px-2 pb-2">
+				<Playlist />
+			</View>
 		</View>
 	);
 }
