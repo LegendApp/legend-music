@@ -2,7 +2,10 @@ import { use$ } from "@legendapp/state/react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 
 import { CustomSlider } from "@/components/CustomSlider";
-import { localAudioControls, localPlayerState$ } from "@/components/LocalAudioPlayer";
+import {
+	localAudioControls,
+	localPlayerState$,
+} from "@/components/LocalAudioPlayer";
 import { controls, playerState$ } from "@/components/YouTubeMusicPlayer";
 import { localMusicState$ } from "@/systems/LocalMusicState";
 
@@ -13,24 +16,45 @@ export function PlaybackArea() {
 
 	// Determine if we're using local files or YouTube Music
 	const isLocalFilesSelected = localMusicState.isLocalFilesSelected;
-	
-	// Use appropriate state based on current selection
-	const currentTrack = isLocalFilesSelected ? localPlayerState.currentTrack : playerState.currentTrack;
-	const isLoading = isLocalFilesSelected ? localPlayerState.isLoading : playerState.isLoading;
-	const isPlaying = isLocalFilesSelected ? localPlayerState.isPlaying : playerState.isPlaying;
-	const currentTime = isLocalFilesSelected ? 
-		formatTime(localPlayerState.currentTime) : 
-		playerState.currentTime;
-	const currentTimeSeconds = isLocalFilesSelected ? localPlayerState.currentTime : 0;
-	const duration = isLocalFilesSelected ? localPlayerState.duration : 0;
-	const formattedDuration = isLocalFilesSelected ? formatTime(duration) : "";
-	
+
 	// Format time for local playback
 	function formatTime(seconds: number): string {
 		const mins = Math.floor(seconds / 60);
 		const secs = Math.floor(seconds % 60);
-		return `${mins}:${secs.toString().padStart(2, '0')}`;
+		return `${mins}:${secs.toString().padStart(2, "0")}`;
 	}
+
+	// Parse time string like "0:25 / 1:23" to get seconds from first time
+	function parseCurrentTimeSeconds(timeString: string | number): number {
+		if (typeof timeString === "number") {
+			return timeString;
+		}
+
+		// Split by " / " and take the first part
+		const firstTime = timeString.split(" / ")[0];
+
+		// Parse "0:25" format
+		const [minutes, seconds] = firstTime.split(":").map(Number);
+		return minutes * 60 + seconds;
+	}
+
+	// Use appropriate state based on current selection
+	const currentTrack = isLocalFilesSelected
+		? localPlayerState.currentTrack
+		: playerState.currentTrack;
+	const isLoading = isLocalFilesSelected
+		? localPlayerState.isLoading
+		: playerState.isLoading;
+	const isPlaying = isLocalFilesSelected
+		? localPlayerState.isPlaying
+		: playerState.isPlaying;
+	const currentTime = isLocalFilesSelected
+		? formatTime(localPlayerState.currentTime)
+		: playerState.currentTime;
+	const currentTimeSeconds = isLocalFilesSelected
+		? localPlayerState.currentTime
+		: parseCurrentTimeSeconds(playerState.currentTime);
+	const duration = isLocalFilesSelected ? localPlayerState.duration : 0;
 
 	return (
 		<View className="mx-6 mt-8">
@@ -57,7 +81,10 @@ export function PlaybackArea() {
 						{currentTrack?.artist || ""}
 					</Text>
 					{currentTrack && (
-						<Text className="text-white/50 text-sm mt-1">
+						<Text
+							className="text-white/50 text-sm mt-1"
+							style={{ fontVariant: ["tabular-nums"] }}
+						>
 							{currentTime}
 						</Text>
 					)}
@@ -67,7 +94,11 @@ export function PlaybackArea() {
 				<View className="flex-row items-center gap-x-1 ml-4">
 					<TouchableOpacity
 						className="w-8 h-8 bg-white/20 rounded-full items-center justify-center"
-						onPress={isLocalFilesSelected ? localAudioControls.playPrevious : controls.previous}
+						onPress={
+							isLocalFilesSelected
+								? localAudioControls.playPrevious
+								: controls.previous
+						}
 						disabled={isLoading}
 					>
 						<Text className="text-white text-sm">⏮</Text>
@@ -75,7 +106,11 @@ export function PlaybackArea() {
 
 					<TouchableOpacity
 						className="w-8 h-8 bg-white/30 rounded-full items-center justify-center"
-						onPress={isLocalFilesSelected ? localAudioControls.togglePlayPause : controls.playPause}
+						onPress={
+							isLocalFilesSelected
+								? localAudioControls.togglePlayPause
+								: controls.playPause
+						}
 						disabled={isLoading}
 					>
 						<Text className="text-white text-base">
@@ -85,16 +120,18 @@ export function PlaybackArea() {
 
 					<TouchableOpacity
 						className="w-8 h-8 bg-white/20 rounded-full items-center justify-center"
-						onPress={isLocalFilesSelected ? localAudioControls.playNext : controls.next}
+						onPress={
+							isLocalFilesSelected ? localAudioControls.playNext : controls.next
+						}
 						disabled={isLoading}
 					>
 						<Text className="text-white text-sm">⏭</Text>
 					</TouchableOpacity>
 				</View>
 			</View>
-			
+
 			{/* Progress Slider - always visible */}
-			<View className="mt-4">
+			<View>
 				<CustomSlider
 					style={{ height: 40 }}
 					minimumValue={0}
@@ -107,12 +144,8 @@ export function PlaybackArea() {
 					}}
 					minimumTrackTintColor="#ffffff"
 					maximumTrackTintColor="#ffffff40"
-					disabled={!isLocalFilesSelected || !currentTrack}
+					disabled={!currentTrack}
 				/>
-				<View className="flex-row justify-between mt-1">
-					<Text className="text-white/60 text-sm">{currentTime || "0:00"}</Text>
-					<Text className="text-white/60 text-sm">{formattedDuration || "0:00"}</Text>
-				</View>
 			</View>
 		</View>
 	);

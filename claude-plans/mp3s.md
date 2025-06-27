@@ -9,9 +9,7 @@
 
 ## Steps
 
-[x] The local track names have "%20" in them which is preventing them from playing correctly - they should be parsed as spaces
-[x] The playback slider should always be visible
-[x] react-native-slider does not work on macos. Let's just make a slider in javascript.
+[] Let's redesign the dropdown that shows for the playlist selector. I don't want to change the defaults, so make DropdownMenu customizable. In this case it should have no background and just display a down caret to the right. The text should be a slightly faded white and when hovered it should turn white.
 
 ## Plan for later (do not do these yet)
 
