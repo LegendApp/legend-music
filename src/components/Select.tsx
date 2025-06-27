@@ -18,7 +18,7 @@ export interface SelectPropsBase<T> {
 	unstyled?: boolean;
 	withCheckbox?: boolean;
 	getItemKey: (item: NoInfer<T>) => string;
-	renderItem: (item: NoInfer<T>, mode: 'item' | 'preview') => ReactNode;
+	renderItem: (item: NoInfer<T>, mode: "item" | "preview") => ReactNode;
 	renderItemText?: (item: NoInfer<T>) => string;
 	showCaret?: boolean;
 	caretPosition?: "right" | "left";
@@ -107,7 +107,9 @@ export function SelectMultiple<T>({
 	const renderWithCheckbox = (item: T) => {
 		const arr = selectedItems$.get() || [];
 		const checked = !!arr.find((it) => equals(item, it));
-		return <WithCheckbox checked={checked}>{renderItem(item, 'item')}</WithCheckbox>;
+		return (
+			<WithCheckbox checked={checked}>{renderItem(item, "item")}</WithCheckbox>
+		);
 	};
 
 	const renderListItem = ({ item }: { item: T }) => (
@@ -115,7 +117,7 @@ export function SelectMultiple<T>({
 			key={getItemKey(item)}
 			onSelect={() => handleSelectItem(item)}
 		>
-			{withCheckbox ? renderWithCheckbox(item) : renderItem(item, 'item')}
+			{withCheckbox ? renderWithCheckbox(item) : renderItem(item, "item")}
 		</DropdownMenu.Item>
 	);
 
@@ -129,7 +131,7 @@ export function SelectMultiple<T>({
 			: selectedCount > 0
 				? renderItemText
 					? renderItemText(selectedItems[0])
-					: renderItem(selectedItems[0], 'preview')
+					: renderItem(selectedItems[0], "preview")
 				: placeholder;
 
 	return (
@@ -164,6 +166,7 @@ export function SelectMultiple<T>({
 						keyExtractor={getItemKey}
 						renderItem={renderListItem}
 						contentContainerStyle={{ padding: 4 }}
+						style={{ width: 400 }}
 					/>
 				</View>
 			</DropdownMenu.Content>
