@@ -1,6 +1,7 @@
 import { use$ } from "@legendapp/state/react";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 
+import { CustomSlider } from "@/components/CustomSlider";
 import { localAudioControls, localPlayerState$ } from "@/components/LocalAudioPlayer";
 import { controls, playerState$ } from "@/components/YouTubeMusicPlayer";
 import { localMusicState$ } from "@/systems/LocalMusicState";
@@ -20,6 +21,9 @@ export function PlaybackArea() {
 	const currentTime = isLocalFilesSelected ? 
 		formatTime(localPlayerState.currentTime) : 
 		playerState.currentTime;
+	const currentTimeSeconds = isLocalFilesSelected ? localPlayerState.currentTime : 0;
+	const duration = isLocalFilesSelected ? localPlayerState.duration : 0;
+	const formattedDuration = isLocalFilesSelected ? formatTime(duration) : "";
 	
 	// Format time for local playback
 	function formatTime(seconds: number): string {
@@ -86,6 +90,28 @@ export function PlaybackArea() {
 					>
 						<Text className="text-white text-sm">⏭</Text>
 					</TouchableOpacity>
+				</View>
+			</View>
+			
+			{/* Progress Slider - always visible */}
+			<View className="mt-4">
+				<CustomSlider
+					style={{ height: 40 }}
+					minimumValue={0}
+					maximumValue={duration || 100}
+					value={currentTimeSeconds}
+					onSlidingComplete={(value) => {
+						if (isLocalFilesSelected) {
+							localAudioControls.seek(value);
+						}
+					}}
+					minimumTrackTintColor="#ffffff"
+					maximumTrackTintColor="#ffffff40"
+					disabled={!isLocalFilesSelected || !currentTrack}
+				/>
+				<View className="flex-row justify-between mt-1">
+					<Text className="text-white/60 text-sm">{currentTime || "0:00"}</Text>
+					<Text className="text-white/60 text-sm">{formattedDuration || "0:00"}</Text>
 				</View>
 			</View>
 		</View>
