@@ -3,14 +3,10 @@ import { AnimatePresence, Motion } from "@legendapp/motion";
 import { observe } from "@legendapp/state";
 import { Show } from "@legendapp/state/react";
 import { Pressable, StyleSheet } from "react-native";
-import WindowControls, {
-	useWindowControls,
-} from "@/native-modules/WindowControls";
+import WindowControls from "@/native-modules/WindowControls";
 import { state$ } from "@/systems/State";
 
 export function TitleBar() {
-	const windowControls = useWindowControls();
-
 	const onHover = () => {
 		state$.titleBarHovered.set(true);
 	};
@@ -49,13 +45,13 @@ export function TitleBar() {
 observe(() => {
 	const hide = !state$.titleBarHovered.get();
 
-	if (hide) {
-		WindowControls.hideWindowControls();
-	} else {
-		setTimeout(() => {
+	setTimeout(() => {
+		if (hide) {
+			WindowControls.hideWindowControls();
+		} else {
 			WindowControls.showWindowControls();
-		}, 100);
-	}
+		}
+	}, 100);
 });
 
 const styles = StyleSheet.create({

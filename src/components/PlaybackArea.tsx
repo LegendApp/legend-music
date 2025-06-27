@@ -130,8 +130,7 @@ export function PlaybackArea() {
 				</View>
 			</View>
 
-			{/* Progress Slider - always visible */}
-			<View>
+			<View className="pb-1">
 				<CustomSlider
 					style={{ height: 40 }}
 					minimumValue={0}
