@@ -57,7 +57,7 @@ export function PlaybackArea() {
 	const duration = isLocalFilesSelected ? localPlayerState.duration : 0;
 
 	return (
-		<View className="mx-6 mt-8">
+		<View className="mx-3 mt-3">
 			<View className="flex-row items-center">
 				{/* Album Art */}
 				<View className="size-16 bg-orange-300 rounded-xl items-center justify-center mr-4">

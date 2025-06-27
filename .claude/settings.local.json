@@ -12,7 +12,8 @@
       "Bash(bun add:*)",
       "Bash(rm:*)",
       "Bash(bun remove:*)",
-      "Bash(pod install:*)"
+      "Bash(pod install:*)",
+      "Bash(find:*)"
     ],
     "deny": []
   }

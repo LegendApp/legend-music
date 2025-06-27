@@ -9,10 +9,10 @@
 
 ## Steps
 
-[x] The playlist dropdown includes way more than the playlists. Make sure this is not sourcing items from other places.
-[x] The Select component's renderItem function should have a second parameter for `mode: 'item' | 'preview'`, and use 'preview' instead of `renderItemText`
-[x] The Select component should use LegendList to render the items.
+[x] I added a native module for WindowControls inside LegendMusic-macOS. Please make a bridge for that on the React Native side and update TitleBar.tsx to use it rather than access the native module directly.
+[x] Make sure the WindowControls native module is linked in the xcodeproj
 
 ## Plan for later (do not do these yet)
 
 [] Handle media keys
+[] Make an expanded playlist view
