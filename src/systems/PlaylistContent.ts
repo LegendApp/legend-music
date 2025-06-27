@@ -16,7 +16,7 @@ const m3uTransform: SyncTransform<M3UPlaylist, string> = {
 				console.warn("Failed to parse M3U content:", error);
 			}
 		}
-		return { tracks: [] };
+		return { songs: [], suggestions: [] };
 	},
 	save: (value: M3UPlaylist) => {
 		try {
@@ -51,7 +51,7 @@ export function getPlaylistContent(
 	// Create the synced observable
 	const playlist$ = observable<M3UPlaylist>(
 		synced({
-			initial: { tracks: [] },
+			initial: { songs: [], suggestions: [] },
 			persist: {
 				name: `playlist_${cacheKey}`,
 				plugin: observablePersistExpoFS({

@@ -9,10 +9,8 @@
 
 ## Steps
 
-[x] When adding playlists from ytm, add an "order" along with them so they can be sorted correctly.
-[x] When YoutubeMusicPlayer receives the "playerState" message it should update the observable received by getPlaylistContent
-[x] ObservablePersistExpoFS needs a format "m3u" which just reads and writes plain text files with an extension "m3u"
-[x] Save the current playlist to stateSaved$ from State.ts
+[x] Playlists should be saved as two separate arrays of playlists { songs, suggestions } rather than just an array of playlists
+[x] The m3u should put #EXTGRP: above the suggestions. Saving and parsing should be updated to handle that.
 
 ## Plan for later (do not do these yet)
 

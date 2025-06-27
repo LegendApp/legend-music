@@ -6,7 +6,8 @@ export interface M3UTrack {
 }
 
 export interface M3UPlaylist {
-	tracks: M3UTrack[];
+	songs: M3UTrack[];
+	suggestions: M3UTrack[];
 }
 
 /**
@@ -17,13 +18,23 @@ export function parseM3U(content: string): M3UPlaylist {
 		.split("\n")
 		.map((line) => line.trim())
 		.filter((line) => line.length > 0);
-	const tracks: M3UTrack[] = [];
+	
+	const songs: M3UTrack[] = [];
+	const suggestions: M3UTrack[] = [];
+	let currentSection: 'songs' | 'suggestions' = 'songs'; // Default to songs section
 
 	let i = 0;
 	while (i < lines.length) {
 		const line = lines[i];
 
-		// Skip comments that aren't EXTINF
+		// Check for EXTGRP marker to switch to suggestions section
+		if (line.startsWith("#EXTGRP:")) {
+			currentSection = 'suggestions';
+			i++;
+			continue;
+		}
+
+		// Skip other comments that aren't EXTINF
 		if (line.startsWith("#") && !line.startsWith("#EXTINF:")) {
 			i++;
 			continue;
@@ -48,12 +59,19 @@ export function parseM3U(content: string): M3UPlaylist {
 					title = titlePart.trim();
 				}
 
-				tracks.push({
+				const track = {
 					duration,
 					title,
 					artist,
 					filePath,
-				});
+				};
+
+				// Add to appropriate section
+				if (currentSection === 'suggestions') {
+					suggestions.push(track);
+				} else {
+					songs.push(track);
+				}
 
 				i += 2; // Skip the file path line
 			} else {
@@ -61,16 +79,23 @@ export function parseM3U(content: string): M3UPlaylist {
 			}
 		} else {
 			// Plain file path without EXTINF
-			tracks.push({
+			const track = {
 				duration: -1,
 				title: extractTitleFromPath(line),
 				filePath: line,
-			});
+			};
+
+			// Add to appropriate section
+			if (currentSection === 'suggestions') {
+				suggestions.push(track);
+			} else {
+				songs.push(track);
+			}
 			i++;
 		}
 	}
 
-	return { tracks };
+	return { songs, suggestions };
 }
 
 /**
@@ -79,7 +104,8 @@ export function parseM3U(content: string): M3UPlaylist {
 export function writeM3U(playlist: M3UPlaylist): string {
 	const lines: string[] = ["#EXTM3U"];
 
-	for (const track of playlist.tracks) {
+	// Write songs section
+	for (const track of playlist.songs) {
 		// Create the title info
 		let titleInfo = track.title;
 		if (track.artist) {
@@ -92,6 +118,28 @@ export function writeM3U(playlist: M3UPlaylist): string {
 		// Add file path
 		lines.push(track.filePath);
 		lines.push("");
+	}
+
+	// Write suggestions section if there are any
+	if (playlist.suggestions.length > 0) {
+		// Add EXTGRP marker for suggestions
+		lines.push("#EXTGRP:suggestions");
+		lines.push("");
+
+		for (const track of playlist.suggestions) {
+			// Create the title info
+			let titleInfo = track.title;
+			if (track.artist) {
+				titleInfo = `${track.artist} - ${track.title}`;
+			}
+
+			// Add EXTINF line
+			lines.push(`#EXTINF:${track.duration},${titleInfo}`);
+
+			// Add file path
+			lines.push(track.filePath);
+			lines.push("");
+		}
 	}
 
 	return lines.join("\n") + "\n";

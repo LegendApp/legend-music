@@ -894,7 +894,8 @@ const updatePlaylistContent = (
 		// Get the playlist content observable and update it
 		const playlistContent$ = getPlaylistContent(playlistId);
 		playlistContent$.set({
-			tracks: m3uTracks,
+			songs: m3uTracks,
+			suggestions: [], // For now, all tracks go to songs section
 		});
 
 		console.log(
