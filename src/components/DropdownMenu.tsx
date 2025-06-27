@@ -84,9 +84,23 @@ interface TriggerProps {
     children: ReactNode;
     className?: string;
     asChild?: boolean;
+    unstyled?: boolean;
+    showCaret?: boolean;
+    caretPosition?: 'right' | 'left';
+    textClassName?: string;
+    caretClassName?: string;
 }
 
-function Trigger({ children, className, asChild = false }: TriggerProps) {
+function Trigger({ 
+    children, 
+    className, 
+    asChild = false, 
+    unstyled = false,
+    showCaret = false,
+    caretPosition = 'right',
+    textClassName,
+    caretClassName
+}: TriggerProps) {
     const { isOpen$, triggerRef } = useDropdownContext();
 
     const onLayout = useCallback((event: LayoutChangeEvent) => {
@@ -111,6 +125,27 @@ function Trigger({ children, className, asChild = false }: TriggerProps) {
             <View onLayout={onLayout}>
                 <Button onPress={onToggle}>{children}</Button>
             </View>
+        );
+    }
+
+    if (unstyled || showCaret) {
+        // Custom styled trigger with optional caret
+        return (
+            <Button 
+                className={cn("flex-row items-center group", className)} 
+                onPress={onToggle} 
+                onLayout={onLayout}
+            >
+                {caretPosition === 'left' && showCaret && (
+                    <Text className={cn("text-white/70 group-hover:text-white mr-2", caretClassName)}>⌄</Text>
+                )}
+                <View className={cn("flex-1", textClassName)}>
+                    {children}
+                </View>
+                {caretPosition === 'right' && showCaret && (
+                    <Text className={cn("text-white/70 group-hover:text-white ml-2", caretClassName)}>⌄</Text>
+                )}
+            </Button>
         );
     }
 

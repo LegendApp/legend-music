@@ -19,6 +19,10 @@ export interface SelectPropsBase<T> {
     getItemKey: (item: NoInfer<T>) => string;
     renderItem: (item: NoInfer<T>) => ReactNode;
     renderItemText?: (item: NoInfer<T>) => string;
+    showCaret?: boolean;
+    caretPosition?: 'right' | 'left';
+    textClassName?: string;
+    caretClassName?: string;
 }
 
 export interface SelectProps<T> extends SelectPropsBase<T> {
@@ -69,6 +73,10 @@ export function SelectMultiple<T>({
     unstyled = false,
     withCheckbox,
     onSelectItem,
+    showCaret = false,
+    caretPosition = 'right',
+    textClassName,
+    caretClassName,
 }: SelectMultipleProps<T>) {
     const selectedItems = use$<T[]>(selectedItems$);
 
@@ -114,8 +122,16 @@ export function SelectMultiple<T>({
                         "bg-background-secondary hover:bg-background-tertiary rounded-md flex-row justify-between items-center overflow-hidden border border-border-primary h-8 px-2",
                     triggerClassName,
                 )}
+                unstyled={unstyled}
+                showCaret={showCaret}
+                caretPosition={caretPosition}
+                textClassName={textClassName}
+                caretClassName={caretClassName}
             >
-                <Text className="text-text-secondary text-xs">{displayText}</Text>
+                <Text className={cn(
+                    !unstyled ? "text-text-secondary text-xs" : "text-white/70 group-hover:text-white text-base font-medium",
+                    textClassName
+                )}>{displayText}</Text>
             </DropdownMenu.Trigger>
             <DropdownMenu.Content className={className} maxHeightClassName="max-h-96">
                 {renderItems()}

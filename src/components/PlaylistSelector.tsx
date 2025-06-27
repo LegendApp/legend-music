@@ -72,7 +72,12 @@ export function PlaylistSelector() {
 					)}
 					renderItemText={(playlist) => playlist.title}
 					className="rounded-2xl"
-					triggerClassName="px-6 py-4"
+					unstyled={true}
+					showCaret={true}
+					caretPosition="right"
+					triggerClassName="px-6 py-4 hover:bg-white/10"
+					textClassName="flex-1"
+					caretClassName="text-white/70 hover:text-white"
 				/>
 			) : (
 				<View className="bg-white/20 rounded-2xl px-6 py-4 flex-row items-center justify-between">

@@ -9,7 +9,7 @@
 
 ## Steps
 
-[] Let's redesign the dropdown that shows for the playlist selector. I don't want to change the defaults, so make DropdownMenu customizable. In this case it should have no background and just display a down caret to the right. The text should be a slightly faded white and when hovered it should turn white.
+[x] Let's redesign the dropdown that shows for the playlist selector. I don't want to change the defaults, so make DropdownMenu customizable. In this case it should have no background and just display a down caret to the right. The text should be a slightly faded white and when hovered it should turn white.
 
 ## Plan for later (do not do these yet)
 
