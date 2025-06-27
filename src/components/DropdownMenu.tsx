@@ -1,5 +1,4 @@
 import { Portal } from "@gorhom/portal";
-import { LegendList } from "@legendapp/list";
 import type { Observable } from "@legendapp/state";
 import { use$, useObservable } from "@legendapp/state/react";
 import type { ReactNode } from "react";
@@ -19,7 +18,7 @@ import {
 	Text,
 	View,
 } from "react-native";
-
+import { Icon } from "@/systems/Icon";
 import { state$ } from "@/systems/State";
 import { cn } from "@/utils/cn";
 import { ShadowDropdown } from "@/utils/styles";
@@ -180,7 +179,7 @@ function Trigger({
 							caretClassName,
 						)}
 					>
-						⌄
+						<Icon name="chevron.up.chevron.down" size={14} />
 					</Text>
 				)}
 			</Button>
@@ -200,6 +199,7 @@ interface ContentProps {
 	className?: string;
 	maxHeightClassName?: `max-h-${number}`;
 	offset?: { x?: number; y?: number };
+	scrolls?: boolean;
 }
 
 function Content({
@@ -207,6 +207,7 @@ function Content({
 	className = "",
 	maxHeightClassName,
 	offset = { x: 0, y: 0 },
+	scrolls = true,
 }: ContentProps) {
 	const contextValue = useDropdownContext();
 	const { isOpen$, triggerRef, close } = contextValue;
@@ -252,17 +253,28 @@ function Content({
 							level: 0,
 						}}
 					>
-						<ScrollView
-							onLayout={onDropdownContentLayout}
-							className={cn(
-								"rounded-md border border-border-popup",
-								maxHeightClassName,
-							)}
-							contentContainerClassName="p-1"
-							scrollEnabled={!!maxHeightClassName}
-						>
-							{children}
-						</ScrollView>
+						{scrolls ? (
+							<ScrollView
+								onLayout={onDropdownContentLayout}
+								className={cn(
+									"rounded-md border border-border-popup",
+									maxHeightClassName,
+								)}
+								contentContainerClassName="p-1"
+								scrollEnabled={!!maxHeightClassName}
+							>
+								{children}
+							</ScrollView>
+						) : (
+							<View
+								className={cn(
+									"rounded-md border border-border-popup",
+									maxHeightClassName,
+								)}
+							>
+								{children}
+							</View>
+						)}
 					</SubmenuContext.Provider>
 				</DropdownContext.Provider>
 			</View>

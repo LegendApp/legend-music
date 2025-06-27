@@ -159,14 +159,21 @@ export function SelectMultiple<T>({
 					{displayText}
 				</Text>
 			</DropdownMenu.Trigger>
-			<DropdownMenu.Content className={className} maxHeightClassName="max-h-96">
+			<DropdownMenu.Content
+				className={className}
+				maxHeightClassName="max-h-96"
+				scrolls={false}
+			>
 				<View style={{ maxHeight: 384 }}>
 					<LegendList
 						data={items}
 						keyExtractor={getItemKey}
 						renderItem={renderListItem}
 						contentContainerStyle={{ padding: 4 }}
-						style={{ width: 400 }}
+						style={{
+							width: 400,
+							height: "100%",
+						}}
 					/>
 				</View>
 			</DropdownMenu.Content>

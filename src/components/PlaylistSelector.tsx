@@ -62,7 +62,7 @@ export function PlaylistSelector() {
 	};
 
 	return (
-		<View className="mx-6 mt-4">
+		<View className="mx-6 mt-2">
 			<Select
 				items={availablePlaylists}
 				selected$={selectedPlaylist$}
@@ -70,7 +70,7 @@ export function PlaylistSelector() {
 				onSelectItem={handlePlaylistSelect}
 				getItemKey={(playlist) => playlist.id}
 				renderItem={(playlist, mode) => {
-					if (mode === 'preview') {
+					if (mode === "preview") {
 						return (
 							<Text className="text-white/70 group-hover:text-white text-base font-medium">
 								{playlist.title}
@@ -85,11 +85,10 @@ export function PlaylistSelector() {
 						</View>
 					);
 				}}
-				className="rounded-2xl"
 				unstyled={true}
 				showCaret={true}
 				caretPosition="right"
-				triggerClassName="px-6 hover:bg-white/10 rounded-xl h-8"
+				triggerClassName="pl-4 pr-2 hover:bg-white/10 rounded-md h-8"
 				caretClassName="text-white/70 hover:text-white"
 			/>
 		</View>
