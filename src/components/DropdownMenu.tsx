@@ -1,4 +1,5 @@
 import { Portal } from "@gorhom/portal";
+import { LegendList } from "@legendapp/list";
 import type { Observable } from "@legendapp/state";
 import { use$, useObservable } from "@legendapp/state/react";
 import type { ReactNode } from "react";

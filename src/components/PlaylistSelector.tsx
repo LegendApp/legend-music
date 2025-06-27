@@ -69,14 +69,22 @@ export function PlaylistSelector() {
 				placeholder="Local Files"
 				onSelectItem={handlePlaylistSelect}
 				getItemKey={(playlist) => playlist.id}
-				renderItem={(playlist) => (
-					<View className="flex-row items-center w-80">
-						<Text className="text-white text-base font-medium flex-1">
-							{playlist.title}
-						</Text>
-					</View>
-				)}
-				renderItemText={(playlist) => playlist.title}
+				renderItem={(playlist, mode) => {
+					if (mode === 'preview') {
+						return (
+							<Text className="text-white/70 group-hover:text-white text-base font-medium">
+								{playlist.title}
+							</Text>
+						);
+					}
+					return (
+						<View className="flex-row items-center w-80">
+							<Text className="text-white text-base font-medium flex-1">
+								{playlist.title}
+							</Text>
+						</View>
+					);
+				}}
 				className="rounded-2xl"
 				unstyled={true}
 				showCaret={true}

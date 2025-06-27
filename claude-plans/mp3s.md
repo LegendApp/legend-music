@@ -9,7 +9,9 @@
 
 ## Steps
 
-[x] Let's redesign the dropdown that shows for the playlist selector. I don't want to change the defaults, so make DropdownMenu customizable. In this case it should have no background and just display a down caret to the right. The text should be a slightly faded white and when hovered it should turn white.
+[x] The playlist dropdown includes way more than the playlists. Make sure this is not sourcing items from other places.
+[x] The Select component's renderItem function should have a second parameter for `mode: 'item' | 'preview'`, and use 'preview' instead of `renderItemText`
+[x] The Select component should use LegendList to render the items.
 
 ## Plan for later (do not do these yet)
 

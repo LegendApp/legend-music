@@ -66,7 +66,18 @@ const injectedJavaScript = `
                         playlistId = href.split('library/')[1] || 'library';
                     }
 
-                    if (title && title !== 'Home' && title !== 'Explore' && title !== 'Library') {
+                    // Only include items with actual playlist URLs or specific library items
+                    const isValidPlaylist = href.includes('playlist?list=') || 
+                                          href.includes('library/playlists') ||
+                                          title === 'Liked Music';
+                    
+                    // Exclude common non-playlist items
+                    const excludedItems = [
+                        'Home', 'Explore', 'Library', 'Recently Played', 'Your Mixtape',
+                        'Mixed for you', 'Discover Mix', 'Your supermix', 'My Mix', 'Replay Mix'
+                    ];
+                    
+                    if (title && isValidPlaylist && !excludedItems.includes(title)) {
                         playlists.push({
                             id: playlistId,
                             title: title,
@@ -114,7 +125,19 @@ const injectedJavaScript = `
                         creator = creatorEl.textContent?.trim() || '';
                     }
 
-                    if (title) {
+                    // Only include if it has a valid playlist link and appears to be a playlist
+                    const hasPlaylistLink = linkEl && linkEl.getAttribute('href')?.includes('playlist?list=');
+                    const isPlaylistType = subtitle.toLowerCase().includes('playlist') || 
+                                         subtitle.toLowerCase().includes('songs') ||
+                                         subtitle.toLowerCase().includes('tracks');
+                    
+                    // Exclude albums, artists, and other non-playlist content
+                    const isNotPlaylist = subtitle.toLowerCase().includes('album') ||
+                                        subtitle.toLowerCase().includes('artist') ||
+                                        subtitle.toLowerCase().includes('ep') ||
+                                        subtitle.toLowerCase().includes('single');
+                    
+                    if (title && hasPlaylistLink && isPlaylistType && !isNotPlaylist) {
                         playlists.push({
                             id: playlistId,
                             title: title,

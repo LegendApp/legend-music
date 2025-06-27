@@ -1,7 +1,8 @@
+import { LegendList } from "@legendapp/list";
 import type { Observable, ObservableParam } from "@legendapp/state";
 import { use$, useObservable } from "@legendapp/state/react";
 import type { ReactNode } from "react";
-import { Text } from "react-native";
+import { Text, View } from "react-native";
 
 import { DropdownMenu } from "@/components/DropdownMenu";
 import { WithCheckbox } from "@/components/WithCheckbox";
@@ -17,7 +18,7 @@ export interface SelectPropsBase<T> {
 	unstyled?: boolean;
 	withCheckbox?: boolean;
 	getItemKey: (item: NoInfer<T>) => string;
-	renderItem: (item: NoInfer<T>) => ReactNode;
+	renderItem: (item: NoInfer<T>, mode: 'item' | 'preview') => ReactNode;
 	renderItemText?: (item: NoInfer<T>) => string;
 	showCaret?: boolean;
 	caretPosition?: "right" | "left";
@@ -106,19 +107,17 @@ export function SelectMultiple<T>({
 	const renderWithCheckbox = (item: T) => {
 		const arr = selectedItems$.get() || [];
 		const checked = !!arr.find((it) => equals(item, it));
-		return <WithCheckbox checked={checked}>{renderItem(item)}</WithCheckbox>;
+		return <WithCheckbox checked={checked}>{renderItem(item, 'item')}</WithCheckbox>;
 	};
 
-	const renderItems = () => {
-		return items.map((item) => (
-			<DropdownMenu.Item
-				key={getItemKey(item)}
-				onSelect={() => handleSelectItem(item)}
-			>
-				{withCheckbox ? renderWithCheckbox(item) : renderItem(item)}
-			</DropdownMenu.Item>
-		));
-	};
+	const renderListItem = ({ item }: { item: T }) => (
+		<DropdownMenu.Item
+			key={getItemKey(item)}
+			onSelect={() => handleSelectItem(item)}
+		>
+			{withCheckbox ? renderWithCheckbox(item) : renderItem(item, 'item')}
+		</DropdownMenu.Item>
+	);
 
 	const selectedCount = selectedItems$.length;
 	const displayText =
@@ -130,7 +129,7 @@ export function SelectMultiple<T>({
 			: selectedCount > 0
 				? renderItemText
 					? renderItemText(selectedItems[0])
-					: renderItem(selectedItems[0])
+					: renderItem(selectedItems[0], 'preview')
 				: placeholder;
 
 	return (
@@ -159,7 +158,14 @@ export function SelectMultiple<T>({
 				</Text>
 			</DropdownMenu.Trigger>
 			<DropdownMenu.Content className={className} maxHeightClassName="max-h-96">
-				{renderItems()}
+				<View style={{ maxHeight: 384 }}>
+					<LegendList
+						data={items}
+						keyExtractor={getItemKey}
+						renderItem={renderListItem}
+						contentContainerStyle={{ padding: 4 }}
+					/>
+				</View>
 			</DropdownMenu.Content>
 		</DropdownMenu.Root>
 	);
