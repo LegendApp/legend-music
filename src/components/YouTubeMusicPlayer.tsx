@@ -85,7 +85,8 @@ const injectedJavaScript = `
                             name: title,
                             thumbnail: thumbnailEl?.src || '',
                             count: 0,
-                            creator: creator
+                            creator: creator,
+                            index: index  // Store the sidebar index for reliable opening
                         });
                     }
                 }
@@ -552,6 +553,47 @@ const injectedJavaScript = `
             currentPlaylistSelection = playlistId;
         },
 
+        navigateToPlaylistByIndex: function(index) {
+            console.log('Navigating to playlist by index:', index);
+
+            try {
+                const sidebarPlaylists = document.querySelectorAll('ytmusic-guide-entry-renderer[play-button-state="default"]');
+                if (sidebarPlaylists[index]) {
+                    const linkEl = sidebarPlaylists[index].querySelector('tp-yt-paper-item[href]');
+                    if (linkEl) {
+                        console.log('Found sidebar element at index', index, 'clicking...');
+                        linkEl.click();
+
+                        // Wait for page to load and then re-extract
+                        setTimeout(function() {
+                            console.log('Re-extracting after sidebar navigation...');
+                            extractPlayerInfo();
+                        }, 2000);
+
+                        return true;
+                    } else {
+                        console.log('No clickable link found in sidebar element at index', index);
+                        // Fallback: click the entire element
+                        sidebarPlaylists[index].click();
+
+                        // Wait for page to load and then re-extract
+                        setTimeout(function() {
+                            console.log('Re-extracting after sidebar fallback navigation...');
+                            extractPlayerInfo();
+                        }, 2000);
+
+                        return true;
+                    }
+                } else {
+                    console.log('No sidebar playlist found at index:', index);
+                    return false;
+                }
+            } catch (error) {
+                console.error('Error navigating to playlist by index:', error);
+                return false;
+            }
+        },
+
         navigateToPlaylist: function(playlistId) {
             console.log('Navigating to playlist:', playlistId);
 
@@ -824,6 +866,7 @@ const syncYouTubeMusicPlaylists = (ytmPlaylists: YTMusicPlaylist[]) => {
 					updatePlaylist(ytmPlaylist.id, {
 						name: ytmPlaylist.name,
 						count: ytmPlaylist.count || 0,
+						index: ytmPlaylist.index, // Update the sidebar index
 						// Don't update path for YTM playlists as they're web-based
 					});
 				} else {
@@ -834,6 +877,7 @@ const syncYouTubeMusicPlaylists = (ytmPlaylists: YTMusicPlaylist[]) => {
 						path: "",
 						type: "ytm",
 						order: i,
+						index: ytmPlaylist.index, // Store the sidebar index
 					});
 				}
 				i++;
@@ -904,8 +948,15 @@ const controls = {
 	seek: (seconds: number) => executeCommand("seek", seconds),
 	playTrackAtIndex: (index: number) =>
 		executeCommand("playTrackAtIndex", index),
-	navigateToPlaylist: (playlistId: string) =>
-		executeCommand("navigateToPlaylist", playlistId),
+	navigateToPlaylist: (playlistId: string) => {
+		// Look up the playlist to get its index if it's a YTM playlist
+		const playlist = getPlaylist(playlistId);
+		if (playlist?.type === "ytm" && playlist.index !== undefined) {
+			executeCommand("navigateToPlaylistByIndex", playlist.index);
+		} else {
+			executeCommand("navigateToPlaylist", playlistId);
+		}
+	},
 	setCurrentPlaylist: (playlistId: string) =>
 		executeCommand("setCurrentPlaylist", playlistId),
 };

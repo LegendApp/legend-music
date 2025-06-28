@@ -7,6 +7,7 @@ export interface Playlist {
 	count: number;
 	type: "file" | "ytm";
 	order: number;
+	index?: number; // For YTM playlists, the sidebar index for opening
 }
 
 export interface PlaylistsData {

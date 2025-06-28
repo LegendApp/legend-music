@@ -6,7 +6,7 @@ import { PlaybackArea } from "@/components/PlaybackArea";
 import { PlaylistSelector } from "@/components/PlaylistSelector";
 import { YouTubeMusicPlayer } from "@/components/YouTubeMusicPlayer";
 
-const ShowYTM = false;
+const ShowYTM = true;
 
 export function MainContainer() {
 	return (
