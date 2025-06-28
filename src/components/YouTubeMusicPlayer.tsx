@@ -164,7 +164,8 @@ const injectedJavaScript = `
                                     thumbnail: thumbnail,
                                     count: count,
                                     creator: creator,
-                                    index: results.length
+                                    index: results.length,
+                                    type: 'ytm'
                                 });
                             }
                         }
@@ -213,8 +214,8 @@ const injectedJavaScript = `
 
     function extractPlaylistInfo() {
         try {
-            const songs = [];
-            const suggestions = [];
+            let songs = [];
+            let suggestions = [];
             let currentTrackIndex = -1;
 
             // Determine current playlist context
@@ -231,121 +232,289 @@ const injectedJavaScript = `
             console.log('Detected playlist from URL:', detectedPlaylist);
             console.log('Current playlist selection:', currentPlaylistSelection);
 
-            // If we're viewing "Now Playing" or in a general context, use queue items
-            if (currentPlaylistSelection === 'NOW_PLAYING' ||
-                (detectedPlaylist === 'NOW_PLAYING' && currentPlaylistSelection === 'NOW_PLAYING')) {
-                const allQueueItems = document.querySelectorAll('ytmusic-player-queue-item');
-                const queueItems = Array.from(allQueueItems).filter(item => !item.closest('#counterpart-renderer'));
-                if (queueItems.length > 0) {
-                    console.log('Using NOW PLAYING queue items:', queueItems.length);
+            // Strategy 1: Try to extract songs from script data first (more reliable)
+            try {
+                const scriptTags = document.querySelectorAll('script');
+                let songsFromScript = [];
 
-                    queueItems.forEach((item, index) => {
-                        const titleEl = item.querySelector('.song-title, .title');
-                        const artistEl = item.querySelector('.byline a, .byline, .artist');
-                        const durationEl = item.querySelector('.duration-text, .duration');
-                        const thumbnailEl = item.querySelector('img');
+                for (const script of scriptTags) {
+                    const scriptContent = script.textContent || script.innerHTML;
 
-                        if (titleEl && artistEl) {
-                            let title = titleEl.textContent?.trim() || '';
-                            let artist = artistEl.textContent?.trim() || '';
-                            const duration = durationEl?.textContent?.trim() || '';
+                    // Look for browse data containing playlist information
+                    if (scriptContent.includes('initialData.push') && scriptContent.includes('browse')) {
+                        try {
+                            const pushMatches = scriptContent.matchAll(/initialData\\.push\\(\\{path:\\s*'([^']+)',\\s*params:\\s*JSON\\.parse\\('([^']+)'\\),\\s*data:\\s*'([^']+)'\\}\\);/g);
+                            const pushMatchesArr = [...pushMatches];
 
-                            // Clean up artist text
-                            if (artist.includes('•')) {
-                                artist = artist.split('•')[0].trim();
-                            }
+                            for (const match of pushMatchesArr) {
+                                const path = match[1];
+                                const dataString = match[3];
 
-                            if (title && artist && title !== artist) {
-                                const isPlaying = item.classList.contains('playing') ||
-                                                item.getAttribute('aria-selected') === 'true' ||
-                                                item.classList.contains('selected') ||
-                                                item.querySelector('[class*="playing"]') !== null;
+                                // Look for browse data (playlist content)
+                                if (path.includes('browse')) {
+                                    // Decode the escaped JSON string
+                                    const decodedData = dataString.replace(/\\\\x([0-9A-Fa-f]{2})/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)));
+                                    try {
+                                        const parsedData = JSON.parse(decodedData);
+                                        console.log('Found browse data in initialData', parsedData);
 
-                                const track = {
-                                    title: title,
-                                    artist: artist,
-                                    duration: duration,
-                                    thumbnail: thumbnailEl?.src || '',
-                                    index: index,
-                                    isPlaying: isPlaying
-                                };
-
-                                // For queue items, all are considered songs
-                                songs.push(track);
-
-                                if (isPlaying) {
-                                    currentTrackIndex = songs.length - 1;
+                                        // Extract songs from the parsed data
+                                        const extractedSongs = extractSongsFromBrowseData(parsedData);
+                                        if (extractedSongs.length > 0) {
+                                            songsFromScript = extractedSongs;
+                                            console.log('Extracted', extractedSongs.length, 'songs from script data');
+                                            break;
+                                        }
+                                    } catch (e) {
+                                        console.log('Failed to parse browse data:', e);
+                                        continue;
+                                    }
                                 }
                             }
-                        }
-                    });
-                }
-            } else {
-                // For specific playlists, separate songs from suggestions
-                console.log('Looking for playlist tracks and suggestions...');
 
-                // Helper function to extract tracks from a shelf
-                function extractTracksFromShelf(shelf, targetArray, arrayName) {
-                    if (!shelf) return;
-
-                    const tracks = shelf.querySelectorAll('ytmusic-responsive-list-item-renderer');
-                    console.log('Found ' + arrayName + ' tracks:', tracks.length);
-
-                    tracks.forEach((item, index) => {
-                        const titleEl = item.querySelector('.title-column .title');
-                        const artistEl = item.querySelector('.secondary-flex-columns .flex-column');
-                        const durationEl = item.querySelector('.fixed-column.MUSIC_RESPONSIVE_LIST_ITEM_COLUMN_DISPLAY_PRIORITY_HIGH');
-                        const thumbnailEl = item.querySelector('img');
-
-                        if (titleEl && artistEl) {
-                            let title = titleEl.textContent?.trim() || '';
-                            let artist = artistEl.textContent?.trim() || '';
-                            const duration = durationEl?.textContent?.trim() || '';
-
-                            // Clean up artist text
-                            if (artist.includes('•')) {
-                                artist = artist.split('•')[0].trim();
+                            if (songsFromScript.length > 0) {
+                                break;
                             }
-
-                            if (title && artist && title !== artist) {
-                                const isPlaying = item.classList.contains('playing') ||
-                                                item.getAttribute('aria-selected') === 'true' ||
-                                                item.classList.contains('selected') ||
-                                                item.querySelector('[class*="playing"]') !== null;
-
-                                const track = {
-                                    title: title,
-                                    artist: artist,
-                                    duration: duration,
-                                    thumbnail: thumbnailEl?.src || '',
-                                    index: targetArray.length, // Use target array length for proper indexing
-                                    isPlaying: isPlaying
-                                };
-
-                                targetArray.push(track);
-
-                                if (isPlaying) {
-                                    currentTrackIndex = targetArray.length - 1;
-                                }
-                            }
+                        } catch (e) {
+                            console.log('Failed to parse initialData from script tag:', e);
+                            continue;
                         }
-                    });
+                    }
                 }
 
-                // Extract tracks from main playlist content
-                const playlistShelf = document.querySelector('ytmusic-playlist-shelf-renderer');
-                extractTracksFromShelf(playlistShelf, songs, 'main playlist');
-
-                // Extract tracks from suggestions shelf
-                const suggestionsShelf = document.querySelector('ytmusic-shelf-renderer');
-                extractTracksFromShelf(suggestionsShelf, suggestions, 'suggestions');
+                if (songsFromScript.length > 0) {
+                    songs = songsFromScript;
+                    console.log('Using songs from script data:', songs.length);
+                }
+            } catch (error) {
+                console.log('Error extracting songs from script data:', error);
             }
+
+            // Helper function to extract tracks from a shelf
+            function extractTracksFromShelf(shelf, targetArray, arrayName) {
+                if (!shelf) return;
+
+                const tracks = shelf.querySelectorAll('ytmusic-responsive-list-item-renderer');
+                console.log('Found ' + arrayName + ' tracks:', tracks.length);
+
+                tracks.forEach((item, index) => {
+                    const titleEl = item.querySelector('.title-column .title');
+                    const artistEl = item.querySelector('.secondary-flex-columns .flex-column');
+                    const durationEl = item.querySelector('.fixed-column.MUSIC_RESPONSIVE_LIST_ITEM_COLUMN_DISPLAY_PRIORITY_HIGH');
+                    const thumbnailEl = item.querySelector('img');
+
+                    if (titleEl && artistEl) {
+                        let title = titleEl.textContent?.trim() || '';
+                        let artist = artistEl.textContent?.trim() || '';
+                        const duration = durationEl?.textContent?.trim() || '';
+
+                        // Clean up artist text
+                        if (artist.includes('•')) {
+                            artist = artist.split('•')[0].trim();
+                        }
+
+                        if (title && artist && title !== artist) {
+                            const isPlaying = item.classList.contains('playing') ||
+                                            item.getAttribute('aria-selected') === 'true' ||
+                                            item.classList.contains('selected') ||
+                                            item.querySelector('[class*="playing"]') !== null;
+
+                            const track = {
+                                title: title,
+                                artist: artist,
+                                duration: duration,
+                                thumbnail: thumbnailEl?.src || '',
+                                index: targetArray.length, // Use target array length for proper indexing
+                                isPlaying: isPlaying
+                            };
+
+                            targetArray.push(track);
+
+                            if (isPlaying) {
+                                currentTrackIndex = targetArray.length - 1;
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Strategy 2: Fallback to DOM extraction if script extraction failed or for "Now Playing"
+            if (songs.length === 0) {
+                // If we're viewing "Now Playing" or in a general context, use queue items
+                if (currentPlaylistSelection === 'NOW_PLAYING' ||
+                    (detectedPlaylist === 'NOW_PLAYING' && currentPlaylistSelection === 'NOW_PLAYING')) {
+                    const allQueueItems = document.querySelectorAll('ytmusic-player-queue-item');
+                    const queueItems = Array.from(allQueueItems).filter(item => !item.closest('#counterpart-renderer'));
+                    if (queueItems.length > 0) {
+                        console.log('Using NOW PLAYING queue items:', queueItems.length);
+
+                        queueItems.forEach((item, index) => {
+                            const titleEl = item.querySelector('.song-title, .title');
+                            const artistEl = item.querySelector('.byline a, .byline, .artist');
+                            const durationEl = item.querySelector('.duration-text, .duration');
+                            const thumbnailEl = item.querySelector('img');
+
+                            if (titleEl && artistEl) {
+                                let title = titleEl.textContent?.trim() || '';
+                                let artist = artistEl.textContent?.trim() || '';
+                                const duration = durationEl?.textContent?.trim() || '';
+
+                                // Clean up artist text
+                                if (artist.includes('•')) {
+                                    artist = artist.split('•')[0].trim();
+                                }
+
+                                if (title && artist && title !== artist) {
+                                    const isPlaying = item.classList.contains('playing') ||
+                                                    item.getAttribute('aria-selected') === 'true' ||
+                                                    item.classList.contains('selected') ||
+                                                    item.querySelector('[class*="playing"]') !== null;
+
+                                    const track = {
+                                        title: title,
+                                        artist: artist,
+                                        duration: duration,
+                                        thumbnail: thumbnailEl?.src || '',
+                                        index: index,
+                                        isPlaying: isPlaying
+                                    };
+
+                                    // For queue items, all are considered songs
+                                    songs.push(track);
+
+                                    if (isPlaying) {
+                                        currentTrackIndex = songs.length - 1;
+                                    }
+                                }
+                            }
+                        });
+                    }
+                } else {
+                    // For specific playlists, separate songs from suggestions
+                    console.log('Looking for playlist tracks and suggestions...');
+
+                    // Extract tracks from main playlist content
+                    const playlistShelf = document.querySelector('ytmusic-playlist-shelf-renderer');
+                    extractTracksFromShelf(playlistShelf, songs, 'main playlist');
+
+                }
+            }
+
+            // Extract tracks from suggestions shelf
+            const suggestionsShelf = document.querySelector('ytmusic-shelf-renderer');
+            extractTracksFromShelf(suggestionsShelf, suggestions, 'suggestions');
 
             console.log('Extracted playlist - Songs:', songs.length, 'Suggestions:', suggestions.length);
             return { songs, suggestions, currentTrackIndex };
         } catch (error) {
             console.error('Error extracting playlist:', error);
             return { songs: [], suggestions: [], currentTrackIndex: -1 };
+        }
+    }
+
+    // Helper function to extract songs from browse data (script data)
+    function extractSongsFromBrowseData(data) {
+        const songs = [];
+
+        try {
+            // Navigate to the specific path where playlist songs are located
+            const playlistContents = data?.contents?.twoColumnBrowseResultsRenderer?.secondaryContents?.sectionListRenderer?.contents;
+
+            if (!playlistContents || !Array.isArray(playlistContents)) {
+                console.log('No playlist contents found in expected structure');
+                return [];
+            }
+
+            // Find the musicPlaylistShelfRenderer
+            let playlistShelf = null;
+            for (const section of playlistContents) {
+                if (section.musicPlaylistShelfRenderer) {
+                    playlistShelf = section.musicPlaylistShelfRenderer;
+                    break;
+                }
+            }
+
+            if (!playlistShelf || !playlistShelf.contents || !Array.isArray(playlistShelf.contents)) {
+                console.log('No music playlist shelf found');
+                return [];
+            }
+
+            // Process each song item
+            for (let i = 0; i < playlistShelf.contents.length; i++) {
+                const item = playlistShelf.contents[i];
+                if (!item.musicResponsiveListItemRenderer) continue;
+
+                const renderer = item.musicResponsiveListItemRenderer;
+
+                // Extract song information
+                let title = '';
+                let artist = '';
+                let duration = '';
+                let thumbnail = '';
+                let videoId = '';
+
+                // Extract title and videoId from flexColumns[0]
+                if (renderer.flexColumns && renderer.flexColumns.length > 0) {
+                    const titleColumn = renderer.flexColumns[0];
+                    if (titleColumn.musicResponsiveListItemFlexColumnRenderer?.text?.runs && titleColumn.musicResponsiveListItemFlexColumnRenderer.text.runs.length > 0) {
+                        title = titleColumn.musicResponsiveListItemFlexColumnRenderer.text.runs[0].text || '';
+                        // Extract videoId from navigation endpoint
+                        const navEndpoint = titleColumn.musicResponsiveListItemFlexColumnRenderer.text.runs[0].navigationEndpoint;
+                        if (navEndpoint?.watchEndpoint?.videoId) {
+                            videoId = navEndpoint.watchEndpoint.videoId;
+                        }
+                    }
+
+                    // Extract artist from flexColumns[1]
+                    if (renderer.flexColumns.length > 1) {
+                        const artistColumn = renderer.flexColumns[1];
+                        if (artistColumn.musicResponsiveListItemFlexColumnRenderer?.text?.runs && artistColumn.musicResponsiveListItemFlexColumnRenderer.text.runs.length > 0) {
+                            artist = artistColumn.musicResponsiveListItemFlexColumnRenderer.text.runs[0].text || '';
+                        }
+                    }
+                }
+
+                // Extract duration from fixedColumns[0]
+                if (renderer.fixedColumns && renderer.fixedColumns.length > 0) {
+                    const durationColumn = renderer.fixedColumns[0];
+                    if (durationColumn.musicResponsiveListItemFixedColumnRenderer?.text?.runs && durationColumn.musicResponsiveListItemFixedColumnRenderer.text.runs.length > 0) {
+                        duration = durationColumn.musicResponsiveListItemFixedColumnRenderer.text.runs[0].text || '';
+                    }
+                }
+
+                // Extract thumbnail (prefer 120x120 version)
+                if (renderer.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails && renderer.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails.length > 0) {
+                    const thumbnails = renderer.thumbnail.musicThumbnailRenderer.thumbnail.thumbnails;
+                    // Look for 120x120 version specifically
+                    const thumbnail120 = thumbnails.find(thumb => thumb.width === 120 && thumb.height === 120);
+
+                    if (thumbnail120) {
+                        thumbnail = thumbnail120.url;
+                    } else if (thumbnails.length > 0) {
+                        // Fallback to highest quality if 120x120 not found
+                        thumbnail = thumbnails[thumbnails.length - 1].url;
+                    }
+                }
+
+                // Only add if we have essential data
+                if (title && artist && videoId) {
+                    songs.push({
+                        title: title,
+                        artist: artist,
+                        duration: duration,
+                        thumbnail: thumbnail,
+                        id: videoId,
+                        index: songs.length,
+                        isPlaying: false // We'll determine this later
+                    });
+                }
+            }
+
+            console.log('Extracted', songs.length, 'songs from browse data');
+            return songs;
+        } catch (error) {
+            console.error('Error extracting songs from browse data:', error);
+            return [];
         }
     }
 
@@ -913,6 +1082,7 @@ const updatePlaylistContent = (
             title: track.title,
             artist: track.artist,
             filePath: track.id ? `ytm://${track.id}` : `ytm://search/${encodeURIComponent(track.title)}`,
+            logo: track.thumbnail, // Include thumbnail as logo
         }));
 
         // Convert YouTube Music suggestions to M3U format
@@ -921,6 +1091,7 @@ const updatePlaylistContent = (
             title: track.title,
             artist: track.artist,
             filePath: track.id ? `ytm://${track.id}` : `ytm://search/${encodeURIComponent(track.title)}`,
+            logo: track.thumbnail, // Include thumbnail as logo
         }));
 
         // Get the playlist content observable and update it
@@ -949,6 +1120,7 @@ const controls = {
     navigateToPlaylist: (playlistId: string) => {
         // Look up the playlist to get its index if it's a YTM playlist
         const playlist = getPlaylist(playlistId);
+        console.log("navigateToPlaylist", playlist);
         if (playlist?.type === "ytm" && playlist.index !== undefined) {
             executeCommand("navigateToPlaylistByIndex", playlist.index);
         } else {

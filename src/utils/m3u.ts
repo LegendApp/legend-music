@@ -3,6 +3,7 @@ export interface M3UTrack {
     title: string;
     artist?: string;
     filePath: string;
+    logo?: string; // URL to track thumbnail/logo
 }
 
 export interface M3UPlaylist {
@@ -42,10 +43,12 @@ export function parseM3U(content: string): M3UPlaylist {
 
         // Parse EXTINF line
         if (line.startsWith("#EXTINF:")) {
-            const extinfMatch = line.match(/^#EXTINF:(-?\d+),(.*)$/);
+            // Updated regex to capture optional logo parameter
+            const extinfMatch = line.match(/^#EXTINF:(-?\d+)(?:\s+logo="([^"]*)")?,(.*?)$/);
             if (extinfMatch && i + 1 < lines.length) {
                 const duration = Number.parseInt(extinfMatch[1], 10);
-                const titleInfo = extinfMatch[2].trim();
+                const logo = extinfMatch[2] || undefined; // Logo URL if present
+                const titleInfo = extinfMatch[3].trim();
                 const filePath = lines[i + 1];
 
                 // Parse artist and title from the title info
@@ -64,6 +67,7 @@ export function parseM3U(content: string): M3UPlaylist {
                     title,
                     artist,
                     filePath,
+                    logo, // Include logo if present
                 };
 
                 // Add to appropriate section
@@ -112,8 +116,13 @@ export function writeM3U(playlist: M3UPlaylist): string {
             titleInfo = `${track.artist} - ${track.title}`;
         }
 
-        // Add EXTINF line
-        lines.push(`#EXTINF:${track.duration},${titleInfo}`);
+        // Add EXTINF line with optional logo parameter
+        let extinfLine = `#EXTINF:${track.duration}`;
+        if (track.logo) {
+            extinfLine += ` logo="${track.logo}"`;
+        }
+        extinfLine += `,${titleInfo}`;
+        lines.push(extinfLine);
 
         // Add file path
         lines.push(track.filePath);
@@ -133,8 +142,13 @@ export function writeM3U(playlist: M3UPlaylist): string {
                 titleInfo = `${track.artist} - ${track.title}`;
             }
 
-            // Add EXTINF line
-            lines.push(`#EXTINF:${track.duration},${titleInfo}`);
+            // Add EXTINF line with optional logo parameter
+            let extinfLine = `#EXTINF:${track.duration}`;
+            if (track.logo) {
+                extinfLine += ` logo="${track.logo}"`;
+            }
+            extinfLine += `,${titleInfo}`;
+            lines.push(extinfLine);
 
             // Add file path
             lines.push(track.filePath);
@@ -142,7 +156,7 @@ export function writeM3U(playlist: M3UPlaylist): string {
         }
     }
 
-    return lines.join("\n") + "\n";
+    return `${lines.join("\n")}\n`;
 }
 
 /**
