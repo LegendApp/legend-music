@@ -1,8 +1,8 @@
 import { observable } from "@legendapp/state";
 import { Directory, File } from "expo-file-system/next";
-
-import { createJSONManager } from "@/utils/JSONManager";
+import * as ID3 from "id3js";
 import { stateSaved$ } from "@/systems/State";
+import { createJSONManager } from "@/utils/JSONManager";
 
 export interface LocalTrack {
 	id: string;
@@ -51,11 +51,38 @@ export const localMusicState$ = observable<LocalMusicState>({
 	isLocalFilesSelected: false,
 });
 
-// Extract metadata from filename
-function parseFilename(fileName: string): { title: string; artist: string } {
+// Extract metadata from ID3 tags with filename fallback
+async function extractId3Metadata(
+	filePath: string,
+	fileName: string,
+): Promise<{ title: string; artist: string; duration?: string }> {
+	try {
+		// First try to extract ID3 tags
+		const tags = await ID3.fromPath(filePath);
+
+		if (tags && (tags.title || tags.artist)) {
+			return {
+				title: tags.title || parseFilenameOnly(fileName).title,
+				artist: tags.artist || parseFilenameOnly(fileName).artist,
+				duration: tags.duration ? formatDuration(tags.duration) : undefined,
+			};
+		}
+	} catch (error) {
+		console.warn(`Failed to read ID3 tags from ${fileName}:`, error);
+	}
+
+	// Fallback to filename parsing if ID3 tags are unavailable or incomplete
+	return parseFilenameOnly(fileName);
+}
+
+// Fallback: Extract metadata from filename (original logic)
+function parseFilenameOnly(fileName: string): {
+	title: string;
+	artist: string;
+} {
 	// Remove extension
 	let name = fileName.replace(/\.mp3$/i, "");
-	
+
 	// Decode URL-encoded characters (like %20 for spaces)
 	try {
 		name = decodeURIComponent(name);
@@ -78,6 +105,13 @@ function parseFilename(fileName: string): { title: string; artist: string } {
 		title: name.trim(),
 		artist: "Unknown Artist",
 	};
+}
+
+// Format duration from seconds to MM:SS format
+function formatDuration(seconds: number): string {
+	const minutes = Math.floor(seconds / 60);
+	const remainingSeconds = Math.floor(seconds % 60);
+	return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 }
 
 // Generate unique ID for track
@@ -108,20 +142,29 @@ async function scanDirectory(directoryPath: string): Promise<LocalTrack[]> {
 				} catch (error) {
 					console.warn(`Failed to decode filename: ${item.name}`, error);
 				}
-				
+
 				const filePath = `${directoryPath}/${decodedFileName}`;
-				const { title, artist } = parseFilename(item.name);
 
-				const track: LocalTrack = {
-					id: generateTrackId(filePath),
-					title,
-					artist,
-					duration: "0:00", // Will be populated when loading
-					filePath,
-					fileName: item.name,
-				};
+				try {
+					// Extract metadata from ID3 tags with filename fallback
+					const metadata = await extractId3Metadata(filePath, item.name);
 
-				tracks.push(track);
+					console.log("metadata", metadata);
+
+					const track: LocalTrack = {
+						id: generateTrackId(filePath),
+						title: metadata.title,
+						artist: metadata.artist,
+						duration: metadata.duration || "0:00",
+						filePath,
+						fileName: item.name,
+					};
+
+					tracks.push(track);
+				} catch (error) {
+					console.error(`Failed to process MP3 file ${item.name}:`, error);
+					// Continue with other files
+				}
 			}
 		}
 
@@ -190,7 +233,7 @@ export async function scanLocalMusic(): Promise<void> {
 export function setCurrentPlaylist(playlistId: string): void {
 	localMusicState$.currentPlaylistId.set(playlistId);
 	localMusicState$.isLocalFilesSelected.set(playlistId === "LOCAL_FILES");
-	
+
 	// Save current playlist to persistent state
 	stateSaved$.playlist.set(playlistId);
 }

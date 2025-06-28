@@ -21,6 +21,7 @@
         "clsx": "^2.1.1",
         "expo": "~53.0.9",
         "firebase": "^11.7.1",
+        "id3js": "^2.1.1",
         "ksuid": "^3.0.0",
         "msgpackr": "^1.11.3",
         "nativewind": "^4.1.23",
@@ -62,6 +63,7 @@
         "@fluentui-react-native/vibrancy-view@0.3.0": "patches/@fluentui-react-native%2Fvibrancy-view@0.3.0.patch",
         "@aptabase/react-native@0.3.10": "patches/@aptabase%2Freact-native@0.3.10.patch",
         "ksuid@3.0.0": "patches/ksuid@3.0.0.patch",
-        "react-native-markdown-display@7.0.2": "patches/react-native-markdown-display@7.0.2.patch"
+        "react-native-markdown-display@7.0.2": "patches/react-native-markdown-display@7.0.2.patch",
+        "id3js@2.1.1": "patches/id3js@2.1.1.patch"
     }
 }
