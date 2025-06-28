@@ -6,8 +6,8 @@
  * See LICENSE file in https://github.com/LegendApp/legend-kit for more information
  */
 
-import type { Observable } from '@legendapp/state';
-import { type ComponentProps, memo, useLayoutEffect } from 'react';
+import type { Observable } from "@legendapp/state";
+import { type ComponentProps, memo, useLayoutEffect } from "react";
 
 export type TypedMemo = <T extends React.ComponentType<any>>(
     Component: T,

@@ -1,72 +1,72 @@
-import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
+import { NativeEventEmitter, NativeModules, Platform } from "react-native";
 
 // Get the native module
 const { MenuEvents } = NativeModules;
 
 // Define event types
-type MenuEvent = 'onMenuCommand';
+type MenuEvent = "onMenuCommand";
 
 // Define command callback type
 export interface MenuCommandEvent {
-  commandId: string;
+    commandId: string;
 }
 
 /**
  * MenuManager provides an interface to handle native menu events in macOS
  */
 class MenuManager {
-  private eventEmitter: NativeEventEmitter | null = null;
-  private eventSubscriptions: { [key: string]: any } = {};
-  private isNativeModuleAvailable: boolean;
-  private commandListeners: Map<string, Array<() => void>> = new Map();
+    private eventEmitter: NativeEventEmitter | null = null;
+    private eventSubscriptions: { [key: string]: any } = {};
+    private isNativeModuleAvailable: boolean;
+    private commandListeners: Map<string, Array<() => void>> = new Map();
 
-  constructor() {
-    // Check if we're on macOS and if the native module is available
-    this.isNativeModuleAvailable = Platform.OS === 'macos' && !!MenuEvents;
+    constructor() {
+        // Check if we're on macOS and if the native module is available
+        this.isNativeModuleAvailable = Platform.OS === "macos" && !!MenuEvents;
 
-    if (!this.isNativeModuleAvailable) {
-      console.warn('MenuManager: Native module is not available');
-      return;
+        if (!this.isNativeModuleAvailable) {
+            console.warn("MenuManager: Native module is not available");
+            return;
+        }
+
+        // Set up the event emitter
+        this.eventEmitter = new NativeEventEmitter(MenuEvents);
     }
 
-    // Set up the event emitter
-    this.eventEmitter = new NativeEventEmitter(MenuEvents);
-  }
+    /**
+     * Add a listener for a menu event
+     */
+    public addListener(event: MenuEvent, callback: (event: MenuCommandEvent) => void) {
+        if (!this.eventEmitter) return;
 
-  /**
-   * Add a listener for a menu event
-   */
-  public addListener(event: MenuEvent, callback: (event: MenuCommandEvent) => void) {
-    if (!this.eventEmitter) return;
+        // Remove existing subscription if any
+        this.removeListener(event);
 
-    // Remove existing subscription if any
-    this.removeListener(event);
-
-    // Add new subscription
-    this.eventSubscriptions[event] = this.eventEmitter.addListener(event, callback);
-  }
-
-  /**
-   * Remove a listener for a menu event
-   */
-  public removeListener(event: MenuEvent) {
-    const subscription = this.eventSubscriptions[event];
-    if (subscription) {
-      subscription.remove();
-      delete this.eventSubscriptions[event];
+        // Add new subscription
+        this.eventSubscriptions[event] = this.eventEmitter.addListener(event, callback);
     }
-  }
 
-  /**
-   * Remove all listeners
-   */
-  public removeAllListeners() {
-    for (const event in this.eventSubscriptions) {
-      this.eventSubscriptions[event].remove();
+    /**
+     * Remove a listener for a menu event
+     */
+    public removeListener(event: MenuEvent) {
+        const subscription = this.eventSubscriptions[event];
+        if (subscription) {
+            subscription.remove();
+            delete this.eventSubscriptions[event];
+        }
     }
-    this.eventSubscriptions = {};
-    this.commandListeners.clear();
-  }
+
+    /**
+     * Remove all listeners
+     */
+    public removeAllListeners() {
+        for (const event in this.eventSubscriptions) {
+            this.eventSubscriptions[event].remove();
+        }
+        this.eventSubscriptions = {};
+        this.commandListeners.clear();
+    }
 }
 
 // Create singleton instance

@@ -16,29 +16,25 @@ initializeLocalMusic();
 LogBox.ignoreLogs(["Open debugger", "unknown error"]);
 
 function App(): React.JSX.Element | null {
-	return (
-		<ThemeProvider>
-			<VibrancyView
-				blendingMode="behindWindow"
-				material="sidebar"
-				style={styles.vibrancy}
-			>
-				<View className="flex-1">
-					<PortalProvider>
-						<MainContainer />
-					</PortalProvider>
-				</View>
-			</VibrancyView>
-			<TitleBar />
-			<SettingsWindowManager />
-		</ThemeProvider>
-	);
+    return (
+        <ThemeProvider>
+            <VibrancyView blendingMode="behindWindow" material="sidebar" style={styles.vibrancy}>
+                <View className="flex-1">
+                    <PortalProvider>
+                        <MainContainer />
+                    </PortalProvider>
+                </View>
+            </VibrancyView>
+            <TitleBar />
+            <SettingsWindowManager />
+        </ThemeProvider>
+    );
 }
 
 export default App;
 
 const styles = StyleSheet.create({
-	vibrancy: {
-		flex: 1,
-	},
+    vibrancy: {
+        flex: 1,
+    },
 });

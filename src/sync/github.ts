@@ -1,9 +1,8 @@
 import { when } from "@legendapp/state";
-
+import * as FileSystemNext from "expo-file-system/next";
 import { githubAccessToken$ } from "@/keel/keelAPIClient";
 import type { RepoName } from "@/sync/syncedGithub";
 import { ax } from "../utils/ax";
-import * as FileSystemNext from "expo-file-system/next";
 
 const GITHUB_API_BASE_URL = "https://api.github.com";
 export const GITHUB_APP_NAME = "legendapp-hub";

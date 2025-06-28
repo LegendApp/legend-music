@@ -1,10 +1,6 @@
 import type { Change } from "@legendapp/state";
 import { applyChanges, internal, isArray } from "@legendapp/state";
-import type {
-	ObservablePersistPlugin,
-	ObservablePersistPluginOptions,
-	PersistMetadata,
-} from "@legendapp/state/sync";
+import type { ObservablePersistPlugin, ObservablePersistPluginOptions, PersistMetadata } from "@legendapp/state/sync";
 import * as FileSystemNext from "expo-file-system/next";
 import { Packr } from "msgpackr";
 import { timeoutOnce } from "@/utils/timeoutOnce";
@@ -18,207 +14,184 @@ const packer = new Packr({ bundleStrings: true });
  * Configuration options for the ReactNativeFS plugin
  */
 export interface ExpoFSPersistPluginOptions {
-	/**
-	 * Base directory path. Defaults to Cache
-	 */
-	basePath?: "Cache";
+    /**
+     * Base directory path. Defaults to Cache
+     */
+    basePath?: "Cache";
 
-	format: "json" | "msgpack" | "m3u";
+    format: "json" | "msgpack" | "m3u";
 
-	/**
-	 * Preload all tables on startup. Can be true to load all, or an array of table names
-	 */
-	preload?: string[];
+    /**
+     * Preload all tables on startup. Can be true to load all, or an array of table names
+     */
+    preload?: string[];
 
-	saveTimeout?: number;
+    saveTimeout?: number;
 }
 
 class ObservablePersistExpoFS implements ObservablePersistPlugin {
-	private data: Record<string, any> = {};
-	private configuration: ExpoFSPersistPluginOptions;
-	private directory: FileSystemNext.Directory;
-	private extension: string;
+    private data: Record<string, any> = {};
+    private configuration: ExpoFSPersistPluginOptions;
+    private directory: FileSystemNext.Directory;
+    private extension: string;
 
-	constructor(configuration: ExpoFSPersistPluginOptions) {
-		this.configuration = configuration;
-		this.directory = new FileSystemNext.Directory(
-			configuration.basePath === "Cache"
-				? FileSystemNext.Paths.cache
-				: FileSystemNext.Paths.cache,
-			"LegendMusic",
-		);
-		this.extension = configuration.format === "json" ? "json" : configuration.format === "m3u" ? "m3u" : "lgh";
-		console.log("directory", this.directory);
-	}
+    constructor(configuration: ExpoFSPersistPluginOptions) {
+        this.configuration = configuration;
+        this.directory = new FileSystemNext.Directory(
+            configuration.basePath === "Cache" ? FileSystemNext.Paths.cache : FileSystemNext.Paths.cache,
+            "LegendMusic",
+        );
+        this.extension = configuration.format === "json" ? "json" : configuration.format === "m3u" ? "m3u" : "lgh";
+        console.log("directory", this.directory);
+    }
 
-	public initialize(_configOptions: ObservablePersistPluginOptions) {
-		const storageConfig = this.configuration;
-		let tables: string[] = [];
+    public initialize(_configOptions: ObservablePersistPluginOptions) {
+        const storageConfig = this.configuration;
+        let tables: string[] = [];
 
-		try {
-			// Ensure base directory exists
-			this.ensureDirectoryExists(this.directory);
+        try {
+            // Ensure base directory exists
+            this.ensureDirectoryExists(this.directory);
 
-			if (isArray(storageConfig.preload)) {
-				// If preloadKeys, preload the tables on startup
-				const metadataTables = storageConfig.preload.map((table) =>
-					table.endsWith(MetadataSuffix) ? undefined : table + MetadataSuffix,
-				);
-				tables = [
-					...storageConfig.preload,
-					...(metadataTables.filter(Boolean) as string[]),
-				];
+            if (isArray(storageConfig.preload)) {
+                // If preloadKeys, preload the tables on startup
+                const metadataTables = storageConfig.preload.map((table) =>
+                    table.endsWith(MetadataSuffix) ? undefined : table + MetadataSuffix,
+                );
+                tables = [...storageConfig.preload, ...(metadataTables.filter(Boolean) as string[])];
 
-				// Load all the preload tables
-				tables.map((table) => this.loadTable(table));
-			}
-		} catch (e) {
-			console.error(
-				"[legend-state] ObservablePersistReacExpoFS failed to initialize",
-				e,
-			);
-		}
-	}
+                // Load all the preload tables
+                tables.map((table) => this.loadTable(table));
+            }
+        } catch (e) {
+            console.error("[legend-state] ObservablePersistReacExpoFS failed to initialize", e);
+        }
+    }
 
-	private readFile(file: FileSystemNext.File) {
-		if (this.configuration.format === "json") {
-			const content = file.text();
-			const parsed = safeParse(content);
-			return parsed;
-		} else if (this.configuration.format === "m3u") {
-			// For M3U format, just return the plain text content
-			return file.text();
-		}
-		const content = file.bytes();
-		return packer.unpack(content);
-	}
+    private readFile(file: FileSystemNext.File) {
+        if (this.configuration.format === "json") {
+            const content = file.text();
+            const parsed = safeParse(content);
+            return parsed;
+        }
+        if (this.configuration.format === "m3u") {
+            // For M3U format, just return the plain text content
+            return file.text();
+        }
+        const content = file.bytes();
+        return packer.unpack(content);
+    }
 
-	public loadTable(table: string) {
-		if (this.data[table] === undefined) {
-			try {
-				const mainTableFile = new FileSystemNext.File(
-					this.directory,
-					`${table}.${this.extension}`,
-				);
-				const metadataTableFile = new FileSystemNext.File(
-					this.directory,
-					`${table}${MetadataSuffix}.${this.extension}`,
-				);
+    public loadTable(table: string) {
+        if (this.data[table] === undefined) {
+            try {
+                const mainTableFile = new FileSystemNext.File(this.directory, `${table}.${this.extension}`);
+                const metadataTableFile = new FileSystemNext.File(
+                    this.directory,
+                    `${table}${MetadataSuffix}.${this.extension}`,
+                );
 
-				if (mainTableFile.exists) {
-					this.data[table] = this.readFile(mainTableFile);
-				}
+                if (mainTableFile.exists) {
+                    this.data[table] = this.readFile(mainTableFile);
+                }
 
-				if (metadataTableFile.exists) {
-					this.data[table + MetadataSuffix] = this.readFile(metadataTableFile);
-				}
-			} catch (err) {
-				console.error(
-					"[legend-state] ObservablePersistReacExpoFS failed to load table",
-					table,
-					err,
-				);
-			}
-		}
-	}
+                if (metadataTableFile.exists) {
+                    this.data[table + MetadataSuffix] = this.readFile(metadataTableFile);
+                }
+            } catch (err) {
+                console.error("[legend-state] ObservablePersistReacExpoFS failed to load table", table, err);
+            }
+        }
+    }
 
-	// Gets
-	public getTable(table: string, init: object) {
-		return this.data[table] ?? init ?? {};
-	}
+    // Gets
+    public getTable(table: string, init: object) {
+        return this.data[table] ?? init ?? {};
+    }
 
-	public getMetadata(table: string): PersistMetadata {
-		return this.getTable(table + MetadataSuffix, {});
-	}
+    public getMetadata(table: string): PersistMetadata {
+        return this.getTable(table + MetadataSuffix, {});
+    }
 
-	// Sets
-	public set(table: string, changes: Change[]): Promise<void> {
-		if (!this.data[table]) {
-			this.data[table] = {};
-		}
+    // Sets
+    public set(table: string, changes: Change[]): Promise<void> {
+        if (!this.data[table]) {
+            this.data[table] = {};
+        }
 
-		this.data[table] = applyChanges(this.data[table], changes);
-		return this.save(table);
-	}
+        this.data[table] = applyChanges(this.data[table], changes);
+        return this.save(table);
+    }
 
-	public setMetadata(table: string, metadata: PersistMetadata) {
-		return this.setValue(table + MetadataSuffix, metadata);
-	}
+    public setMetadata(table: string, metadata: PersistMetadata) {
+        return this.setValue(table + MetadataSuffix, metadata);
+    }
 
-	public deleteTable(table: string) {
-		const filePath = new FileSystemNext.File(this.directory, table);
-		if (filePath.exists) {
-			filePath.delete();
-		}
-		delete this.data[table];
-	}
+    public deleteTable(table: string) {
+        const filePath = new FileSystemNext.File(this.directory, table);
+        if (filePath.exists) {
+            filePath.delete();
+        }
+        delete this.data[table];
+    }
 
-	public deleteMetadata(table: string) {
-		return this.deleteTable(table + MetadataSuffix);
-	}
+    public deleteMetadata(table: string) {
+        return this.deleteTable(table + MetadataSuffix);
+    }
 
-	// Private
-	private async setValue(table: string, value: any) {
-		this.data[table] = value;
-		await this.save(table);
-	}
+    // Private
+    private async setValue(table: string, value: any) {
+        this.data[table] = value;
+        await this.save(table);
+    }
 
-	private async save(table: string) {
-		timeoutOnce(
-			`save_${table}`,
-			() => this.saveDebounced(table),
-			this.configuration.saveTimeout || 100,
-		);
-	}
+    private async save(table: string) {
+        timeoutOnce(`save_${table}`, () => this.saveDebounced(table), this.configuration.saveTimeout || 100);
+    }
 
-	private async saveDebounced(table: string) {
-		const v = this.data[table];
-		const file = new FileSystemNext.File(
-			this.directory,
-			`${table}.${this.extension}`,
-		);
+    private async saveDebounced(table: string) {
+        const v = this.data[table];
+        const file = new FileSystemNext.File(this.directory, `${table}.${this.extension}`);
 
-		this.ensureDirectoryExists(file.parentDirectory);
+        this.ensureDirectoryExists(file.parentDirectory);
 
-		if (v !== undefined && v !== null) {
-			let out: string | Uint8Array;
-			if (this.configuration.format === "json") {
-				out = safeStringify(v);
-			} else if (this.configuration.format === "m3u") {
-				// For M3U format, expect the value to already be a string
-				out = typeof v === "string" ? v : String(v);
-			} else {
-				out = packer.pack(v);
-			}
-			return file.write(out);
-		}
+        if (v !== undefined && v !== null) {
+            let out: string | Uint8Array;
+            if (this.configuration.format === "json") {
+                out = safeStringify(v);
+            } else if (this.configuration.format === "m3u") {
+                // For M3U format, expect the value to already be a string
+                out = typeof v === "string" ? v : String(v);
+            } else {
+                out = packer.pack(v);
+            }
+            return file.write(out);
+        }
 
-		if (file.exists) {
-			return file.delete();
-		}
+        if (file.exists) {
+            return file.delete();
+        }
 
-		return Promise.resolve();
-	}
+        return Promise.resolve();
+    }
 
-	private ensureDirectoryExists(directory: FileSystemNext.Directory) {
-		// Extract the directory path from the file path
-		let current = directory;
+    private ensureDirectoryExists(directory: FileSystemNext.Directory) {
+        // Extract the directory path from the file path
+        let current = directory;
 
-		const dirsToCreate: FileSystemNext.Directory[] = [];
+        const dirsToCreate: FileSystemNext.Directory[] = [];
 
-		while (!current.exists) {
-			dirsToCreate.unshift(current);
-			current = current.parentDirectory;
-		}
+        while (!current.exists) {
+            dirsToCreate.unshift(current);
+            current = current.parentDirectory;
+        }
 
-		for (const dir of dirsToCreate) {
-			dir.create();
-		}
-	}
+        for (const dir of dirsToCreate) {
+            dir.create();
+        }
+    }
 }
 
-export function observablePersistExpoFS(
-	configuration: ExpoFSPersistPluginOptions = { format: "json" },
-) {
-	return new ObservablePersistExpoFS(configuration);
+export function observablePersistExpoFS(configuration: ExpoFSPersistPluginOptions = { format: "json" }) {
+    return new ObservablePersistExpoFS(configuration);
 }

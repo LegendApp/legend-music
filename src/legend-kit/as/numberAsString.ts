@@ -6,7 +6,7 @@
  * See LICENSE file in https://github.com/LegendApp/legend-kit for more information
  */
 
-import { type ObservableParam, linked } from '@legendapp/state';
+import { linked, type ObservableParam } from "@legendapp/state";
 
 export const numberAsString = (num$: ObservableParam<number>) =>
     linked({

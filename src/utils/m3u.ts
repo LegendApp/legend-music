@@ -1,185 +1,185 @@
 export interface M3UTrack {
-	duration: number; // Duration in seconds, -1 for unknown
-	title: string;
-	artist?: string;
-	filePath: string;
+    duration: number; // Duration in seconds, -1 for unknown
+    title: string;
+    artist?: string;
+    filePath: string;
 }
 
 export interface M3UPlaylist {
-	songs: M3UTrack[];
-	suggestions: M3UTrack[];
+    songs: M3UTrack[];
+    suggestions: M3UTrack[];
 }
 
 /**
  * Parse M3U playlist content into a typed JavaScript object
  */
 export function parseM3U(content: string): M3UPlaylist {
-	const lines = content
-		.split("\n")
-		.map((line) => line.trim())
-		.filter((line) => line.length > 0);
-	
-	const songs: M3UTrack[] = [];
-	const suggestions: M3UTrack[] = [];
-	let currentSection: 'songs' | 'suggestions' = 'songs'; // Default to songs section
+    const lines = content
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
 
-	let i = 0;
-	while (i < lines.length) {
-		const line = lines[i];
+    const songs: M3UTrack[] = [];
+    const suggestions: M3UTrack[] = [];
+    let currentSection: "songs" | "suggestions" = "songs"; // Default to songs section
 
-		// Check for EXTGRP marker to switch to suggestions section
-		if (line.startsWith("#EXTGRP:")) {
-			currentSection = 'suggestions';
-			i++;
-			continue;
-		}
+    let i = 0;
+    while (i < lines.length) {
+        const line = lines[i];
 
-		// Skip other comments that aren't EXTINF
-		if (line.startsWith("#") && !line.startsWith("#EXTINF:")) {
-			i++;
-			continue;
-		}
+        // Check for EXTGRP marker to switch to suggestions section
+        if (line.startsWith("#EXTGRP:")) {
+            currentSection = "suggestions";
+            i++;
+            continue;
+        }
 
-		// Parse EXTINF line
-		if (line.startsWith("#EXTINF:")) {
-			const extinfMatch = line.match(/^#EXTINF:(-?\d+),(.*)$/);
-			if (extinfMatch && i + 1 < lines.length) {
-				const duration = parseInt(extinfMatch[1], 10);
-				const titleInfo = extinfMatch[2].trim();
-				const filePath = lines[i + 1];
+        // Skip other comments that aren't EXTINF
+        if (line.startsWith("#") && !line.startsWith("#EXTINF:")) {
+            i++;
+            continue;
+        }
 
-				// Parse artist and title from the title info
-				let title = titleInfo;
-				let artist: string | undefined;
+        // Parse EXTINF line
+        if (line.startsWith("#EXTINF:")) {
+            const extinfMatch = line.match(/^#EXTINF:(-?\d+),(.*)$/);
+            if (extinfMatch && i + 1 < lines.length) {
+                const duration = Number.parseInt(extinfMatch[1], 10);
+                const titleInfo = extinfMatch[2].trim();
+                const filePath = lines[i + 1];
 
-				// Check for "Artist - Title" format
-				if (titleInfo.includes(" - ")) {
-					const [artistPart, titlePart] = titleInfo.split(" - ", 2);
-					artist = artistPart.trim();
-					title = titlePart.trim();
-				}
+                // Parse artist and title from the title info
+                let title = titleInfo;
+                let artist: string | undefined;
 
-				const track = {
-					duration,
-					title,
-					artist,
-					filePath,
-				};
+                // Check for "Artist - Title" format
+                if (titleInfo.includes(" - ")) {
+                    const [artistPart, titlePart] = titleInfo.split(" - ", 2);
+                    artist = artistPart.trim();
+                    title = titlePart.trim();
+                }
 
-				// Add to appropriate section
-				if (currentSection === 'suggestions') {
-					suggestions.push(track);
-				} else {
-					songs.push(track);
-				}
+                const track = {
+                    duration,
+                    title,
+                    artist,
+                    filePath,
+                };
 
-				i += 2; // Skip the file path line
-			} else {
-				i++;
-			}
-		} else {
-			// Plain file path without EXTINF
-			const track = {
-				duration: -1,
-				title: extractTitleFromPath(line),
-				filePath: line,
-			};
+                // Add to appropriate section
+                if (currentSection === "suggestions") {
+                    suggestions.push(track);
+                } else {
+                    songs.push(track);
+                }
 
-			// Add to appropriate section
-			if (currentSection === 'suggestions') {
-				suggestions.push(track);
-			} else {
-				songs.push(track);
-			}
-			i++;
-		}
-	}
+                i += 2; // Skip the file path line
+            } else {
+                i++;
+            }
+        } else {
+            // Plain file path without EXTINF
+            const track = {
+                duration: -1,
+                title: extractTitleFromPath(line),
+                filePath: line,
+            };
 
-	return { songs, suggestions };
+            // Add to appropriate section
+            if (currentSection === "suggestions") {
+                suggestions.push(track);
+            } else {
+                songs.push(track);
+            }
+            i++;
+        }
+    }
+
+    return { songs, suggestions };
 }
 
 /**
  * Convert a typed JavaScript object to M3U playlist content
  */
 export function writeM3U(playlist: M3UPlaylist): string {
-	const lines: string[] = ["#EXTM3U"];
+    const lines: string[] = ["#EXTM3U"];
 
-	// Write songs section
-	for (const track of playlist.songs) {
-		// Create the title info
-		let titleInfo = track.title;
-		if (track.artist) {
-			titleInfo = `${track.artist} - ${track.title}`;
-		}
+    // Write songs section
+    for (const track of playlist.songs) {
+        // Create the title info
+        let titleInfo = track.title;
+        if (track.artist) {
+            titleInfo = `${track.artist} - ${track.title}`;
+        }
 
-		// Add EXTINF line
-		lines.push(`#EXTINF:${track.duration},${titleInfo}`);
+        // Add EXTINF line
+        lines.push(`#EXTINF:${track.duration},${titleInfo}`);
 
-		// Add file path
-		lines.push(track.filePath);
-		lines.push("");
-	}
+        // Add file path
+        lines.push(track.filePath);
+        lines.push("");
+    }
 
-	// Write suggestions section if there are any
-	if (playlist.suggestions.length > 0) {
-		// Add EXTGRP marker for suggestions
-		lines.push("#EXTGRP:suggestions");
-		lines.push("");
+    // Write suggestions section if there are any
+    if (playlist.suggestions.length > 0) {
+        // Add EXTGRP marker for suggestions
+        lines.push("#EXTGRP:suggestions");
+        lines.push("");
 
-		for (const track of playlist.suggestions) {
-			// Create the title info
-			let titleInfo = track.title;
-			if (track.artist) {
-				titleInfo = `${track.artist} - ${track.title}`;
-			}
+        for (const track of playlist.suggestions) {
+            // Create the title info
+            let titleInfo = track.title;
+            if (track.artist) {
+                titleInfo = `${track.artist} - ${track.title}`;
+            }
 
-			// Add EXTINF line
-			lines.push(`#EXTINF:${track.duration},${titleInfo}`);
+            // Add EXTINF line
+            lines.push(`#EXTINF:${track.duration},${titleInfo}`);
 
-			// Add file path
-			lines.push(track.filePath);
-			lines.push("");
-		}
-	}
+            // Add file path
+            lines.push(track.filePath);
+            lines.push("");
+        }
+    }
 
-	return lines.join("\n") + "\n";
+    return lines.join("\n") + "\n";
 }
 
 /**
  * Extract a title from a file path
  */
 function extractTitleFromPath(filePath: string): string {
-	// Get the filename without path
-	const filename = filePath.split("/").pop() || filePath;
+    // Get the filename without path
+    const filename = filePath.split("/").pop() || filePath;
 
-	// Remove extension
-	const nameWithoutExtension = filename.replace(/\.[^.]*$/, "");
+    // Remove extension
+    const nameWithoutExtension = filename.replace(/\.[^.]*$/, "");
 
-	// Decode URL-encoded characters
-	try {
-		return decodeURIComponent(nameWithoutExtension);
-	} catch {
-		return nameWithoutExtension;
-	}
+    // Decode URL-encoded characters
+    try {
+        return decodeURIComponent(nameWithoutExtension);
+    } catch {
+        return nameWithoutExtension;
+    }
 }
 
 /**
  * Validate M3U content format
  */
 export function isValidM3U(content: string): boolean {
-	const trimmed = content.trim();
-	if (!trimmed) return false;
+    const trimmed = content.trim();
+    if (!trimmed) return false;
 
-	// Check if it starts with M3U header or has at least one valid line
-	const lines = trimmed
-		.split("\n")
-		.map((line) => line.trim())
-		.filter((line) => line.length > 0);
+    // Check if it starts with M3U header or has at least one valid line
+    const lines = trimmed
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
 
-	// Must have at least one non-comment line (file path)
-	const hasFilePath = lines.some((line) => !line.startsWith("#"));
+    // Must have at least one non-comment line (file path)
+    const hasFilePath = lines.some((line) => !line.startsWith("#"));
 
-	return hasFilePath;
+    return hasFilePath;
 }
 
 /**
@@ -188,22 +188,22 @@ export function isValidM3U(content: string): boolean {
  * @returns Duration in seconds, or -1 if parsing fails
  */
 export function parseDurationToSeconds(duration: string): number {
-	if (!duration || typeof duration !== "string") {
-		return -1;
-	}
+    if (!duration || typeof duration !== "string") {
+        return -1;
+    }
 
-	// Handle formats like "3:45", "0:30", "12:34"
-	const match = duration.match(/^(\d+):(\d{2})$/);
-	if (!match) {
-		return -1;
-	}
+    // Handle formats like "3:45", "0:30", "12:34"
+    const match = duration.match(/^(\d+):(\d{2})$/);
+    if (!match) {
+        return -1;
+    }
 
-	const minutes = parseInt(match[1], 10);
-	const seconds = parseInt(match[2], 10);
+    const minutes = Number.parseInt(match[1], 10);
+    const seconds = Number.parseInt(match[2], 10);
 
-	if (isNaN(minutes) || isNaN(seconds) || seconds >= 60) {
-		return -1;
-	}
+    if (isNaN(minutes) || isNaN(seconds) || seconds >= 60) {
+        return -1;
+    }
 
-	return minutes * 60 + seconds;
+    return minutes * 60 + seconds;
 }

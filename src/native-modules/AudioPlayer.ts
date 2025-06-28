@@ -1,9 +1,9 @@
-import { NativeEventEmitter, NativeModules } from 'react-native';
+import { NativeEventEmitter, NativeModules } from "react-native";
 
 const { AudioPlayer } = NativeModules;
 
 if (!AudioPlayer) {
-    throw new Error('AudioPlayer native module is not available');
+    throw new Error("AudioPlayer native module is not available");
 }
 
 export interface AudioPlayerState {
@@ -36,7 +36,7 @@ const audioPlayerEmitter = new NativeEventEmitter(AudioPlayer);
 export const useAudioPlayer = (): AudioPlayerType & {
     addListener: <T extends keyof AudioPlayerEvents>(
         eventType: T,
-        listener: AudioPlayerEvents[T]
+        listener: AudioPlayerEvents[T],
     ) => { remove: () => void };
 } => {
     return {
@@ -47,10 +47,7 @@ export const useAudioPlayer = (): AudioPlayerType & {
         seek: (seconds: number) => AudioPlayer.seek(seconds),
         setVolume: (volume: number) => AudioPlayer.setVolume(volume),
         getCurrentState: () => AudioPlayer.getCurrentState(),
-        addListener: <T extends keyof AudioPlayerEvents>(
-            eventType: T,
-            listener: AudioPlayerEvents[T]
-        ) => {
+        addListener: <T extends keyof AudioPlayerEvents>(eventType: T, listener: AudioPlayerEvents[T]) => {
             const subscription = audioPlayerEmitter.addListener(eventType, listener);
             return {
                 remove: () => subscription.remove(),

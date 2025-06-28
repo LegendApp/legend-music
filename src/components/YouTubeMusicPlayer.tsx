@@ -5,47 +5,47 @@ import { View } from "react-native";
 import { WebView } from "react-native-webview";
 import { getPlaylistContent } from "@/systems/PlaylistContent";
 import {
-	addPlaylist,
-	getAllPlaylists,
-	getPlaylist,
-	removePlaylist,
-	type Playlist,
-	updatePlaylist,
+    addPlaylist,
+    getAllPlaylists,
+    getPlaylist,
+    type Playlist,
+    removePlaylist,
+    updatePlaylist,
 } from "@/systems/Playlists";
 import { stateSaved$ } from "@/systems/State";
 import type { M3UTrack } from "@/utils/m3u";
 import { parseDurationToSeconds } from "@/utils/m3u";
 
 interface Track {
-	title: string;
-	artist: string;
-	duration: string;
-	thumbnail: string;
-	id?: string;
+    title: string;
+    artist: string;
+    duration: string;
+    thumbnail: string;
+    id?: string;
 }
 
 interface PlaylistTrack extends Track {
-	isPlaying?: boolean;
-	index: number;
+    isPlaying?: boolean;
+    index: number;
 }
 
 interface YTMusicPlaylist extends Playlist {
-	thumbnail?: string;
-	creator?: string;
+    thumbnail?: string;
+    creator?: string;
 }
 
 interface PlayerState {
-	isPlaying: boolean;
-	currentTrack: Track | null;
-	currentTime: string;
-	isLoading: boolean;
-	error: string | null;
-	playlist: PlaylistTrack[];
-	songs?: PlaylistTrack[];
-	suggestions?: PlaylistTrack[];
-	currentTrackIndex: number;
-	availablePlaylists: YTMusicPlaylist[];
-	currentPlaylistId?: string;
+    isPlaying: boolean;
+    currentTrack: Track | null;
+    currentTime: string;
+    isLoading: boolean;
+    error: string | null;
+    playlist: PlaylistTrack[];
+    songs?: PlaylistTrack[];
+    suggestions?: PlaylistTrack[];
+    currentTrackIndex: number;
+    availablePlaylists: YTMusicPlaylist[];
+    currentPlaylistId?: string;
 }
 
 const injectedJavaScript = `
@@ -860,258 +860,238 @@ const injectedJavaScript = `
 
 // Load cached playlists synchronously
 const loadCachedYTMPlaylists = (): YTMusicPlaylist[] => {
-	try {
-		const allPlaylists = getAllPlaylists();
-		const ytmPlaylists = allPlaylists.filter((p) => p.type === "ytm");
+    try {
+        const allPlaylists = getAllPlaylists();
+        const ytmPlaylists = allPlaylists.filter((p) => p.type === "ytm");
 
-		return ytmPlaylists;
-	} catch (error) {
-		console.warn("Failed to load cached playlists on startup:", error);
-		return [];
-	}
+        return ytmPlaylists;
+    } catch (error) {
+        console.warn("Failed to load cached playlists on startup:", error);
+        return [];
+    }
 };
 
 // Create observable player state outside component for global access
 const playerState$ = useObservable<PlayerState>({
-	isPlaying: false,
-	currentTrack: null,
-	currentTime: "0:00",
-	isLoading: true,
-	error: null,
-	playlist: [],
-	currentTrackIndex: -1,
-	availablePlaylists: loadCachedYTMPlaylists(),
-	currentPlaylistId: undefined,
+    isPlaying: false,
+    currentTrack: null,
+    currentTime: "0:00",
+    isLoading: true,
+    error: null,
+    playlist: [],
+    currentTrackIndex: -1,
+    availablePlaylists: loadCachedYTMPlaylists(),
+    currentPlaylistId: undefined,
 });
 
 let webViewRef: React.MutableRefObject<WebView | null> | null = null;
 
 const executeCommand = (command: string, ...args: any[]) => {
-	const script = `window.ytMusicControls.${command}(${args.map((arg) => JSON.stringify(arg)).join(", ")}); true;`;
-	webViewRef?.current?.injectJavaScript(script);
+    const script = `window.ytMusicControls.${command}(${args.map((arg) => JSON.stringify(arg)).join(", ")}); true;`;
+    webViewRef?.current?.injectJavaScript(script);
 };
 
 // Function to sync YouTube Music playlists with our persistent storage
 const syncYouTubeMusicPlaylists = (ytmPlaylists: YTMusicPlaylist[]) => {
-	try {
-		batch(() => {
-			let i = 0;
-			for (const ytmPlaylist of ytmPlaylists) {
-				const existingPlaylist = getPlaylist(ytmPlaylist.id);
+    try {
+        batch(() => {
+            let i = 0;
+            for (const ytmPlaylist of ytmPlaylists) {
+                const existingPlaylist = getPlaylist(ytmPlaylist.id);
 
-				if (existingPlaylist) {
-					// Update existing playlist with latest info
-					updatePlaylist(ytmPlaylist.id, {
-						name: ytmPlaylist.name,
-						count: ytmPlaylist.count || 0,
-						index: ytmPlaylist.index, // Update the sidebar index
-						// Don't update path for YTM playlists as they're web-based
-					});
-				} else {
-					// Add new YouTube Music playlist
-					addPlaylist({
-						...ytmPlaylist,
-						// TODO: Could the path be the actual url for playing the playlist?
-						path: "",
-						type: "ytm",
-						order: i,
-						index: ytmPlaylist.index, // Store the sidebar index
-					});
-				}
-				i++;
-			}
-		});
+                if (existingPlaylist) {
+                    // Update existing playlist with latest info
+                    updatePlaylist(ytmPlaylist.id, {
+                        name: ytmPlaylist.name,
+                        count: ytmPlaylist.count || 0,
+                        index: ytmPlaylist.index, // Update the sidebar index
+                        // Don't update path for YTM playlists as they're web-based
+                    });
+                } else {
+                    // Add new YouTube Music playlist
+                    addPlaylist({
+                        ...ytmPlaylist,
+                        // TODO: Could the path be the actual url for playing the playlist?
+                        path: "",
+                        type: "ytm",
+                        order: i,
+                        index: ytmPlaylist.index, // Store the sidebar index
+                    });
+                }
+                i++;
+            }
+        });
 
-		console.log(`Synced ${ytmPlaylists.length} YouTube Music playlists`);
-	} catch (error) {
-		console.error("Failed to sync YouTube Music playlists:", error);
-	}
+        console.log(`Synced ${ytmPlaylists.length} YouTube Music playlists`);
+    } catch (error) {
+        console.error("Failed to sync YouTube Music playlists:", error);
+    }
 };
 
 // Function to update playlist content (M3U format) when tracks are received
 const updatePlaylistContent = (
-	playlistId: string | undefined,
-	songs: PlaylistTrack[],
-	suggestions: PlaylistTrack[] = [],
+    playlistId: string | undefined,
+    songs: PlaylistTrack[],
+    suggestions: PlaylistTrack[] = [],
 ) => {
-	if (!playlistId || (songs.length === 0 && suggestions.length === 0)) {
-		return;
-	}
+    if (!playlistId || (songs.length === 0 && suggestions.length === 0)) {
+        return;
+    }
 
-	try {
-		// Convert YouTube Music songs to M3U format
-		const m3uSongs: M3UTrack[] = songs.map((track) => ({
-			duration: parseDurationToSeconds(track.duration), // Parse MM:SS format to seconds
-			title: track.title,
-			artist: track.artist,
-			filePath: track.id
-				? `ytm://${track.id}`
-				: `ytm://search/${encodeURIComponent(track.title)}`,
-		}));
+    try {
+        // Convert YouTube Music songs to M3U format
+        const m3uSongs: M3UTrack[] = songs.map((track) => ({
+            duration: parseDurationToSeconds(track.duration), // Parse MM:SS format to seconds
+            title: track.title,
+            artist: track.artist,
+            filePath: track.id ? `ytm://${track.id}` : `ytm://search/${encodeURIComponent(track.title)}`,
+        }));
 
-		// Convert YouTube Music suggestions to M3U format
-		const m3uSuggestions: M3UTrack[] = suggestions.map((track) => ({
-			duration: parseDurationToSeconds(track.duration), // Parse MM:SS format to seconds
-			title: track.title,
-			artist: track.artist,
-			filePath: track.id
-				? `ytm://${track.id}`
-				: `ytm://search/${encodeURIComponent(track.title)}`,
-		}));
+        // Convert YouTube Music suggestions to M3U format
+        const m3uSuggestions: M3UTrack[] = suggestions.map((track) => ({
+            duration: parseDurationToSeconds(track.duration), // Parse MM:SS format to seconds
+            title: track.title,
+            artist: track.artist,
+            filePath: track.id ? `ytm://${track.id}` : `ytm://search/${encodeURIComponent(track.title)}`,
+        }));
 
-		// Get the playlist content observable and update it
-		const playlistContent$ = getPlaylistContent(playlistId);
-		playlistContent$.set({
-			songs: m3uSongs,
-			suggestions: m3uSuggestions,
-		});
+        // Get the playlist content observable and update it
+        const playlistContent$ = getPlaylistContent(playlistId);
+        playlistContent$.set({
+            songs: m3uSongs,
+            suggestions: m3uSuggestions,
+        });
 
-		console.log(
-			`Updated playlist content for ${playlistId} with ${m3uSongs.length} songs and ${m3uSuggestions.length} suggestions`,
-		);
-	} catch (error) {
-		console.error(
-			`Failed to update playlist content for ${playlistId}:`,
-			error,
-		);
-	}
+        console.log(
+            `Updated playlist content for ${playlistId} with ${m3uSongs.length} songs and ${m3uSuggestions.length} suggestions`,
+        );
+    } catch (error) {
+        console.error(`Failed to update playlist content for ${playlistId}:`, error);
+    }
 };
 
 // Expose control methods
 const controls = {
-	playPause: () => executeCommand("playPause"),
-	next: () => executeCommand("next"),
-	previous: () => executeCommand("previous"),
-	setVolume: (volume: number) => executeCommand("setVolume", volume),
-	seek: (seconds: number) => executeCommand("seek", seconds),
-	playTrackAtIndex: (index: number) =>
-		executeCommand("playTrackAtIndex", index),
-	navigateToPlaylist: (playlistId: string) => {
-		// Look up the playlist to get its index if it's a YTM playlist
-		const playlist = getPlaylist(playlistId);
-		if (playlist?.type === "ytm" && playlist.index !== undefined) {
-			executeCommand("navigateToPlaylistByIndex", playlist.index);
-		} else {
-			executeCommand("navigateToPlaylist", playlistId);
-		}
-	},
-	setCurrentPlaylist: (playlistId: string) =>
-		executeCommand("setCurrentPlaylist", playlistId),
+    playPause: () => executeCommand("playPause"),
+    next: () => executeCommand("next"),
+    previous: () => executeCommand("previous"),
+    setVolume: (volume: number) => executeCommand("setVolume", volume),
+    seek: (seconds: number) => executeCommand("seek", seconds),
+    playTrackAtIndex: (index: number) => executeCommand("playTrackAtIndex", index),
+    navigateToPlaylist: (playlistId: string) => {
+        // Look up the playlist to get its index if it's a YTM playlist
+        const playlist = getPlaylist(playlistId);
+        if (playlist?.type === "ytm" && playlist.index !== undefined) {
+            executeCommand("navigateToPlaylistByIndex", playlist.index);
+        } else {
+            executeCommand("navigateToPlaylist", playlistId);
+        }
+    },
+    setCurrentPlaylist: (playlistId: string) => executeCommand("setCurrentPlaylist", playlistId),
 };
 
 export function YouTubeMusicPlayer() {
-	const localWebViewRef = useRef<WebView>(null);
+    const localWebViewRef = useRef<WebView>(null);
 
-	// Set the global ref to this instance
-	React.useEffect(() => {
-		webViewRef = localWebViewRef;
-		return () => {
-			webViewRef = null;
-		};
-	}, []);
+    // Set the global ref to this instance
+    React.useEffect(() => {
+        webViewRef = localWebViewRef;
+        return () => {
+            webViewRef = null;
+        };
+    }, []);
 
-	// Log cached playlists on component mount
-	useEffect(() => {
-		const cachedPlaylists = playerState$.availablePlaylists.get();
-		if (cachedPlaylists.length > 0) {
-			console.log(
-				`Loaded ${cachedPlaylists.length} persisted YouTube Music playlists on startup`,
-			);
-		}
-	}, []);
+    // Log cached playlists on component mount
+    useEffect(() => {
+        const cachedPlaylists = playerState$.availablePlaylists.get();
+        if (cachedPlaylists.length > 0) {
+            console.log(`Loaded ${cachedPlaylists.length} persisted YouTube Music playlists on startup`);
+        }
+    }, []);
 
-	const handleMessage = (event: any) => {
-		try {
-			const message = JSON.parse(event.nativeEvent.data);
+    const handleMessage = (event: any) => {
+        try {
+            const message = JSON.parse(event.nativeEvent.data);
 
-			console.log({ message });
+            console.log({ message });
 
-			switch (message.type) {
-				case "playerState": {
-					const newState = message.data;
-					playerState$.assign(newState);
+            switch (message.type) {
+                case "playerState": {
+                    const newState = message.data;
+                    playerState$.assign(newState);
 
-					// Sync YouTube Music playlists when they're updated
-					if (
-						newState.availablePlaylists &&
-						Array.isArray(newState.availablePlaylists)
-					) {
-						syncYouTubeMusicPlaylists(newState.availablePlaylists);
-					}
+                    // Sync YouTube Music playlists when they're updated
+                    if (newState.availablePlaylists && Array.isArray(newState.availablePlaylists)) {
+                        syncYouTubeMusicPlaylists(newState.availablePlaylists);
+                    }
 
-					// Update playlist content (M3U format) when tracks are received
-					if (newState.songs && Array.isArray(newState.songs)) {
-						updatePlaylistContent(
-							stateSaved$.playlist.get(),
-							newState.songs,
-							newState.suggestions || [],
-						);
-					}
-					break;
-				}
-				case "error":
-					playerState$.error.set(message.data.error);
-					playerState$.isLoading.set(false);
-					break;
-				case "injectionComplete":
-					playerState$.isLoading.set(false);
-					break;
-				case "updatePlaylistId": {
-					const { oldId, newId } = message.data;
-					console.log("Updating playlist ID from", oldId, "to", newId);
-					
-					// Find the playlist with the temporary ID and update it
-					const playlist = getPlaylist(oldId);
-					if (playlist) {
-						// Remove the old playlist entry
-						removePlaylist(oldId);
-						
-						// Add the playlist with the new ID, preserving all other data
-						addPlaylist({
-							...playlist,
-							id: newId
-						});
-						
-						console.log("Successfully updated playlist ID");
-					}
-					break;
-				}
-			}
-		} catch (error) {
-			console.error("Failed to parse WebView message:", error);
-			playerState$.error.set("Failed to parse player message");
-		}
-	};
+                    // Update playlist content (M3U format) when tracks are received
+                    if (newState.songs && Array.isArray(newState.songs)) {
+                        updatePlaylistContent(stateSaved$.playlist.get(), newState.songs, newState.suggestions || []);
+                    }
+                    break;
+                }
+                case "error":
+                    playerState$.error.set(message.data.error);
+                    playerState$.isLoading.set(false);
+                    break;
+                case "injectionComplete":
+                    playerState$.isLoading.set(false);
+                    break;
+                case "updatePlaylistId": {
+                    const { oldId, newId } = message.data;
+                    console.log("Updating playlist ID from", oldId, "to", newId);
 
-	return (
-		<View className="flex-1">
-			<WebView
-				ref={localWebViewRef}
-				source={{ uri: "https://music.youtube.com" }}
-				javaScriptEnabled={true}
-				webviewDebuggingEnabled
-				domStorageEnabled={true}
-				startInLoadingState={true}
-				mixedContentMode="compatibility"
-				allowsInlineMediaPlayback={true}
-				mediaPlaybackRequiresUserAction={false}
-				injectedJavaScript={injectedJavaScript}
-				onMessage={handleMessage}
-				onLoadStart={() => playerState$.isLoading.set(true)}
-				onLoadEnd={() => {
-					// Injection will set loading to false
-				}}
-				onError={(error) => {
-					playerState$.error.set(
-						`WebView error: ${error.nativeEvent.description}`,
-					);
-					playerState$.isLoading.set(false);
-				}}
-				userAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:123.0) LegendMusic/1.0 Gecko/20100101 Firefox/123.0"
-				className="flex-1"
-			/>
-		</View>
-	);
+                    // Find the playlist with the temporary ID and update it
+                    const playlist = getPlaylist(oldId);
+                    if (playlist) {
+                        // Remove the old playlist entry
+                        removePlaylist(oldId);
+
+                        // Add the playlist with the new ID, preserving all other data
+                        addPlaylist({
+                            ...playlist,
+                            id: newId,
+                        });
+
+                        console.log("Successfully updated playlist ID");
+                    }
+                    break;
+                }
+            }
+        } catch (error) {
+            console.error("Failed to parse WebView message:", error);
+            playerState$.error.set("Failed to parse player message");
+        }
+    };
+
+    return (
+        <View className="flex-1">
+            <WebView
+                ref={localWebViewRef}
+                source={{ uri: "https://music.youtube.com" }}
+                javaScriptEnabled={true}
+                webviewDebuggingEnabled
+                domStorageEnabled={true}
+                startInLoadingState={true}
+                mixedContentMode="compatibility"
+                allowsInlineMediaPlayback={true}
+                mediaPlaybackRequiresUserAction={false}
+                injectedJavaScript={injectedJavaScript}
+                onMessage={handleMessage}
+                onLoadStart={() => playerState$.isLoading.set(true)}
+                onLoadEnd={() => {
+                    // Injection will set loading to false
+                }}
+                onError={(error) => {
+                    playerState$.error.set(`WebView error: ${error.nativeEvent.description}`);
+                    playerState$.isLoading.set(false);
+                }}
+                userAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:123.0) LegendMusic/1.0 Gecko/20100101 Firefox/123.0"
+                className="flex-1"
+            />
+        </View>
+    );
 }
 
 // Export player state and controls for use in other components
