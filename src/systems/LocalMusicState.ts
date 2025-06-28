@@ -149,8 +149,6 @@ async function scanDirectory(directoryPath: string): Promise<LocalTrack[]> {
                     // Extract metadata from ID3 tags with filename fallback
                     const metadata = await extractId3Metadata(filePath, item.name);
 
-                    console.log("metadata", metadata);
-
                     const track: LocalTrack = {
                         id: generateTrackId(filePath),
                         title: metadata.title,

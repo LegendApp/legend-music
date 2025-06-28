@@ -1,4 +1,4 @@
-import { batch } from "@legendapp/state";
+import { batch, observable } from "@legendapp/state";
 import { useObservable } from "@legendapp/state/react";
 import React, { useEffect, useRef } from "react";
 import { View } from "react-native";
@@ -56,104 +56,141 @@ const injectedJavaScript = `
         try {
             const playlists = [];
 
-            // Strategy 1: Extract playlists from sidebar guide entries
-            const sidebarPlaylists = document.querySelectorAll('ytmusic-guide-entry-renderer[play-button-state="default"]');
+            // Strategy 1: Extract playlists from script tags containing JSON data
+            const scriptTags = document.querySelectorAll('script');
+            let guideData = null;
 
-            sidebarPlaylists.forEach((element, index) => {
-                const titleEl = element.querySelector('.title-column .title-group .title');
-                const creatorEl = element.querySelector('.title-column .subtitle-group .subtitle');
-                const thumbnailEl = element.querySelector('img');
-                const linkEl = element.querySelector('tp-yt-paper-item[href]');
+            for (const script of scriptTags) {
+                const scriptContent = script.textContent || script.innerHTML;
 
-                if (titleEl) {
-                    const title = titleEl.textContent?.trim() || '';
-                    const creator = creatorEl?.textContent?.trim() || '';
-                    const href = linkEl?.getAttribute('href') || '';
+                // Look for the initialData structure that YouTube Music actually uses
+                if (scriptContent.includes('const initialData') && scriptContent.includes('guideEntryRenderer')) {
+                    try {
+                        // Extract the initialData.push calls and find guide data
+                        const pushMatches = scriptContent.matchAll(/initialData\\.push\\(\\{path:\\s*'([^']+)',\\s*params:\\s*JSON\\.parse\\('([^']+)'\\),\\s*data:\\s*'([^']+)'\\}\\);/g);
+                        const pushMatchesArr = pushMatches?.toArray() || [];
 
-                    // Extract playlist ID from href (e.g., "playlist?list=PLnWuRxn_At6...")
-                    let playlistId = 'sidebar_' + index;
-                    if (href.includes('playlist?list=')) {
-                        playlistId = href.split('playlist?list=')[1].split('&')[0];
-                    } else if (href.includes('library/')) {
-                        playlistId = href.split('library/')[1] || 'library';
-                    }
+                        for (const match of pushMatchesArr) {
+                            const path = match[1];
+                            const dataString = match[3];
 
-                    // Include ALL sidebar items - no filtering
-                    // Everything in the sidebar should be available to the user
-                    if (title) {
-                        playlists.push({
-                            id: playlistId,
-                            name: title,
-                            thumbnail: thumbnailEl?.src || '',
-                            count: 0,
-                            creator: creator,
-                            index: index  // Store the sidebar index for reliable opening
-                        });
+                            // Look for guide data (sidebar navigation)
+                            if (path.includes('guide')) {
+                                // Decode the escaped JSON string
+                                const decodedData = dataString.replace(/\\\\x([0-9A-Fa-f]{2})/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)));
+                                try {
+                                    const parsedData = JSON.parse(decodedData);
+                                    guideData = parsedData;
+                                    console.log('Found guide data in initialData', parsedData);
+                                    break;
+                                } catch {}
+                            }
+                        }
+                    } catch (e) {
+                        console.log('Failed to parse initialData from script tag:', e);
+                        continue;
                     }
                 }
-            });
+            }
 
-            // Strategy 2: Extract playlists from main library grid
-            const gridPlaylists = document.querySelectorAll('ytmusic-two-row-item-renderer');
+            debugger;
 
-            gridPlaylists.forEach((element, index) => {
-                const titleEl = element.querySelector('.title-group .title a, .title-group .title');
-                const thumbnailEl = element.querySelector('ytmusic-thumbnail-renderer img');
-                const subtitleEl = element.querySelector('.substring-group .subtitle');
-                const linkEl = element.querySelector('a[href*="playlist?list="]');
+            // Extract playlists from guideData if found
+            if (guideData) {
+                console.log('Processing guide data for playlists...');
 
-                if (titleEl) {
-                    const title = titleEl.textContent?.trim() || '';
-                    const subtitle = subtitleEl?.textContent?.trim() || '';
+                function findGuideEntryRenderers(obj, path = '', visitedIds = new Set()) {
+                    if (!obj || typeof obj !== 'object') return [];
 
-                    // Extract playlist ID from href
-                    let playlistId = 'grid_' + index;
-                    if (linkEl) {
-                        const href = linkEl.getAttribute('href') || '';
-                        if (href.includes('playlist?list=')) {
-                            playlistId = href.split('playlist?list=')[1].split('&')[0];
+                    const results = [];
+
+                    // Check if current object is a guideEntryRenderer
+                    if (obj.guideEntryRenderer) {
+                        const renderer = obj.guideEntryRenderer;
+
+                        // Extract playlist information
+                        if (renderer.navigationEndpoint?.browseEndpoint?.browseId && renderer.formattedTitle) {
+                            const browseId = renderer.navigationEndpoint.browseEndpoint.browseId;
+
+                            // Skip if we've already processed this browseId
+                            if (visitedIds.has(browseId)) {
+                                return [];
+                            }
+                            visitedIds.add(browseId);
+
+                            let title = '';
+
+                            // Extract title from various possible structures
+                            if (typeof renderer.formattedTitle === 'string') {
+                                title = renderer.formattedTitle;
+                            } else if (renderer.formattedTitle?.simpleText) {
+                                title = renderer.formattedTitle.simpleText;
+                            } else if (renderer.formattedTitle?.runs) {
+                                title = renderer.formattedTitle.runs.map(r => r.text).join('');
+                            }
+
+                            // Extract thumbnail if available
+                            let thumbnail = '';
+                            if (renderer.icon?.iconType || renderer.thumbnail?.thumbnails) {
+                                const thumbnails = renderer.thumbnail?.thumbnails;
+                                if (thumbnails && thumbnails.length > 0) {
+                                    thumbnail = thumbnails[thumbnails.length - 1].url; // Get highest quality
+                                }
+                            }
+
+                            // Determine playlist type and extract count if available
+                            let count = 0;
+                            let creator = '';
+
+                            if (renderer.formattedSubtitle) {
+                                let subtitleText = '';
+                                if (typeof renderer.formattedSubtitle === 'string') {
+                                    subtitleText = renderer.formattedSubtitle;
+                                } else if (renderer.formattedSubtitle?.simpleText) {
+                                    subtitleText = renderer.formattedSubtitle.simpleText;
+                                } else if (renderer.formattedSubtitle?.runs) {
+                                    subtitleText = renderer.formattedSubtitle.runs.map(r => r.text).join('');
+                                }
+
+                                // Extract count from subtitle
+                                const countMatch = subtitleText.match(/(\\d+)\\s+(songs?|tracks?)/i);
+                                if (countMatch) {
+                                    count = parseInt(countMatch[1]) || 0;
+                                }
+
+                                // Extract creator (everything before count usually)
+                                creator = subtitleText.replace(/\\s*•\\s*\\d+\\s+(songs?|tracks?).*$/i, '').trim();
+                            }
+
+                            if (title && browseId) {
+                                results.push({
+                                    id: browseId,
+                                    name: title,
+                                    thumbnail: thumbnail,
+                                    count: count,
+                                    creator: creator
+                                });
+                            }
                         }
                     }
 
-                    // Extract track count from subtitle (e.g., "Playlist • Creator • 25 songs")
-                    let trackCount = 0;
-                    const trackMatch = subtitle.match(/(\d+)\s+(songs?|tracks?)/i);
-                    if (trackMatch) {
-                        trackCount = parseInt(trackMatch[1]) || 0;
+                    // Recursively search through all properties
+                    for (const key in obj) {
+                        if (obj.hasOwnProperty(key) && typeof obj[key] === 'object') {
+                            results.push(...findGuideEntryRenderers(obj[key], path + '.' + key, visitedIds));
+                        }
                     }
 
-                    // Extract creator from subtitle
-                    let creator = '';
-                    const creatorEl = subtitleEl?.querySelector('a[href*="channel/"]');
-                    if (creatorEl) {
-                        creator = creatorEl.textContent?.trim() || '';
-                    }
-
-                    // Only include if it has a valid playlist link and appears to be a playlist
-                    const hasPlaylistLink = linkEl && linkEl.getAttribute('href')?.includes('playlist?list=');
-                    const isPlaylistType = subtitle.toLowerCase().includes('playlist') ||
-                                         subtitle.toLowerCase().includes('songs') ||
-                                         subtitle.toLowerCase().includes('tracks');
-
-                    // Exclude albums, artists, and other non-playlist content
-                    const isNotPlaylist = subtitle.toLowerCase().includes('album') ||
-                                        subtitle.toLowerCase().includes('artist') ||
-                                        subtitle.toLowerCase().includes('ep') ||
-                                        subtitle.toLowerCase().includes('single');
-
-                    if (title && hasPlaylistLink && isPlaylistType && !isNotPlaylist) {
-                        playlists.push({
-                            id: playlistId,
-                            name: title,
-                            thumbnail: thumbnailEl?.src || '',
-                            count: trackCount,
-                            creator: creator
-                        });
-                    }
+                    return results;
                 }
-            });
 
-            // Strategy 3: Add "Now Playing" at the top and Liked Music if not found
+                const foundPlaylists = findGuideEntryRenderers(guideData);
+                playlists.push(...foundPlaylists);
+                console.log('Found', foundPlaylists.length, 'playlists from guide data');
+            }
+
+
+            // Strategy 4: Add "Now Playing" at the top
             playlists.unshift({
                 id: 'NOW_PLAYING',
                 name: 'Now Playing',
@@ -162,20 +199,18 @@ const injectedJavaScript = `
                 creator: ''
             });
 
-            // Remove duplicates based on ID or title
-            const uniquePlaylists = playlists.filter((playlist, index, self) =>
-                index === self.findIndex(p =>
-                    p.id === playlist.id ||
-                    p.name?.toLowerCase() === playlist.name.toLowerCase()
-                )
-            );
-
-            console.log('Found playlists:', uniquePlaylists.length, uniquePlaylists.map(p => p.name));
-            return uniquePlaylists;
+            console.log('Final playlist count:', playlists.length);
+            console.log('Playlists found:', playlists.map(p => ({ id: p.id, name: p.name })));
+            return playlists;
         } catch (error) {
             console.error('Error extracting playlists:', error);
-            return [
-            ];
+            return [{
+                id: 'NOW_PLAYING',
+                name: 'Now Playing',
+                thumbnail: '',
+                count: 0,
+                creator: ''
+            }];
         }
     }
 
@@ -320,40 +355,6 @@ const injectedJavaScript = `
         }
     }
 
-    function checkAndUpdatePlaylistId() {
-        try {
-            const currentUrl = window.location.href;
-            
-            // Check if we're on a playlist page
-            if (currentUrl.includes('playlist?list=') && currentPlaylistSelection) {
-                // Extract the real playlist ID from the URL
-                const urlMatch = currentUrl.match(/playlist\?list=([^&]+)/);
-                if (urlMatch) {
-                    const realPlaylistId = urlMatch[1];
-                    
-                    // Check if current selection is a temporary sidebar ID
-                    if (currentPlaylistSelection.startsWith('sidebar_')) {
-                        console.log('Updating temporary playlist ID:', currentPlaylistSelection, 'to real ID:', realPlaylistId);
-                        
-                        // Send message to React Native to update the playlist ID
-                        window.ReactNativeWebView.postMessage(JSON.stringify({
-                            type: 'updatePlaylistId',
-                            data: {
-                                oldId: currentPlaylistSelection,
-                                newId: realPlaylistId
-                            }
-                        }));
-                        
-                        // Update current selection to real ID
-                        currentPlaylistSelection = realPlaylistId;
-                    }
-                }
-            }
-        } catch (error) {
-            console.log('Error in checkAndUpdatePlaylistId:', error);
-        }
-    }
-
     function extractPlayerInfo() {
         try {
             // Get current track info
@@ -402,16 +403,13 @@ const injectedJavaScript = `
             // Get available playlists (only update occasionally to avoid performance issues)
             const availablePlaylists = extractAvailablePlaylists();
 
-            // Check if we're on a playlist page and update temporary IDs
-            checkAndUpdatePlaylistId();
-
             // Get the best quality thumbnail URL
             let thumbnailUrl = '';
             if (thumbnailElement?.src) {
                 thumbnailUrl = thumbnailElement.src;
                 // Try to get higher quality version
                 if (thumbnailUrl.includes('=w')) {
-                    thumbnailUrl = thumbnailUrl.replace(/=w\d+-h\d+/, '=w500-h500');
+                    thumbnailUrl = thumbnailUrl.replace(/=w\\d+-h\\d+/, '=w500-h500');
                 }
             }
 
@@ -872,7 +870,7 @@ const loadCachedYTMPlaylists = (): YTMusicPlaylist[] => {
 };
 
 // Create observable player state outside component for global access
-const playerState$ = useObservable<PlayerState>({
+const playerState$ = observable<PlayerState>({
     isPlaying: false,
     currentTrack: null,
     currentTime: "0:00",
