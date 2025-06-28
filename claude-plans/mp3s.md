@@ -9,9 +9,10 @@
 
 ## Steps
 
-[]
+[] Remove "playlist" from PlayerState in YoutubeMusic.tsx. Make sure that nothing is using it. Playlist.tsx should use "songs" and "suggestions" instead.
 
 ## Plan for later (do not do these yet)
 
 [] Handle media keys
+[] Get ids from songs and save that to m3u
 [] Make an expanded playlist view

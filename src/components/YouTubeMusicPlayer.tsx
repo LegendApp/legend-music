@@ -70,7 +70,7 @@ const injectedJavaScript = `
                             // Look for guide data (sidebar navigation)
                             if (path.includes('guide')) {
                                 // Decode the escaped JSON string
-                                const decodedData = dataString.replace(/\\\\x([0-9A-Fa-f]{2})/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)));
+                                const decodedData = dataString.replace(/\\\\x([0-9A-Fa-f]{2})/g, (match, hex) => String.fromCharCode(parseInt(hex, 16))).replace(/\\"/g, '"');
                                 try {
                                     const parsedData = JSON.parse(decodedData);
                                     guideData = parsedData;
@@ -253,7 +253,7 @@ const injectedJavaScript = `
                                 // Look for browse data (playlist content)
                                 if (path.includes('browse')) {
                                     // Decode the escaped JSON string
-                                    const decodedData = dataString.replace(/\\\\x([0-9A-Fa-f]{2})/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)));
+                                    const decodedData = dataString.replace(/\\\\x([0-9A-Fa-f]{2})/g, (match, hex) => String.fromCharCode(parseInt(hex, 16))).replace(/\\"/g, '"');
                                     try {
                                         const parsedData = JSON.parse(decodedData);
                                         console.log('Found browse data in initialData', parsedData);
@@ -325,7 +325,8 @@ const injectedJavaScript = `
                                 duration: duration,
                                 thumbnail: thumbnailEl?.src || '',
                                 index: targetArray.length, // Use target array length for proper indexing
-                                isPlaying: isPlaying
+                                isPlaying: isPlaying,
+                                fromShelf: arrayName
                             };
 
                             targetArray.push(track);
@@ -376,7 +377,8 @@ const injectedJavaScript = `
                                         duration: duration,
                                         thumbnail: thumbnailEl?.src || '',
                                         index: index,
-                                        isPlaying: isPlaying
+                                        isPlaying: isPlaying,
+                                        fromShelf: true
                                     };
 
                                     // For queue items, all are considered songs
@@ -499,11 +501,11 @@ const injectedJavaScript = `
                 // Only add if we have essential data
                 if (title && artist && videoId) {
                     songs.push({
+                        id: videoId,
                         title: title,
                         artist: artist,
                         duration: duration,
                         thumbnail: thumbnail,
-                        id: videoId,
                         index: songs.length,
                         isPlaying: false // We'll determine this later
                     });
@@ -1152,8 +1154,6 @@ export function YouTubeMusicPlayer() {
     const handleMessage = (event: any) => {
         try {
             const message = JSON.parse(event.nativeEvent.data);
-
-            console.log({ message });
 
             switch (message.type) {
                 case "playerState": {
