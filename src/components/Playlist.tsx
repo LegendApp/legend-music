@@ -1,10 +1,70 @@
+import { LegendList } from "@legendapp/list";
 import { use$, useObservable } from "@legendapp/state/react";
-import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { localAudioControls, localPlayerState$ } from "@/components/LocalAudioPlayer";
 import { controls, playerState$ } from "@/components/YouTubeMusicPlayer";
 import { localMusicState$ } from "@/systems/LocalMusicState";
 import { cn } from "@/utils/cn";
+
+interface PlaylistTrack {
+	title: string;
+	artist: string;
+	duration: string;
+	thumbnail: string;
+	index: number;
+	isPlaying?: boolean;
+}
+
+interface TrackItemProps {
+	track: PlaylistTrack;
+	index: number;
+	currentTrackIndex: number;
+	clickedTrackIndex: number | null;
+	onTrackClick: (index: number) => void;
+}
+
+const TrackItem = ({ track, index, currentTrackIndex, clickedTrackIndex, onTrackClick }: TrackItemProps) => (
+	<TouchableOpacity
+		className={cn(
+			"flex-row items-center px-4 py-2",
+			index === currentTrackIndex
+				? "bg-white/10"
+				: clickedTrackIndex === index
+					? "bg-orange-500/20"
+					: "",
+		)}
+		onPress={() => onTrackClick(index)}
+	>
+		<Text className="text-white/60 text-base w-8">{index + 1}</Text>
+
+		{track.thumbnail ? (
+			<Image
+				source={{ uri: track.thumbnail }}
+				className="size-9 rounded-lg"
+				resizeMode="cover"
+			/>
+		) : (
+			<View className="w-12 h-12 bg-white/20 rounded-lg ml-4 items-center justify-center">
+				<Text className="text-white text-xs">♪</Text>
+			</View>
+		)}
+
+		<View className="flex-1 ml-4 mr-8">
+			<Text
+				className="text-white text-sm font-medium"
+				numberOfLines={1}
+			>
+				{track.title}
+			</Text>
+			<Text className="text-white/50 text-sm" numberOfLines={1}>
+				{track.artist}
+			</Text>
+		</View>
+
+		<Text className="text-white/60 text-base">{track.duration}</Text>
+	</TouchableOpacity>
+);
 
 export function Playlist() {
 	const playerState = use$(playerState$);
@@ -84,51 +144,29 @@ export function Playlist() {
 					</Text>
 				</View>
 			) : (
-				<ScrollView showsVerticalScrollIndicator={false}>
-					{playlist.map((track, index) => (
-						<TouchableOpacity
+				<LegendList
+					data={playlist}
+					keyExtractor={(item, index) => `track-${index}`}
+					contentContainerStyle={styles.container}
+					recycleItems
+					renderItem={({ item: track, index }) => (
+						<TrackItem
 							key={index}
-							className={cn(
-								"flex-row items-center px-4 py-2",
-								index === currentTrackIndex
-									? "bg-white/10"
-									: clickedTrackIndex === index
-										? "bg-orange-500/20"
-										: "",
-							)}
-							onPress={() => handleTrackClick(index)}
-						>
-							<Text className="text-white/60 text-base w-8">{index + 1}</Text>
-
-							{track.thumbnail ? (
-								<Image
-									source={{ uri: track.thumbnail }}
-									className="size-9 rounded-lg"
-									resizeMode="cover"
-								/>
-							) : (
-								<View className="w-12 h-12 bg-white/20 rounded-lg ml-4 items-center justify-center">
-									<Text className="text-white text-xs">♪</Text>
-								</View>
-							)}
-
-							<View className="flex-1 ml-4 mr-8">
-								<Text
-									className="text-white text-sm font-medium"
-									numberOfLines={1}
-								>
-									{track.title}
-								</Text>
-								<Text className="text-white/50 text-sm" numberOfLines={1}>
-									{track.artist}
-								</Text>
-							</View>
-
-							<Text className="text-white/60 text-base">{track.duration}</Text>
-						</TouchableOpacity>
-					))}
-				</ScrollView>
+							track={track}
+							index={index}
+							currentTrackIndex={currentTrackIndex}
+							clickedTrackIndex={clickedTrackIndex}
+							onTrackClick={handleTrackClick}
+						/>
+					)}
+				/>
 			)}
 		</View>
 	);
 }
+
+const styles = StyleSheet.create({
+	container: {
+		paddingVertical: 4,
+	},
+});
