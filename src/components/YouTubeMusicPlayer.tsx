@@ -1,18 +1,11 @@
 import { batch, observable } from "@legendapp/state";
-import { useObservable } from "@legendapp/state/react";
 import React, { useEffect, useRef } from "react";
 import { View } from "react-native";
 import { WebView } from "react-native-webview";
 import { getPlaylistContent } from "@/systems/PlaylistContent";
-import {
-    addPlaylist,
-    getAllPlaylists,
-    getPlaylist,
-    type Playlist,
-    removePlaylist,
-    updatePlaylist,
-} from "@/systems/Playlists";
+import { getAllPlaylists, getPlaylist, type Playlist, playlistsData$ } from "@/systems/Playlists";
 import { stateSaved$ } from "@/systems/State";
+import { arrayToObject } from "@/utils/arrayToObject";
 import type { M3UTrack } from "@/utils/m3u";
 import { parseDurationToSeconds } from "@/utils/m3u";
 
@@ -93,16 +86,14 @@ const injectedJavaScript = `
                 }
             }
 
-            debugger;
-
             // Extract playlists from guideData if found
             if (guideData) {
                 console.log('Processing guide data for playlists...');
+                const results = [];
 
                 function findGuideEntryRenderers(obj, path = '', visitedIds = new Set()) {
                     if (!obj || typeof obj !== 'object') return [];
 
-                    const results = [];
 
                     // Check if current object is a guideEntryRenderer
                     if (obj.guideEntryRenderer) {
@@ -111,6 +102,10 @@ const injectedJavaScript = `
                         // Extract playlist information
                         if (renderer.navigationEndpoint?.browseEndpoint?.browseId && renderer.formattedTitle) {
                             const browseId = renderer.navigationEndpoint.browseEndpoint.browseId;
+
+                            if (!browseId || !browseId.startsWith('VL')) {
+                                return [];
+                            }
 
                             // Skip if we've already processed this browseId
                             if (visitedIds.has(browseId)) {
@@ -168,7 +163,8 @@ const injectedJavaScript = `
                                     name: title,
                                     thumbnail: thumbnail,
                                     count: count,
-                                    creator: creator
+                                    creator: creator,
+                                    index: results.length
                                 });
                             }
                         }
@@ -177,16 +173,14 @@ const injectedJavaScript = `
                     // Recursively search through all properties
                     for (const key in obj) {
                         if (obj.hasOwnProperty(key) && typeof obj[key] === 'object') {
-                            results.push(...findGuideEntryRenderers(obj[key], path + '.' + key, visitedIds));
+                            findGuideEntryRenderers(obj[key], path + '.' + key, visitedIds);
                         }
                     }
-
-                    return results;
                 }
 
-                const foundPlaylists = findGuideEntryRenderers(guideData);
-                playlists.push(...foundPlaylists);
-                console.log('Found', foundPlaylists.length, 'playlists from guide data');
+                findGuideEntryRenderers(guideData);
+                playlists.push(...results);
+                console.log('Found', results.length, 'playlists from guide data');
             }
 
 
@@ -893,31 +887,7 @@ const executeCommand = (command: string, ...args: any[]) => {
 const syncYouTubeMusicPlaylists = (ytmPlaylists: YTMusicPlaylist[]) => {
     try {
         batch(() => {
-            let i = 0;
-            for (const ytmPlaylist of ytmPlaylists) {
-                const existingPlaylist = getPlaylist(ytmPlaylist.id);
-
-                if (existingPlaylist) {
-                    // Update existing playlist with latest info
-                    updatePlaylist(ytmPlaylist.id, {
-                        name: ytmPlaylist.name,
-                        count: ytmPlaylist.count || 0,
-                        index: ytmPlaylist.index, // Update the sidebar index
-                        // Don't update path for YTM playlists as they're web-based
-                    });
-                } else {
-                    // Add new YouTube Music playlist
-                    addPlaylist({
-                        ...ytmPlaylist,
-                        // TODO: Could the path be the actual url for playing the playlist?
-                        path: "",
-                        type: "ytm",
-                        order: i,
-                        index: ytmPlaylist.index, // Store the sidebar index
-                    });
-                }
-                i++;
-            }
+            playlistsData$.playlistsYtm.set(arrayToObject(ytmPlaylists, "id"));
         });
 
         console.log(`Synced ${ytmPlaylists.length} YouTube Music playlists`);
@@ -1036,26 +1006,6 @@ export function YouTubeMusicPlayer() {
                 case "injectionComplete":
                     playerState$.isLoading.set(false);
                     break;
-                case "updatePlaylistId": {
-                    const { oldId, newId } = message.data;
-                    console.log("Updating playlist ID from", oldId, "to", newId);
-
-                    // Find the playlist with the temporary ID and update it
-                    const playlist = getPlaylist(oldId);
-                    if (playlist) {
-                        // Remove the old playlist entry
-                        removePlaylist(oldId);
-
-                        // Add the playlist with the new ID, preserving all other data
-                        addPlaylist({
-                            ...playlist,
-                            id: newId,
-                        });
-
-                        console.log("Successfully updated playlist ID");
-                    }
-                    break;
-                }
             }
         } catch (error) {
             console.error("Failed to parse WebView message:", error);
@@ -1093,5 +1043,5 @@ export function YouTubeMusicPlayer() {
 }
 
 // Export player state and controls for use in other components
-export { playerState$, controls };
-export type { Track, PlaylistTrack, PlayerState, YTMusicPlaylist };
+export { controls, playerState$ };
+export type { PlayerState, PlaylistTrack, Track, YTMusicPlaylist };

@@ -11,8 +11,8 @@ import { stateSaved$ } from "@/systems/State";
 export function PlaylistSelector() {
     const playerState = use$(playerState$);
     const localMusicState = use$(localMusicState$);
-    const playlistsObj = use$(playlistsData$.playlists);
-    const playlistsArr = Object.values(playlistsObj); //.sort((playlist) => playlist.order);
+    const playlistsObj = use$(playlistsData$.playlistsYtm);
+    const playlistsArr = Object.values(playlistsObj).sort((a, b) => a.index! - b.index!);
 
     // Create local files playlist
     const localFilesPlaylist: YTMusicPlaylist = {

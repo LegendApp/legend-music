@@ -1,3 +1,4 @@
+import type { YTMusicPlaylist } from "@/components/YouTubeMusicPlayer";
 import { createJSONManager } from "@/utils/JSONManager";
 
 export interface Playlist {
@@ -11,51 +12,35 @@ export interface Playlist {
 }
 
 export interface PlaylistsData {
-    playlists: Record<string, Playlist>;
+    playlistsLocal: Record<string, Playlist>;
+    playlistsYtm: Record<string, YTMusicPlaylist>;
 }
 
 // Playlists persistence
 export const playlistsData$ = createJSONManager<PlaylistsData>({
     filename: "playlists",
     initialValue: {
-        playlists: {},
+        playlistsLocal: {},
+        playlistsYtm: {},
     },
 });
 
-// Add a new playlist
-export function addPlaylist(playlist: Playlist): Playlist {
-    const { id } = playlist;
-    playlistsData$.playlists[id].set(playlist);
-
-    return playlist;
-}
-
-// Remove a playlist
-export function removePlaylist(id: string): void {
-    playlistsData$.playlists[id].delete();
-}
-
-// Update a playlist
-export function updatePlaylist(id: string, updates: Partial<Omit<Playlist, "id">>): void {
-    const currentPlaylist = playlistsData$.playlists[id].get();
-    if (currentPlaylist) {
-        playlistsData$.playlists[id].set({ ...currentPlaylist, ...updates });
-    }
-}
-
 // Get a playlist by ID
 export function getPlaylist(id: string): Playlist | undefined {
-    return playlistsData$.playlists[id].get();
+    return playlistsData$.playlistsLocal[id].get() ?? playlistsData$.playlistsYtm[id].get();
 }
 
 // Get all playlists
-export function getAllPlaylists(): Playlist[] {
-    const playlistsObject = playlistsData$.playlists.get();
-    return Object.values(playlistsObject);
+export function getAllPlaylists(): (Playlist | YTMusicPlaylist)[] {
+    const playlistsLocal = playlistsData$.playlistsLocal.get();
+    const playlistsYtm = playlistsData$.playlistsYtm.get();
+    return [...Object.values(playlistsLocal), ...Object.values(playlistsYtm)];
 }
 
 // Get playlists by type
 export function getPlaylistsByType(type: "file" | "ytm"): Playlist[] {
-    const playlistsObject = playlistsData$.playlists.get();
-    return Object.values(playlistsObject).filter((p) => p.type === type);
+    if (type === "file") {
+        return Object.values(playlistsData$.playlistsLocal.get());
+    }
+    return Object.values(playlistsData$.playlistsYtm.get());
 }
