@@ -8,6 +8,7 @@ import {
 	addPlaylist,
 	getAllPlaylists,
 	getPlaylist,
+	removePlaylist,
 	type Playlist,
 	updatePlaylist,
 } from "@/systems/Playlists";
@@ -319,6 +320,40 @@ const injectedJavaScript = `
         }
     }
 
+    function checkAndUpdatePlaylistId() {
+        try {
+            const currentUrl = window.location.href;
+            
+            // Check if we're on a playlist page
+            if (currentUrl.includes('playlist?list=') && currentPlaylistSelection) {
+                // Extract the real playlist ID from the URL
+                const urlMatch = currentUrl.match(/playlist\?list=([^&]+)/);
+                if (urlMatch) {
+                    const realPlaylistId = urlMatch[1];
+                    
+                    // Check if current selection is a temporary sidebar ID
+                    if (currentPlaylistSelection.startsWith('sidebar_')) {
+                        console.log('Updating temporary playlist ID:', currentPlaylistSelection, 'to real ID:', realPlaylistId);
+                        
+                        // Send message to React Native to update the playlist ID
+                        window.ReactNativeWebView.postMessage(JSON.stringify({
+                            type: 'updatePlaylistId',
+                            data: {
+                                oldId: currentPlaylistSelection,
+                                newId: realPlaylistId
+                            }
+                        }));
+                        
+                        // Update current selection to real ID
+                        currentPlaylistSelection = realPlaylistId;
+                    }
+                }
+            }
+        } catch (error) {
+            console.log('Error in checkAndUpdatePlaylistId:', error);
+        }
+    }
+
     function extractPlayerInfo() {
         try {
             // Get current track info
@@ -366,6 +401,9 @@ const injectedJavaScript = `
 
             // Get available playlists (only update occasionally to avoid performance issues)
             const availablePlaylists = extractAvailablePlaylists();
+
+            // Check if we're on a playlist page and update temporary IDs
+            checkAndUpdatePlaylistId();
 
             // Get the best quality thumbnail URL
             let thumbnailUrl = '';
@@ -1018,6 +1056,26 @@ export function YouTubeMusicPlayer() {
 				case "injectionComplete":
 					playerState$.isLoading.set(false);
 					break;
+				case "updatePlaylistId": {
+					const { oldId, newId } = message.data;
+					console.log("Updating playlist ID from", oldId, "to", newId);
+					
+					// Find the playlist with the temporary ID and update it
+					const playlist = getPlaylist(oldId);
+					if (playlist) {
+						// Remove the old playlist entry
+						removePlaylist(oldId);
+						
+						// Add the playlist with the new ID, preserving all other data
+						addPlaylist({
+							...playlist,
+							id: newId
+						});
+						
+						console.log("Successfully updated playlist ID");
+					}
+					break;
+				}
 			}
 		} catch (error) {
 			console.error("Failed to parse WebView message:", error);
