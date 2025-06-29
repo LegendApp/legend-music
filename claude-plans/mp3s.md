@@ -10,7 +10,7 @@
 ## Steps
 
 [x] Split the playerState code in the YouTubeMusicPlayer code into three different kinds of player state, because we will want them all to update at different times. So split out the playlistsState, playlistState, and playbackState.
-[] Instead of polling for changes in youtube music on an interval, use a less intensive strategy. Use MutationObserver on the specific areas of the UI that's being watched for changes to trigger updates.
+[x] Instead of polling for changes in youtube music on an interval, use a less intensive strategy. Use MutationObserver on the specific areas of the UI that's being watched for changes to trigger updates.
 
 ## Plan for later (do not do these yet)
 

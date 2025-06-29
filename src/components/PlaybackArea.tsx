@@ -3,11 +3,11 @@ import { Image, Text, TouchableOpacity, View } from "react-native";
 
 import { CustomSlider } from "@/components/CustomSlider";
 import { localAudioControls, localPlayerState$ } from "@/components/LocalAudioPlayer";
-import { controls, playerState$ } from "@/components/YouTubeMusicPlayer";
+import { controls, playbackState$ } from "@/components/YouTubeMusicPlayer";
 import { localMusicState$ } from "@/systems/LocalMusicState";
 
 export function PlaybackArea() {
-    const playerState = use$(playerState$);
+    const playbackState = use$(playbackState$);
     const localMusicState = use$(localMusicState$);
     const localPlayerState = use$(localPlayerState$);
 
@@ -36,13 +36,13 @@ export function PlaybackArea() {
     }
 
     // Use appropriate state based on current selection
-    const currentTrack = isLocalFilesSelected ? localPlayerState.currentTrack : playerState.currentTrack;
-    const isLoading = isLocalFilesSelected ? localPlayerState.isLoading : playerState.isLoading;
-    const isPlaying = isLocalFilesSelected ? localPlayerState.isPlaying : playerState.isPlaying;
-    const currentTime = isLocalFilesSelected ? formatTime(localPlayerState.currentTime) : playerState.currentTime;
+    const currentTrack = isLocalFilesSelected ? localPlayerState.currentTrack : playbackState.currentTrack;
+    const isLoading = isLocalFilesSelected ? localPlayerState.isLoading : playbackState.isLoading;
+    const isPlaying = isLocalFilesSelected ? localPlayerState.isPlaying : playbackState.isPlaying;
+    const currentTime = isLocalFilesSelected ? formatTime(localPlayerState.currentTime) : playbackState.currentTime;
     const currentTimeSeconds = isLocalFilesSelected
         ? localPlayerState.currentTime
-        : parseCurrentTimeSeconds(playerState.currentTime);
+        : parseCurrentTimeSeconds(playbackState.currentTime);
     const duration = isLocalFilesSelected ? localPlayerState.duration : 0;
 
     return (

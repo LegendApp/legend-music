@@ -98,14 +98,14 @@ const injectedJavaScript = `
                 console.log('No clickable link found in sidebar element at index ' + index + ' for ' + actionName);
                 sidebarPlaylists[index].click();
             }
-            
+
             // Wait for page to load and then re-extract
             setTimeout(function() {
                 console.log('Re-extracting after ' + actionName + '...');
                 extractCurrentPlaylistInfo(); // Sidebar navigation affects playlist
                 extractAvailablePlaylistsInfo(); // May also affect available playlists
             }, 2000);
-            
+
             return true;
         }
         return false;
@@ -124,7 +124,7 @@ const injectedJavaScript = `
 
             if (title && artist && title !== artist) {
                 const isPlaying = isTrackPlaying(item);
-                
+
                 return {
                     title: title,
                     artist: artist,
@@ -543,9 +543,68 @@ const injectedJavaScript = `
 
     function extractPlaybackInfo() {
         try {
-            // Get current track info
-            const titleElement = document.querySelector('.title.style-scope.ytmusic-player-bar');
-            const artistElement = document.querySelector('.byline.style-scope.ytmusic-player-bar');
+            // Debug logging to see what elements we're finding
+            console.log('=== PLAYBACK EXTRACTION DEBUG ===');
+            console.log('Current URL:', window.location.href);
+            console.log('Document title:', document.title);
+
+            // Try multiple selectors for title and artist
+            let titleElement = document.querySelector('.title.style-scope.ytmusic-player-bar');
+            if (!titleElement) {
+                titleElement = document.querySelector('ytmusic-player-bar .title');
+            }
+            if (!titleElement) {
+                titleElement = document.querySelector('[class*="title"][class*="player"]');
+            }
+            if (!titleElement) {
+                titleElement = document.querySelector('#player .title, .player-bar .title');
+            }
+
+            let artistElement = document.querySelector('.byline.style-scope.ytmusic-player-bar');
+            if (!artistElement) {
+                artistElement = document.querySelector('ytmusic-player-bar .byline');
+            }
+            if (!artistElement) {
+                artistElement = document.querySelector('[class*="byline"][class*="player"]');
+            }
+            if (!artistElement) {
+                artistElement = document.querySelector('#player .byline, .player-bar .byline');
+            }
+
+            console.log('Title element:', titleElement);
+            console.log('Title text:', titleElement?.textContent);
+            console.log('Artist element:', artistElement);
+            console.log('Artist text:', artistElement?.textContent);
+
+            // Log player bar structure
+            const playerBar = document.querySelector('ytmusic-player-bar');
+            console.log('Player bar element:', playerBar);
+            if (playerBar) {
+                console.log('Player bar innerHTML (first 500 chars):', playerBar.innerHTML.substring(0, 500));
+            }
+
+            // Also check for alternative player structures
+            const alternativePlayerBars = document.querySelectorAll('[class*="player"], [id*="player"]');
+            console.log('Alternative player elements found:', alternativePlayerBars.length);
+            alternativePlayerBars.forEach((el, i) => {
+                if (i < 3) { // Only log first 3 to avoid spam
+                    console.log('Alternative player ' + i + ':', el.tagName, el.className, el.id);
+                }
+            });
+
+            // Log all buttons to see what's available
+            const allButtons = document.querySelectorAll('button, [role="button"]');
+            console.log('Total buttons found:', allButtons.length);
+            const playPauseButtons = Array.from(allButtons).filter(btn => {
+                const ariaLabel = btn.getAttribute('aria-label') || '';
+                const title = btn.getAttribute('title') || '';
+                return ariaLabel.toLowerCase().includes('play') || ariaLabel.toLowerCase().includes('pause') ||
+                       title.toLowerCase().includes('play') || title.toLowerCase().includes('pause');
+            });
+            console.log('Play/pause buttons found:', playPauseButtons.length);
+            playPauseButtons.forEach((btn, i) => {
+                console.log('Play/pause button ' + i + ':', btn.getAttribute('aria-label'), btn.getAttribute('title'));
+            });
 
             // Try multiple selectors for the current playing track image
             let thumbnailElement = document.querySelector('.thumbnail.style-scope.ytmusic-player img');
@@ -571,17 +630,58 @@ const injectedJavaScript = `
                 thumbnailElement = document.querySelector('[class*="player"] img, [id*="player"] img');
             }
 
-            // Get play/pause state
-            const playButton = document.querySelector('#play-pause-button button');
-            const isPlaying = playButton?.getAttribute('aria-label')?.includes('Pause') || false;
+            // Get play/pause state with multiple selectors - focus on main player only
+            let playButton = document.querySelector('#play-pause-button button');
+            if (!playButton) {
+                // More specific selectors that target the main player bar only
+                playButton = document.querySelector('ytmusic-player-bar #play-pause-button');
+            }
+            if (!playButton) {
+                playButton = document.querySelector('ytmusic-player-bar [aria-label*="play"], ytmusic-player-bar [aria-label*="pause"]');
+            }
+            if (!playButton) {
+                playButton = document.querySelector('ytmusic-player-bar [role="button"][aria-label*="play"], ytmusic-player-bar [role="button"][aria-label*="pause"]');
+            }
+            if (!playButton) {
+                playButton = document.querySelector('.play-pause-button, [class*="play-pause"]');
+            }
 
-            // Get current time
-            const timeElement = document.querySelector('#left-controls .time-info');
+            let isPlaying = false;
+            if (playButton) {
+                const ariaLabel = playButton.getAttribute('aria-label') || '';
+                const title = playButton.getAttribute('title') || '';
+                isPlaying = ariaLabel.toLowerCase().includes('pause') || title.toLowerCase().includes('pause');
+            }
+
+            console.log('Play button:', playButton);
+            console.log('Play button aria-label:', playButton?.getAttribute('aria-label'));
+            console.log('Play button title:', playButton?.getAttribute('title'));
+            console.log('Is playing:', isPlaying);
+
+            // Get current time with multiple selectors
+            let timeElement = document.querySelector('#left-controls .time-info');
+            if (!timeElement) {
+                timeElement = document.querySelector('.time-info[class*="left"], [class*="current-time"]');
+            }
+            if (!timeElement) {
+                timeElement = document.querySelector('ytmusic-player-bar .time');
+            }
             const currentTime = timeElement?.textContent?.trim() || '0:00';
 
-            // Get duration
-            const durationElement = document.querySelector('#right-controls .time-info');
+            // Get duration with multiple selectors
+            let durationElement = document.querySelector('#right-controls .time-info');
+            if (!durationElement) {
+                durationElement = document.querySelector('.time-info[class*="right"], [class*="total-time"], [class*="duration"]');
+            }
+            if (!durationElement) {
+                durationElement = document.querySelector('ytmusic-player-bar .duration');
+            }
             const duration = durationElement?.textContent?.trim() || '0:00';
+
+            console.log('Time element:', timeElement);
+            console.log('Current time:', currentTime);
+            console.log('Duration element:', durationElement);
+            console.log('Duration:', duration);
 
             // Get the best quality thumbnail URL
             let thumbnailUrl = '';
@@ -607,15 +707,21 @@ const injectedJavaScript = `
                 error: null
             };
 
+            console.log('Playback extraction - Final state:', playbackState);
+
             // Only send update if playback state changed
             if (JSON.stringify(playbackState) !== JSON.stringify(lastPlaybackState)) {
+                console.log('Playback state changed, sending update');
                 window.ReactNativeWebView.postMessage(JSON.stringify({
                     type: 'playerState',
                     data: playbackState
                 }));
                 lastPlaybackState = playbackState;
+            } else {
+                console.log('Playback state unchanged');
             }
         } catch (error) {
+            console.error('Error in extractPlaybackInfo:', error);
             window.ReactNativeWebView.postMessage(JSON.stringify({
                 type: 'error',
                 data: { error: error.message }
@@ -987,34 +1093,135 @@ const injectedJavaScript = `
     extractCurrentPlaylistInfo();
     extractAvailablePlaylistsInfo();
 
-    // Set up observers for dynamic content
-    const observer = new MutationObserver(function(mutations) {
-        let shouldUpdate = false;
-        mutations.forEach(function(mutation) {
-            if (mutation.type === 'childList' || mutation.type === 'attributes') {
-                shouldUpdate = true;
+    // Function to set up observers once elements are available
+    function setupObservers() {
+        // 1. Playback Observer - watches player controls and track info
+        const playbackObserver = new MutationObserver(function(mutations) {
+            let shouldUpdate = false;
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'childList' ||
+                    (mutation.type === 'attributes' &&
+                     ['aria-label', 'title', 'class'].includes(mutation.attributeName))) {
+                    shouldUpdate = true;
+                }
+            });
+            if (shouldUpdate) {
+                setTimeout(extractPlaybackInfo, 50);
             }
         });
-        if (shouldUpdate) {
-            setTimeout(extractPlaybackInfo, 100); // Mutations mainly affect playback state
+
+        // Observe player bar for playback state changes
+        const playerBar = document.querySelector('ytmusic-player-bar');
+        if (playerBar) {
+            playbackObserver.observe(playerBar, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['aria-label', 'title', 'class']
+            });
+        }
+
+        // Also observe play/pause button specifically
+        const playButton = document.querySelector('#play-pause-button');
+        if (playButton) {
+            playbackObserver.observe(playButton, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['aria-label', 'title', 'class']
+            });
+        }
+
+        // 2. Playlist Observer - watches current playlist content
+        const playlistObserver = new MutationObserver(function(mutations) {
+            let shouldUpdate = false;
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'childList') {
+                    shouldUpdate = true;
+                }
+            });
+            if (shouldUpdate) {
+                setTimeout(extractCurrentPlaylistInfo, 100);
+            }
+        });
+
+        // Observe main content area for playlist changes
+        const mainContent = document.querySelector('#main-panel, [role="main"], ytmusic-browse-response');
+        if (mainContent) {
+            playlistObserver.observe(mainContent, {
+                childList: true,
+                subtree: true
+            });
+        }
+
+        // 3. Sidebar Observer - watches available playlists in sidebar
+        const sidebarObserver = new MutationObserver(function(mutations) {
+            let shouldUpdate = false;
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'childList') {
+                    shouldUpdate = true;
+                }
+            });
+            if (shouldUpdate) {
+                setTimeout(extractAvailablePlaylistsInfo, 200);
+            }
+        });
+
+        // Observe sidebar for available playlists changes
+        const sidebar = document.querySelector('ytmusic-guide-renderer, #guide-content');
+        if (sidebar) {
+            sidebarObserver.observe(sidebar, {
+                childList: true,
+                subtree: true
+            });
+        }
+    }
+
+    // Set up observers immediately and retry if elements not found
+    setupObservers();
+
+    // Retry observer setup after page loads more content
+    setTimeout(setupObservers, 2000);
+    setTimeout(setupObservers, 5000);
+
+    // General DOM observer to catch new elements being added
+    const generalObserver = new MutationObserver(function(mutations) {
+        let shouldRetrySetup = false;
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                // Check if important elements were added
+                for (let i = 0; i < mutation.addedNodes.length; i++) {
+                    const node = mutation.addedNodes[i];
+                    if (node.nodeType === 1) { // Element node
+                        const tagName = node.tagName ? node.tagName.toLowerCase() : '';
+                        if (tagName.includes('ytmusic') ||
+                            node.id === 'main-panel' ||
+                            node.querySelector && (
+                                node.querySelector('ytmusic-player-bar') ||
+                                node.querySelector('ytmusic-guide-renderer')
+                            )) {
+                            shouldRetrySetup = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        });
+        if (shouldRetrySetup) {
+            setTimeout(setupObservers, 500);
         }
     });
 
-    // Observe the player bar for changes
-    const playerBar = document.querySelector('ytmusic-player-bar');
-    if (playerBar) {
-        observer.observe(playerBar, {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ['aria-label', 'title']
-        });
-    }
+    // Observe the entire document for new YouTube Music elements
+    generalObserver.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
 
-    // Periodic updates as fallback - with different frequencies for different types
-    setInterval(extractPlaybackInfo, 500);     // Playback state changes frequently
-    setInterval(extractCurrentPlaylistInfo, 2000);  // Playlist changes less frequently  
-    setInterval(extractAvailablePlaylistsInfo, 10000); // Available playlists change rarely
+    // Temporary increased frequency polling for debugging
+    setInterval(extractPlaybackInfo, 1000);       // Back to more frequent for debugging
+    setInterval(extractCurrentPlaylistInfo, 3000);   // Back to more frequent for debugging
+    setInterval(extractAvailablePlaylistsInfo, 10000); // Keep this less frequent
 
     // Signal that injection is complete
     window.ReactNativeWebView.postMessage(JSON.stringify({
@@ -1057,19 +1264,7 @@ const playlistsState$ = observable<PlaylistsState>({
     availablePlaylists: loadCachedYTMPlaylists(),
 });
 
-// Legacy combined state for backward compatibility
-const playerState$ = observable<PlayerState>({
-    get isPlaying() { return playbackState$.isPlaying.get(); },
-    get currentTrack() { return playbackState$.currentTrack.get(); },
-    get currentTime() { return playbackState$.currentTime.get(); },
-    get currentTrackIndex() { return playbackState$.currentTrackIndex.get(); },
-    get isLoading() { return playbackState$.isLoading.get(); },
-    get error() { return playbackState$.error.get(); },
-    get songs() { return playlistState$.songs.get(); },
-    get suggestions() { return playlistState$.suggestions.get(); },
-    get currentPlaylistId() { return playlistState$.currentPlaylistId.get(); },
-    get availablePlaylists() { return playlistsState$.availablePlaylists.get(); },
-});
+// Legacy combined state removed - components now use specific states directly
 
 let webViewRef: React.MutableRefObject<WebView | null> | null = null;
 
@@ -1171,7 +1366,7 @@ export function YouTubeMusicPlayer() {
 
     // Log cached playlists on component mount
     useEffect(() => {
-        const cachedPlaylists = playerState$.availablePlaylists.get();
+        const cachedPlaylists = playlistsState$.availablePlaylists.get();
         if (cachedPlaylists.length > 0) {
             console.log(`Loaded ${cachedPlaylists.length} persisted YouTube Music playlists on startup`);
         }
@@ -1184,40 +1379,56 @@ export function YouTubeMusicPlayer() {
             switch (message.type) {
                 case "playerState": {
                     const newState = message.data;
-                    
+
+                    console.log("newState", newState);
+
                     // Update playback state
-                    if ('isPlaying' in newState || 'currentTrack' in newState || 'currentTime' in newState || 
-                        'currentTrackIndex' in newState || 'isLoading' in newState || 'error' in newState) {
+                    if (
+                        "isPlaying" in newState ||
+                        "currentTrack" in newState ||
+                        "currentTime" in newState ||
+                        "currentTrackIndex" in newState ||
+                        "isLoading" in newState ||
+                        "error" in newState
+                    ) {
                         playbackState$.assign({
                             ...(newState.isPlaying !== undefined && { isPlaying: newState.isPlaying }),
                             ...(newState.currentTrack !== undefined && { currentTrack: newState.currentTrack }),
                             ...(newState.currentTime !== undefined && { currentTime: newState.currentTime }),
-                            ...(newState.currentTrackIndex !== undefined && { currentTrackIndex: newState.currentTrackIndex }),
+                            ...(newState.currentTrackIndex !== undefined && {
+                                currentTrackIndex: newState.currentTrackIndex,
+                            }),
                             ...(newState.isLoading !== undefined && { isLoading: newState.isLoading }),
                             ...(newState.error !== undefined && { error: newState.error }),
                         });
                     }
-                    
+
                     // Update playlist state
-                    if ('songs' in newState || 'suggestions' in newState || 'currentPlaylistId' in newState) {
+                    if ("songs" in newState || "suggestions" in newState || "currentPlaylistId" in newState) {
                         playlistState$.assign({
                             ...(newState.songs !== undefined && { songs: newState.songs }),
                             ...(newState.suggestions !== undefined && { suggestions: newState.suggestions }),
-                            ...(newState.currentPlaylistId !== undefined && { currentPlaylistId: newState.currentPlaylistId }),
+                            ...(newState.currentPlaylistId !== undefined && {
+                                currentPlaylistId: newState.currentPlaylistId,
+                            }),
                         });
-                        
+
                         // Update playlist content (M3U format) when tracks are received
                         if (newState.songs && Array.isArray(newState.songs)) {
-                            updatePlaylistContent(stateSaved$.playlist.get(), newState.songs, newState.suggestions || []);
+                            updatePlaylistContent(
+                                stateSaved$.playlist.get(),
+                                newState.songs,
+                                newState.suggestions || [],
+                            );
                         }
                     }
-                    
+
                     // Update playlists state
-                    if ('availablePlaylists' in newState) {
+                    if ("availablePlaylists" in newState) {
                         playlistsState$.assign({
                             availablePlaylists: newState.availablePlaylists,
                         });
-                        
+
                         // Sync YouTube Music playlists when they're updated
                         if (newState.availablePlaylists && Array.isArray(newState.availablePlaylists)) {
                             syncYouTubeMusicPlaylists(newState.availablePlaylists);
@@ -1269,5 +1480,5 @@ export function YouTubeMusicPlayer() {
 }
 
 // Export player state and controls for use in other components
-export { controls, playerState$, playbackState$, playlistState$, playlistsState$ };
+export { controls, playbackState$, playlistState$, playlistsState$ };
 export type { PlayerState, PlaybackState, PlaylistState, PlaylistsState, PlaylistTrack, Track, YTMusicPlaylist };

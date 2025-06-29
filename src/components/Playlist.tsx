@@ -3,7 +3,7 @@ import { use$, useObservable } from "@legendapp/state/react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { localAudioControls, localPlayerState$ } from "@/components/LocalAudioPlayer";
-import { controls, playerState$ } from "@/components/YouTubeMusicPlayer";
+import { controls, playbackState$, playlistState$, playlistsState$ } from "@/components/YouTubeMusicPlayer";
 import { localMusicState$ } from "@/systems/LocalMusicState";
 import { cn } from "@/utils/cn";
 
@@ -85,7 +85,9 @@ type PlaylistTrackWithSuggestions = PlaylistTrack & {
 };
 
 export function Playlist() {
-    const playerState = use$(playerState$);
+    const playbackState = use$(playbackState$);
+    const playlistState = use$(playlistState$);
+    const playlistsState = use$(playlistsState$);
     const localMusicState = use$(localMusicState$);
     const localPlayerState = use$(localPlayerState$);
     const clickedTrackIndex$ = useObservable<number | null>(null);
@@ -103,8 +105,8 @@ export function Playlist() {
               isPlaying: index === localPlayerState.currentIndex && localPlayerState.isPlaying,
           }))
         : [
-              ...playerState.songs,
-              ...(playerState.suggestions.length > 0
+              ...playlistState.songs,
+              ...(playlistState.suggestions.length > 0
                   ? [
                         // Add a separator item
                         {
@@ -116,16 +118,16 @@ export function Playlist() {
                             isPlaying: false,
                             isSeparator: true,
                         },
-                        ...playerState.suggestions.map((track, index) => ({
+                        ...playlistState.suggestions.map((track, index) => ({
                             ...track,
-                            index: playerState.songs.length + index,
+                            index: playlistState.songs.length + index,
                             fromSuggestions: true,
                         })),
                     ]
                   : []),
           ];
 
-    const currentTrackIndex = isLocalFilesSelected ? localPlayerState.currentIndex : playerState.currentTrackIndex;
+    const currentTrackIndex = isLocalFilesSelected ? localPlayerState.currentIndex : playbackState.currentTrackIndex;
 
     const handleTrackClick = (index: number) => {
         const track = playlist[index];
@@ -164,7 +166,7 @@ export function Playlist() {
     // Check if we have playlists available to show
     const hasAvailablePlaylists = isLocalFilesSelected
         ? localMusicState.tracks.length > 0
-        : playerState.availablePlaylists.length > 0;
+        : playlistsState.availablePlaylists.length > 0;
 
     return (
         <View className="flex-1">
@@ -177,7 +179,7 @@ export function Playlist() {
                                 : localMusicState.error
                                   ? "Error scanning local files"
                                   : "No local MP3 files found"
-                            : !hasAvailablePlaylists && playerState.isLoading
+                            : !hasAvailablePlaylists && playbackState.isLoading
                               ? "Loading playlist..."
                               : hasAvailablePlaylists
                                 ? "Select a playlist to view tracks"

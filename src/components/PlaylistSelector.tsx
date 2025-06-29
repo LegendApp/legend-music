@@ -4,13 +4,12 @@ import { synced } from "@legendapp/state/sync";
 import { Text, View } from "react-native";
 import { Playlist } from "@/components/Playlist";
 import { Select } from "@/components/Select";
-import { controls, playerState$, type YTMusicPlaylist } from "@/components/YouTubeMusicPlayer";
+import { controls, type YTMusicPlaylist } from "@/components/YouTubeMusicPlayer";
 import { localMusicState$, setCurrentPlaylist } from "@/systems/LocalMusicState";
 import { type Playlist as PlaylistType, playlistsData$ } from "@/systems/Playlists";
 import { stateSaved$ } from "@/systems/State";
 
 export function PlaylistSelector() {
-    const playerState = use$(playerState$);
     const localMusicState = use$(localMusicState$);
     const playlistsObj = use$(playlistsData$.playlistsYtm);
     const playlistsArr = Object.values(playlistsObj).sort((a, b) => a.index! - b.index!);

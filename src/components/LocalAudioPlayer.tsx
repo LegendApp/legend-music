@@ -1,4 +1,4 @@
-import { useObservable } from "@legendapp/state/react";
+import { observable } from "@legendapp/state";
 import { useEffect } from "react";
 import { View } from "react-native";
 import { useAudioPlayer } from "@/native-modules/AudioPlayer";
@@ -16,7 +16,7 @@ interface LocalPlayerState {
 }
 
 // Create observable player state for local music
-const localPlayerState$ = useObservable<LocalPlayerState>({
+const localPlayerState$ = observable<LocalPlayerState>({
     isPlaying: false,
     currentTrack: null,
     currentTime: 0,
@@ -219,5 +219,5 @@ export function LocalAudioPlayer() {
 }
 
 // Export player state and controls for use in other components
-export { localPlayerState$, localAudioControls };
+export { localAudioControls, localPlayerState$ };
 export type { LocalPlayerState };
