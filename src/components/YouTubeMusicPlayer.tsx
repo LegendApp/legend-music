@@ -34,9 +34,8 @@ interface PlayerState {
     currentTime: string;
     isLoading: boolean;
     error: string | null;
-    playlist: PlaylistTrack[];
-    songs?: PlaylistTrack[];
-    suggestions?: PlaylistTrack[];
+    songs: PlaylistTrack[];
+    suggestions: PlaylistTrack[];
     currentTrackIndex: number;
     availablePlaylists: YTMusicPlaylist[];
     currentPlaylistId?: string;
@@ -1042,7 +1041,8 @@ const playerState$ = observable<PlayerState>({
     currentTime: "0:00",
     isLoading: true,
     error: null,
-    playlist: [],
+    songs: [],
+    suggestions: [],
     currentTrackIndex: -1,
     availablePlaylists: loadCachedYTMPlaylists(),
     currentPlaylistId: undefined,

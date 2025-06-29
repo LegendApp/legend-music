@@ -73,7 +73,7 @@ export function Playlist() {
               index,
               isPlaying: index === localPlayerState.currentIndex && localPlayerState.isPlaying,
           }))
-        : playerState.playlist;
+        : playerState.songs;
 
     const currentTrackIndex = isLocalFilesSelected ? localPlayerState.currentIndex : playerState.currentTrackIndex;
 
