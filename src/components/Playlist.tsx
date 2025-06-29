@@ -31,9 +31,7 @@ const TrackItem = ({ track, index, currentTrackIndex, clickedTrackIndex, onTrack
     if (track.isSeparator) {
         return (
             <View className="flex-row items-center px-4 py-3 border-t border-white/10 mt-2">
-                <Text className="text-white/70 text-sm font-medium text-center flex-1">
-                    {track.title}
-                </Text>
+                <Text className="text-white/70 text-sm font-medium text-center flex-1">{track.title}</Text>
             </View>
         );
     }
@@ -43,14 +41,11 @@ const TrackItem = ({ track, index, currentTrackIndex, clickedTrackIndex, onTrack
             className={cn(
                 "flex-row items-center px-4 py-2",
                 index === currentTrackIndex ? "bg-white/10" : clickedTrackIndex === index ? "bg-orange-500/20" : "",
-                track.fromSuggestions ? "opacity-80" : ""
+                track.fromSuggestions ? "opacity-80" : "",
             )}
             onPress={() => onTrackClick(index)}
         >
-            <Text className={cn(
-                "text-base w-8",
-                track.fromSuggestions ? "text-white/40" : "text-white/60"
-            )}>
+            <Text className={cn("text-base w-8", track.fromSuggestions ? "text-white/40" : "text-white/60")}>
                 {track.index >= 0 ? track.index + 1 : ""}
             </Text>
 
@@ -63,28 +58,30 @@ const TrackItem = ({ track, index, currentTrackIndex, clickedTrackIndex, onTrack
             )}
 
             <View className="flex-1 ml-4 mr-8">
-                <Text className={cn(
-                    "text-sm font-medium",
-                    track.fromSuggestions ? "text-white/70" : "text-white"
-                )} numberOfLines={1}>
+                <Text
+                    className={cn("text-sm font-medium", track.fromSuggestions ? "text-white/70" : "text-white")}
+                    numberOfLines={1}
+                >
                     {track.title}
                 </Text>
-                <Text className={cn(
-                    "text-sm",
-                    track.fromSuggestions ? "text-white/40" : "text-white/50"
-                )} numberOfLines={1}>
+                <Text
+                    className={cn("text-sm", track.fromSuggestions ? "text-white/40" : "text-white/50")}
+                    numberOfLines={1}
+                >
                     {track.artist}
                 </Text>
             </View>
 
-            <Text className={cn(
-                "text-base",
-                track.fromSuggestions ? "text-white/40" : "text-white/60"
-            )}>
+            <Text className={cn("text-base", track.fromSuggestions ? "text-white/40" : "text-white/60")}>
                 {track.duration}
             </Text>
         </TouchableOpacity>
     );
+};
+
+type PlaylistTrackWithSuggestions = PlaylistTrack & {
+    fromSuggestions?: true;
+    isSeparator?: boolean;
 };
 
 export function Playlist() {
@@ -96,7 +93,7 @@ export function Playlist() {
 
     // Determine which playlist to show
     const isLocalFilesSelected = localMusicState.isLocalFilesSelected;
-    const playlist = isLocalFilesSelected
+    const playlist: PlaylistTrackWithSuggestions[] = isLocalFilesSelected
         ? localMusicState.tracks.map((track, index) => ({
               title: track.title,
               artist: track.artist,
@@ -107,7 +104,7 @@ export function Playlist() {
           }))
         : [
               ...playerState.songs,
-              ...(playerState.suggestions.length > 0 
+              ...(playerState.suggestions.length > 0
                   ? [
                         // Add a separator item
                         {
@@ -123,16 +120,16 @@ export function Playlist() {
                             ...track,
                             index: playerState.songs.length + index,
                             fromSuggestions: true,
-                        }))
+                        })),
                     ]
-                  : [])
+                  : []),
           ];
 
     const currentTrackIndex = isLocalFilesSelected ? localPlayerState.currentIndex : playerState.currentTrackIndex;
 
     const handleTrackClick = (index: number) => {
         const track = playlist[index];
-        
+
         // Don't allow clicking on separator items
         if (track?.isSeparator) {
             return;
