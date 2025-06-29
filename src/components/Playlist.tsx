@@ -34,8 +34,12 @@ const TrackItem = ({ track, index, currentTrackIndex, clickedTrackIndex, onTrack
     // Handle separator items
     if (track.isSeparator) {
         return (
-            <View className="flex-row items-center px-4 py-3 border-t border-white/10 mt-2">
-                <Text className="text-white/70 text-sm font-medium text-center flex-1">{track.title}</Text>
+            <View className="flex-row items-center px-4 py-4 mt-6 mb-2">
+                <View className="flex-1 h-px bg-white/15" />
+                <Text className="text-white/90 text-xs font-semibold tracking-wider uppercase mx-4 bg-white/5 px-3 py-1.5 rounded-full border border-white/15">
+                    {track.title.replace(/^— (.+) —$/, '$1')}
+                </Text>
+                <View className="flex-1 h-px bg-white/15" />
             </View>
         );
     }

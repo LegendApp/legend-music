@@ -9,7 +9,7 @@
 
 ## Steps
 
-[] Dropdown menus should activate on mouse down rather than click. If the mouse is already down when it's opened, mouse up should activate the selected item.
+[x] Dropdown menus should activate on mouse down rather than click. If the mouse is already down when it's opened, mouse up should activate the selected item.
 [] Improve the styling of the Suggestions header in the playlist
 [] YouTubeMusicPlayer.tsx should set the url including stateSaved$.songId if available. Use this format: `https://music.youtube.com/watch?v=${track.id}&list=${playlistIdForUrl}` and extract that to a helper function and replace the few places it's used
 [] Remove playTrackAtIndex and set the stateSaved$.songId instead
