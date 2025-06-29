@@ -1,3 +1,4 @@
+import { batch } from "@legendapp/state";
 import { use$, useObservable } from "@legendapp/state/react";
 import { synced } from "@legendapp/state/sync";
 import { Text, View } from "react-native";
@@ -57,7 +58,10 @@ export function PlaylistSelector() {
             console.log("Selected local files playlist");
         } else {
             // Handle YouTube Music playlists
-            controls.navigateToPlaylist(playlist.id);
+            batch(() => {
+                stateSaved$.playlistType.set("ytm");
+                stateSaved$.playlist.set(playlist.id);
+            });
         }
     };
 

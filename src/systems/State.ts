@@ -27,5 +27,6 @@ export const stateSaved$ = createJSONManager({
     filename: "settings",
     initialValue: {
         playlist: undefined as unknown as string,
+        playlistType: undefined as unknown as "ytm" | "file",
     },
 });

@@ -1,5 +1,5 @@
 import { batch, observable } from "@legendapp/state";
-import { use$ } from "@legendapp/state/react";
+import { use$, useSelector } from "@legendapp/state/react";
 import React, { useEffect, useMemo, useRef } from "react";
 import { View } from "react-native";
 import { WebView } from "react-native-webview";
@@ -1112,8 +1112,6 @@ const updatePlaylistContent = (
     }
 };
 
-const url$ = observable("https://music.youtube.com");
-
 // Expose control methods
 const controls = {
     playPause: () => executeCommand("playPause"),
@@ -1122,21 +1120,21 @@ const controls = {
     setVolume: (volume: number) => executeCommand("setVolume", volume),
     seek: (seconds: number) => executeCommand("seek", seconds),
     playTrackAtIndex: (index: number) => executeCommand("playTrackAtIndex", index),
-    navigateToPlaylist: (playlistId: string) => {
-        // Look up the playlist to get its index if it's a YTM playlist
-        const playlist = getPlaylist(playlistId);
-        console.log("navigateToPlaylist", playlist);
-        if (playlist?.type === "ytm" && playlist.index !== undefined) {
-            url$.set(`https://music.youtube.com/playlist?list=${playlistId.replace(/^VL/, "")}`);
-        } else {
-            executeCommand("navigateToPlaylist", playlistId);
-        }
-    },
-    setCurrentPlaylist: (playlistId: string) => executeCommand("setCurrentPlaylist", playlistId),
 };
 
 export function YouTubeMusicPlayer() {
     const localWebViewRef = useRef<WebView>(null);
+
+    const uri = useSelector(() => {
+        const playlistId = stateSaved$.playlist.get();
+        const playlistType = stateSaved$.playlistType.get();
+
+        if (playlistType === "ytm") {
+            return `https://music.youtube.com/playlist?list=${playlistId.replace(/^VL/, "")}`;
+        }
+
+        return "https://music.youtube.com/";
+    });
 
     // Set the global ref to this instance
     React.useEffect(() => {
@@ -1188,13 +1186,11 @@ export function YouTubeMusicPlayer() {
         }
     };
 
-    const src = use$(url$);
-
     return (
         <View className="flex-1">
             <WebView
                 ref={localWebViewRef}
-                source={{ uri: src }}
+                source={{ uri }}
                 javaScriptEnabled={true}
                 webviewDebuggingEnabled
                 domStorageEnabled={true}
