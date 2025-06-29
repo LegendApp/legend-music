@@ -13,6 +13,7 @@
 
 ## Plan for later (do not do these yet)
 
+[] Clicking a playlist sets the playlist/song and navigates to the previous one
 [] Handle media keys
 [] Make an expanded playlist view
 [] Youtube Music seems to only load track thumbnails after scrolling down
