@@ -4,8 +4,6 @@ import { use$, useObservable } from "@legendapp/state/react";
 import { StyleSheet, View } from "react-native";
 
 import { Sidebar } from "@/components/Sidebar";
-import { AccountSettings } from "@/settings/AccountSettings";
-import { RepositoriesSettings } from "@/settings/RepositoriesSettings";
 import { state$ } from "@/systems/State";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 
@@ -27,11 +25,8 @@ export const SettingsContainer = () => {
     const selectedItem = use$(selectedItem$);
 
     const renderContent = () => {
-        switch (selectedItem) {
-            case "account":
-                return <AccountSettings />;
-            case "repositories":
-                return <RepositoriesSettings />;
+        switch (
+            selectedItem
             //     return <ThemeSettings />;
             // case 'plugins':
             //     return <PluginSettings />;
@@ -39,7 +34,10 @@ export const SettingsContainer = () => {
             //     return <LibrarySettings />;
             // default:
             //     return <AccountSettings />;
+        ) {
         }
+
+        return null;
     };
 
     return (
