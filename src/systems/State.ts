@@ -10,6 +10,7 @@ export const state$ = observable({
     titleBarHovered: false,
     showSettings: false,
     showSettingsPage: undefined as SettingsPage | undefined,
+    songId: undefined as string | undefined,
 });
 
 export const stateSaved$ = createJSONManager({
@@ -17,6 +18,5 @@ export const stateSaved$ = createJSONManager({
     initialValue: {
         playlist: undefined as string | undefined,
         playlistType: undefined as unknown as "ytm" | "file",
-        songId: undefined as string | undefined,
     },
 });

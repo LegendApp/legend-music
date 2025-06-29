@@ -7,7 +7,7 @@ import { controls, playbackState$, playlistState$, playlistsState$ } from "@/com
 import { localMusicState$ } from "@/systems/LocalMusicState";
 import { getPlaylistContent } from "@/systems/PlaylistContent";
 import { playlistsData$ } from "@/systems/Playlists";
-import { stateSaved$ } from "@/systems/State";
+import { state$, stateSaved$ } from "@/systems/State";
 import { cn } from "@/utils/cn";
 import { formatSecondsToMmSs } from "@/utils/m3u";
 
@@ -37,7 +37,7 @@ const TrackItem = ({ track, index, currentTrackIndex, clickedTrackIndex, onTrack
             <View className="flex-row items-center px-4 py-4 mt-6 mb-2">
                 <View className="flex-1 h-px bg-white/15" />
                 <Text className="text-white/90 text-xs font-semibold tracking-wider uppercase mx-4 bg-white/5 px-3 py-1.5 rounded-full border border-white/15">
-                    {track.title.replace(/^— (.+) —$/, '$1')}
+                    {track.title.replace(/^— (.+) —$/, "$1")}
                 </Text>
                 <View className="flex-1 h-px bg-white/15" />
             </View>
@@ -105,12 +105,12 @@ export function Playlist() {
 
     // Determine which playlist to show
     const isLocalFilesSelected = localMusicState.isLocalFilesSelected;
-    
+
     // Get cached playlist content for the currently selected playlist
     const selectedPlaylistId = stateSaved.playlist;
     const selectedPlaylist = selectedPlaylistId ? playlistsData.playlistsYtm[selectedPlaylistId] : null;
     const cachedPlaylistContent$ = selectedPlaylist ? getPlaylistContent(selectedPlaylist.id) : null;
-    const cachedPlaylistContent = cachedPlaylistContent$ ? use$(cachedPlaylistContent$) : null;
+    const cachedPlaylistContent = use$(cachedPlaylistContent$);
 
     const playlist: PlaylistTrackWithSuggestions[] = isLocalFilesSelected
         ? localMusicState.tracks.map((track, index) => ({
@@ -200,10 +200,20 @@ export function Playlist() {
                 localAudioControls.loadPlaylist(tracks, index);
             }
         } else {
-            // Handle YouTube Music playback
-            // For suggestions, we need to use the actual track index
-            const actualIndex = track?.fromSuggestions ? track.index : index;
-            controls.playTrackAtIndex(actualIndex);
+            // Handle YouTube Music playback - use playTrackAtIndex for proper track selection
+            if (track?.fromSuggestions || !track?.id) {
+                // For suggestions, use playTrackAtIndex to play them
+                console.log("Playing suggestion at index:", index, "track:", track.title);
+                controls.playTrackAtIndex(index);
+            } else {
+                // For regular playlist tracks, set the songId
+                if (track?.id) {
+                    state$.songId.set(track.id);
+                    console.log("Set songId:", track.id, "for track:", track.title);
+                } else {
+                    console.warn("Track missing ID, cannot set songId:", track);
+                }
+            }
         }
 
         // Clear the clicked state after a short delay

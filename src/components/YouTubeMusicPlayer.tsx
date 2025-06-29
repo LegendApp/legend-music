@@ -5,22 +5,14 @@ import { View } from "react-native";
 import { WebView } from "react-native-webview";
 import { getPlaylistContent } from "@/systems/PlaylistContent";
 import { getAllPlaylists, getPlaylist, type Playlist, playlistsData$ } from "@/systems/Playlists";
-import { stateSaved$ } from "@/systems/State";
+import { state$, stateSaved$ } from "@/systems/State";
 import { arrayToObject } from "@/utils/arrayToObject";
 import type { M3UTrack } from "@/utils/m3u";
 import { parseDurationToSeconds } from "@/utils/m3u";
 
 // Helper function to generate YouTube Music watch URLs
 function generateYouTubeMusicWatchUrl(trackId: string, playlistIdForUrl: string): string {
-    const songId = stateSaved$.songId.get();
-    const baseUrl = `https://music.youtube.com/watch?v=${trackId}&list=${playlistIdForUrl}`;
-    
-    // Include songId in URL if available
-    if (songId) {
-        return `${baseUrl}&t=${songId}`;
-    }
-    
-    return baseUrl;
+    return `https://music.youtube.com/watch?v=${trackId}&list=${playlistIdForUrl}`;
 }
 
 interface Track {
@@ -1241,7 +1233,7 @@ const updatePlaylistContent = (
             duration: parseDurationToSeconds(track.duration), // Parse MM:SS format to seconds
             title: track.title,
             artist: track.artist,
-            filePath: generateYouTubeMusicWatchUrl(track.id || '', playlistIdForUrl),
+            filePath: generateYouTubeMusicWatchUrl(track.id || "", playlistIdForUrl),
             logo: track.thumbnail, // Include thumbnail as logo
         }));
 
@@ -1250,7 +1242,7 @@ const updatePlaylistContent = (
             duration: parseDurationToSeconds(track.duration), // Parse MM:SS format to seconds
             title: track.title,
             artist: track.artist,
-            filePath: generateYouTubeMusicWatchUrl(track.id || '', playlistIdForUrl),
+            filePath: generateYouTubeMusicWatchUrl(track.id || "", playlistIdForUrl),
             logo: track.thumbnail, // Include thumbnail as logo
         }));
 
@@ -1285,9 +1277,20 @@ export function YouTubeMusicPlayer() {
     const uri = useSelector(() => {
         const playlistId = stateSaved$.playlist.get();
         const playlistType = stateSaved$.playlistType.get();
+        const songId = state$.songId.get();
+
+        console.log("songId", songId);
 
         if (playlistType === "ytm" && playlistId) {
-            return `https://music.youtube.com/playlist?list=${playlistId.replace(/^VL/, "")}`;
+            const playlistIdForUrl = playlistId.replace(/^VL/, "");
+
+            // If we have a songId, use the watch URL format
+            if (songId) {
+                return generateYouTubeMusicWatchUrl(songId, playlistIdForUrl);
+            }
+
+            // Otherwise, use the playlist URL
+            return `https://music.youtube.com/playlist?list=${playlistIdForUrl}`;
         }
 
         return "https://music.youtube.com/";
