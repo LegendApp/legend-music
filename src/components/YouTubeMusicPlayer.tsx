@@ -713,7 +713,7 @@ const injectedJavaScript = `
             if (JSON.stringify(playbackState) !== JSON.stringify(lastPlaybackState)) {
                 console.log('Playback state changed, sending update');
                 window.ReactNativeWebView.postMessage(JSON.stringify({
-                    type: 'playerState',
+                    type: 'playbackState',
                     data: playbackState
                 }));
                 lastPlaybackState = playbackState;
@@ -744,7 +744,7 @@ const injectedJavaScript = `
             // Only send update if playlist state changed
             if (JSON.stringify(playlistState) !== JSON.stringify(lastPlaylistState)) {
                 window.ReactNativeWebView.postMessage(JSON.stringify({
-                    type: 'playerState',
+                    type: 'playlistState',
                     data: playlistState
                 }));
                 lastPlaylistState = playlistState;
@@ -769,7 +769,7 @@ const injectedJavaScript = `
             // Only send update if playlists state changed
             if (JSON.stringify(playlistsState) !== JSON.stringify(lastPlaylistsState)) {
                 window.ReactNativeWebView.postMessage(JSON.stringify({
-                    type: 'playerState',
+                    type: 'playlistsState',
                     data: playlistsState
                 }));
                 lastPlaylistsState = playlistsState;
@@ -1377,62 +1377,32 @@ export function YouTubeMusicPlayer() {
             const message = JSON.parse(event.nativeEvent.data);
 
             switch (message.type) {
-                case "playerState": {
-                    const newState = message.data;
+                case "playbackState": {
+                    console.log("playbackState update", message.data);
+                    playbackState$.assign(message.data);
+                    break;
+                }
+                case "playlistState": {
+                    console.log("playlistState update", message.data);
+                    playlistState$.assign(message.data);
 
-                    console.log("newState", newState);
-
-                    // Update playback state
-                    if (
-                        "isPlaying" in newState ||
-                        "currentTrack" in newState ||
-                        "currentTime" in newState ||
-                        "currentTrackIndex" in newState ||
-                        "isLoading" in newState ||
-                        "error" in newState
-                    ) {
-                        playbackState$.assign({
-                            ...(newState.isPlaying !== undefined && { isPlaying: newState.isPlaying }),
-                            ...(newState.currentTrack !== undefined && { currentTrack: newState.currentTrack }),
-                            ...(newState.currentTime !== undefined && { currentTime: newState.currentTime }),
-                            ...(newState.currentTrackIndex !== undefined && {
-                                currentTrackIndex: newState.currentTrackIndex,
-                            }),
-                            ...(newState.isLoading !== undefined && { isLoading: newState.isLoading }),
-                            ...(newState.error !== undefined && { error: newState.error }),
-                        });
+                    // Update playlist content (M3U format) when tracks are received
+                    if (message.data.songs && Array.isArray(message.data.songs)) {
+                        updatePlaylistContent(
+                            stateSaved$.playlist.get(),
+                            message.data.songs,
+                            message.data.suggestions || [],
+                        );
                     }
+                    break;
+                }
+                case "playlistsState": {
+                    console.log("playlistsState update", message.data);
+                    playlistsState$.assign(message.data);
 
-                    // Update playlist state
-                    if ("songs" in newState || "suggestions" in newState || "currentPlaylistId" in newState) {
-                        playlistState$.assign({
-                            ...(newState.songs !== undefined && { songs: newState.songs }),
-                            ...(newState.suggestions !== undefined && { suggestions: newState.suggestions }),
-                            ...(newState.currentPlaylistId !== undefined && {
-                                currentPlaylistId: newState.currentPlaylistId,
-                            }),
-                        });
-
-                        // Update playlist content (M3U format) when tracks are received
-                        if (newState.songs && Array.isArray(newState.songs)) {
-                            updatePlaylistContent(
-                                stateSaved$.playlist.get(),
-                                newState.songs,
-                                newState.suggestions || [],
-                            );
-                        }
-                    }
-
-                    // Update playlists state
-                    if ("availablePlaylists" in newState) {
-                        playlistsState$.assign({
-                            availablePlaylists: newState.availablePlaylists,
-                        });
-
-                        // Sync YouTube Music playlists when they're updated
-                        if (newState.availablePlaylists && Array.isArray(newState.availablePlaylists)) {
-                            syncYouTubeMusicPlaylists(newState.availablePlaylists);
-                        }
+                    // Sync YouTube Music playlists when they're updated
+                    if (message.data.availablePlaylists && Array.isArray(message.data.availablePlaylists)) {
+                        syncYouTubeMusicPlaylists(message.data.availablePlaylists);
                     }
                     break;
                 }
