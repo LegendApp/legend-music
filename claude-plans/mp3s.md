@@ -10,7 +10,7 @@
 ## Steps
 
 [x] Remove "playlist" from PlayerState in YoutubeMusic.tsx. Make sure that nothing is using it. Playlist.tsx should use "songs" and "suggestions" instead.
-[] Do a refactor to reduce duplication in code in YouTubeMusicPlayer.tsx. Use good coding practices and don't break anything.
+[x] Do a refactor to reduce duplication in code in YouTubeMusicPlayer.tsx. Use good coding practices and don't break anything.
 [] Do a refactor to remove files in the Components folder that are specific to Github, Issues, etc... Those are from the project I used to bootstrap this one. If anything could be a reusable component for this music player do not remove it.
 
 ## Plan for later (do not do these yet)
