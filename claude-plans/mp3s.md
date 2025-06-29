@@ -10,7 +10,7 @@
 ## Steps
 
 [x] The Playlist should use the cached playlist on load. Use playlistsData$ from Playlists.ts.
-[] Remove the verbose logging in YouTubeMusicPlayer now that it's working well.
+[x] Remove the verbose logging in YouTubeMusicPlayer now that it's working well.
 
 ## Plan for later (do not do these yet)
 

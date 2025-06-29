@@ -92,16 +92,13 @@ const injectedJavaScript = `
         if (sidebarPlaylists[index]) {
             const linkEl = sidebarPlaylists[index].querySelector('tp-yt-paper-item[href]');
             if (linkEl) {
-                console.log('Found sidebar element at index ' + index + ' for ' + actionName + ', clicking...');
                 linkEl.click();
             } else {
-                console.log('No clickable link found in sidebar element at index ' + index + ' for ' + actionName);
                 sidebarPlaylists[index].click();
             }
 
             // Wait for page to load and then re-extract
             setTimeout(function() {
-                console.log('Re-extracting after ' + actionName + '...');
                 extractCurrentPlaylistInfo(); // Sidebar navigation affects playlist
                 extractAvailablePlaylistsInfo(); // May also affect available playlists
             }, 2000);
@@ -167,13 +164,11 @@ const injectedJavaScript = `
                                 try {
                                     const parsedData = JSON.parse(decodedData);
                                     guideData = parsedData;
-                                    console.log('Found guide data in initialData', parsedData);
                                     break;
                                 } catch {}
                             }
                         }
                     } catch (e) {
-                        console.log('Failed to parse initialData from script tag:', e);
                         continue;
                     }
                 }
@@ -181,7 +176,6 @@ const injectedJavaScript = `
 
             // Extract playlists from guideData if found
             if (guideData) {
-                console.log('Processing guide data for playlists...');
                 const results = [];
 
                 function findGuideEntryRenderers(obj, path = '', visitedIds = new Set()) {
@@ -261,8 +255,7 @@ const injectedJavaScript = `
 
                 findGuideEntryRenderers(guideData);
                 playlists.push(...results);
-                console.log('Found', results.length, 'playlists from guide data');
-            }
+                }
 
 
             // Strategy 4: Add "Now Playing" at the top
@@ -274,8 +267,6 @@ const injectedJavaScript = `
                 creator: ''
             });
 
-            console.log('Final playlist count:', playlists.length);
-            console.log('Playlists found:', playlists.map(p => ({ id: p.id, name: p.name })));
             return playlists;
         } catch (error) {
             console.error('Error extracting playlists:', error);
@@ -350,8 +341,7 @@ const injectedJavaScript = `
                                 break;
                             }
                         } catch (e) {
-                            console.log('Failed to parse initialData from script tag:', e);
-                            continue;
+                                continue;
                         }
                     }
                 }
@@ -543,10 +533,6 @@ const injectedJavaScript = `
 
     function extractPlaybackInfo() {
         try {
-            // Debug logging to see what elements we're finding
-            console.log('=== PLAYBACK EXTRACTION DEBUG ===');
-            console.log('Current URL:', window.location.href);
-            console.log('Document title:', document.title);
 
             // Try multiple selectors for title and artist
             let titleElement = document.querySelector('.title.style-scope.ytmusic-player-bar');
@@ -571,40 +557,7 @@ const injectedJavaScript = `
                 artistElement = document.querySelector('#player .byline, .player-bar .byline');
             }
 
-            console.log('Title element:', titleElement);
-            console.log('Title text:', titleElement?.textContent);
-            console.log('Artist element:', artistElement);
-            console.log('Artist text:', artistElement?.textContent);
 
-            // Log player bar structure
-            const playerBar = document.querySelector('ytmusic-player-bar');
-            console.log('Player bar element:', playerBar);
-            if (playerBar) {
-                console.log('Player bar innerHTML (first 500 chars):', playerBar.innerHTML.substring(0, 500));
-            }
-
-            // Also check for alternative player structures
-            const alternativePlayerBars = document.querySelectorAll('[class*="player"], [id*="player"]');
-            console.log('Alternative player elements found:', alternativePlayerBars.length);
-            alternativePlayerBars.forEach((el, i) => {
-                if (i < 3) { // Only log first 3 to avoid spam
-                    console.log('Alternative player ' + i + ':', el.tagName, el.className, el.id);
-                }
-            });
-
-            // Log all buttons to see what's available
-            const allButtons = document.querySelectorAll('button, [role="button"]');
-            console.log('Total buttons found:', allButtons.length);
-            const playPauseButtons = Array.from(allButtons).filter(btn => {
-                const ariaLabel = btn.getAttribute('aria-label') || '';
-                const title = btn.getAttribute('title') || '';
-                return ariaLabel.toLowerCase().includes('play') || ariaLabel.toLowerCase().includes('pause') ||
-                       title.toLowerCase().includes('play') || title.toLowerCase().includes('pause');
-            });
-            console.log('Play/pause buttons found:', playPauseButtons.length);
-            playPauseButtons.forEach((btn, i) => {
-                console.log('Play/pause button ' + i + ':', btn.getAttribute('aria-label'), btn.getAttribute('title'));
-            });
 
             // Try multiple selectors for the current playing track image
             let thumbnailElement = document.querySelector('.thumbnail.style-scope.ytmusic-player img');
@@ -653,10 +606,6 @@ const injectedJavaScript = `
                 isPlaying = ariaLabel.toLowerCase().includes('pause') || title.toLowerCase().includes('pause');
             }
 
-            console.log('Play button:', playButton);
-            console.log('Play button aria-label:', playButton?.getAttribute('aria-label'));
-            console.log('Play button title:', playButton?.getAttribute('title'));
-            console.log('Is playing:', isPlaying);
 
             // Get current time with multiple selectors
             let timeElement = document.querySelector('#left-controls .time-info');
@@ -678,10 +627,6 @@ const injectedJavaScript = `
             }
             const duration = durationElement?.textContent?.trim() || '0:00';
 
-            console.log('Time element:', timeElement);
-            console.log('Current time:', currentTime);
-            console.log('Duration element:', durationElement);
-            console.log('Duration:', duration);
 
             // Get the best quality thumbnail URL
             let thumbnailUrl = '';
@@ -707,18 +652,14 @@ const injectedJavaScript = `
                 error: null
             };
 
-            console.log('Playback extraction - Final state:', playbackState);
-
             // Only send update if playback state changed
             if (JSON.stringify(playbackState) !== JSON.stringify(lastPlaybackState)) {
-                console.log('Playback state changed, sending update');
                 window.ReactNativeWebView.postMessage(JSON.stringify({
                     type: 'playbackState',
                     data: playbackState
                 }));
                 lastPlaybackState = playbackState;
             } else {
-                console.log('Playback state unchanged');
             }
         } catch (error) {
             console.error('Error in extractPlaybackInfo:', error);
@@ -839,7 +780,6 @@ const injectedJavaScript = `
         },
 
         playTrackAtIndex: function(index) {
-            console.log('Attempting to play track at index:', index);
 
             // Determine current context to use the same strategy as extraction
             const url = window.location.href;
@@ -857,7 +797,6 @@ const injectedJavaScript = `
                 if (queueItems.length > 0) {
                     items = queueItems;
                     strategy = 'now-playing-queue';
-                    console.log('Using queue items for playback:', items.length);
                 }
             } else {
                 // If we're viewing a specific playlist, use the same selectors as extraction
@@ -886,13 +825,11 @@ const injectedJavaScript = `
 
                     items = filteredItems;
                     strategy = 'playlist-tracks';
-                    console.log('Using playlist items for playback:', items.length);
                 }
             }
 
             // Click the item at the specified index
             if (items[index]) {
-                console.log('Clicking item at index', index, 'using strategy:', strategy);
 
                 if (strategy === 'now-playing-queue') {
                     // For queue items, look for play button
@@ -905,28 +842,23 @@ const injectedJavaScript = `
                     // For playlist items, look for play button or click the item
                     const playButton = items[index].querySelector('[aria-label*="Play"], [title*="Play"], ytmusic-play-button-renderer');
                     if (playButton) {
-                        console.log('Found play button, clicking...');
                         playButton.click();
                         return true;
                     } else {
-                        console.log('No play button found, clicking item directly...');
                         items[index].click();
                         return true;
                     }
                 }
             }
 
-            console.log('Could not find track at index:', index, 'items available:', items.length);
             return false;
         },
 
         setCurrentPlaylist: function(playlistId) {
-            console.log('Setting current playlist to:', playlistId);
             currentPlaylistSelection = playlistId;
         },
 
         navigateToPlaylistByIndex: function(index) {
-            console.log('Navigating to playlist by index:', index);
             try {
                 return navigateSidebarPlaylist(index, 'sidebar navigation');
             } catch (error) {
@@ -944,14 +876,12 @@ const injectedJavaScript = `
 
                 // Strategy 0: Handle "Now Playing" - don't navigate, just update selection
                 if (playlistId === 'NOW_PLAYING') {
-                    console.log('Switched to Now Playing view');
                     return true;
                 }
 
                 // Strategy 1: Handle sidebar_ prefixed IDs by clicking at specific index
                 if (playlistId.startsWith('sidebar_')) {
                     const index = parseInt(playlistId.split('sidebar_')[1]);
-                    console.log('Clicking sidebar playlist at index:', index);
                     return navigateSidebarPlaylist(index, 'sidebar playlist navigation');
                 }
 
@@ -980,16 +910,13 @@ const injectedJavaScript = `
                 }
 
                 // Strategy 2: Try to find and click the playlist in the sidebar
-                console.log('Searching sidebar playlists...');
                 const sidebarPlaylists = document.querySelectorAll('ytmusic-guide-entry-renderer[play-button-state="default"]');
-                console.log('Found sidebar playlist elements:', sidebarPlaylists.length);
 
                 for (let i = 0; i < sidebarPlaylists.length; i++) {
                     const element = sidebarPlaylists[i];
                     const linkEl = element.querySelector('tp-yt-paper-item[href]');
                     const href = linkEl?.getAttribute('href') || '';
 
-                    console.log('Checking sidebar element', i, 'href:', href);
 
                     if (href.includes('playlist?list=' + playlistId) ||
                         href.includes(playlistId) ||
@@ -1001,15 +928,12 @@ const injectedJavaScript = `
                 }
 
                 // Strategy 3: Try to find and click in the main grid
-                console.log('Searching grid playlists...');
                 const gridPlaylists = document.querySelectorAll('ytmusic-two-row-item-renderer a[href*="playlist?list="]');
-                console.log('Found grid playlist elements:', gridPlaylists.length);
 
                 for (let i = 0; i < gridPlaylists.length; i++) {
                     const element = gridPlaylists[i];
                     const href = element.getAttribute('href') || '';
 
-                    console.log('Checking grid element', i, 'href:', href);
 
                     if (href.includes('playlist?list=' + playlistId)) {
                         console.log('Found matching grid playlist, clicking...');
@@ -1378,12 +1302,10 @@ export function YouTubeMusicPlayer() {
 
             switch (message.type) {
                 case "playbackState": {
-                    console.log("playbackState update", message.data);
                     playbackState$.assign(message.data);
                     break;
                 }
                 case "playlistState": {
-                    console.log("playlistState update", message.data);
                     playlistState$.assign(message.data);
 
                     // Update playlist content (M3U format) when tracks are received
@@ -1397,7 +1319,6 @@ export function YouTubeMusicPlayer() {
                     break;
                 }
                 case "playlistsState": {
-                    console.log("playlistsState update", message.data);
                     playlistsState$.assign(message.data);
 
                     // Sync YouTube Music playlists when they're updated
