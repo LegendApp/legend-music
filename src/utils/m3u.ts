@@ -4,6 +4,7 @@ export interface M3UTrack {
     artist?: string;
     filePath: string;
     logo?: string; // URL to track thumbnail/logo
+    id?: string; // Video ID extracted from URL
 }
 
 export interface M3UPlaylist {
@@ -63,6 +64,7 @@ export function parseM3U(content: string): M3UPlaylist {
                 }
 
                 const track = {
+                    id: extractYouTubeId(filePath),
                     duration,
                     title,
                     artist,
@@ -84,6 +86,7 @@ export function parseM3U(content: string): M3UPlaylist {
         } else {
             // Plain file path without EXTINF
             const track = {
+                id: extractYouTubeId(line),
                 duration: -1,
                 title: extractTitleFromPath(line),
                 filePath: line,
@@ -235,4 +238,27 @@ export function formatSecondsToMmSs(seconds: number): string {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+/**
+ * Extract YouTube video ID from a YouTube Music URL
+ */
+function extractYouTubeId(url: string): string {
+    if (!url || typeof url !== "string") {
+        return "";
+    }
+
+    try {
+        const urlObj = new URL(url);
+
+        // Check if it's a YouTube Music URL
+        if (urlObj.hostname === "music.youtube.com") {
+            const vParam = urlObj.searchParams.get("v");
+            return vParam || "";
+        }
+
+        return "";
+    } catch {
+        return "";
+    }
 }

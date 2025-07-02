@@ -9,11 +9,10 @@
 
 ## Steps
 
-[] Incomplete: Dropdown menus should activate on mouse down rather than click. If the mouse is already down when it's opened, mouse up should activate the selected item.
 
 ## Plan for later (do not do these yet)
 
-[] Clicking a playlist sets the playlist/song and navigates to the previous one
+[] Clicking a song clears the list of playlists (Clicking a song opens now playing and overwrites the playlist, it should somehow merge to not overwrite ids?)
 [] Handle media keys
 [] Make an expanded playlist view
 [] Youtube Music seems to only load track thumbnails after scrolling down
