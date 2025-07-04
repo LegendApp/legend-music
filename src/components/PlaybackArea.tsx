@@ -1,6 +1,7 @@
 import { use$ } from "@legendapp/state/react";
-import { Image, Text, TouchableOpacity, View } from "react-native";
+import { Image, Text, View } from "react-native";
 
+import { Button } from "@/components/Button";
 import { CustomSlider } from "@/components/CustomSlider";
 import { localAudioControls, localPlayerState$ } from "@/components/LocalAudioPlayer";
 import { controls, playbackState$ } from "@/components/YouTubeMusicPlayer";
@@ -77,30 +78,33 @@ export function PlaybackArea() {
                 </View>
 
                 {/* Playback Controls */}
-                <View className="flex-row items-center gap-x-1 ml-4">
-                    <TouchableOpacity
-                        className="w-8 h-8 bg-white/20 rounded-full items-center justify-center"
+                <View className="flex-row items-center gap-x-2 ml-4">
+                    <Button
+                        icon="backward.fill"
+                        variant="icon-bg"
+                        size="medium"
                         onPress={isLocalFilesSelected ? localAudioControls.playPrevious : controls.previous}
                         disabled={isLoading}
-                    >
-                        <Text className="text-white text-sm">⏮</Text>
-                    </TouchableOpacity>
+                        className="w-10 h-10 bg-white/15 hover:bg-white/25 active:bg-white/35 rounded-xl border border-white/10"
+                    />
 
-                    <TouchableOpacity
-                        className="w-8 h-8 bg-white/30 rounded-full items-center justify-center"
+                    <Button
+                        icon={isLoading ? "ellipsis" : isPlaying ? "pause.fill" : "play.fill"}
+                        variant="icon-bg"
+                        size="large"
                         onPress={isLocalFilesSelected ? localAudioControls.togglePlayPause : controls.playPause}
                         disabled={isLoading}
-                    >
-                        <Text className="text-white text-base">{isLoading ? "..." : isPlaying ? "⏸" : "▶"}</Text>
-                    </TouchableOpacity>
+                        className="w-12 h-12 bg-white/20 hover:bg-white/30 active:bg-white/40 rounded-xl border border-white/15 shadow-lg"
+                    />
 
-                    <TouchableOpacity
-                        className="w-8 h-8 bg-white/20 rounded-full items-center justify-center"
+                    <Button
+                        icon="forward.fill"
+                        variant="icon-bg"
+                        size="medium"
                         onPress={isLocalFilesSelected ? localAudioControls.playNext : controls.next}
                         disabled={isLoading}
-                    >
-                        <Text className="text-white text-sm">⏭</Text>
-                    </TouchableOpacity>
+                        className="w-10 h-10 bg-white/15 hover:bg-white/25 active:bg-white/35 rounded-xl border border-white/10"
+                    />
                 </View>
             </View>
 
