@@ -97,7 +97,7 @@ export function PlaylistSelector() {
     return (
         <View className="flex-1">
             {/* Title bar area for playlist */}
-            <View className="px-2 py-1 border-t border-white/10">
+            <View className="px-1 border-t border-b border-white/10">
                 <View className="flex-row items-center">
                     <View className="flex-1">
                         <SelectLegendList
@@ -118,22 +118,24 @@ export function PlaylistSelector() {
 
                                 if (mode === "preview") {
                                     return (
-                                        <Text className="text-white/90 group-hover:text-white text-base font-semibold">
+                                        <Text className="text-text-primary group-hover:text-white text-sm font-semibold">
                                             {playlist.name}
                                         </Text>
                                     );
                                 }
                                 return (
                                     <View className="flex-row items-center">
-                                        <Text className="text-white text-base font-medium flex-1">{playlist.name}</Text>
+                                        <Text className="text-text-primary text-sm font-medium flex-1">
+                                            {playlist.name}
+                                        </Text>
                                     </View>
                                 );
                             }}
                             unstyled={true}
-                            showCaret={true}
-                            caretPosition="right"
                             triggerClassName="hover:bg-white/10 rounded-md h-8 px-2"
-                            caretClassName="text-white/70 hover:text-white"
+                            // showCaret={true}
+                            // caretPosition="right"
+                            // caretClassName="text-white/70 hover:text-white"
                             maxWidthMatchTrigger={true}
                         />
                     </View>
@@ -142,13 +144,13 @@ export function PlaylistSelector() {
                             <Button
                                 icon="magnifyingglass"
                                 variant="icon"
-                                size="medium"
+                                size="small"
                                 className="ml-2 hover:bg-white/10"
                             />
                         </DropdownMenu.Trigger>
                         <DropdownMenu.Content>
+                            <StyledInput value$={searchQuery$} placeholder="Search tracks..." className="mb-2" />
                             {/* <View className="p-2">
-                                <StyledInput value$={searchQuery$} placeholder="Search tracks..." className="mb-2" />
                                 {searchResults.length > 0 && (
                                     <View className="max-h-64">
                                         {searchResults.map((track) => (

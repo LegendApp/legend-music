@@ -36,6 +36,23 @@ export function PlaybackArea() {
         return minutes * 60 + seconds;
     }
 
+    function parseDurationSeconds(timeString: string | number): number {
+        if (typeof timeString === "number") {
+            return timeString;
+        }
+
+        // Split by " / " and take the second part
+        const secondTime = timeString.split(" / ")[1];
+
+        if (secondTime) {
+            // Parse "0:25" format
+            const [minutes, seconds] = secondTime.split(":").map(Number);
+            return minutes * 60 + seconds;
+        }
+
+        return 0;
+    }
+
     // Use appropriate state based on current selection
     const currentTrack = isLocalFilesSelected ? localPlayerState.currentTrack : playbackState.currentTrack;
     const isLoading = isLocalFilesSelected ? localPlayerState.isLoading : playbackState.isLoading;
@@ -44,7 +61,9 @@ export function PlaybackArea() {
     const currentTimeSeconds = isLocalFilesSelected
         ? localPlayerState.currentTime
         : parseCurrentTimeSeconds(playbackState.currentTime);
-    const duration = isLocalFilesSelected ? localPlayerState.duration : 0;
+    const duration = isLocalFilesSelected
+        ? localPlayerState.duration
+        : parseDurationSeconds(playbackState.currentTime || 0);
 
     return (
         <View className="mx-3 mt-3">

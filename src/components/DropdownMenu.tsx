@@ -297,7 +297,7 @@ function Item({ children, onSelect, value, className = "", disabled = false }: I
     return (
         <Button
             className={cn(
-                "py-2 px-3 rounded-md hover:bg-white/10 flex-row items-center",
+                "px-3 rounded-md hover:bg-white/10 flex-row items-center",
                 disabled && "opacity-50",
                 className,
             )}

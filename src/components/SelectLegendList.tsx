@@ -38,7 +38,14 @@ export interface SelectLegendListMultipleProps<T> extends SelectLegendListPropsB
     onSelectItem?: (item: NoInfer<T>, isRemove: boolean) => void;
 }
 
-export function SelectLegendList<T>({ selected, selected$, placeholder, onSelectItem, renderItemText, ...rest }: SelectLegendListProps<T>) {
+export function SelectLegendList<T>({
+    selected,
+    selected$,
+    placeholder,
+    onSelectItem,
+    renderItemText,
+    ...rest
+}: SelectLegendListProps<T>) {
     selected = selected$ ? use$<T | undefined>(selected$) : selected;
 
     // Create internal array observable that mirrors the single selection
