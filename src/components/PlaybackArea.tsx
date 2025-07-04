@@ -65,16 +65,14 @@ export function PlaybackArea() {
                 {/* Song Info */}
                 <View className="flex-1 flex-col">
                     <Text className="text-white text-sm font-semibold" numberOfLines={1}>
-                        {currentTrack?.title || (isLoading ? "Loading..." : "No track")}
+                        {currentTrack?.title || (isLoading ? "Loading..." : " ")}
                     </Text>
                     <Text className="text-white/70 text-sm" numberOfLines={1}>
-                        {currentTrack?.artist || ""}
+                        {currentTrack?.artist || " "}
                     </Text>
-                    {currentTrack && (
-                        <Text className="text-white/50 text-xs" style={{ fontVariant: ["tabular-nums"] }}>
-                            {currentTime}
-                        </Text>
-                    )}
+                    <Text className="text-white/50 text-xs" style={{ fontVariant: ["tabular-nums"] }}>
+                        {currentTrack ? currentTime : " "}
+                    </Text>
                 </View>
 
                 {/* Playback Controls */}
