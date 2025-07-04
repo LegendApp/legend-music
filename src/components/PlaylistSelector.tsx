@@ -124,7 +124,7 @@ export function PlaylistSelector() {
                             maxWidthMatchTrigger={true}
                         />
                     </View>
-                    {isLocalFilesSelected && (
+                    {
                         <DropdownMenu.Root closeOnSelect={false}>
                             <DropdownMenu.Trigger asChild>
                                 <Button
@@ -134,7 +134,7 @@ export function PlaylistSelector() {
                                     className="ml-2 hover:bg-white/10"
                                 />
                             </DropdownMenu.Trigger>
-                            <DropdownMenu.Content className="w-96 p-0">
+                            <DropdownMenu.Content>
                                 <View className="p-2">
                                     <StyledInput
                                         value$={searchQuery$}
@@ -167,7 +167,7 @@ export function PlaylistSelector() {
                                 </View>
                             </DropdownMenu.Content>
                         </DropdownMenu.Root>
-                    )}
+                    }
                 </View>
             </View>
 
