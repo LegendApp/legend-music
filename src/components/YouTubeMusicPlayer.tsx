@@ -40,6 +40,7 @@ interface PlaybackState {
     currentTrackIndex: number;
     isLoading: boolean;
     error: string | null;
+    pendingPlay: boolean;
 }
 
 interface PlaylistState {
@@ -729,13 +730,51 @@ const injectedJavaScript = `
         }
     }
 
+        // Helper functions
+    function getPlayPauseButton() {
+        return document.querySelector('#play-pause-button button');
+    }
+
+    function isCurrentlyPlaying() {
+        // Check if music is currently playing by looking at document title
+        // When playing: "Artist - Song Name - YouTube Music"
+        // When not playing: "YouTube Music"
+        return document.title.includes(' - ');
+    }
+
     // Control functions
     window.ytMusicControls = {
         playPause: function() {
-            const button = document.querySelector('#play-pause-button button');
+            const button = getPlayPauseButton();
             if (button) {
                 button.click();
                 return true;
+            }
+            return false;
+        },
+
+        play: function() {
+            const button = getPlayPauseButton();
+            if (button) {
+                // Only click if not already playing
+                if (!isCurrentlyPlaying()) {
+                    button.click();
+                    return true;
+                }
+                return true; // Already playing
+            }
+            return false;
+        },
+
+        pause: function() {
+            const button = getPlayPauseButton();
+            if (button) {
+                // Only click if currently playing
+                if (isCurrentlyPlaying()) {
+                    button.click();
+                    return true;
+                }
+                return true; // Already paused
             }
             return false;
         },
@@ -1170,6 +1209,7 @@ const playbackState$ = observable<PlaybackState>({
     currentTrackIndex: -1,
     isLoading: true,
     error: null,
+    pendingPlay: false,
 });
 
 const playlistState$ = observable<PlaylistState>({
@@ -1268,6 +1308,8 @@ const updatePlaylistContent = (
 // Expose control methods
 const controls = {
     playPause: () => executeCommand("playPause"),
+    play: () => executeCommand("play"),
+    pause: () => executeCommand("pause"),
     next: () => executeCommand("next"),
     previous: () => executeCommand("previous"),
     setVolume: (volume: number) => executeCommand("setVolume", volume),
@@ -1381,7 +1423,14 @@ export function YouTubeMusicPlayer() {
                 onMessage={handleMessage}
                 onLoadStart={() => playbackState$.isLoading.set(true)}
                 onLoadEnd={() => {
-                    // Injection will set loading to false
+                    // Check if we need to start playing after navigation
+                    if (playbackState$.pendingPlay.get()) {
+                        playbackState$.pendingPlay.set(false);
+                        // Small delay to ensure the page is fully loaded
+                        setTimeout(() => {
+                            controls.play();
+                        }, 100);
+                    }
                 }}
                 onError={(error) => {
                     playbackState$.error.set(`WebView error: ${error.nativeEvent.description}`);

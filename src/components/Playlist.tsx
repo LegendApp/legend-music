@@ -226,11 +226,14 @@ export function Playlist() {
                 // For regular playlist tracks, set the songId and start playing
                 if (track?.id) {
                     state$.songId.set(track.id);
-                    // Give the WebView a moment to navigate to the new track, then start playing
-                    setTimeout(() => {
-                        controls.playPause();
-                    }, 500);
-                    console.log("Set songId:", track.id, "for track:", track.title, "and starting playback");
+                    playbackState$.pendingPlay.set(true);
+                    console.log(
+                        "Set songId:",
+                        track.id,
+                        "for track:",
+                        track.title,
+                        "and will start playback when page loads",
+                    );
                 } else {
                     console.warn("Track missing ID, cannot set songId:", track);
                 }
