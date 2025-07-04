@@ -1,5 +1,7 @@
 import { createJSONManager } from "@/utils/JSONManager";
 
+export type PlaylistStyle = "compact" | "comfortable";
+
 export interface AppSettings {
     state: {
         sidebarWidth: number;
@@ -7,7 +9,7 @@ export interface AppSettings {
         panels: Record<string, number>;
     };
     general: {
-        playlistStyle: "compact" | "comfortable";
+        playlistStyle: PlaylistStyle;
     };
     youtubeMusic: {
         enabled: boolean;

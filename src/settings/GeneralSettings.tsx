@@ -32,8 +32,7 @@ export const GeneralSettings = observer(function GeneralSettings() {
                                     value$={settings$.general.playlistStyle}
                                     options={playlistStyleOptions}
                                     placeholder="Select style..."
-                                    triggerClassName="px-3 py-2 h-8"
-                                    textClassName="text-text-primary text-sm"
+                                    triggerClassName="px-3"
                                 />
                             </View>
                         </View>

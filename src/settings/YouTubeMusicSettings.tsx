@@ -15,7 +15,7 @@ export const YouTubeMusicSettings = observer(function YouTubeMusicSettings() {
                 {/* Integration Section */}
                 <View className="mb-8">
                     <Text className="text-lg font-semibold text-text-primary mb-4">Integration</Text>
-                    
+
                     <View className="bg-background-secondary rounded-lg border border-border-primary p-4">
                         <View className="flex-row items-start">
                             <View className="flex-shrink-0 mt-1">
@@ -25,50 +25,41 @@ export const YouTubeMusicSettings = observer(function YouTubeMusicSettings() {
                                 />
                             </View>
                             <View className="flex-1 ml-3">
-                                <Text className="text-text-primary text-base font-medium">
-                                    Enable YouTube Music
-                                </Text>
+                                <Text className="text-text-primary text-base font-medium">Enable YouTube Music</Text>
                                 <Text className="text-text-tertiary text-sm mt-1">
-                                    Enable YouTube Music integration for streaming and playlist management. 
-                                    This allows you to access your YouTube Music playlists and stream songs directly.
+                                    Enable YouTube Music integration for streaming and playlist management. This allows
+                                    you to access your YouTube Music playlists and stream songs directly.
                                 </Text>
                             </View>
                         </View>
-                        
-                        {ytmSettings.enabled && (
-                            <View className="mt-4 pt-4 border-t border-border-primary">
-                                <View className="flex-row items-center">
-                                    <View className="h-2 w-2 rounded-full bg-emerald-500 mr-2"></View>
-                                    <Text className="text-text-secondary text-sm">
-                                        YouTube Music integration is active
-                                    </Text>
-                                </View>
-                            </View>
-                        )}
                     </View>
                 </View>
 
                 {/* Features Section */}
                 <View className="mb-8">
                     <Text className="text-lg font-semibold text-text-primary mb-4">Features</Text>
-                    
+
                     <View className="bg-background-secondary rounded-lg border border-border-primary p-4">
                         <View className="space-y-3">
                             <View className="flex-row items-center">
-                                <View className="h-1.5 w-1.5 rounded-full bg-accent-primary mr-3"></View>
+                                <View className="h-1.5 w-1.5 rounded-full bg-accent-primary mr-3" />
                                 <Text className="text-text-secondary text-sm">Access your YouTube Music playlists</Text>
                             </View>
                             <View className="flex-row items-center">
-                                <View className="h-1.5 w-1.5 rounded-full bg-accent-primary mr-3"></View>
-                                <Text className="text-text-secondary text-sm">Stream songs directly from YouTube Music</Text>
+                                <View className="h-1.5 w-1.5 rounded-full bg-accent-primary mr-3" />
+                                <Text className="text-text-secondary text-sm">
+                                    Stream songs directly from YouTube Music
+                                </Text>
                             </View>
                             <View className="flex-row items-center">
-                                <View className="h-1.5 w-1.5 rounded-full bg-accent-primary mr-3"></View>
-                                <Text className="text-text-secondary text-sm">Sync with your YouTube Music library</Text>
+                                <View className="h-1.5 w-1.5 rounded-full bg-accent-primary mr-3" />
+                                <Text className="text-text-secondary text-sm">Use your YouTube Music library</Text>
                             </View>
                             <View className="flex-row items-center">
-                                <View className="h-1.5 w-1.5 rounded-full bg-accent-primary mr-3"></View>
-                                <Text className="text-text-secondary text-sm">Control playback and queue management</Text>
+                                <View className="h-1.5 w-1.5 rounded-full bg-accent-primary mr-3" />
+                                <Text className="text-text-secondary text-sm">
+                                    Control playback and queue management
+                                </Text>
                             </View>
                         </View>
                     </View>
@@ -77,7 +68,7 @@ export const YouTubeMusicSettings = observer(function YouTubeMusicSettings() {
                 {/* Advanced Settings Placeholder */}
                 <View className="mb-8">
                     <Text className="text-lg font-semibold text-text-primary mb-4">Advanced</Text>
-                    
+
                     <View className="bg-background-secondary rounded-lg border border-border-primary p-4">
                         <View className="opacity-50">
                             <Text className="text-text-tertiary text-sm text-center py-4">

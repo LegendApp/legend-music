@@ -6,6 +6,7 @@ import { DropdownMenu, type DropdownMenuRootRef } from "@/components/DropdownMen
 import { localAudioControls } from "@/components/LocalAudioPlayer";
 import { Playlist } from "@/components/Playlist";
 import { Select } from "@/components/Select";
+import { SelectLegendList } from "@/components/SelectLegendList";
 import { StyledInput } from "@/components/StyledInput";
 import type { YTMusicPlaylist } from "@/components/YouTubeMusicPlayer";
 import { useOnHotkeys } from "@/systems/keyboard/Keyboard";
@@ -99,7 +100,7 @@ export function PlaylistSelector() {
             <View className="px-2 py-1 border-t border-white/10">
                 <View className="flex-row items-center">
                     <View className="flex-1">
-                        <Select
+                        <SelectLegendList
                             items={availablePlaylistIds}
                             selected$={selectedPlaylist$}
                             placeholder="Local Files"

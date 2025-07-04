@@ -34,8 +34,8 @@ export function Select({
     disabled = false,
 }: SelectProps) {
     const value = value$ ? use$(value$) : valueProp;
-    
-    const selectedOption = options.find(option => option.value === value);
+
+    const selectedOption = options.find((option) => option.value === value);
     const displayText = selectedOption ? selectedOption.label : placeholder;
 
     const handleSelect = (selectedValue: string) => {
@@ -55,13 +55,7 @@ export function Select({
                 showCaret={true}
                 caretPosition="right"
             >
-                <Text
-                    className={cn(
-                        "text-text-secondary text-xs flex-1",
-                        textClassName,
-                    )}
-                    numberOfLines={1}
-                >
+                <Text className={cn("text-text-primary text-sm", textClassName)} numberOfLines={1}>
                     {displayText}
                 </Text>
             </DropdownMenu.Trigger>
@@ -72,7 +66,7 @@ export function Select({
                         onSelect={() => handleSelect(option.value)}
                         className={cn(
                             "px-3 py-2 hover:bg-background-tertiary",
-                            value === option.value && "bg-background-tertiary"
+                            value === option.value && "bg-background-tertiary",
                         )}
                     >
                         <Text className="text-text-primary text-sm">{option.label}</Text>
