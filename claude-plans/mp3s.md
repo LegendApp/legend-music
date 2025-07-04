@@ -9,10 +9,10 @@
 
 ## Steps
 
+[] Clicking song in playlist is not immediately playing the song. It opens the song correctly but I think it just needs to click the play button.
 
 ## Plan for later (do not do these yet)
 
-[] Clicking song in playlist may have broken
 
 ## Plan for even later (do not do these yet)
 

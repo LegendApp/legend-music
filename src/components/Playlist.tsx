@@ -223,10 +223,14 @@ export function Playlist() {
                 console.log("Playing suggestion at index:", index, "track:", track.title);
                 controls.playTrackAtIndex(index);
             } else {
-                // For regular playlist tracks, set the songId
+                // For regular playlist tracks, set the songId and start playing
                 if (track?.id) {
                     state$.songId.set(track.id);
-                    console.log("Set songId:", track.id, "for track:", track.title);
+                    // Give the WebView a moment to navigate to the new track, then start playing
+                    setTimeout(() => {
+                        controls.playPause();
+                    }, 500);
+                    console.log("Set songId:", track.id, "for track:", track.title, "and starting playback");
                 } else {
                     console.warn("Track missing ID, cannot set songId:", track);
                 }
