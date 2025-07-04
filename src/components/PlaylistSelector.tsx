@@ -95,62 +95,55 @@ export function PlaylistSelector() {
     });
 
     return (
-        <View className="flex-1">
-            {/* Title bar area for playlist */}
-            <View className="px-1 border-t border-b border-white/10">
-                <View className="flex-row items-center">
-                    <View className="flex-1">
-                        <SelectLegendList
-                            items={availablePlaylistIds}
-                            selected$={selectedPlaylist$}
-                            placeholder="Local Files"
-                            onSelectItem={handlePlaylistSelect}
-                            getItemKey={(playlist) => playlist}
-                            renderItem={(playlistId, mode) => {
-                                if (!playlistId) return <Text>Null</Text>;
-                                const playlist =
-                                    playlistId === "LOCAL_FILES" ? localFilesPlaylist : playlistsObj[playlistId];
+        <View className="px-1 border-t border-b border-white/10">
+            <View className="flex-row items-center">
+                <View className="flex-1">
+                    <SelectLegendList
+                        items={availablePlaylistIds}
+                        selected$={selectedPlaylist$}
+                        placeholder="Local Files"
+                        onSelectItem={handlePlaylistSelect}
+                        getItemKey={(playlist) => playlist}
+                        renderItem={(playlistId, mode) => {
+                            if (!playlistId) return <Text>Null</Text>;
+                            const playlist =
+                                playlistId === "LOCAL_FILES" ? localFilesPlaylist : playlistsObj[playlistId];
 
-                                if (!playlist) {
-                                    console.log("Playlist not found:", playlistId);
-                                    return <Text>Null</Text>;
-                                }
+                            if (!playlist) {
+                                console.log("Playlist not found:", playlistId);
+                                return <Text>Null</Text>;
+                            }
 
-                                if (mode === "preview") {
-                                    return (
-                                        <Text className="text-text-primary group-hover:text-white text-sm font-semibold">
-                                            {playlist.name}
-                                        </Text>
-                                    );
-                                }
+                            if (mode === "preview") {
                                 return (
-                                    <View className="flex-row items-center">
-                                        <Text className="text-text-primary text-sm font-medium flex-1">
-                                            {playlist.name}
-                                        </Text>
-                                    </View>
+                                    <Text className="text-text-primary group-hover:text-white text-sm font-semibold">
+                                        {playlist.name}
+                                    </Text>
                                 );
-                            }}
-                            unstyled={true}
-                            triggerClassName="hover:bg-white/10 rounded-md h-8 px-2"
-                            // showCaret={true}
-                            // caretPosition="right"
-                            // caretClassName="text-white/70 hover:text-white"
-                            maxWidthMatchTrigger={true}
-                        />
-                    </View>
-                    <DropdownMenu.Root ref={dropdownMenuRef} closeOnSelect={false}>
-                        <DropdownMenu.Trigger asChild>
-                            <Button
-                                icon="magnifyingglass"
-                                variant="icon"
-                                size="small"
-                                className="ml-2 hover:bg-white/10"
-                            />
-                        </DropdownMenu.Trigger>
-                        <DropdownMenu.Content>
-                            <StyledInput value$={searchQuery$} placeholder="Search tracks..." className="mb-2" />
-                            {/* <View className="p-2">
+                            }
+                            return (
+                                <View className="flex-row items-center">
+                                    <Text className="text-text-primary text-sm font-medium flex-1">
+                                        {playlist.name}
+                                    </Text>
+                                </View>
+                            );
+                        }}
+                        unstyled={true}
+                        triggerClassName="hover:bg-white/10 rounded-md h-8 px-2"
+                        // showCaret={true}
+                        // caretPosition="right"
+                        // caretClassName="text-white/70 hover:text-white"
+                        maxWidthMatchTrigger={true}
+                    />
+                </View>
+                <DropdownMenu.Root ref={dropdownMenuRef} closeOnSelect={false}>
+                    <DropdownMenu.Trigger asChild>
+                        <Button icon="magnifyingglass" variant="icon" size="small" className="ml-2 hover:bg-white/10" />
+                    </DropdownMenu.Trigger>
+                    <DropdownMenu.Content>
+                        <StyledInput value$={searchQuery$} placeholder="Search tracks..." className="mb-2" />
+                        {/* <View className="p-2">
                                 {searchResults.length > 0 && (
                                     <View className="max-h-64">
                                         {searchResults.map((track) => (
@@ -175,14 +168,8 @@ export function PlaylistSelector() {
                                     <Text className="text-white/60 text-sm p-2">No tracks found</Text>
                                 )}
                             </View> */}
-                        </DropdownMenu.Content>
-                    </DropdownMenu.Root>
-                </View>
-            </View>
-
-            {/* Playlist content */}
-            <View className="flex-1">
-                <Playlist />
+                    </DropdownMenu.Content>
+                </DropdownMenu.Root>
             </View>
         </View>
     );
