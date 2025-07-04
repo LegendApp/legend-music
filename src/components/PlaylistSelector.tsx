@@ -124,50 +124,44 @@ export function PlaylistSelector() {
                             maxWidthMatchTrigger={true}
                         />
                     </View>
-                    {
-                        <DropdownMenu.Root closeOnSelect={false}>
-                            <DropdownMenu.Trigger asChild>
-                                <Button
-                                    icon="magnifyingglass"
-                                    variant="icon"
-                                    size="medium"
-                                    className="ml-2 hover:bg-white/10"
-                                />
-                            </DropdownMenu.Trigger>
-                            <DropdownMenu.Content>
-                                <View className="p-2">
-                                    <StyledInput
-                                        value$={searchQuery$}
-                                        placeholder="Search tracks..."
-                                        className="mb-2"
-                                    />
-                                    {searchResults.length > 0 && (
-                                        <View className="max-h-64">
-                                            {searchResults.map((track) => (
-                                                <DropdownMenu.Item
-                                                    key={track.id}
-                                                    onSelect={() => handleTrackSelect(track)}
-                                                    className="p-2 hover:bg-white/10 rounded-md"
-                                                >
-                                                    <View className="flex-1">
-                                                        <Text className="text-white font-medium text-sm">
-                                                            {track.title}
-                                                        </Text>
-                                                        <Text className="text-white/60 text-xs">
-                                                            {track.artist} • {track.duration}
-                                                        </Text>
-                                                    </View>
-                                                </DropdownMenu.Item>
-                                            ))}
-                                        </View>
-                                    )}
-                                    {searchQuery.trim() && searchResults.length === 0 && (
-                                        <Text className="text-white/60 text-sm p-2">No tracks found</Text>
-                                    )}
-                                </View>
-                            </DropdownMenu.Content>
-                        </DropdownMenu.Root>
-                    }
+                    <DropdownMenu.Root closeOnSelect={false}>
+                        <DropdownMenu.Trigger asChild>
+                            <Button
+                                icon="magnifyingglass"
+                                variant="icon"
+                                size="medium"
+                                className="ml-2 hover:bg-white/10"
+                            />
+                        </DropdownMenu.Trigger>
+                        <DropdownMenu.Content>
+                            <View className="p-2">
+                                <StyledInput value$={searchQuery$} placeholder="Search tracks..." className="mb-2" />
+                                {searchResults.length > 0 && (
+                                    <View className="max-h-64">
+                                        {searchResults.map((track) => (
+                                            <DropdownMenu.Item
+                                                key={track.id}
+                                                onSelect={() => handleTrackSelect(track)}
+                                                className="p-2 hover:bg-white/10 rounded-md"
+                                            >
+                                                <View className="flex-1">
+                                                    <Text className="text-white font-medium text-sm">
+                                                        {track.title}
+                                                    </Text>
+                                                    <Text className="text-white/60 text-xs">
+                                                        {track.artist} • {track.duration}
+                                                    </Text>
+                                                </View>
+                                            </DropdownMenu.Item>
+                                        ))}
+                                    </View>
+                                )}
+                                {searchQuery.trim() && searchResults.length === 0 && (
+                                    <Text className="text-white/60 text-sm p-2">No tracks found</Text>
+                                )}
+                            </View>
+                        </DropdownMenu.Content>
+                    </DropdownMenu.Root>
                 </View>
             </View>
 
