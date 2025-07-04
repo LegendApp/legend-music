@@ -1,7 +1,8 @@
 import { LegendList } from "@legendapp/list";
 import { use$, useObservable } from "@legendapp/state/react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 
+import { Button } from "@/components/Button";
 import { localAudioControls, localPlayerState$ } from "@/components/LocalAudioPlayer";
 import { controls, playbackState$, playlistState$, playlistsState$ } from "@/components/YouTubeMusicPlayer";
 import { localMusicState$ } from "@/systems/LocalMusicState";
@@ -45,11 +46,23 @@ const TrackItem = ({ track, index, currentTrackIndex, clickedTrackIndex, onTrack
     }
 
     return (
-        <TouchableOpacity
+        <Button
             className={cn(
-                "flex-row items-center px-4 py-2",
-                index === currentTrackIndex ? "bg-white/10" : clickedTrackIndex === index ? "bg-orange-500/20" : "",
-                track.fromSuggestions ? "opacity-80" : "",
+                "flex-row items-center px-4 py-3 mx-2 my-0.5 rounded-xl transition-all duration-200",
+                // Playing state styling
+                index === currentTrackIndex 
+                    ? "bg-blue-500/20 border border-blue-400/30 shadow-lg" 
+                    : "",
+                // Clicked state styling with orange highlight
+                clickedTrackIndex === index 
+                    ? "bg-orange-500/25 border border-orange-400/40 scale-[0.98]" 
+                    : "",
+                // Default styling when not playing or clicked
+                index !== currentTrackIndex && clickedTrackIndex !== index
+                    ? "bg-white/5 hover:bg-white/10 active:bg-white/15 border border-white/5 hover:border-white/10"
+                    : "",
+                // Suggestions styling
+                track.fromSuggestions ? "opacity-75" : "",
             )}
             onPress={() => onTrackClick(index)}
         >
@@ -83,7 +96,7 @@ const TrackItem = ({ track, index, currentTrackIndex, clickedTrackIndex, onTrack
             <Text className={cn("text-base", track.fromSuggestions ? "text-white/40" : "text-white/60")}>
                 {track.duration}
             </Text>
-        </TouchableOpacity>
+        </Button>
     );
 };
 
