@@ -1,165 +1,83 @@
-import { LegendList } from "@legendapp/list";
-import type { Observable, ObservableParam } from "@legendapp/state";
-import { use$, useObservable } from "@legendapp/state/react";
-import type { ReactNode } from "react";
-import { Text, View } from "react-native";
+import type { ObservableParam } from "@legendapp/state";
+import { use$ } from "@legendapp/state/react";
+import { Text } from "react-native";
 
 import { DropdownMenu } from "@/components/DropdownMenu";
-import { WithCheckbox } from "@/components/WithCheckbox";
 import { cn } from "@/utils/cn";
-import { equals } from "@/utils/equals";
 
-export interface SelectPropsBase<T> {
-    items: T[];
+export interface SelectOption {
+    label: string;
+    value: string;
+}
+
+export interface SelectProps {
+    options: SelectOption[];
+    value$?: ObservableParam<string>;
+    value?: string;
+    onValueChange?: (value: string) => void;
     placeholder?: string;
     className?: string;
     triggerClassName?: string;
-    closeOnSelect?: boolean;
-    unstyled?: boolean;
-    withCheckbox?: boolean;
-    getItemKey: (item: NoInfer<T>) => string;
-    renderItem: (item: NoInfer<T>, mode: "item" | "preview") => ReactNode;
-    renderItemText?: (item: NoInfer<T>) => string;
-    showCaret?: boolean;
-    caretPosition?: "right" | "left";
     textClassName?: string;
-    caretClassName?: string;
-    maxWidthMatchTrigger?: boolean;
+    disabled?: boolean;
 }
 
-export interface SelectProps<T> extends SelectPropsBase<T> {
-    selected$?: ObservableParam<NoInfer<T> | undefined>;
-    selected?: T;
-    onSelectItem?: (item: NoInfer<T>) => void;
-}
-
-export interface SelectMultipleProps<T> extends SelectPropsBase<T> {
-    selectedItems$: Observable<T[]>;
-    onSelectItem?: (item: NoInfer<T>, isRemove: boolean) => void;
-}
-
-export function Select<T>({ selected, selected$, placeholder, onSelectItem, renderItemText, ...rest }: SelectProps<T>) {
-    selected = selected$ ? use$<T | undefined>(selected$) : selected;
-
-    // Create internal array observable that mirrors the single selection
-    const selectedItems$ = useObservable<T[]>(selected ? [selected] : []);
-
-    const handleSelectItem = (item: T) => {
-        selected$?.set(item);
-        selectedItems$.set([item] as any);
-        onSelectItem?.(item);
-    };
-
-    return (
-        <SelectMultiple
-            selectedItems$={selectedItems$}
-            placeholder={selected && renderItemText ? String(renderItemText(selected)) : placeholder}
-            onSelectItem={handleSelectItem}
-            closeOnSelect={true}
-            renderItemText={renderItemText}
-            {...rest}
-        />
-    );
-}
-
-export function SelectMultiple<T>({
-    selectedItems$,
-    items,
-    getItemKey,
-    renderItem,
-    renderItemText,
-    placeholder,
-    triggerClassName,
+export function Select({
+    options,
+    value$,
+    value: valueProp,
+    onValueChange,
+    placeholder = "Select...",
     className,
-    closeOnSelect = false,
-    unstyled = false,
-    withCheckbox,
-    onSelectItem,
-    showCaret = false,
-    caretPosition = "right",
+    triggerClassName,
     textClassName,
-    caretClassName,
-    // maxWidthMatchTrigger = false,
-}: SelectMultipleProps<T>) {
-    const selectedItems = use$<T[]>(selectedItems$);
+    disabled = false,
+}: SelectProps) {
+    const value = value$ ? use$(value$) : valueProp;
+    
+    const selectedOption = options.find(option => option.value === value);
+    const displayText = selectedOption ? selectedOption.label : placeholder;
 
-    const handleSelectItem = (item: T) => {
-        const index = selectedItems.indexOf(item);
-        const isRemove = index >= 0;
-        if (isRemove) {
-            selectedItems$.splice(index, 1);
-        } else {
-            selectedItems$.push(item);
-        }
-
-        onSelectItem?.(item, isRemove);
+    const handleSelect = (selectedValue: string) => {
+        value$?.set(selectedValue);
+        onValueChange?.(selectedValue);
     };
-
-    const renderWithCheckbox = (item: T) => {
-        const arr = selectedItems$.get() || [];
-        const checked = !!arr.find((it) => equals(item, it));
-        return <WithCheckbox checked={checked}>{renderItem(item, "item")}</WithCheckbox>;
-    };
-
-    const renderListItem = ({ item }: { item: T }) => (
-        <DropdownMenu.Item key={getItemKey(item)} onSelect={() => handleSelectItem(item)}>
-            {withCheckbox ? renderWithCheckbox(item) : renderItem(item, "item")}
-        </DropdownMenu.Item>
-    );
-
-    const selectedCount = selectedItems$.length;
-    const displayText =
-        selectedCount > 1
-            ? (renderItemText ? selectedItems.map(renderItemText) : selectedItems).join(", ")
-            : selectedCount > 0
-              ? renderItemText
-                  ? renderItemText(selectedItems[0])
-                  : renderItem(selectedItems[0], "preview")
-              : placeholder;
 
     return (
-        <DropdownMenu.Root closeOnSelect={closeOnSelect}>
+        <DropdownMenu.Root closeOnSelect={true}>
             <DropdownMenu.Trigger
                 className={cn(
-                    !unstyled &&
-                        "bg-background-secondary hover:bg-background-tertiary rounded-md flex-row justify-between items-center overflow-hidden border border-border-primary h-8 px-2",
+                    "bg-background-secondary hover:bg-background-tertiary rounded-md flex-row justify-between items-center overflow-hidden border border-border-primary h-8 px-2",
+                    disabled && "opacity-50 pointer-events-none",
                     triggerClassName,
                 )}
-                unstyled={unstyled}
-                showCaret={showCaret}
-                caretPosition={caretPosition}
-                textClassName={textClassName}
-                caretClassName={caretClassName}
+                disabled={disabled}
+                showCaret={true}
+                caretPosition="right"
             >
                 <Text
                     className={cn(
-                        !unstyled
-                            ? "text-text-secondary text-xs"
-                            : "text-white/70 group-hover:text-white text-base font-medium",
+                        "text-text-secondary text-xs flex-1",
                         textClassName,
                     )}
+                    numberOfLines={1}
                 >
                     {displayText}
                 </Text>
             </DropdownMenu.Trigger>
-            <DropdownMenu.Content
-                className={className}
-                maxHeightClassName="max-h-96"
-                scrolls={false}
-                // maxWidthMatchTrigger={maxWidthMatchTrigger}
-            >
-                <View style={{ maxHeight: 384 }}>
-                    <LegendList
-                        data={items}
-                        keyExtractor={getItemKey}
-                        renderItem={renderListItem}
-                        // contentContainerStyle={{ padding: 4 }}
-                        style={{
-                            // width: maxWidthMatchTrigger ? "100%" : 400,
-                            height: "100%",
-                        }}
-                    />
-                </View>
+            <DropdownMenu.Content className={className}>
+                {options.map((option) => (
+                    <DropdownMenu.Item
+                        key={option.value}
+                        onSelect={() => handleSelect(option.value)}
+                        className={cn(
+                            "px-3 py-2 hover:bg-background-tertiary",
+                            value === option.value && "bg-background-tertiary"
+                        )}
+                    >
+                        <Text className="text-text-primary text-sm">{option.label}</Text>
+                    </DropdownMenu.Item>
+                ))}
             </DropdownMenu.Content>
         </DropdownMenu.Root>
     );
