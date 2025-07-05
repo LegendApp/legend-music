@@ -1,4 +1,5 @@
 #import "AppDelegate.h"
+#import "WindowManager.h"
 
 #import <React/RCTBundleURLProvider.h>
 #import <React/RCTBridge.h>
@@ -142,8 +143,8 @@
 {
   NSWindow *window = notification.object;
 
-  // Set initial window size
-//   [window setContentSize:NSMakeSize(800, 600)]; // Width: 800, Height: 600
+  // Restore saved window frame if available
+  [self restoreWindowFrame:window];
 
   [window setTitleVisibility:NSWindowTitleHidden];
   [window setTitlebarAppearsTransparent:YES];
@@ -159,10 +160,69 @@
   // Hide the maximize button
   [[window standardWindowButton:NSWindowZoomButton] setHidden:YES];
 
+  // Setup window observers for size and position tracking
+  [self performSelector:@selector(setupWindowObservers) withObject:nil afterDelay:1.0];
+
   // Remove the observer
   [[NSNotificationCenter defaultCenter] removeObserver:self
                                                   name:NSWindowDidBecomeKeyNotification
                                                 object:nil];
+}
+
+- (void)restoreWindowFrame:(NSWindow *)window {
+  // Try to load saved window frame from settings
+  NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+  NSDictionary *savedFrame = [defaults objectForKey:@"mainWindowFrame"];
+  
+  if (savedFrame) {
+    CGFloat x = [savedFrame[@"x"] doubleValue];
+    CGFloat y = [savedFrame[@"y"] doubleValue];
+    CGFloat width = [savedFrame[@"width"] doubleValue];
+    CGFloat height = [savedFrame[@"height"] doubleValue];
+    
+    NSLog(@"Restoring saved window frame: x=%f, y=%f, width=%f, height=%f", x, y, width, height);
+    
+    // Validate the frame values
+    NSScreen *screen = [NSScreen mainScreen];
+    NSRect screenFrame = [screen visibleFrame];
+    
+    // Ensure minimum size
+    width = MAX(width, 400);
+    height = MAX(height, 300);
+    
+    // Ensure window fits on screen
+    if (x + width > NSMaxX(screenFrame)) {
+      x = NSMaxX(screenFrame) - width;
+    }
+    if (y + height > NSMaxY(screenFrame)) {
+      y = NSMaxY(screenFrame) - height;
+    }
+    
+    // Ensure window is not off-screen
+    x = MAX(x, NSMinX(screenFrame));
+    y = MAX(y, NSMinY(screenFrame));
+    
+    NSRect newFrame = NSMakeRect(x, y, width, height);
+    NSLog(@"Setting window frame to: x=%f, y=%f, width=%f, height=%f", newFrame.origin.x, newFrame.origin.y, newFrame.size.width, newFrame.size.height);
+    [window setFrame:newFrame display:NO animate:NO];
+    NSLog(@"Window frame after setting: %@", NSStringFromRect([window frame]));
+  } else {
+    NSLog(@"No saved window frame found, using defaults");
+    // Set default size and center if no saved frame
+    [window setContentSize:NSMakeSize(1200, 800)];
+    [window center];
+  }
+}
+
+- (void)setupWindowObservers {
+  // Get the WindowManager module and setup observers
+  RCTBridge *bridge = self.bridge;
+  if (bridge) {
+    WindowManager *windowManager = [bridge moduleForClass:[WindowManager class]];
+    if (windowManager) {
+      [windowManager setupMainWindowObservers];
+    }
+  }
 }
 
 @end

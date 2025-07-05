@@ -3,4 +3,7 @@
 
 @interface WindowManager : RCTEventEmitter <RCTBridgeModule>
 
++ (NSWindow *)getMainWindow;
+- (void)setupMainWindowObservers;
+
 @end
