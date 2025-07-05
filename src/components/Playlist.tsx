@@ -38,24 +38,23 @@ const TrackItem = ({ track, index, onTrackClick }: TrackItemProps) => {
     const localMusicState = use$(localMusicState$);
     const playbackState = use$(playbackState$);
     const localPlayerState = use$(localPlayerState$);
-    
+    const playlistStyle = use$(settings$.general.playlistStyle);
+
     const isPlaying = useSelector(() => {
         // For local files, check local player state
         if (localMusicState.isLocalFilesSelected) {
             const currentTrack = localPlayerState$.currentTrack.get();
             return currentTrack === track || currentTrack?.id === track.id;
         }
-        
+
         // For YouTube Music tracks, check if title and artist match
         const currentTrack = playbackState$.currentTrack.get();
         if (currentTrack && track.title && track.artist) {
             return currentTrack.title === track.title && currentTrack.artist === track.artist;
         }
-        
+
         return false;
     });
-
-    const playlistStyle = use$(settings$.general.playlistStyle);
 
     // Handle separator items
     if (track.isSeparator) {
@@ -166,6 +165,7 @@ export function Playlist() {
     const localPlayerState = use$(localPlayerState$);
     const playlistsData = use$(playlistsData$);
     const stateSaved = use$(stateSaved$);
+    const playlistStyle = use$(settings$.general.playlistStyle);
     // const clickedTrackIndex$ = useObservable<number | null>(null);
     // const clickedTrackIndex = use$(clickedTrackIndex$);
 
@@ -332,6 +332,8 @@ export function Playlist() {
                     data={playlist}
                     keyExtractor={(item, index) => `track-${index}`}
                     contentContainerStyle={styles.container}
+                    waitForInitialLayout={false}
+                    estimatedItemSize={playlistStyle === "compact" ? 30 : 50}
                     recycleItems
                     renderItem={({ item: track, index }) => (
                         <TrackItem key={index} track={track} index={index} onTrackClick={handleTrackClick} />
