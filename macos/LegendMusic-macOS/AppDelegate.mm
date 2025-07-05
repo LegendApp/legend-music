@@ -30,7 +30,13 @@
                                                name:NSWindowDidBecomeKeyNotification
                                              object:nil];
 
-                                             [self performSelector:@selector(setupMenuConnections) withObject:nil afterDelay:0.5];
+  // Add observer for when window becomes main (earlier than key)
+  [[NSNotificationCenter defaultCenter] addObserver:self
+                                           selector:@selector(windowDidBecomeMain:)
+                                               name:NSWindowDidBecomeMainNotification
+                                             object:nil];
+
+  [self performSelector:@selector(setupMenuConnections) withObject:nil afterDelay:0.5];
 
   return [super applicationDidFinishLaunching:notification];
 }
@@ -137,15 +143,33 @@
 }
 
 /**
+ * Called when the window becomes main - this happens before it becomes key
+ */
+- (void)windowDidBecomeMain:(NSNotification *)notification
+{
+  NSWindow *window = notification.object;
+  
+  // Only handle the main window (not secondary windows)
+  if ([window isKindOfClass:[NSWindow class]] && ![window isSheet] && ![window isKindOfClass:[NSPanel class]]) {
+    // Restore saved window frame before other styling
+    [self restoreWindowFrame:window];
+    
+    // Remove this observer since we only need to do this once
+    [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                    name:NSWindowDidBecomeMainNotification
+                                                  object:nil];
+  }
+}
+
+/**
  * Ensures that the window is fully initialized and has become the key window before you attempt to modify its properties
  */
 - (void)windowDidBecomeKey:(NSNotification *)notification
 {
   NSWindow *window = notification.object;
 
-  // Restore saved window frame if available
-  [self restoreWindowFrame:window];
-
+  // Window frame should already be restored in windowDidBecomeMain, so skip duplicate restoration
+  
   [window setTitleVisibility:NSWindowTitleHidden];
   [window setTitlebarAppearsTransparent:YES];
   [window setStyleMask:[window styleMask] | NSWindowStyleMaskFullSizeContentView];
@@ -173,23 +197,21 @@
   // Try to load saved window frame from settings
   NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
   NSDictionary *savedFrame = [defaults objectForKey:@"mainWindowFrame"];
-  
+
   if (savedFrame) {
     CGFloat x = [savedFrame[@"x"] doubleValue];
     CGFloat y = [savedFrame[@"y"] doubleValue];
     CGFloat width = [savedFrame[@"width"] doubleValue];
     CGFloat height = [savedFrame[@"height"] doubleValue];
-    
-    NSLog(@"Restoring saved window frame: x=%f, y=%f, width=%f, height=%f", x, y, width, height);
-    
+
     // Validate the frame values
     NSScreen *screen = [NSScreen mainScreen];
     NSRect screenFrame = [screen visibleFrame];
-    
+
     // Ensure minimum size
     width = MAX(width, 400);
     height = MAX(height, 300);
-    
+
     // Ensure window fits on screen
     if (x + width > NSMaxX(screenFrame)) {
       x = NSMaxX(screenFrame) - width;
@@ -197,17 +219,14 @@
     if (y + height > NSMaxY(screenFrame)) {
       y = NSMaxY(screenFrame) - height;
     }
-    
+
     // Ensure window is not off-screen
     x = MAX(x, NSMinX(screenFrame));
     y = MAX(y, NSMinY(screenFrame));
-    
+
     NSRect newFrame = NSMakeRect(x, y, width, height);
-    NSLog(@"Setting window frame to: x=%f, y=%f, width=%f, height=%f", newFrame.origin.x, newFrame.origin.y, newFrame.size.width, newFrame.size.height);
     [window setFrame:newFrame display:NO animate:NO];
-    NSLog(@"Window frame after setting: %@", NSStringFromRect([window frame]));
   } else {
-    NSLog(@"No saved window frame found, using defaults");
     // Set default size and center if no saved frame
     [window setContentSize:NSMakeSize(1200, 800)];
     [window center];
