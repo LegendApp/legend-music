@@ -14,6 +14,10 @@ export interface AppSettings {
     youtubeMusic: {
         enabled: boolean;
     };
+    registration: {
+        isRegistered: boolean;
+        registrationType?: 'legendkit' | 'standalone';
+    };
     uniqueId: string;
     isAuthed: boolean;
 }
@@ -34,6 +38,10 @@ export const settings$ = createJSONManager<AppSettings>({
         // YouTube Music settings
         youtubeMusic: {
             enabled: true,
+        },
+        // Registration settings
+        registration: {
+            isRegistered: false,
         },
         uniqueId: "",
         isAuthed: false,

@@ -5,6 +5,7 @@ import { LocalAudioPlayer } from "@/components/LocalAudioPlayer";
 import { PlaybackArea } from "@/components/PlaybackArea";
 import { Playlist } from "@/components/Playlist";
 import { PlaylistSelector } from "@/components/PlaylistSelector";
+import { Unregistered } from "@/components/Unregistered";
 import { YouTubeMusicPlayer } from "@/components/YouTubeMusicPlayer";
 import { stateSaved$ } from "@/systems/State";
 
@@ -16,6 +17,7 @@ export function MainContainer() {
                 <PlaybackArea />
                 <PlaylistSelector />
                 <Playlist />
+                <Unregistered />
             </View>
             <View className={showYtm ? "flex-1" : "absolute -z-10 inset-0 hidden"}>
                 <YouTubeMusicPlayer />
