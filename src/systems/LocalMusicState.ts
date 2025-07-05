@@ -91,10 +91,12 @@ function parseFilenameOnly(fileName: string): {
 
     // Try to parse "Artist - Title" format
     if (name.includes(" - ")) {
-        const [artist, title] = name.split(" - ", 2);
+        const parts = name.split(" - ");
+        const artist = parts[0].trim();
+        const title = parts.slice(1).join(" - ").trim();
         return {
-            title: title.trim(),
-            artist: artist.trim(),
+            title: title,
+            artist: artist,
         };
     }
 

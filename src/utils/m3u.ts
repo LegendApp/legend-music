@@ -58,9 +58,9 @@ export function parseM3U(content: string): M3UPlaylist {
 
                 // Check for "Artist - Title" format
                 if (titleInfo.includes(" - ")) {
-                    const [artistPart, titlePart] = titleInfo.split(" - ", 2);
-                    artist = artistPart.trim();
-                    title = titlePart.trim();
+                    const parts = titleInfo.split(" - ");
+                    artist = parts[0].trim();
+                    title = parts.slice(1).join(" - ").trim();
                 }
 
                 const track = {
