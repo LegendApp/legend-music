@@ -66,5 +66,10 @@
         "ksuid@3.0.0": "patches/ksuid@3.0.0.patch",
         "react-native-markdown-display@7.0.2": "patches/react-native-markdown-display@7.0.2.patch",
         "id3js@2.1.1": "patches/id3js@2.1.1.patch"
+    },
+    "expo": {
+        "autolinking": {
+            "exclude": ["expo-asset","expo-constants", "expo-font", "expo-keep-awake", "expo-linking", "expo-sqlite"]
+        }
     }
 }
