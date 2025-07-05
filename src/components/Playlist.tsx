@@ -34,9 +34,24 @@ interface TrackItemProps {
 }
 
 const TrackItem = ({ track, index, onTrackClick }: TrackItemProps) => {
+    const localMusicState = use$(localMusicState$);
+    const playbackState = use$(playbackState$);
+    const localPlayerState = use$(localPlayerState$);
+    
     const isPlaying = useSelector(() => {
-        const currentTrack = localPlayerState$.currentTrack.get();
-        return currentTrack === track || currentTrack?.id === track.id;
+        // For local files, check local player state
+        if (localMusicState.isLocalFilesSelected) {
+            const currentTrack = localPlayerState$.currentTrack.get();
+            return currentTrack === track || currentTrack?.id === track.id;
+        }
+        
+        // For YouTube Music tracks, check if title and artist match
+        const currentTrack = playbackState$.currentTrack.get();
+        if (currentTrack && track.title && track.artist) {
+            return currentTrack.title === track.title && currentTrack.artist === track.artist;
+        }
+        
+        return false;
     });
 
     const playlistStyle = use$(settings$.general.playlistStyle);

@@ -58,16 +58,65 @@ interface PlayerState extends PlaybackState, PlaylistState, PlaylistsState {}
 
 const injectedJavaScript = `
 (function() {
+    // Helper function to decode unicode escape sequences and HTML entities
+    function decodeTextEntities(text) {
+        if (!text || typeof text !== 'string') {
+            return text || '';
+        }
+
+        let decoded = text;
+
+        try {
+            // Decode unicode escape sequences like \\u0026
+            decoded = decoded.replace(/\\\\u([0-9a-fA-F]{4})/g, function(match, code) {
+                return String.fromCharCode(parseInt(code, 16));
+            });
+
+            // Decode common HTML entities
+            var htmlEntities = {
+                '&amp;': '&',
+                '&lt;': '<',
+                '&gt;': '>',
+                '&quot;': '"',
+                '&#x27;': "'",
+                '&#x2F;': '/',
+                '&#39;': "'",
+                '&apos;': "'",
+                '&nbsp;': ' ',
+            };
+
+            for (var entity in htmlEntities) {
+                decoded = decoded.replace(new RegExp(entity, 'g'), htmlEntities[entity]);
+            }
+
+            // Decode numeric HTML entities like &#38; or &#x26;
+            decoded = decoded.replace(/&#(\\d+);/g, function(match, code) {
+                return String.fromCharCode(parseInt(code, 10));
+            });
+
+            decoded = decoded.replace(/&#x([0-9a-fA-F]+);/g, function(match, code) {
+                return String.fromCharCode(parseInt(code, 16));
+            });
+
+        } catch (error) {
+            console.warn('Failed to decode text entities:', error);
+            return text; // Return original text if decoding fails
+        }
+
+        return decoded;
+    }
+
     // Helper functions for common operations
     function extractTextFromRenderer(renderer) {
+        var text = '';
         if (typeof renderer === 'string') {
-            return renderer;
+            text = renderer;
         } else if (renderer?.simpleText) {
-            return renderer.simpleText;
+            text = renderer.simpleText;
         } else if (renderer?.runs) {
-            return renderer.runs.map(r => r.text).join('');
+            text = renderer.runs.map(r => r.text).join('');
         }
-        return '';
+        return decodeTextEntities(text);
     }
 
     function cleanArtistText(artist) {
@@ -121,8 +170,8 @@ const injectedJavaScript = `
         const thumbnailEl = item.querySelector('img');
 
         if (titleEl && artistEl) {
-            let title = titleEl.textContent?.trim() || '';
-            let artist = cleanArtistText(artistEl.textContent?.trim() || '');
+            let title = decodeTextEntities(titleEl.textContent?.trim() || '');
+            let artist = decodeTextEntities(cleanArtistText(artistEl.textContent?.trim() || ''));
             const duration = durationEl?.textContent?.trim() || '';
 
             if (title && artist && title !== artist) {
@@ -470,7 +519,7 @@ const injectedJavaScript = `
                 if (renderer.flexColumns && renderer.flexColumns.length > 0) {
                     const titleColumn = renderer.flexColumns[0];
                     if (titleColumn.musicResponsiveListItemFlexColumnRenderer?.text?.runs && titleColumn.musicResponsiveListItemFlexColumnRenderer.text.runs.length > 0) {
-                        title = titleColumn.musicResponsiveListItemFlexColumnRenderer.text.runs[0].text || '';
+                        title = decodeTextEntities(titleColumn.musicResponsiveListItemFlexColumnRenderer.text.runs[0].text || '');
                         // Extract videoId from navigation endpoint
                         const navEndpoint = titleColumn.musicResponsiveListItemFlexColumnRenderer.text.runs[0].navigationEndpoint;
                         if (navEndpoint?.watchEndpoint?.videoId) {
@@ -482,7 +531,7 @@ const injectedJavaScript = `
                     if (renderer.flexColumns.length > 1) {
                         const artistColumn = renderer.flexColumns[1];
                         if (artistColumn.musicResponsiveListItemFlexColumnRenderer?.text?.runs && artistColumn.musicResponsiveListItemFlexColumnRenderer.text.runs.length > 0) {
-                            artist = artistColumn.musicResponsiveListItemFlexColumnRenderer.text.runs[0].text || '';
+                            artist = decodeTextEntities(artistColumn.musicResponsiveListItemFlexColumnRenderer.text.runs[0].text || '');
                         }
                     }
                 }
@@ -646,8 +695,8 @@ const injectedJavaScript = `
             const playbackState = {
                 isPlaying,
                 currentTrack: {
-                    title: titleElement?.textContent?.trim() || '',
-                    artist: artistElement?.textContent?.trim() || '',
+                    title: decodeTextEntities(titleElement?.textContent?.trim() || ''),
+                    artist: decodeTextEntities(artistElement?.textContent?.trim() || ''),
                     duration: duration,
                     thumbnail: thumbnailUrl
                 },

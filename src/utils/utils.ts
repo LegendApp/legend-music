@@ -54,3 +54,54 @@ export const formatRelativeDate = (dateString: string) => {
         year: date.getFullYear() === now.getFullYear() ? undefined : "numeric",
     });
 };
+
+/**
+ * Decodes unicode escape sequences and HTML entities in text
+ * Handles cases like \u0026 -> & and &amp; -> &
+ */
+export function decodeTextEntities(text: string): string {
+    if (!text || typeof text !== 'string') {
+        return text || '';
+    }
+
+    let decoded = text;
+
+    try {
+        // Decode unicode escape sequences like \u0026
+        decoded = decoded.replace(/\\u([0-9a-fA-F]{4})/g, (match, code) => {
+            return String.fromCharCode(parseInt(code, 16));
+        });
+
+        // Decode common HTML entities
+        const htmlEntities: Record<string, string> = {
+            '&amp;': '&',
+            '&lt;': '<',
+            '&gt;': '>',
+            '&quot;': '"',
+            '&#x27;': "'",
+            '&#x2F;': '/',
+            '&#39;': "'",
+            '&apos;': "'",
+            '&nbsp;': ' ',
+        };
+
+        for (const [entity, replacement] of Object.entries(htmlEntities)) {
+            decoded = decoded.replace(new RegExp(entity, 'g'), replacement);
+        }
+
+        // Decode numeric HTML entities like &#38; or &#x26;
+        decoded = decoded.replace(/&#(\d+);/g, (match, code) => {
+            return String.fromCharCode(parseInt(code, 10));
+        });
+
+        decoded = decoded.replace(/&#x([0-9a-fA-F]+);/g, (match, code) => {
+            return String.fromCharCode(parseInt(code, 16));
+        });
+
+    } catch (error) {
+        console.warn('Failed to decode text entities:', error);
+        return text; // Return original text if decoding fails
+    }
+
+    return decoded;
+}

@@ -8,10 +8,12 @@
 
 ## Steps
 
-[x] Use the settings$.general.playlistStyle setting to adjust how playlists look in Playlist.tsx. The existing look should be "Comfortable" mode. "Compact" mode should not display a thumbnail and should render everything on one line in the format `${number}. ${artist} - ${song}`
+[x] We need to convert unicode characters in artist names / song titles. Like I see a \u0026 which I think should be an ampsersand.
+[x] The playing song is not highlighting, at least in ytm
 
 ## Plan for later (do not do these yet)
 
+[] A hotkey to show the window
 [] Sometimes on load is says "Sponsored" with 0:00
 [] Make a native module for opening new windows.
 [] Selecting a song in a non-playlist should switch to now playing
