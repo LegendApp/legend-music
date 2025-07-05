@@ -12,8 +12,13 @@
 
 ## Plan for later (do not do these yet)
 
+[] Restore window size
+[] The settings window is doing the same stoplights hiding as the main window
+[] What if the playback buttons didn't have a border?
+[] Finish UI for selecting mp3 folders
 [] Clean up the directories in cache where files go. m3u should go in playlists
 [] Allow user to select where m3u files go
 [] Selecting a song in a non-playlist should switch to now playing
 [] Need to make sure it's playing song not video
 [] Sometimes on load is says "Sponsored" with 0:00
+[] New logo
