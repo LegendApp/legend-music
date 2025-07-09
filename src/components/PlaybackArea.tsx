@@ -1,4 +1,4 @@
-import { use$ } from "@legendapp/state/react";
+import { Memo, use$, useObservable } from "@legendapp/state/react";
 import { Text, View } from "react-native";
 
 import { AlbumArt } from "@/components/AlbumArt";
@@ -8,74 +8,75 @@ import { localAudioControls, localPlayerState$ } from "@/components/LocalAudioPl
 import { controls, playbackState$ } from "@/components/YouTubeMusicPlayer";
 import { localMusicState$ } from "@/systems/LocalMusicState";
 
+// Format time for local playback
+function formatTime(seconds: number): string {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+// Parse time string like "0:25 / 1:23" to get seconds from first time
+function parseCurrentTimeSeconds(timeString: string | number): number {
+    if (typeof timeString === "number") {
+        return timeString;
+    }
+
+    // Split by " / " and take the first part
+    const firstTime = timeString.split(" / ")[0];
+
+    // Parse "0:25" format
+    const [minutes, seconds] = firstTime.split(":").map(Number);
+    return minutes * 60 + seconds;
+}
+
+function parseDurationSeconds(timeString: string | number): number {
+    if (typeof timeString === "number") {
+        return timeString;
+    }
+
+    // Split by " / " and take the second part
+    const secondTime = timeString.split(" / ")[1];
+
+    if (secondTime) {
+        // Parse "0:25" format
+        const [minutes, seconds] = secondTime.split(":").map(Number);
+        return minutes * 60 + seconds;
+    }
+
+    return 0;
+}
+
 export function PlaybackArea() {
     const playbackState = use$(playbackState$);
     const localMusicState = use$(localMusicState$);
-    const localPlayerState = use$(localPlayerState$);
+    const isLocalPlaying = use$(localPlayerState$.isPlaying);
+    const currentLocalTrack = use$(localPlayerState$.currentTrack);
+    const currentLocalIsLoading = use$(localPlayerState$.isLoading);
+    const currentLocalTime$ = localPlayerState$.currentTime;
+    // TODO
+    const currentYtmTime$ = useObservable(0);
+    const currentYtmDuration$ = useObservable(0);
 
     // Determine if we're using local files or YouTube Music
     const isLocalFilesSelected = localMusicState.isLocalFilesSelected;
 
-    // Format time for local playback
-    function formatTime(seconds: number): string {
-        const mins = Math.floor(seconds / 60);
-        const secs = Math.floor(seconds % 60);
-        return `${mins}:${secs.toString().padStart(2, "0")}`;
-    }
-
-    // Parse time string like "0:25 / 1:23" to get seconds from first time
-    function parseCurrentTimeSeconds(timeString: string | number): number {
-        if (typeof timeString === "number") {
-            return timeString;
-        }
-
-        // Split by " / " and take the first part
-        const firstTime = timeString.split(" / ")[0];
-
-        // Parse "0:25" format
-        const [minutes, seconds] = firstTime.split(":").map(Number);
-        return minutes * 60 + seconds;
-    }
-
-    function parseDurationSeconds(timeString: string | number): number {
-        if (typeof timeString === "number") {
-            return timeString;
-        }
-
-        // Split by " / " and take the second part
-        const secondTime = timeString.split(" / ")[1];
-
-        if (secondTime) {
-            // Parse "0:25" format
-            const [minutes, seconds] = secondTime.split(":").map(Number);
-            return minutes * 60 + seconds;
-        }
-
-        return 0;
-    }
-
     // Use appropriate state based on current selection
-    const currentTrack = isLocalFilesSelected ? localPlayerState.currentTrack : playbackState.currentTrack;
-    const isLoading = isLocalFilesSelected ? localPlayerState.isLoading : playbackState.isLoading;
-    const isPlaying = isLocalFilesSelected ? localPlayerState.isPlaying : playbackState.isPlaying;
-    const currentTime = isLocalFilesSelected ? formatTime(localPlayerState.currentTime) : playbackState.currentTime;
-    const currentTimeSeconds = isLocalFilesSelected
-        ? localPlayerState.currentTime
-        : parseCurrentTimeSeconds(playbackState.currentTime);
-    const duration = isLocalFilesSelected
-        ? localPlayerState.duration
-        : parseDurationSeconds(playbackState.currentTime || 0);
+    const currentTrack = isLocalFilesSelected ? currentLocalTrack : playbackState.currentTrack;
+    const isLoading = isLocalFilesSelected ? currentLocalIsLoading : playbackState.isLoading;
+    const isPlaying = isLocalFilesSelected ? isLocalPlaying : playbackState.isPlaying;
+    const currentTime = isLocalFilesSelected ? undefined : playbackState.currentTime;
+    // const currentTimeSeconds = isLocalFilesSelected
+    //     ? undefined
+    //     : parseCurrentTimeSeconds(playbackState.currentTime);
+    // const duration = isLocalFilesSelected ? currentLocalDuration : parseDurationSeconds(playbackState.currentTime || 0);
+    const duration$ = isLocalFilesSelected ? localPlayerState$.duration : currentYtmDuration$;
 
     return (
         <View className="mx-3 mt-3">
             <View className="flex-row items-center">
                 {/* Album Art */}
                 <View className="mr-4">
-                    <AlbumArt
-                        uri={currentTrack?.thumbnail}
-                        size="large"
-                        fallbackIcon="♪"
-                    />
+                    <AlbumArt uri={currentTrack?.thumbnail} size="large" fallbackIcon="♪" />
                 </View>
 
                 {/* Song Info */}
@@ -87,7 +88,13 @@ export function PlaybackArea() {
                         {currentTrack?.artist || " "}
                     </Text>
                     <Text className="text-white/50 text-xs" style={{ fontVariant: ["tabular-nums"] }}>
-                        {currentTrack ? currentTime : " "}
+                        {isLocalFilesSelected ? (
+                            <Memo>
+                                {() => `${formatTime(currentLocalTime$.get())} / ${formatTime(duration$.get())}`}
+                            </Memo>
+                        ) : (
+                            <Memo>{currentTrack ? currentTime : " "}</Memo>
+                        )}
                     </Text>
                 </View>
 
@@ -129,8 +136,8 @@ export function PlaybackArea() {
                 <CustomSlider
                     style={{ height: 32 }}
                     minimumValue={0}
-                    maximumValue={duration || 100}
-                    value={currentTimeSeconds}
+                    $maximumValue={duration$}
+                    $value={isLocalFilesSelected ? currentLocalTime$ : currentYtmTime$}
                     onSlidingComplete={(value) => {
                         if (isLocalFilesSelected) {
                             localAudioControls.seek(value);

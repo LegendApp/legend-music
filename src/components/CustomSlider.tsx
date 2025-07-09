@@ -1,12 +1,14 @@
-import { use$, useObservable } from "@legendapp/state/react";
+import type { Observable } from "@legendapp/state";
+import { use$, useObservable, useObserveEffect } from "@legendapp/state/react";
 import { useEffect } from "react";
 import { Pressable, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
 interface CustomSliderProps {
-    value: number;
+    value: number | undefined;
+    $value: Observable<number>;
     minimumValue: number;
-    maximumValue: number;
+    $maximumValue: Observable<number>;
     onSlidingComplete?: (value: number) => void;
     disabled?: boolean;
     style?: any;
@@ -15,9 +17,9 @@ interface CustomSliderProps {
 }
 
 export function CustomSlider({
-    value,
+    $value,
     minimumValue,
-    maximumValue,
+    $maximumValue,
     onSlidingComplete,
     disabled = false,
     style,
@@ -25,21 +27,18 @@ export function CustomSlider({
     maximumTrackTintColor = "#ffffff40",
 }: CustomSliderProps) {
     const isDragging$ = useObservable(false);
-    const tempValue$ = useObservable(value);
     const isHovered$ = useObservable(false);
-    const isDragging = use$(isDragging$);
-    const tempValue = use$(tempValue$);
     const isHovered = use$(isHovered$);
+
+    // Calculate progress percentage
+    const progress$ = useObservableSharedValue(() => {
+        const value = $value.get();
+        const maximumValue = $maximumValue.get();
+        return maximumValue > minimumValue ? (value - minimumValue) / (maximumValue - minimumValue) : 0;
+    });
 
     // Animated value for thumb height
     const thumbHeight = useSharedValue(1);
-
-    // Update temp value when external value changes (but not when dragging)
-    useEffect(() => {
-        if (!isDragging) {
-            tempValue$.set(value);
-        }
-    }, [value, isDragging]);
 
     // Animate thumb height based on hover state
     useEffect(() => {
@@ -52,9 +51,9 @@ export function CustomSlider({
         const { locationX } = event.nativeEvent;
         const sliderWidth = 300; // Approximate width, could be measured dynamically
         const percentage = Math.max(0, Math.min(1, locationX / sliderWidth));
-        const newValue = minimumValue + percentage * (maximumValue - minimumValue);
+        const newValue = minimumValue + percentage * ($maximumValue.get() - minimumValue);
 
-        tempValue$.set(newValue);
+        $value.set(newValue);
         onSlidingComplete?.(newValue);
     };
 
@@ -66,7 +65,7 @@ export function CustomSlider({
     const handlePressOut = () => {
         if (disabled) return;
         isDragging$.set(false);
-        onSlidingComplete?.(tempValue);
+        onSlidingComplete?.($value.get());
     };
 
     const handleHoverIn = () => {
@@ -79,15 +78,20 @@ export function CustomSlider({
         isHovered$.set(false);
     };
 
-    // Calculate progress percentage
-    const progress = maximumValue > minimumValue ? (tempValue - minimumValue) / (maximumValue - minimumValue) : 0;
-
     // Animated style for the thumb
     const thumbAnimatedStyle = useAnimatedStyle(() => {
         const height = thumbHeight.value;
         return {
             height: height,
             top: -height / 2, // Center the line by moving it up by half its height
+            left: `${progress$.value * 100}%`,
+        };
+    });
+
+    const trackAnimatedStyle = useAnimatedStyle(() => {
+        return {
+            backgroundColor: minimumTrackTintColor,
+            width: `${progress$.value * 100}%`,
         };
     });
 
@@ -104,20 +108,14 @@ export function CustomSlider({
             >
                 <View className="h-1 bg-white/20 rounded-full">
                     {/* Progress track */}
-                    <View
-                        className="h-full rounded-full"
-                        style={{
-                            backgroundColor: minimumTrackTintColor,
-                            width: `${progress * 100}%`,
-                        }}
-                    />
+                    <Animated.View className="h-full rounded-full" style={trackAnimatedStyle} />
                     {/* Vertical line thumb */}
                     <Animated.View
                         className="absolute w-0.5 bg-white"
                         style={[
                             thumbAnimatedStyle,
+                            trackAnimatedStyle,
                             {
-                                left: `${progress * 100}%`,
                                 marginTop: 2,
                                 marginLeft: -1, // Half of line width
                                 opacity: disabled ? 0.5 : isHovered ? 1 : 0,
@@ -128,4 +126,14 @@ export function CustomSlider({
             </Pressable>
         </View>
     );
+}
+
+export function useObservableSharedValue<T>(compute: () => T) {
+    const sharedValue = useSharedValue(compute());
+
+    useObserveEffect(() => {
+        sharedValue.value = compute();
+    });
+
+    return sharedValue;
 }
