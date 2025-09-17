@@ -5,14 +5,9 @@ import { StyleSheet, Text, View } from "react-native";
 import { AlbumArt } from "@/components/AlbumArt";
 import { Button } from "@/components/Button";
 import { localAudioControls, localPlayerState$ } from "@/components/LocalAudioPlayer";
-import { controls, playbackState$, playlistState$, playlistsState$ } from "@/components/YouTubeMusicPlayer";
 import { localMusicState$ } from "@/systems/LocalMusicState";
-import { getPlaylistContent } from "@/systems/PlaylistContent";
-import { playlistsData$ } from "@/systems/Playlists";
 import { settings$ } from "@/systems/Settings";
-import { state$, stateSaved$ } from "@/systems/State";
 import { cn } from "@/utils/cn";
-import { formatSecondsToMmSs } from "@/utils/m3u";
 
 interface PlaylistTrack {
     id: string;
@@ -35,25 +30,12 @@ interface TrackItemProps {
 }
 
 const TrackItem = ({ track, index, onTrackClick }: TrackItemProps) => {
-    const localMusicState = use$(localMusicState$);
-    const playbackState = use$(playbackState$);
     const localPlayerState = use$(localPlayerState$);
     const playlistStyle = use$(settings$.general.playlistStyle);
 
     const isPlaying = useSelector(() => {
-        // For local files, check local player state
-        if (localMusicState.isLocalFilesSelected) {
-            const currentTrack = localPlayerState$.currentTrack.get();
-            return currentTrack === track || currentTrack?.id === track.id;
-        }
-
-        // For YouTube Music tracks, check if title and artist match
-        const currentTrack = playbackState$.currentTrack.get();
-        if (currentTrack && track.title && track.artist) {
-            return currentTrack.title === track.title && currentTrack.artist === track.artist;
-        }
-
-        return false;
+        const currentTrack = localPlayerState$.currentTrack.get();
+        return currentTrack === track || currentTrack?.id === track.id;
     });
 
     // Handle separator items
@@ -158,93 +140,20 @@ type PlaylistTrackWithSuggestions = PlaylistTrack & {
 };
 
 export function Playlist() {
-    const playbackState = use$(playbackState$);
-    const playlistState = use$(playlistState$);
-    const playlistsState = use$(playlistsState$);
     const localMusicState = use$(localMusicState$);
     const localPlayerState = use$(localPlayerState$);
-    const playlistsData = use$(playlistsData$);
-    const stateSaved = use$(stateSaved$);
     const playlistStyle = use$(settings$.general.playlistStyle);
-    // const clickedTrackIndex$ = useObservable<number | null>(null);
-    // const clickedTrackIndex = use$(clickedTrackIndex$);
 
-    // Determine which playlist to show
-    const isLocalFilesSelected = localMusicState.isLocalFilesSelected;
-
-    // Get cached playlist content for the currently selected playlist
-    const selectedPlaylistId = stateSaved.playlist;
-    const selectedPlaylist = selectedPlaylistId ? playlistsData.playlistsYtm[selectedPlaylistId] : null;
-    const cachedPlaylistContent$ = selectedPlaylist ? getPlaylistContent(selectedPlaylist.id) : null;
-    const cachedPlaylistContent = use$(cachedPlaylistContent$);
-
-    const playlist: PlaylistTrackWithSuggestions[] = isLocalFilesSelected
-        ? localMusicState.tracks.map((track, index) => ({
-              id: track.id,
-              title: track.title,
-              artist: track.artist,
-              duration: track.duration,
-              thumbnail: track.thumbnail || "",
-              index,
-              isPlaying: index === localPlayerState.currentIndex && localPlayerState.isPlaying,
-          }))
-        : (() => {
-              // Use live data from YouTube Music if available, otherwise fall back to cached data
-              let songs: PlaylistTrackWithSuggestions[] = [];
-              let suggestions: PlaylistTrackWithSuggestions[] = [];
-
-              if (playlistState.songs.length > 0) {
-                  // Use live data
-                  songs = playlistState.songs;
-                  suggestions = playlistState.suggestions.map((track, index) => ({
-                      ...track,
-                      index: playlistState.songs.length + index,
-                      fromSuggestions: true,
-                  }));
-              } else if (cachedPlaylistContent?.songs || cachedPlaylistContent?.suggestions) {
-                  // Transform cached M3U data to PlaylistTrack format
-                  songs = (cachedPlaylistContent.songs || []).map((track, index) => ({
-                      id: track.id,
-                      title: track.title,
-                      artist: track.artist || "",
-                      duration: formatSecondsToMmSs(track.duration),
-                      thumbnail: track.logo || "",
-                      index,
-                      isPlaying: false,
-                  }));
-
-                  suggestions = (cachedPlaylistContent.suggestions || []).map((track, index) => ({
-                      id: track.id,
-                      title: track.title,
-                      artist: track.artist || "",
-                      duration: formatSecondsToMmSs(track.duration),
-                      thumbnail: track.logo || "",
-                      index: songs.length + index,
-                      isPlaying: false,
-                      fromSuggestions: true,
-                  }));
-              }
-
-              return [
-                  ...songs,
-                  ...(suggestions.length > 0
-                      ? [
-                            // Add a separator item
-                            {
-                                id: "separator",
-                                title: "— Suggestions —",
-                                artist: "",
-                                duration: "",
-                                thumbnail: "",
-                                index: -1,
-                                isPlaying: false,
-                                isSeparator: true,
-                            },
-                            ...suggestions,
-                        ]
-                      : []),
-              ];
-          })();
+    // Only show local files playlist
+    const playlist: PlaylistTrackWithSuggestions[] = localMusicState.tracks.map((track, index) => ({
+        id: track.id,
+        title: track.title,
+        artist: track.artist,
+        duration: track.duration,
+        thumbnail: track.thumbnail || "",
+        index,
+        isPlaying: index === localPlayerState.currentIndex && localPlayerState.isPlaying,
+    }));
 
     const handleTrackClick = (index: number) => {
         const track = playlist[index];
@@ -254,77 +163,31 @@ export function Playlist() {
             return;
         }
 
-        // clickedTrackIndex$.set(index);
+        // Handle local file playback
+        console.log("Playing local file at index:", index);
+        const tracks = localMusicState.tracks;
+        const localTrack = tracks[index];
 
-        if (isLocalFilesSelected) {
-            // Handle local file playback
-            console.log("Playing local file at index:", index);
-            const tracks = localMusicState.tracks;
-            const localTrack = tracks[index];
-
-            if (localTrack) {
-                console.log("Playing:", localTrack.title, "by", localTrack.artist);
-                // Load the entire playlist and start playing at the selected index
-                localAudioControls.loadPlaylist(tracks, index);
-            }
-        } else {
-            // Handle YouTube Music playback - use playTrackAtIndex for proper track selection
-            if (track?.fromSuggestions || !track?.id) {
-                // For suggestions, use playTrackAtIndex to play them
-                console.log("Playing suggestion at index:", index, "track:", track.title);
-                controls.playTrackAtIndex(index);
-            } else {
-                // For regular playlist tracks, set the songId and start playing
-                if (track?.id) {
-                    state$.songId.set(track.id);
-                    playbackState$.pendingPlay.set(true);
-                    console.log(
-                        "Set songId:",
-                        track.id,
-                        "for track:",
-                        track.title,
-                        "and will start playback when page loads",
-                    );
-                } else {
-                    console.warn("Track missing ID, cannot set songId:", track);
-                }
-            }
+        if (localTrack) {
+            console.log("Playing:", localTrack.title, "by", localTrack.artist);
+            // Load the entire playlist and start playing at the selected index
+            localAudioControls.loadPlaylist(tracks, index);
         }
-
-        // Clear the clicked state after a short delay
-        // setTimeout(() => {
-        //     clickedTrackIndex$.set(null);
-        // }, 1000);
     };
-
-    // Check if we have playlists available to show
-    const hasAvailablePlaylists = isLocalFilesSelected
-        ? localMusicState.tracks.length > 0
-        : playlistsState.availablePlaylists.length > 0;
 
     return (
         <View className="flex-1">
             {playlist.length === 0 ? (
                 <View className="flex-1 items-center justify-center">
                     <Text className="text-white/60 text-base">
-                        {isLocalFilesSelected
-                            ? localMusicState.isScanning
-                                ? `Scanning... ${localMusicState.scanProgress}/${localMusicState.scanTotal}`
-                                : localMusicState.error
-                                  ? "Error scanning local files"
-                                  : "No local MP3 files found"
-                            : !hasAvailablePlaylists && playbackState.isLoading
-                              ? "Loading playlist..."
-                              : hasAvailablePlaylists
-                                ? "Select a playlist to view tracks"
-                                : "No playlist available"}
+                        {localMusicState.isScanning
+                            ? `Scanning... ${localMusicState.scanProgress}/${localMusicState.scanTotal}`
+                            : localMusicState.error
+                              ? "Error scanning local files"
+                              : "No local MP3 files found"}
                     </Text>
                     <Text className="text-white/40 text-sm mt-2">
-                        {isLocalFilesSelected
-                            ? "Add MP3 files to /Users/jay/Downloads/mp3"
-                            : hasAvailablePlaylists
-                              ? "Choose a playlist from the dropdown above"
-                              : "Navigate to YouTube Music and play a song"}
+                        Add MP3 files to /Users/jay/Downloads/mp3
                     </Text>
                 </View>
             ) : (

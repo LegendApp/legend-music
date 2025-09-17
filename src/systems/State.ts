@@ -17,8 +17,7 @@ export const state$ = observable({
 export const stateSaved$ = createJSONManager({
     filename: "settings",
     initialValue: {
-        showYtm: false,
         playlist: undefined as string | undefined,
-        playlistType: undefined as unknown as "ytm" | "file",
+        playlistType: "file" as const,
     },
 });

@@ -14,10 +14,6 @@ export function initializeMenuManager() {
                 console.log("jump");
                 // state$.listeningForSearch.set(true);
                 break;
-            case "ytm":
-                console.log("ytm");
-                stateSaved$.showYtm.toggle();
-                break;
             //   case 'checkForUpdates':
             //     AutoUpdaterModule.checkForUpdates();
             //     break;

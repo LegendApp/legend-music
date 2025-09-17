@@ -222,8 +222,8 @@ export async function scanLocalMusic(): Promise<void> {
 }
 
 // Set current playlist selection
-export function setCurrentPlaylist(playlistId: string, playlistType: "ytm" | "file"): void {
-    localMusicState$.isLocalFilesSelected.set(playlistType === "file");
+export function setCurrentPlaylist(playlistId: string, playlistType: "file"): void {
+    localMusicState$.isLocalFilesSelected.set(true);
 
     console.log("setCurrentPlaylist", playlistId, playlistType);
 

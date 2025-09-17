@@ -11,9 +11,6 @@ export interface AppSettings {
     general: {
         playlistStyle: PlaylistStyle;
     };
-    youtubeMusic: {
-        enabled: boolean;
-    };
     registration: {
         isRegistered: boolean;
         registrationType?: 'legendkit' | 'standalone';
@@ -34,10 +31,6 @@ export const settings$ = createJSONManager<AppSettings>({
         // General settings
         general: {
             playlistStyle: "comfortable",
-        },
-        // YouTube Music settings
-        youtubeMusic: {
-            enabled: true,
         },
         // Registration settings
         registration: {

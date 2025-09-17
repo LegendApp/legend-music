@@ -2,24 +2,25 @@
  * @type {import('@babel/core').TransformOptions}
  */
 module.exports = {
-    presets: ['module:@react-native/babel-preset', 'nativewind/babel'],
+    presets: ["module:@react-native/babel-preset", "nativewind/babel"],
     plugins: [
         [
-            'module-resolver',
+            "module-resolver",
             {
-                root: ['./src'],
+                root: ["./src"],
                 alias: {
-                    '@legend-kit': './src/legend-kit',
-                    '@': './src',
+                    "@legend-kit": "./src/legend-kit",
+                    "@": "./src",
                 },
             },
         ],
-        ['module:react-native-dotenv'],
-        'react-native-reanimated/plugin',
+        ["module:react-native-dotenv"],
+        "react-native-reanimated/plugin",
+        "module:react-native-node-api/babel-plugin",
     ],
     env: {
         production: {
-            plugins: ['transform-remove-console'],
+            plugins: ["transform-remove-console"],
         },
     },
 };

@@ -49,25 +49,25 @@
                                                defer:NO];
   self.window.title = self.moduleName;
   self.window.autorecalculatesKeyViewLoop = YES;
-  
+
   // Set frame autosave name BEFORE making the window visible
   // This will automatically restore the saved frame if one exists
   [self.window setFrameAutosaveName:@"MainWindow"];
-  
+
   NSViewController *rootViewController = [NSViewController new];
   rootViewController.view = rootView;
-  
+
   // Set the root view frame to match the window's content size
   rootView.frame = self.window.contentView.bounds;
   rootView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-  
+
   self.window.contentViewController = rootViewController;
-  
+
   // Only center if no saved frame exists
   if (![[NSUserDefaults standardUserDefaults] objectForKey:@"NSWindow Frame MainWindow"]) {
     [self.window center];
   }
-  
+
   // Now make the window visible - frame should already be restored by autosave
   [self.window makeKeyAndOrderFront:self];
 }
@@ -84,7 +84,6 @@
   [self setupMenuCommand:@"settings" itemTitle:@"Settings…" inMenu:@"LegendMusic"];
 //   [self setupMenuCommand:@"checkForUpdates" itemTitle:@"Check for Updates..." inMenu:@"LegendPhotos"];
   [self setupMenuCommand:@"jump" itemTitle:@"Jump" inMenu:@"File"];
-  [self setupMenuCommand:@"ytm" itemTitle:@"Toggle YouTube Music" inMenu:@"View"];
 }
 
 // Combined method to setup a menu command and connect it to a menu item
@@ -183,7 +182,7 @@
   NSWindow *window = notification.object;
 
   // Autosave name should already be set in loadReactNativeWindow
-  
+
   [window setTitleVisibility:NSWindowTitleHidden];
   [window setTitlebarAppearsTransparent:YES];
   [window setStyleMask:[window styleMask] | NSWindowStyleMaskFullSizeContentView];

@@ -8,17 +8,15 @@ import { AccountSettings } from "@/settings/AccountSettings";
 import { GeneralSettings } from "@/settings/GeneralSettings";
 import { LibrarySettings } from "@/settings/LibrarySettings";
 import { OpenSourceSettings } from "@/settings/OpenSourceSettings";
-import { YouTubeMusicSettings } from "@/settings/YouTubeMusicSettings";
 import { state$ } from "@/systems/State";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 
-export type SettingsPage = "general" | "library" | "youtube-music" | "account" | "open-source";
+export type SettingsPage = "general" | "library" | "account" | "open-source";
 
 // Define the categories for settings
 const SETTING_PAGES: { id: SettingsPage; name: string }[] = [
     { id: "general", name: "General" },
     { id: "library", name: "Library" },
-    { id: "youtube-music", name: "YouTube Music" },
     { id: "account", name: "Account" },
     { id: "open-source", name: "Open Source" },
 ];
@@ -34,8 +32,6 @@ export const SettingsContainer = () => {
                 return <GeneralSettings />;
             case "library":
                 return <LibrarySettings />;
-            case "youtube-music":
-                return <YouTubeMusicSettings />;
             case "open-source":
                 return <OpenSourceSettings />;
             case "account":

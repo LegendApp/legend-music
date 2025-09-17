@@ -1,4 +1,3 @@
-import type { YTMusicPlaylist } from "@/components/YouTubeMusicPlayer";
 import { createJSONManager } from "@/utils/JSONManager";
 
 export interface Playlist {
@@ -6,14 +5,12 @@ export interface Playlist {
     name: string;
     path: string;
     count: number;
-    type: "file" | "ytm";
+    type: "file";
     order: number;
-    index?: number; // For YTM playlists, the sidebar index for opening
 }
 
 export interface PlaylistsData {
     playlistsLocal: Record<string, Playlist>;
-    playlistsYtm: Record<string, YTMusicPlaylist>;
 }
 
 // Playlists persistence
@@ -21,26 +18,21 @@ export const playlistsData$ = createJSONManager<PlaylistsData>({
     filename: "playlists",
     initialValue: {
         playlistsLocal: {},
-        playlistsYtm: {},
     },
 });
 
 // Get a playlist by ID
 export function getPlaylist(id: string): Playlist | undefined {
-    return playlistsData$.playlistsLocal[id].get() ?? playlistsData$.playlistsYtm[id].get();
+    return playlistsData$.playlistsLocal[id].get();
 }
 
 // Get all playlists
-export function getAllPlaylists(): (Playlist | YTMusicPlaylist)[] {
+export function getAllPlaylists(): Playlist[] {
     const playlistsLocal = playlistsData$.playlistsLocal.get();
-    const playlistsYtm = playlistsData$.playlistsYtm.get();
-    return [...Object.values(playlistsLocal), ...Object.values(playlistsYtm)];
+    return Object.values(playlistsLocal);
 }
 
 // Get playlists by type
-export function getPlaylistsByType(type: "file" | "ytm"): Playlist[] {
-    if (type === "file") {
-        return Object.values(playlistsData$.playlistsLocal.get());
-    }
-    return Object.values(playlistsData$.playlistsYtm.get());
+export function getPlaylistsByType(type: "file"): Playlist[] {
+    return Object.values(playlistsData$.playlistsLocal.get());
 }

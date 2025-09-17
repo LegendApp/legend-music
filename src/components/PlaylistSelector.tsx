@@ -4,35 +4,32 @@ import { Text, View } from "react-native";
 import { Button } from "@/components/Button";
 import { DropdownMenu, type DropdownMenuRootRef } from "@/components/DropdownMenu";
 import { localAudioControls } from "@/components/LocalAudioPlayer";
-import { Playlist } from "@/components/Playlist";
-import { Select } from "@/components/Select";
 import { SelectLegendList } from "@/components/SelectLegendList";
 import { StyledInput } from "@/components/StyledInput";
-import type { YTMusicPlaylist } from "@/components/YouTubeMusicPlayer";
 import { useOnHotkeys } from "@/systems/keyboard/Keyboard";
 import { type LocalTrack, localMusicState$, setCurrentPlaylist } from "@/systems/LocalMusicState";
-import { playlistsData$ } from "@/systems/Playlists";
 import { stateSaved$ } from "@/systems/State";
+
+interface LocalPlaylist {
+    id: string;
+    name: string;
+    count: number;
+    type: "file";
+}
 
 export function PlaylistSelector() {
     const localMusicState = use$(localMusicState$);
-    const playlistsObj = use$(playlistsData$.playlistsYtm);
-    const playlistsArr = Object.values(playlistsObj).sort((a, b) => a.index! - b.index!);
 
     // Create local files playlist
-    const localFilesPlaylist: YTMusicPlaylist = {
+    const localFilesPlaylist: LocalPlaylist = {
         id: "LOCAL_FILES",
         name: "Local Files",
-        thumbnail: "",
         count: localMusicState.tracks.length,
-        creator: "Local Library",
-        path: "",
         type: "file",
-        order: -1,
     };
 
-    // Combine YouTube Music playlists with local files
-    const availablePlaylists = [localFilesPlaylist, ...playlistsArr];
+    // Only use local files playlist
+    const availablePlaylists = [localFilesPlaylist];
     const availablePlaylistIds = availablePlaylists.map((playlist) => playlist.id);
 
     const selectedPlaylist$ = stateSaved$.playlist;
@@ -47,12 +44,8 @@ export function PlaylistSelector() {
 
     const handlePlaylistSelect = (playlistId: string) => {
         console.log("Navigating to playlist:", playlistId);
-        setCurrentPlaylist(playlistId, playlistId === "LOCAL_FILES" ? "file" : "ytm");
-
-        if (playlistId === "LOCAL_FILES") {
-            // Handle local files selection
-            console.log("Selected local files playlist");
-        }
+        setCurrentPlaylist(playlistId, "file");
+        console.log("Selected local files playlist");
     };
 
     const isLocalFilesSelected = selectedPlaylist === "LOCAL_FILES";
@@ -106,8 +99,7 @@ export function PlaylistSelector() {
                         getItemKey={(playlist) => playlist}
                         renderItem={(playlistId, mode) => {
                             if (!playlistId) return <Text>Null</Text>;
-                            const playlist =
-                                playlistId === "LOCAL_FILES" ? localFilesPlaylist : playlistsObj[playlistId];
+                            const playlist = playlistId === "LOCAL_FILES" ? localFilesPlaylist : null;
 
                             if (!playlist) {
                                 console.log("Playlist not found:", playlistId);

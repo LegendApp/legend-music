@@ -64,7 +64,7 @@ export function parseM3U(content: string): M3UPlaylist {
                 }
 
                 const track = {
-                    id: extractYouTubeId(filePath),
+                    id: filePath, // Use file path as ID for local files
                     duration,
                     title,
                     artist,
@@ -86,7 +86,7 @@ export function parseM3U(content: string): M3UPlaylist {
         } else {
             // Plain file path without EXTINF
             const track = {
-                id: extractYouTubeId(line),
+                id: line, // Use file path as ID for local files
                 duration: -1,
                 title: extractTitleFromPath(line),
                 filePath: line,
@@ -240,25 +240,3 @@ export function formatSecondsToMmSs(seconds: number): string {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
-/**
- * Extract YouTube video ID from a YouTube Music URL
- */
-function extractYouTubeId(url: string): string {
-    if (!url || typeof url !== "string") {
-        return "";
-    }
-
-    try {
-        const urlObj = new URL(url);
-
-        // Check if it's a YouTube Music URL
-        if (urlObj.hostname === "music.youtube.com") {
-            const vParam = urlObj.searchParams.get("v");
-            return vParam || "";
-        }
-
-        return "";
-    } catch {
-        return "";
-    }
-}
