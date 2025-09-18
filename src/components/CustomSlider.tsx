@@ -124,7 +124,6 @@ export function CustomSlider({
                         className="absolute w-0.5 bg-white"
                         style={[
                             thumbAnimatedStyle,
-                            trackAnimatedStyle,
                             {
                                 marginTop: 2,
                                 marginLeft: -1, // Half of line width

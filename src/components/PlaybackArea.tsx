@@ -1,6 +1,6 @@
 import { Memo, use$ } from "@legendapp/state/react";
+import { useEffect } from "react";
 import { Text, View } from "react-native";
-
 import { AlbumArt } from "@/components/AlbumArt";
 import { Button } from "@/components/Button";
 import { CustomSlider } from "@/components/CustomSlider";
@@ -64,7 +64,8 @@ export function PlaybackArea() {
                         {currentTrack?.artist || " "}
                     </Text>
                     <Text className="text-white/50 text-xs" style={{ fontVariant: ["tabular-nums"] }}>
-                        <Memo>{() => `${formatTime(currentLocalTime$.get())} / ${formatTime(duration$.get())}`}</Memo>
+                        <Memo>{() => formatTime(currentLocalTime$.get())}</Memo>
+                        <Memo>{() => ` / ${formatTime(duration$.get())}`}</Memo>
                     </Text>
                 </View>
 
