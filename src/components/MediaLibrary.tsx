@@ -1,7 +1,7 @@
 import { LegendList } from "@legendapp/list";
 import { use$ } from "@legendapp/state/react";
 import { useCallback, useMemo } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { Button } from "@/components/Button";
 import { localAudioControls } from "@/components/LocalAudioPlayer";
 import { Panel, PanelGroup, ResizeHandle } from "@/components/ResizablePanels";
@@ -46,118 +46,141 @@ function LibraryTree() {
     const playlists = use$(library$.playlists);
     const listItemStyles = useListItemStyles();
 
-    const toggleNode = (nodeId: string) => {
-        const current = expandedNodes;
-        if (current.includes(nodeId)) {
-            libraryUI$.expandedNodes.set(current.filter((id) => id !== nodeId));
-        } else {
-            libraryUI$.expandedNodes.set([...current, nodeId]);
-        }
+    const toggleNode = useCallback(
+        (nodeId: string) => {
+            if (expandedNodes.includes(nodeId)) {
+                libraryUI$.expandedNodes.set(expandedNodes.filter((id) => id !== nodeId));
+            } else {
+                libraryUI$.expandedNodes.set([...expandedNodes, nodeId]);
+            }
+        },
+        [expandedNodes],
+    );
+
+    const selectItem = useCallback((item: any) => {
+        libraryUI$.selectedItem.set(item);
+    }, []);
+
+    type TreeRow = {
+        key: string;
+        type: "heading" | "section" | "item" | "info";
+        label: string;
+        depth: number;
+        sectionId?: "artists" | "playlists";
+        isExpanded?: boolean;
+        payload?: any;
+        isSelected?: boolean;
     };
 
-    const selectItem = (item: any) => {
-        libraryUI$.selectedItem.set(item);
-    };
+    const treeRows = useMemo<TreeRow[]>(() => {
+        const rows: TreeRow[] = [];
+
+        const artistsExpanded = expandedNodes.includes("artists");
+        rows.push({
+            key: "section-artists",
+            type: "section",
+            label: `Artists (${artists.length})`,
+            depth: 0,
+            sectionId: "artists",
+            isExpanded: artistsExpanded,
+        });
+
+        if (artistsExpanded) {
+            for (const artist of artists) {
+                rows.push({
+                    key: `artist-${artist.id}`,
+                    type: "item",
+                    label: artist.name,
+                    depth: 1,
+                    payload: artist,
+                    isSelected: selectedItem?.id === artist.id,
+                });
+            }
+        }
+
+        const playlistsExpanded = expandedNodes.includes("playlists");
+        rows.push({
+            key: "section-playlists",
+            type: "section",
+            label: `Playlists (${playlists.length})`,
+            depth: 0,
+            sectionId: "playlists",
+            isExpanded: playlistsExpanded,
+        });
+
+        if (playlistsExpanded) {
+            for (const playlist of playlists) {
+                rows.push({
+                    key: `playlist-${playlist.id}`,
+                    type: "item",
+                    label: playlist.name,
+                    depth: 1,
+                    payload: playlist,
+                    isSelected: selectedItem?.id === playlist.id,
+                });
+            }
+        }
+
+        return rows;
+    }, [artists, expandedNodes, playlists, selectedItem]);
+
+    const renderRow = useCallback(
+        ({ item }: { item: TreeRow }) => {
+            if (item.type === "heading") {
+                return <Text style={styles.treeHeading}>{item.label}</Text>;
+            }
+
+            if (item.type === "section") {
+                return (
+                    <Button
+                        icon={item.isExpanded ? "chevron.down" : "chevron.right"}
+                        iconSize={10}
+                        onPress={() => toggleNode(item.sectionId!)}
+                        className={listItemStyles.getRowClassName({ variant: "compact" })}
+                    >
+                        <Text className={cn("text-sm", listItemStyles.text.primary)}>{item.label}</Text>
+                    </Button>
+                );
+            }
+
+            if (item.type === "info") {
+                return <Text style={styles.treeInfo}>{item.label}</Text>;
+            }
+
+            const indentClass = item.depth > 0 ? "pl-4" : "";
+            return (
+                <Button
+                    onPress={() => selectItem(item.payload)}
+                    className={listItemStyles.getRowClassName({
+                        isActive: Boolean(item.isSelected),
+                        variant: "compact",
+                        className: cn(indentClass),
+                    })}
+                >
+                    <Text
+                        className={cn(
+                            "text-sm",
+                            item.isSelected ? listItemStyles.text.primary : listItemStyles.text.secondary,
+                        )}
+                    >
+                        {item.label}
+                    </Text>
+                </Button>
+            );
+        },
+        [listItemStyles, selectItem, toggleNode],
+    );
 
     return (
-        <ScrollView
+        <LegendList
+            data={treeRows}
+            keyExtractor={(item) => item.key}
+            renderItem={renderRow}
             style={styles.treeScroll}
             contentContainerStyle={styles.treeContent}
-            keyboardShouldPersistTaps="handled"
-        >
-            <Text style={styles.treeHeading}>Browse</Text>
-
-            {/* Artists */}
-            <Button
-                icon={expandedNodes.includes("artists") ? "chevron.down" : "chevron.right"}
-                iconSize={10}
-                onPress={() => toggleNode("artists")}
-                className={cn("mb-1", listItemStyles.getRowClassName())}
-            >
-                <Text className={cn("text-sm ml-1", listItemStyles.text.primary)}>Artists ({artists.length})</Text>
-            </Button>
-
-            {/* Show artists when expanded */}
-            {expandedNodes.includes("artists") && (
-                <View style={styles.nestedList}>
-                    {artists.map((artist) => (
-                        <Button
-                            key={artist.id}
-                            onPress={() => selectItem(artist)}
-                            className={listItemStyles.getRowClassName({
-                                variant: "compact",
-                                isActive: selectedItem?.id === artist.id,
-                            })}
-                        >
-                            <Text
-                                className={cn(
-                                    "text-sm",
-                                    selectedItem?.id === artist.id
-                                        ? listItemStyles.text.primary
-                                        : listItemStyles.text.secondary,
-                                )}
-                            >
-                                {artist.name}
-                            </Text>
-                        </Button>
-                    ))}
-                </View>
-            )}
-
-            {/* All Songs */}
-            <Button
-                onPress={() => selectItem({ id: "all-songs", type: "all", name: "All Songs" })}
-                className={cn("mb-1", listItemStyles.getRowClassName({ isActive: selectedItem?.id === "all-songs" }))}
-            >
-                <Text
-                    className={cn(
-                        "text-sm",
-                        selectedItem?.id === "all-songs" ? listItemStyles.text.primary : listItemStyles.text.secondary,
-                    )}
-                >
-                    All Songs
-                </Text>
-            </Button>
-
-            {/* Playlists */}
-            <Button
-                icon={expandedNodes.includes("playlists") ? "chevron.down" : "chevron.right"}
-                iconSize={10}
-                onPress={() => toggleNode("playlists")}
-                className={cn("mb-1", listItemStyles.getRowClassName())}
-            >
-                <Text className={cn("text-sm ml-1", listItemStyles.text.primary)}>Playlists ({playlists.length})</Text>
-            </Button>
-
-            {/* Show playlists when expanded */}
-            {expandedNodes.includes("playlists") && (
-                <View style={styles.nestedList}>
-                    {playlists.map((playlist) => (
-                        <Button
-                            key={playlist.id}
-                            onPress={() => selectItem(playlist)}
-                            className={cn(
-                                "mb-1 pl-4",
-                                listItemStyles.getRowClassName({
-                                    isActive: selectedItem?.id === playlist.id,
-                                }),
-                            )}
-                        >
-                            <Text
-                                className={cn(
-                                    "text-sm",
-                                    selectedItem?.id === playlist.id
-                                        ? listItemStyles.text.primary
-                                        : listItemStyles.text.secondary,
-                                )}
-                            >
-                                {playlist.name}
-                            </Text>
-                        </Button>
-                    ))}
-                </View>
-            )}
-        </ScrollView>
+            estimatedItemSize={44}
+            waitForInitialLayout={false}
+        />
     );
 }
 
@@ -238,10 +261,6 @@ function TrackList() {
 
     return (
         <View style={styles.trackListContainer}>
-            <Text style={styles.trackListHeading}>
-                {selectedItem.name} ({tracks.length} track{tracks.length !== 1 ? "s" : ""})
-            </Text>
-
             <LegendList
                 data={tracks}
                 keyExtractor={keyExtractor}
@@ -315,9 +334,10 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         textTransform: "uppercase",
     },
-    nestedList: {
-        marginBottom: 10,
-        marginTop: 2,
+    treeInfo: {
+        color: "rgba(255,255,255,0.4)",
+        fontSize: 12,
+        marginTop: 12,
     },
     trackListContainer: {
         flex: 1,
