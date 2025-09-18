@@ -32,7 +32,7 @@ export interface ListItemStyles {
 
 export function useListItemStyles(): ListItemStyles {
     return useMemo(() => {
-        const baseRow = "flex-row items-center px-3 py-1 border border-transparent";
+        const baseRow = "flex-row items-center px-3 border border-transparent";
         const rowVariants: Record<ListItemVariant, string> = {
             default: "min-h-11",
             compact: "h-8",

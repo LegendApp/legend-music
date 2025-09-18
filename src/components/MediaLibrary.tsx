@@ -1,13 +1,13 @@
 import { LegendList } from "@legendapp/list";
 import { use$ } from "@legendapp/state/react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Button } from "@/components/Button";
 import { localAudioControls } from "@/components/LocalAudioPlayer";
 import { Panel, PanelGroup, ResizeHandle } from "@/components/ResizablePanels";
 import { type TrackData, TrackItem } from "@/components/TrackItem";
 import { useListItemStyles } from "@/hooks/useListItemStyles";
-import type { LibraryTrack } from "@/systems/LibraryState";
+import type { LibraryItem, LibraryTrack } from "@/systems/LibraryState";
 import { library$, libraryUI$ } from "@/systems/LibraryState";
 import { cn } from "@/utils/cn";
 import { perfCount, perfLog } from "@/utils/perfLogger";
@@ -41,146 +41,146 @@ export function MediaLibraryView() {
 function LibraryTree() {
     perfCount("MediaLibrary.LibraryTree.render");
     const selectedItem = use$(libraryUI$.selectedItem);
-    const expandedNodes = use$(libraryUI$.expandedNodes);
+    const selectedCollection = use$(libraryUI$.selectedCollection);
     const artists = use$(library$.artists);
+    const albums = use$(library$.albums);
     const playlists = use$(library$.playlists);
+    const tracks = use$(library$.tracks);
     const listItemStyles = useListItemStyles();
 
-    const toggleNode = useCallback(
-        (nodeId: string) => {
-            if (expandedNodes.includes(nodeId)) {
-                libraryUI$.expandedNodes.set(expandedNodes.filter((id) => id !== nodeId));
-            } else {
-                libraryUI$.expandedNodes.set([...expandedNodes, nodeId]);
-            }
-        },
-        [expandedNodes],
-    );
-
-    const selectItem = useCallback((item: any) => {
+    const selectItem = useCallback((item: LibraryItem | null) => {
         libraryUI$.selectedItem.set(item);
     }, []);
 
-    type TreeRow = {
-        key: string;
-        type: "heading" | "section" | "item" | "info";
-        label: string;
-        depth: number;
-        sectionId?: "artists" | "playlists";
-        isExpanded?: boolean;
-        payload?: any;
-        isSelected?: boolean;
-    };
+    const allSongsItem = useMemo<LibraryItem>(
+        () => ({
+            id: "all-songs",
+            type: "playlist",
+            name: "All Songs",
+            trackCount: tracks.length,
+        }),
+        [tracks.length],
+    );
 
-    const treeRows = useMemo<TreeRow[]>(() => {
-        const rows: TreeRow[] = [];
-
-        const artistsExpanded = expandedNodes.includes("artists");
-        rows.push({
-            key: "section-artists",
-            type: "section",
-            label: `Artists (${artists.length})`,
-            depth: 0,
-            sectionId: "artists",
-            isExpanded: artistsExpanded,
-        });
-
-        if (artistsExpanded) {
-            for (const artist of artists) {
-                rows.push({
-                    key: `artist-${artist.id}`,
-                    type: "item",
-                    label: artist.name,
-                    depth: 1,
-                    payload: artist,
-                    isSelected: selectedItem?.id === artist.id,
-                });
-            }
+    const collectionItems = useMemo(() => {
+        switch (selectedCollection) {
+            case "albums":
+                return albums;
+            case "playlists":
+                return [allSongsItem, ...playlists];
+            default:
+                return artists;
         }
+    }, [albums, allSongsItem, artists, playlists, selectedCollection]);
 
-        const playlistsExpanded = expandedNodes.includes("playlists");
-        rows.push({
-            key: "section-playlists",
-            type: "section",
-            label: `Playlists (${playlists.length})`,
-            depth: 0,
-            sectionId: "playlists",
-            isExpanded: playlistsExpanded,
-        });
-
-        if (playlistsExpanded) {
-            for (const playlist of playlists) {
-                rows.push({
-                    key: `playlist-${playlist.id}`,
-                    type: "item",
-                    label: playlist.name,
-                    depth: 1,
-                    payload: playlist,
-                    isSelected: selectedItem?.id === playlist.id,
-                });
-            }
+    useEffect(() => {
+        const collectionTypeMap: Record<string, LibraryItem["type"][]> = {
+            artists: ["artist"],
+            albums: ["album"],
+            playlists: ["playlist"],
+        };
+        const allowedTypes = collectionTypeMap[selectedCollection] ?? ["artist"];
+        if (!selectedItem || !allowedTypes.includes(selectedItem.type)) {
+            const nextSelection = collectionItems[0] ?? null;
+            libraryUI$.selectedItem.set(nextSelection);
         }
+    }, [collectionItems, selectedCollection, selectedItem]);
 
-        return rows;
-    }, [artists, expandedNodes, playlists, selectedItem]);
+    const handleCollectionChange = useCallback((collection: "artists" | "albums" | "playlists") => {
+        libraryUI$.selectedCollection.set(collection);
+    }, []);
 
     const renderRow = useCallback(
-        ({ item }: { item: TreeRow }) => {
-            if (item.type === "heading") {
-                return <Text style={styles.treeHeading}>{item.label}</Text>;
-            }
-
-            if (item.type === "section") {
-                return (
-                    <Button
-                        icon={item.isExpanded ? "chevron.down" : "chevron.right"}
-                        iconSize={10}
-                        onPress={() => toggleNode(item.sectionId!)}
-                        className={listItemStyles.getRowClassName({ variant: "compact" })}
-                    >
-                        <Text className={cn("text-sm", listItemStyles.text.primary)}>{item.label}</Text>
-                    </Button>
-                );
-            }
-
-            if (item.type === "info") {
-                return <Text style={styles.treeInfo}>{item.label}</Text>;
-            }
-
-            const indentClass = item.depth > 0 ? "pl-4" : "";
+        ({ item }: { item: LibraryItem }) => {
+            const isSelected = selectedItem?.id === item.id;
             return (
                 <Button
-                    onPress={() => selectItem(item.payload)}
+                    onPress={() => selectItem(item)}
                     className={listItemStyles.getRowClassName({
-                        isActive: Boolean(item.isSelected),
                         variant: "compact",
-                        className: cn(indentClass),
+                        isActive: isSelected,
                     })}
                 >
-                    <Text
-                        className={cn(
-                            "text-sm",
-                            item.isSelected ? listItemStyles.text.primary : listItemStyles.text.secondary,
-                        )}
-                    >
-                        {item.label}
-                    </Text>
+                    <View className="flex-1 flex-row items-center justify-between overflow-hidden">
+                        <Text
+                            className={cn(
+                                "text-sm truncate flex-1 pr-4",
+                                isSelected ? listItemStyles.text.primary : listItemStyles.text.secondary,
+                            )}
+                            numberOfLines={1}
+                        >
+                            {item.name}
+                        </Text>
+                        {item.trackCount ? (
+                            <View className="shrink-0">
+                                <Text className={listItemStyles.getMetaClassName({ className: "text-xs" })}>
+                                    {item.trackCount}
+                                </Text>
+                            </View>
+                        ) : null}
+                    </View>
                 </Button>
             );
         },
-        [listItemStyles, selectItem, toggleNode],
+        [listItemStyles, selectItem, selectedItem?.id],
     );
 
+    const collectionTabs: Array<{ id: "artists" | "albums" | "playlists"; label: string }> = useMemo(
+        () => [
+            { id: "artists", label: "Artists" },
+            { id: "albums", label: "Albums" },
+            { id: "playlists", label: "Playlists" },
+        ],
+        [],
+    );
+
+    const emptyLabel = useMemo(() => {
+        const tab = collectionTabs.find((item) => item.id === selectedCollection);
+        return tab?.label.toLowerCase() ?? "items";
+    }, [collectionTabs, selectedCollection]);
+
     return (
-        <LegendList
-            data={treeRows}
-            keyExtractor={(item) => item.key}
-            renderItem={renderRow}
-            style={styles.treeScroll}
-            contentContainerStyle={styles.treeContent}
-            estimatedItemSize={44}
-            waitForInitialLayout={false}
-        />
+        <View style={styles.treeContainer}>
+            <View className="mb-1 flex-row gap-1.5">
+                {collectionTabs.map((tab) => (
+                    <Button
+                        key={tab.id}
+                        onPress={() => handleCollectionChange(tab.id)}
+                        className={listItemStyles.getRowClassName({
+                            variant: "compact",
+                            isActive: selectedCollection === tab.id,
+                            className: "flex-1",
+                        })}
+                    >
+                        <Text
+                            className={cn(
+                                "text-sm",
+                                selectedCollection === tab.id
+                                    ? listItemStyles.text.primary
+                                    : listItemStyles.text.secondary,
+                            )}
+                        >
+                            {tab.label}
+                        </Text>
+                    </Button>
+                ))}
+            </View>
+
+            <LegendList
+                data={collectionItems}
+                keyExtractor={(item) => item.id}
+                renderItem={renderRow}
+                style={styles.treeScroll}
+                contentContainerStyle={styles.treeContent}
+                estimatedItemSize={44}
+                waitForInitialLayout={false}
+                ListEmptyComponent={
+                    <View style={styles.treeEmptyState}>
+                        <Text style={styles.treeInfo}>No {emptyLabel} found</Text>
+                    </View>
+                }
+            />
+        </View>
     );
 }
 
@@ -201,6 +201,9 @@ function TrackList() {
         let filteredTracks: LibraryTrack[];
         if (selectedItem.type === "artist") {
             filteredTracks = allTracks.filter((track) => track.artist === selectedItem.name);
+        } else if (selectedItem.type === "album") {
+            const albumName = selectedItem.album ?? selectedItem.name;
+            filteredTracks = allTracks.filter((track) => (track.album ?? "Unknown Album") === albumName);
         } else if (selectedItem.type === "playlist") {
             // For now, show all tracks for playlist items
             filteredTracks = allTracks;
@@ -320,24 +323,23 @@ const styles = StyleSheet.create({
         flex: 1,
         minHeight: 0,
     },
+    treeContainer: {
+        flex: 1,
+    },
     treeScroll: {
         flex: 1,
     },
     treeContent: {
         alignItems: "stretch",
     },
-    treeHeading: {
-        color: "rgba(255,255,255,0.6)",
-        fontSize: 12,
-        fontWeight: "600",
-        letterSpacing: 1,
-        marginBottom: 8,
-        textTransform: "uppercase",
-    },
     treeInfo: {
         color: "rgba(255,255,255,0.4)",
         fontSize: 12,
         marginTop: 12,
+    },
+    treeEmptyState: {
+        paddingVertical: 16,
+        paddingHorizontal: 8,
     },
     trackListContainer: {
         flex: 1,
@@ -352,9 +354,7 @@ const styles = StyleSheet.create({
     trackList: {
         flex: 1,
     },
-    trackListContent: {
-        paddingBottom: 16,
-    },
+    trackListContent: {},
     trackListEmpty: {
         flexGrow: 1,
         justifyContent: "center",

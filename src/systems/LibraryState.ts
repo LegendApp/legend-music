@@ -10,6 +10,8 @@ export interface LibraryItem {
     children?: LibraryItem[];
     trackCount?: number;
     duration?: number;
+    album?: string;
+    artist?: string;
 }
 
 export interface LibraryTrack extends LocalTrack {
@@ -23,7 +25,7 @@ export const libraryUI$ = createJSONManager({
         isOpen: true,
         selectedItem: null as LibraryItem | null,
         searchQuery: "",
-        expandedNodes: [] as string[],
+        selectedCollection: "artists" as "artists" | "albums" | "playlists",
     },
 });
 
@@ -35,6 +37,7 @@ export const libraryUIState$ = observable({
 // Library data derived from local music state
 export const library$ = observable({
     artists: [] as LibraryItem[],
+    albums: [] as LibraryItem[],
     playlists: [] as LibraryItem[],
     tracks: [] as LibraryTrack[],
     isScanning: false,
@@ -69,6 +72,46 @@ function buildArtistItems(tracks: LibraryTrack[]): LibraryItem[] {
         .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+function buildAlbumItems(tracks: LibraryTrack[]): LibraryItem[] {
+    perfCount("LibraryState.buildAlbumItems");
+
+    const albumMap = new Map<
+        string,
+        {
+            album: string;
+            artist: string | undefined;
+            count: number;
+        }
+    >();
+
+    for (const track of tracks) {
+        const albumName = track.album?.trim() || "Unknown Album";
+        const key = albumName.toLowerCase();
+        const entry = albumMap.get(key);
+
+        if (entry) {
+            entry.count += 1;
+        } else {
+            albumMap.set(key, {
+                album: albumName,
+                artist: track.artist,
+                count: 1,
+            });
+        }
+    }
+
+    return Array.from(albumMap.values())
+        .map(({ album, artist, count }) => ({
+            id: `album-${slugify(`${album}-${artist ?? "various"}`)}`,
+            type: "album" as const,
+            name: album,
+            album,
+            artist,
+            trackCount: count,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 function slugify(value: string): string {
     const slug = value
         .toLowerCase()
@@ -86,6 +129,7 @@ function syncLibraryFromLocalState(): void {
 
     library$.tracks.set(normalizedTracks);
     library$.artists.set(buildArtistItems(normalizedTracks));
+    library$.albums.set(buildAlbumItems(normalizedTracks));
     perfLog("LibraryState.sync.end", { trackCount: normalizedTracks.length });
 }
 
