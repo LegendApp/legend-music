@@ -1,14 +1,15 @@
-import { use$, useObservable } from "@legendapp/state/react";
-import { useCallback, useEffect, useRef } from "react";
-import { InteractionManager, Text, type TextInput as TextInputNative, View } from "react-native";
+import { use$ } from "@legendapp/state/react";
+import { useCallback, useRef } from "react";
+import { Text, View } from "react-native";
 import { Button } from "@/components/Button";
-import { DropdownMenu, type DropdownMenuRootRef } from "@/components/DropdownMenu";
 import { localAudioControls } from "@/components/LocalAudioPlayer";
 import { SelectLegendList } from "@/components/SelectLegendList";
-import { StyledInput } from "@/components/StyledInput";
+import type { DropdownMenuRootRef } from "@/components/DropdownMenu";
+import { PlaylistSelectorSearchDropdown } from "@/components/PlaylistSelectorSearchDropdown";
 import { useOnHotkeys } from "@/systems/keyboard/Keyboard";
 import { libraryUI$ } from "@/systems/LibraryState";
-import { type LocalTrack, localMusicState$, setCurrentPlaylist } from "@/systems/LocalMusicState";
+import type { LocalTrack } from "@/systems/LocalMusicState";
+import { localMusicState$, setCurrentPlaylist } from "@/systems/LocalMusicState";
 import { stateSaved$ } from "@/systems/State";
 import { perfCount, perfLog } from "@/utils/perfLogger";
 
@@ -37,16 +38,7 @@ export function PlaylistSelector() {
 
     const selectedPlaylist$ = stateSaved$.playlist;
 
-    // Search state
-    const searchQuery$ = useObservable("");
-    const searchQuery = use$(searchQuery$);
-
-    // Dropdown menu ref
     const dropdownMenuRef = useRef<DropdownMenuRootRef>(null);
-
-    // Search input ref for autofocus
-    const searchInputRef = useRef<TextInputNative>(null);
-
     const isLibraryOpen = use$(libraryUI$.isOpen);
 
     const toggleLibraryWindow = useCallback(() => {
@@ -60,17 +52,6 @@ export function PlaylistSelector() {
         setCurrentPlaylist(playlistId, "file");
         console.log("Selected local files playlist");
     };
-
-    // Filter search results
-    const searchResults = searchQuery.trim()
-        ? localMusicState.tracks
-              .filter(
-                  (track) =>
-                      track.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                      track.artist.toLowerCase().includes(searchQuery.toLowerCase()),
-              )
-              .slice(0, 10) // Limit to 10 results
-        : [];
 
     const handleTrackSelect = (track: LocalTrack) => {
         perfLog("PlaylistSelector.handleTrackSelect", { trackId: track.id });
@@ -88,27 +69,7 @@ export function PlaylistSelector() {
             localAudioControls.loadTrack(track.filePath, track.title, track.artist);
             console.log(`Started playing single track: "${track.title}" by ${track.artist}`);
         }
-
-        searchQuery$.set(""); // Clear search after selection
     };
-
-    const focusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-    useEffect(() => {
-        return () => {
-            if (focusTimeoutRef.current) {
-                clearTimeout(focusTimeoutRef.current);
-                focusTimeoutRef.current = null;
-            }
-        };
-    }, []);
-
-    const handleSearchDropdownOpenChange = useCallback((open: boolean) => {
-        if (focusTimeoutRef.current) {
-            clearTimeout(focusTimeoutRef.current);
-            focusTimeoutRef.current = null;
-        }
-    }, []);
 
     useOnHotkeys({
         Search: () => {
@@ -159,51 +120,11 @@ export function PlaylistSelector() {
                         maxWidthMatchTrigger={true}
                     />
                 </View>
-                <DropdownMenu.Root
+                <PlaylistSelectorSearchDropdown
                     ref={dropdownMenuRef}
-                    closeOnSelect={false}
-                    onOpenChange={handleSearchDropdownOpenChange}
-                >
-                    <DropdownMenu.Trigger asChild>
-                        <Button icon="magnifyingglass" variant="icon" size="small" className="ml-2 hover:bg-white/10" />
-                    </DropdownMenu.Trigger>
-                    <DropdownMenu.Content directionalHint="topCenter" setInitialFocus>
-                        <StyledInput
-                            ref={searchInputRef}
-                            value$={searchQuery$}
-                            placeholder="Search tracks..."
-                            ignoreDropdownState={true}
-                            autoFocus
-                        />
-                        {searchQuery.trim() && (
-                            <View className="p-2">
-                                {searchResults.length > 0 && (
-                                    <View className="max-h-64">
-                                        {searchResults.map((track) => (
-                                            <DropdownMenu.Item
-                                                key={track.id}
-                                                onSelect={() => handleTrackSelect(track)}
-                                                className="p-2 hover:bg-white/10 rounded-md"
-                                            >
-                                                <View className="flex-1">
-                                                    <Text className="text-white font-medium text-sm">
-                                                        {track.title}
-                                                    </Text>
-                                                    <Text className="text-white/60 text-xs">
-                                                        {track.artist} • {track.duration}
-                                                    </Text>
-                                                </View>
-                                            </DropdownMenu.Item>
-                                        ))}
-                                    </View>
-                                )}
-                                {searchQuery.trim() && searchResults.length === 0 && (
-                                    <Text className="text-white/60 text-sm p-2">No tracks found</Text>
-                                )}
-                            </View>
-                        )}
-                    </DropdownMenu.Content>
-                </DropdownMenu.Root>
+                    tracks={localMusicState.tracks}
+                    onSelectTrack={handleTrackSelect}
+                />
                 <Button
                     icon={isLibraryOpen ? "sidebar.right" : "sidebar.right"}
                     variant="icon"
