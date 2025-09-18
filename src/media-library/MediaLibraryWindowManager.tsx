@@ -10,8 +10,6 @@ const MEDIA_LIBRARY_MODULE = "MediaLibraryWindow";
 const MEDIA_LIBRARY_WIDTH = 420;
 const WINDOW_GAP = 16;
 
-libraryUI$.isOpen.set(true);
-
 export const MediaLibraryWindowManager = () => {
     const windowManager = useWindowManager();
     const isOpen = use$(libraryUI$.isOpen);

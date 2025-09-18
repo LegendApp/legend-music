@@ -4,45 +4,31 @@ import type { ListRenderItemInfo } from "react-native";
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Button } from "@/components/Button";
 import { localAudioControls } from "@/components/LocalAudioPlayer";
-import { SplitView } from "@/native-modules/SplitView";
+import { Panel, PanelGroup, ResizeHandle } from "@/components/ResizablePanels";
 import type { LibraryTrack } from "@/systems/LibraryState";
 import { library$, libraryUI$ } from "@/systems/LibraryState";
 
 export function MediaLibraryView() {
-    const closeLibrary = useCallback(() => {
-        libraryUI$.isOpen.set(false);
-    }, []);
-
     return (
         <View className="flex-1 bg-black/5 border-l border-white/10" style={styles.window}>
-            <View className="flex-row items-center justify-between px-3 py-2 bg-white/5 border-b border-white/10">
-                <Text className="text-white text-sm font-medium">Library</Text>
-                <Button
-                    icon="xmark"
-                    iconSize={12}
-                    variant="icon"
-                    size="small"
-                    onPress={closeLibrary}
-                    className="hover:bg-white/15 active:bg-white/25 rounded p-1"
-                />
-            </View>
-
-            <SplitView
-                isVertical={true}
-                dividerThickness={1}
-                style={styles.contentRow}
-                onSplitViewDidResize={(event) => {
-                    console.log("Split view resized:", event.sizes);
-                }}
-            >
-                <View className="border-r border-white/10 bg-black/10" style={styles.treeColumn}>
+            <PanelGroup direction="horizontal">
+                <Panel
+                    id="sidebar"
+                    minSize={80}
+                    maxSize={300}
+                    defaultSize={200}
+                    order={0}
+                    className="-m-2 mr-0 border-r border-white/10"
+                >
                     <LibraryTree />
-                </View>
+                </Panel>
 
-                <View className="bg-black/5" style={styles.trackColumn}>
+                <ResizeHandle panelId="sidebar" />
+
+                <Panel id="tracklist" minSize={80} defaultSize={200} order={1} className="-m-2 mr-0" flex>
                     <TrackList />
-                </View>
-            </SplitView>
+                </Panel>
+            </PanelGroup>
         </View>
     );
 }
