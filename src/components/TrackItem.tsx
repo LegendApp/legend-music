@@ -1,9 +1,10 @@
 import { use$, useSelector } from "@legendapp/state/react";
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
 import { AlbumArt } from "@/components/AlbumArt";
 import { Button } from "@/components/Button";
 import { localPlayerState$ } from "@/components/LocalAudioPlayer";
+import { useListItemStyles } from "@/hooks/useListItemStyles";
 import { settings$ } from "@/systems/Settings";
 import { cn } from "@/utils/cn";
 import { perfCount } from "@/utils/perfLogger";
@@ -32,6 +33,7 @@ interface TrackItemProps {
 export const TrackItem = ({ track, index, onTrackClick, showIndex = true, showAlbumArt = true }: TrackItemProps) => {
     perfCount("TrackItem.render");
     const playlistStyle = use$(settings$.general.playlistStyle);
+    const listItemStyles = useListItemStyles();
 
     const isPlaying = useSelector(() => {
         const currentTrack = localPlayerState$.currentTrack.get();
@@ -53,37 +55,31 @@ export const TrackItem = ({ track, index, onTrackClick, showIndex = true, showAl
 
     // Compact mode: single line format "${number}. ${artist} - ${song}"
     if (playlistStyle === "compact") {
+        const rowClassName = cn(
+            listItemStyles.getRowClassName({ variant: "compact", isActive: isPlaying }),
+            track.fromSuggestions ? "opacity-75" : "",
+        );
+        const indexTone = track.fromSuggestions ? listItemStyles.text.muted : listItemStyles.text.secondary;
+        const primaryTone = track.fromSuggestions ? listItemStyles.text.secondary : listItemStyles.text.primary;
         return (
-            <Button
-                className={cn(
-                    "flex-row items-center px-3 py-1",
-                    // Playing state styling
-                    isPlaying ? "bg-blue-500/20 border-blue-400/30" : "",
-                    "hover:bg-white/10 active:bg-white/15 border border-transparent hover:border-white/10",
-                    // Suggestions styling
-                    track.fromSuggestions ? "opacity-75" : "",
-                )}
-                onPress={() => onTrackClick(index)}
-            >
+            <Button className={rowClassName} onPress={() => onTrackClick(index)}>
                 {showIndex && (
                     <View className="min-w-7">
-                        <Text className="tabular-nums text-text-tertiary text-sm">
+                        <Text className={cn("tabular-nums text-sm", indexTone)}>
                             {(track.index ?? index) >= 0 ? `${(track.index ?? index) + 1}.  ` : ""}
                         </Text>
                     </View>
                 )}
-                <Text
-                    className={cn(
-                        "flex-1 tabular-nums min-w-32 text-sm",
-                        track.fromSuggestions ? "text-white/70" : "text-text-primary",
-                    )}
-                    numberOfLines={1}
-                >
-                    <Text className="text-text-primary font-medium">{track.artist}</Text>
-                    <Text className="text-text-secondary text-sm"> - {track.title}</Text>
+                <Text className={cn("flex-1 tabular-nums min-w-32 text-sm", primaryTone)} numberOfLines={1}>
+                    <Text className={cn("text-sm font-medium", listItemStyles.text.primary)}>{track.artist}</Text>
+                    <Text className={cn("text-sm", listItemStyles.text.secondary)}> - {track.title}</Text>
                 </Text>
 
-                <Text className={cn("text-xs ml-4", track.fromSuggestions ? "text-white/40" : "text-text-tertiary")}>
+                <Text
+                    className={listItemStyles.getMetaClassName({
+                        className: cn("text-xs ml-4", track.fromSuggestions ? listItemStyles.text.muted : ""),
+                    })}
+                >
                     {track.duration}
                 </Text>
             </Button>
@@ -91,20 +87,17 @@ export const TrackItem = ({ track, index, onTrackClick, showIndex = true, showAl
     }
 
     // Comfortable mode: current existing layout
+    const rowClassName = cn(
+        listItemStyles.getRowClassName({ isActive: isPlaying }),
+        track.fromSuggestions ? "opacity-75" : "",
+    );
+    const indexTone = track.fromSuggestions ? listItemStyles.text.muted : listItemStyles.text.secondary;
+    const titleTone = track.fromSuggestions ? listItemStyles.text.secondary : listItemStyles.text.primary;
+    const subtitleTone = track.fromSuggestions ? listItemStyles.text.muted : listItemStyles.text.secondary;
     return (
-        <Button
-            className={cn(
-                "flex-row items-center px-3 py-1",
-                // Playing state styling
-                isPlaying ? "bg-blue-500/20 border-blue-400/30" : "",
-                "hover:bg-white/10 active:bg-white/15 border border-transparent hover:border-white/10",
-                // Suggestions styling
-                track.fromSuggestions ? "opacity-75" : "",
-            )}
-            onPress={() => onTrackClick(index)}
-        >
+        <Button className={rowClassName} onPress={() => onTrackClick(index)}>
             {showIndex && (
-                <Text className={cn("text-base w-8", track.fromSuggestions ? "text-white/40" : "text-white/60")}>
+                <Text className={cn("text-base w-8", indexTone)}>
                     {(track.index ?? index) >= 0 ? (track.index ?? index) + 1 : ""}
                 </Text>
             )}
@@ -119,21 +112,19 @@ export const TrackItem = ({ track, index, onTrackClick, showIndex = true, showAl
             )}
 
             <View className={cn("flex-1 mr-8", showAlbumArt ? "ml-4" : showIndex ? "ml-2" : "")}>
-                <Text
-                    className={cn("text-sm font-medium", track.fromSuggestions ? "text-white/70" : "text-white")}
-                    numberOfLines={1}
-                >
+                <Text className={cn("text-sm font-medium", titleTone)} numberOfLines={1}>
                     {track.title}
                 </Text>
-                <Text
-                    className={cn("text-sm", track.fromSuggestions ? "text-white/40" : "text-white/50")}
-                    numberOfLines={1}
-                >
+                <Text className={cn("text-sm", subtitleTone)} numberOfLines={1}>
                     {track.album ? `${track.artist} • ${track.album}` : track.artist}
                 </Text>
             </View>
 
-            <Text className={cn("text-base", track.fromSuggestions ? "text-white/40" : "text-white/60")}>
+            <Text
+                className={listItemStyles.getMetaClassName({
+                    className: cn("text-base", track.fromSuggestions ? listItemStyles.text.muted : ""),
+                })}
+            >
                 {track.duration}
             </Text>
         </Button>

@@ -11,7 +11,7 @@ export function MediaLibraryWindow() {
         <VibrancyView blendingMode="behindWindow" material="sidebar" style={styles.vibrancy}>
             <ThemeProvider>
                 <PortalProvider>
-                    <View className="flex-1 bg-background-primary/60">
+                    <View className="flex-1 bg-background-primary/60 min-h-full">
                         <MediaLibraryView />
                     </View>
                 </PortalProvider>

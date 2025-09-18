@@ -5,9 +5,11 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { Button } from "@/components/Button";
 import { localAudioControls } from "@/components/LocalAudioPlayer";
 import { Panel, PanelGroup, ResizeHandle } from "@/components/ResizablePanels";
-import { TrackItem, type TrackData } from "@/components/TrackItem";
+import { type TrackData, TrackItem } from "@/components/TrackItem";
+import { useListItemStyles } from "@/hooks/useListItemStyles";
 import type { LibraryTrack } from "@/systems/LibraryState";
 import { library$, libraryUI$ } from "@/systems/LibraryState";
+import { cn } from "@/utils/cn";
 import { perfCount, perfLog } from "@/utils/perfLogger";
 
 export function MediaLibraryView() {
@@ -21,14 +23,14 @@ export function MediaLibraryView() {
                     maxSize={300}
                     defaultSize={200}
                     order={0}
-                    className="-m-2 mr-0 border-r border-white/10"
+                    className="border-r border-white/10"
                 >
                     <LibraryTree />
                 </Panel>
 
                 <ResizeHandle panelId="sidebar" />
 
-                <Panel id="tracklist" minSize={80} defaultSize={200} order={1} className="-m-2 mr-0" flex>
+                <Panel id="tracklist" minSize={80} defaultSize={200} order={1} flex>
                     <TrackList />
                 </Panel>
             </PanelGroup>
@@ -42,6 +44,7 @@ function LibraryTree() {
     const expandedNodes = use$(libraryUI$.expandedNodes);
     const artists = use$(library$.artists);
     const playlists = use$(library$.playlists);
+    const listItemStyles = useListItemStyles();
 
     const toggleNode = (nodeId: string) => {
         const current = expandedNodes;
@@ -68,12 +71,10 @@ function LibraryTree() {
             <Button
                 icon={expandedNodes.includes("artists") ? "chevron.down" : "chevron.right"}
                 iconSize={10}
-                variant="icon-text"
-                size="small"
                 onPress={() => toggleNode("artists")}
-                className="flex-row items-center mb-1 hover:bg-white/10 active:bg-white/15 rounded px-2 py-1"
+                className={cn("mb-1", listItemStyles.getRowClassName())}
             >
-                <Text className="text-white/80 text-sm ml-1">Artists ({artists.length})</Text>
+                <Text className={cn("text-sm ml-1", listItemStyles.text.primary)}>Artists ({artists.length})</Text>
             </Button>
 
             {/* Show artists when expanded */}
@@ -82,16 +83,22 @@ function LibraryTree() {
                     {artists.map((artist) => (
                         <Button
                             key={artist.id}
-                            variant="text"
-                            size="small"
                             onPress={() => selectItem(artist)}
-                            className={`flex-row items-center mb-1 rounded px-2 py-1 ${
-                                selectedItem?.id === artist.id
-                                    ? "bg-blue-500/20 border-blue-400/30"
-                                    : "hover:bg-white/10 active:bg-white/15"
-                            }`}
+                            className={listItemStyles.getRowClassName({
+                                variant: "compact",
+                                isActive: selectedItem?.id === artist.id,
+                            })}
                         >
-                            <Text className="text-white/70 text-xs">{artist.name}</Text>
+                            <Text
+                                className={cn(
+                                    "text-sm",
+                                    selectedItem?.id === artist.id
+                                        ? listItemStyles.text.primary
+                                        : listItemStyles.text.secondary,
+                                )}
+                            >
+                                {artist.name}
+                            </Text>
                         </Button>
                     ))}
                 </View>
@@ -99,28 +106,27 @@ function LibraryTree() {
 
             {/* All Songs */}
             <Button
-                variant="text"
-                size="small"
                 onPress={() => selectItem({ id: "all-songs", type: "all", name: "All Songs" })}
-                className={`flex-row items-center mb-1 rounded px-2 py-1 ${
-                    selectedItem?.id === "all-songs"
-                        ? "bg-blue-500/20 border-blue-400/30"
-                        : "hover:bg-white/10 active:bg-white/15"
-                }`}
+                className={cn("mb-1", listItemStyles.getRowClassName({ isActive: selectedItem?.id === "all-songs" }))}
             >
-                <Text className="text-white/80 text-sm">All Songs</Text>
+                <Text
+                    className={cn(
+                        "text-sm",
+                        selectedItem?.id === "all-songs" ? listItemStyles.text.primary : listItemStyles.text.secondary,
+                    )}
+                >
+                    All Songs
+                </Text>
             </Button>
 
             {/* Playlists */}
             <Button
                 icon={expandedNodes.includes("playlists") ? "chevron.down" : "chevron.right"}
                 iconSize={10}
-                variant="icon-text"
-                size="small"
                 onPress={() => toggleNode("playlists")}
-                className="flex-row items-center mb-1 hover:bg-white/10 active:bg-white/15 rounded px-2 py-1"
+                className={cn("mb-1", listItemStyles.getRowClassName())}
             >
-                <Text className="text-white/80 text-sm ml-1">Playlists ({playlists.length})</Text>
+                <Text className={cn("text-sm ml-1", listItemStyles.text.primary)}>Playlists ({playlists.length})</Text>
             </Button>
 
             {/* Show playlists when expanded */}
@@ -129,25 +135,28 @@ function LibraryTree() {
                     {playlists.map((playlist) => (
                         <Button
                             key={playlist.id}
-                            variant="text"
-                            size="small"
                             onPress={() => selectItem(playlist)}
-                            className={`flex-row items-center mb-1 rounded px-2 py-1 ${
-                                selectedItem?.id === playlist.id
-                                    ? "bg-blue-500/20 border-blue-400/30"
-                                    : "hover:bg-white/10 active:bg-white/15"
-                            }`}
+                            className={cn(
+                                "mb-1 pl-4",
+                                listItemStyles.getRowClassName({
+                                    isActive: selectedItem?.id === playlist.id,
+                                }),
+                            )}
                         >
-                            <Text className="text-white/70 text-xs">{playlist.name}</Text>
+                            <Text
+                                className={cn(
+                                    "text-sm",
+                                    selectedItem?.id === playlist.id
+                                        ? listItemStyles.text.primary
+                                        : listItemStyles.text.secondary,
+                                )}
+                            >
+                                {playlist.name}
+                            </Text>
                         </Button>
                     ))}
                 </View>
             )}
-
-            {/* Search */}
-            <View className="mt-4">
-                <Text className="text-white/40 text-xs">🔍 Search coming soon...</Text>
-            </View>
         </ScrollView>
     );
 }
@@ -296,9 +305,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     treeContent: {
-        paddingHorizontal: 12,
-        paddingVertical: 12,
-        paddingBottom: 24,
+        alignItems: "stretch",
     },
     treeHeading: {
         color: "rgba(255,255,255,0.6)",
@@ -309,14 +316,11 @@ const styles = StyleSheet.create({
         textTransform: "uppercase",
     },
     nestedList: {
-        marginLeft: 12,
-        marginBottom: 12,
-        marginTop: 4,
+        marginBottom: 10,
+        marginTop: 2,
     },
     trackListContainer: {
         flex: 1,
-        paddingHorizontal: 12,
-        paddingVertical: 12,
         minHeight: 0,
     },
     trackListHeading: {
@@ -329,25 +333,29 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     trackListContent: {
-        paddingBottom: 24,
+        paddingBottom: 16,
     },
     trackListEmpty: {
         flexGrow: 1,
         justifyContent: "center",
-        alignItems: "center",
-        paddingVertical: 24,
+        alignItems: "flex-start",
+        paddingVertical: 16,
+        paddingHorizontal: 10,
     },
     emptyState: {
-        alignItems: "center",
+        alignItems: "flex-start",
         justifyContent: "center",
-        paddingVertical: 24,
+        paddingVertical: 16,
+        paddingHorizontal: 10,
     },
     trackListPlaceholder: {
         justifyContent: "center",
-        alignItems: "center",
+        alignItems: "flex-start",
+        paddingHorizontal: 10,
     },
     placeholderText: {
         color: "rgba(255,255,255,0.6)",
         fontSize: 14,
+        textAlign: "left",
     },
 });
