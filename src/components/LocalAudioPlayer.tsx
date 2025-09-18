@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { View } from "react-native";
 import { useAudioPlayer } from "@/native-modules/AudioPlayer";
 import type { LocalTrack } from "@/systems/LocalMusicState";
+import { perfCount, perfDelta, perfLog } from "@/utils/perfLogger";
 
 export interface LocalPlayerState {
     isPlaying: boolean;
@@ -33,6 +34,7 @@ let audioPlayer: ReturnType<typeof useAudioPlayer> | null = null;
 // Expose control methods for local audio
 export const localAudioControls = {
     loadTrack: async (filePath: string, title: string, artist: string) => {
+        perfLog("LocalAudioControls.loadTrack", { filePath, title, artist });
         if (__DEV__) {
             console.log("Loading track:", filePath, title, artist);
         }
@@ -53,11 +55,13 @@ export const localAudioControls = {
             try {
                 const result = await audioPlayer.loadTrack(filePath);
                 if (result.success) {
+                    perfLog("LocalAudioControls.loadTrack.success", { filePath });
                     if (__DEV__) {
                         console.log("Track loaded successfully");
                     }
                     localAudioControls.play();
                 } else {
+                    perfLog("LocalAudioControls.loadTrack.error", result.error ?? "unknown");
                     localPlayerState$.error.set(result.error || "Failed to load track");
                     localPlayerState$.isLoading.set(false);
                 }
@@ -70,6 +74,7 @@ export const localAudioControls = {
     },
 
     loadPlaylist: (playlist: LocalTrack[], startIndex = 0) => {
+        perfLog("LocalAudioControls.loadPlaylist", { length: playlist.length, startIndex });
         console.log("Loading playlist:", playlist.length, "tracks, starting at index:", startIndex);
         currentPlaylist = playlist;
         localPlayerState$.currentIndex.set(startIndex);
@@ -81,6 +86,7 @@ export const localAudioControls = {
     },
 
     play: async () => {
+        perfLog("LocalAudioControls.play");
         if (audioPlayer) {
             try {
                 await audioPlayer.play();
@@ -92,6 +98,7 @@ export const localAudioControls = {
     },
 
     pause: async () => {
+        perfLog("LocalAudioControls.pause");
         if (audioPlayer) {
             try {
                 await audioPlayer.pause();
@@ -102,6 +109,7 @@ export const localAudioControls = {
     },
 
     togglePlayPause: async () => {
+        perfLog("LocalAudioControls.togglePlayPause", { isPlaying: localPlayerState$.isPlaying.get() });
         const isPlaying = localPlayerState$.isPlaying.get();
         if (isPlaying) {
             await localAudioControls.pause();
@@ -111,6 +119,10 @@ export const localAudioControls = {
     },
 
     playPrevious: () => {
+        perfLog("LocalAudioControls.playPrevious", {
+            currentIndex: localPlayerState$.currentIndex.get(),
+            playlistLength: currentPlaylist.length,
+        });
         const currentIndex = localPlayerState$.currentIndex.get();
         if (currentPlaylist.length > 0 && currentIndex > 0) {
             const newIndex = currentIndex - 1;
@@ -122,6 +134,10 @@ export const localAudioControls = {
     },
 
     playNext: () => {
+        perfLog("LocalAudioControls.playNext", {
+            currentIndex: localPlayerState$.currentIndex.get(),
+            playlistLength: currentPlaylist.length,
+        });
         const currentIndex = localPlayerState$.currentIndex.get();
         if (currentPlaylist.length > 0 && currentIndex < currentPlaylist.length - 1) {
             const newIndex = currentIndex + 1;
@@ -133,6 +149,7 @@ export const localAudioControls = {
     },
 
     playTrackAtIndex: (index: number) => {
+        perfLog("LocalAudioControls.playTrackAtIndex", { index, playlistLength: currentPlaylist.length });
         if (currentPlaylist.length > 0 && index >= 0 && index < currentPlaylist.length) {
             localPlayerState$.currentIndex.set(index);
             const track = currentPlaylist[index];
@@ -146,6 +163,7 @@ export const localAudioControls = {
     },
 
     setVolume: async (volume: number) => {
+        perfLog("LocalAudioControls.setVolume", { volume });
         const clampedVolume = Math.max(0, Math.min(1, volume));
         localPlayerState$.volume.set(clampedVolume);
         if (audioPlayer) {
@@ -158,6 +176,7 @@ export const localAudioControls = {
     },
 
     seek: async (seconds: number) => {
+        perfLog("LocalAudioControls.seek", { seconds });
         if (audioPlayer) {
             try {
                 await audioPlayer.seek(seconds);
@@ -174,11 +193,14 @@ export const localAudioControls = {
 
 export function LocalAudioPlayer() {
     const player = useAudioPlayer();
+    perfCount("LocalAudioPlayer.render");
 
     // Set global reference
     useEffect(() => {
+        perfLog("LocalAudioPlayer.useEffect[player]", { hasPlayer: !!player });
         audioPlayer = player;
         return () => {
+            perfLog("LocalAudioPlayer.cleanup[player]");
             audioPlayer = null;
         };
     }, [player]);
@@ -187,6 +209,9 @@ export function LocalAudioPlayer() {
     useEffect(() => {
         const listeners = [
             player.addListener("onLoadSuccess", (data) => {
+                perfCount("LocalAudioPlayer.onLoadSuccess");
+                const delta = perfDelta("LocalAudioPlayer.onLoadSuccess");
+                perfLog("LocalAudioPlayer.onLoadSuccess", { delta, data });
                 if (__DEV__) {
                     console.log("Audio loaded successfully:", data);
                 }
@@ -196,6 +221,9 @@ export function LocalAudioPlayer() {
             }),
 
             player.addListener("onLoadError", (data) => {
+                perfCount("LocalAudioPlayer.onLoadError");
+                const delta = perfDelta("LocalAudioPlayer.onLoadError");
+                perfLog("LocalAudioPlayer.onLoadError", { delta, data });
                 console.error("Audio load error:", data.error);
                 localPlayerState$.error.set(data.error);
                 localPlayerState$.isLoading.set(false);
@@ -203,6 +231,9 @@ export function LocalAudioPlayer() {
             }),
 
             player.addListener("onPlaybackStateChanged", (data) => {
+                perfCount("LocalAudioPlayer.onPlaybackStateChanged");
+                const delta = perfDelta("LocalAudioPlayer.onPlaybackStateChanged");
+                perfLog("LocalAudioPlayer.onPlaybackStateChanged", { delta, data });
                 if (__DEV__) {
                     console.log("Playback state changed:", data.isPlaying);
                 }
@@ -210,6 +241,9 @@ export function LocalAudioPlayer() {
             }),
 
             player.addListener("onProgress", (data) => {
+                perfCount("LocalAudioPlayer.onProgress");
+                const delta = perfDelta("LocalAudioPlayer.onProgress");
+                perfLog("LocalAudioPlayer.onProgress", { delta, current: data.currentTime, duration: data.duration });
                 localPlayerState$.currentTime.set(data.currentTime);
                 if (data.duration !== localPlayerState$.duration.peek()) {
                     localPlayerState$.duration.set(data.duration);
@@ -217,6 +251,9 @@ export function LocalAudioPlayer() {
             }),
 
             player.addListener("onCompletion", () => {
+                perfCount("LocalAudioPlayer.onCompletion");
+                const delta = perfDelta("LocalAudioPlayer.onCompletion");
+                perfLog("LocalAudioPlayer.onCompletion", { delta });
                 if (__DEV__) {
                     console.log("Track completed, playing next if available");
                 }

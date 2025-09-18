@@ -6,12 +6,18 @@ import { Playlist } from "@/components/Playlist";
 import { PlaylistSelector } from "@/components/PlaylistSelector";
 import { Unregistered } from "@/components/Unregistered";
 import { useOnHotkeys } from "@/systems/keyboard/Keyboard";
+import { perfCount, perfLog } from "@/utils/perfLogger";
 
 export function MainContainer() {
+    perfCount("MainContainer.render");
     useOnHotkeys({
         PlayPause: localAudioControls.togglePlayPause,
         NextTrack: localAudioControls.playNext,
         PreviousTrack: localAudioControls.playPrevious,
+    });
+
+    perfLog("MainContainer.hotkeys", {
+        activeTrack: localAudioControls.getCurrentState().currentTrack?.title,
     });
 
     return (

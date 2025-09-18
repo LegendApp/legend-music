@@ -5,13 +5,17 @@ import { Show } from "@legendapp/state/react";
 import { Pressable, StyleSheet } from "react-native";
 import WindowControls from "@/native-modules/WindowControls";
 import { state$ } from "@/systems/State";
+import { perfCount, perfLog } from "@/utils/perfLogger";
 
 export function TitleBar() {
+    perfCount("TitleBar.render");
     const onHover = () => {
+        perfLog("TitleBar.onHover", { hovered: true });
         state$.titleBarHovered.set(true);
     };
 
     const onHoverLeave = () => {
+        perfLog("TitleBar.onHoverLeave", { hovered: false });
         state$.titleBarHovered.set(false);
     };
 
@@ -43,7 +47,9 @@ export function TitleBar() {
 }
 
 observe(() => {
+    perfCount("TitleBar.observe");
     const hide = !state$.titleBarHovered.get();
+    perfLog("TitleBar.observe.state", { hide });
 
     setTimeout(() => {
         if (hide) {
@@ -51,6 +57,7 @@ observe(() => {
         } else {
             WindowControls.showWindowControls();
         }
+        perfLog("TitleBar.observe.timeout", { hide });
     }, 100);
 });
 

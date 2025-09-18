@@ -3,6 +3,7 @@ import { use$, useObservable, useObserveEffect } from "@legendapp/state/react";
 import { useEffect } from "react";
 import { Pressable, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import { perfCount, perfLog } from "@/utils/perfLogger";
 
 interface CustomSliderProps {
     value?: number | undefined;
@@ -32,9 +33,12 @@ export function CustomSlider({
 
     // Calculate progress percentage
     const progress$ = useObservableSharedValue(() => {
+        perfCount("CustomSlider.computeProgress");
         const value = $value.get();
         const maximumValue = $maximumValue.get();
-        return maximumValue > minimumValue ? (value - minimumValue) / (maximumValue - minimumValue) : 0;
+        const progress = maximumValue > minimumValue ? (value - minimumValue) / (maximumValue - minimumValue) : 0;
+        perfLog("CustomSlider.computeProgress", { value, maximumValue, progress });
+        return progress;
     });
 
     // Animated value for thumb height
@@ -46,6 +50,7 @@ export function CustomSlider({
     }, [isHovered]);
 
     const handlePress = (event: any) => {
+        perfLog("CustomSlider.handlePress", { disabled });
         if (disabled) return;
 
         const { locationX } = event.nativeEvent;
@@ -53,27 +58,32 @@ export function CustomSlider({
         const percentage = Math.max(0, Math.min(1, locationX / sliderWidth));
         const newValue = minimumValue + percentage * ($maximumValue.get() - minimumValue);
 
+        perfLog("CustomSlider.handlePress", { locationX, sliderWidth, percentage, newValue });
         $value.set(newValue);
         onSlidingComplete?.(newValue);
     };
 
     const handlePressIn = () => {
+        perfLog("CustomSlider.handlePressIn", { disabled });
         if (disabled) return;
         isDragging$.set(true);
     };
 
     const handlePressOut = () => {
+        perfLog("CustomSlider.handlePressOut", { disabled });
         if (disabled) return;
         isDragging$.set(false);
         onSlidingComplete?.($value.get());
     };
 
     const handleHoverIn = () => {
+        perfLog("CustomSlider.handleHoverIn", { disabled });
         if (disabled) return;
         isHovered$.set(true);
     };
 
     const handleHoverOut = () => {
+        perfLog("CustomSlider.handleHoverOut", { disabled });
         if (disabled) return;
         isHovered$.set(false);
     };

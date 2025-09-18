@@ -10,14 +10,19 @@ import { SettingsWindowManager } from "@/settings/SettingsWindowManager";
 import { HookKeyboard } from "@/systems/keyboard/HookKeyboard";
 import { initializeLocalMusic } from "@/systems/LocalMusicState";
 import { initializeMenuManager } from "@/systems/MenuManager";
+import { perfLog } from "@/utils/perfLogger";
 import { ThemeProvider } from "./theme/ThemeProvider";
 
+perfLog("App.initializeMenuManager");
 initializeMenuManager();
+perfLog("App.initializeLocalMusic.start");
 initializeLocalMusic();
+perfLog("App.initializeLocalMusic.end");
 
 LogBox.ignoreLogs(["Open debugger", "unknown error"]);
 
 function App(): React.JSX.Element | null {
+    perfLog("App.render");
     return (
         <ThemeProvider>
             <HookKeyboard />

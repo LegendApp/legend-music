@@ -10,6 +10,7 @@ import { useOnHotkeys } from "@/systems/keyboard/Keyboard";
 import { libraryUI$ } from "@/systems/LibraryState";
 import { type LocalTrack, localMusicState$, setCurrentPlaylist } from "@/systems/LocalMusicState";
 import { stateSaved$ } from "@/systems/State";
+import { perfCount, perfLog } from "@/utils/perfLogger";
 
 interface LocalPlaylist {
     id: string;
@@ -19,6 +20,7 @@ interface LocalPlaylist {
 }
 
 export function PlaylistSelector() {
+    perfCount("PlaylistSelector.render");
     const localMusicState = use$(localMusicState$);
 
     // Create local files playlist
@@ -46,10 +48,12 @@ export function PlaylistSelector() {
     const isLibraryOpen = use$(libraryUI$.isOpen);
 
     const toggleLibraryWindow = useCallback(() => {
+        perfLog("PlaylistSelector.toggleLibraryWindow", { isOpen: libraryUI$.isOpen.get() });
         libraryUI$.isOpen.set(!libraryUI$.isOpen.get());
     }, []);
 
     const handlePlaylistSelect = (playlistId: string) => {
+        perfLog("PlaylistSelector.handlePlaylistSelect", { playlistId });
         console.log("Navigating to playlist:", playlistId);
         setCurrentPlaylist(playlistId, "file");
         console.log("Selected local files playlist");
@@ -69,6 +73,7 @@ export function PlaylistSelector() {
         : [];
 
     const handleTrackSelect = (track: LocalTrack) => {
+        perfLog("PlaylistSelector.handleTrackSelect", { trackId: track.id });
         console.log("Selected track:", track);
 
         // Find the index of the selected track in the full tracks list

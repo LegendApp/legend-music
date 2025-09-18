@@ -1,6 +1,6 @@
 import { LegendList } from "@legendapp/list";
 import { use$, useSelector } from "@legendapp/state/react";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { AlbumArt } from "@/components/AlbumArt";
@@ -9,6 +9,7 @@ import { localAudioControls, localPlayerState$ } from "@/components/LocalAudioPl
 import { localMusicState$ } from "@/systems/LocalMusicState";
 import { settings$ } from "@/systems/Settings";
 import { cn } from "@/utils/cn";
+import { perfCount, perfLog } from "@/utils/perfLogger";
 
 interface PlaylistTrack {
     id: string;
@@ -31,6 +32,7 @@ interface TrackItemProps {
 }
 
 const TrackItem = ({ track, index, onTrackClick }: TrackItemProps) => {
+    perfCount("Playlist.TrackItem.render");
     const playlistStyle = use$(settings$.general.playlistStyle);
 
     const isPlaying = useSelector(() => {
@@ -140,6 +142,7 @@ type PlaylistTrackWithSuggestions = PlaylistTrack & {
 };
 
 export function Playlist() {
+    perfCount("Playlist.render");
     const localMusicState = use$(localMusicState$);
     const currentTrackIndex = use$(localPlayerState$.currentIndex);
     const isPlayerActive = use$(localPlayerState$.isPlaying);
@@ -159,6 +162,14 @@ export function Playlist() {
             })),
         [localMusicState.tracks, currentTrackIndex, isPlayerActive],
     );
+
+    useEffect(() => {
+        perfLog("Playlist.useMemo", {
+            length: playlist.length,
+            currentTrackIndex,
+            isPlayerActive,
+        });
+    }, [playlist.length, currentTrackIndex, isPlayerActive, playlist]);
 
     const handleTrackClick = (index: number) => {
         const track = playlist[index];

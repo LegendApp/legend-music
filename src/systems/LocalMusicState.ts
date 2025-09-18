@@ -3,6 +3,7 @@ import { Directory, File } from "expo-file-system/next";
 import * as ID3 from "id3js";
 import { stateSaved$ } from "@/systems/State";
 import { createJSONManager } from "@/utils/JSONManager";
+import { perfCount, perfDelta, perfLog, perfTime } from "@/utils/perfLogger";
 
 export interface LocalTrack {
     id: string;
@@ -54,9 +55,10 @@ async function extractId3Metadata(
     filePath: string,
     fileName: string,
 ): Promise<{ title: string; artist: string; duration?: string }> {
+    perfCount("LocalMusic.extractId3Metadata");
     try {
         // First try to extract ID3 tags
-        const tags = await ID3.fromPath(filePath);
+        const tags = await perfTime("LocalMusic.ID3.fromPath", () => ID3.fromPath(filePath));
 
         if (tags && (tags.title || tags.artist)) {
             return {
@@ -119,6 +121,7 @@ async function scanDirectory(directoryPath: string): Promise<LocalTrack[]> {
     const tracks: LocalTrack[] = [];
 
     try {
+        perfLog("LocalMusic.scanDirectory.start", { directoryPath });
         const directory = new Directory(directoryPath);
 
         if (!directory.exists) {
@@ -126,9 +129,10 @@ async function scanDirectory(directoryPath: string): Promise<LocalTrack[]> {
             return tracks;
         }
 
-        const items = directory.list();
+        const items = perfTime("LocalMusic.Directory.list", () => directory.list());
 
         for (const item of items) {
+            perfCount("LocalMusic.scanDirectory.item");
             if (item instanceof File && item.name.toLowerCase().endsWith(".mp3")) {
                 // Decode the filename for the file path
                 let decodedFileName = item.name;
@@ -141,6 +145,11 @@ async function scanDirectory(directoryPath: string): Promise<LocalTrack[]> {
                 const filePath = `${directoryPath}/${decodedFileName}`;
 
                 try {
+                    const id3Delta = perfDelta("LocalMusic.scanDirectory.id3Loop");
+                    perfLog("LocalMusic.scanDirectory.processFile", {
+                        filePath,
+                        id3Delta,
+                    });
                     // Extract metadata from ID3 tags with filename fallback
                     const metadata = await extractId3Metadata(filePath, item.name);
 
@@ -178,6 +187,7 @@ export async function scanLocalMusic(): Promise<void> {
         return;
     }
 
+    perfLog("LocalMusic.scanLocalMusic.start", { paths });
     localMusicState$.isScanning.set(true);
     localMusicState$.error.set(null);
     localMusicState$.scanProgress.set(0);
@@ -191,7 +201,7 @@ export async function scanLocalMusic(): Promise<void> {
             console.log(`Scanning directory: ${path}`);
 
             try {
-                const tracks = await scanDirectory(path);
+                const tracks = await perfTime("LocalMusic.scanDirectory.total", () => scanDirectory(path));
                 allTracks.push(...tracks);
             } catch (error) {
                 console.error(`Failed to scan ${path}:`, error);
@@ -208,6 +218,7 @@ export async function scanLocalMusic(): Promise<void> {
             return a.title.localeCompare(b.title);
         });
 
+        perfLog("LocalMusic.scanLocalMusic.done", { total: allTracks.length });
         localMusicState$.tracks.set(allTracks);
         localMusicSettings$.lastScanTime.set(Date.now());
 

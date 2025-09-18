@@ -89,6 +89,8 @@ class ObservablePersistExpoFS implements ObservablePersistPlugin {
                     `${table}${MetadataSuffix}.${this.extension}`,
                 );
 
+                console.log("read", table);
+
                 if (mainTableFile.exists) {
                     this.data[table] = this.readFile(mainTableFile);
                 }
@@ -144,6 +146,8 @@ class ObservablePersistExpoFS implements ObservablePersistPlugin {
     }
 
     private async save(table: string) {
+        console.log("save", table);
+
         timeoutOnce(`save_${table}`, () => this.saveDebounced(table), this.configuration.saveTimeout || 100);
     }
 
@@ -152,6 +156,8 @@ class ObservablePersistExpoFS implements ObservablePersistPlugin {
         const file = new FileSystemNext.File(this.directory, `${table}.${this.extension}`);
 
         ensureCacheDirectory(file.parentDirectory);
+
+        console.log("save debounced", table);
 
         if (v !== undefined && v !== null) {
             let out: string | Uint8Array;

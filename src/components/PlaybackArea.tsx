@@ -5,6 +5,7 @@ import { AlbumArt } from "@/components/AlbumArt";
 import { Button } from "@/components/Button";
 import { CustomSlider } from "@/components/CustomSlider";
 import { localAudioControls, localPlayerState$ } from "@/components/LocalAudioPlayer";
+import { perfCount, perfLog } from "@/utils/perfLogger";
 
 // Format time for local playback with caching to reduce computation
 const formatTimeCache = new Map<number, string>();
@@ -31,11 +32,20 @@ function formatTime(seconds: number): string {
 }
 
 export function PlaybackArea() {
+    perfCount("PlaybackArea.render");
     const currentTrack = use$(localPlayerState$.currentTrack);
     const isLoading = use$(localPlayerState$.isLoading);
     const isPlaying = use$(localPlayerState$.isPlaying);
     const currentLocalTime$ = localPlayerState$.currentTime;
     const duration$ = localPlayerState$.duration;
+
+    perfLog("PlaybackArea.state", {
+        track: currentTrack?.title,
+        isLoading,
+        isPlaying,
+        currentTime: currentLocalTime$.peek?.() ?? currentLocalTime$.get?.(),
+        duration: duration$.peek?.() ?? duration$.get?.(),
+    });
 
     return (
         <View className="mx-3 mt-3">

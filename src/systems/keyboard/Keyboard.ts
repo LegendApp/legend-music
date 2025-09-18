@@ -4,6 +4,7 @@ import { getHotkey, getHotkeyMetadata, type HotkeyName } from "@/systems/hotkeys
 import KeyboardManager, { type KeyboardEvent, KeyCodes, KeyText } from "@/systems/keyboard/KeyboardManager";
 import { state$ } from "@/systems/State";
 import { ax } from "@/utils/ax";
+import { perfCount, perfLog } from "@/utils/perfLogger";
 
 type KeyboardEventCode = number;
 type KeyboardEventCodeModifier = string;
@@ -43,6 +44,8 @@ const MODIFIERS = [
 
 // Handle events to set current key states
 const onKeyDown = (e: KeyboardEvent) => {
+    perfCount("Keyboard.onKeyDown");
+    perfLog("Keyboard.onKeyDown", e);
     const { keyCode, modifiers } = e;
 
     console.log("onKeyDown", keyCode, modifiers);
@@ -66,6 +69,8 @@ const onKeyDown = (e: KeyboardEvent) => {
 };
 
 const onKeyUp = (e: KeyboardEvent) => {
+    perfCount("Keyboard.onKeyUp");
+    perfLog("Keyboard.onKeyUp", e);
     const { keyCode, modifiers } = e;
 
     batch(() => {
@@ -82,7 +87,9 @@ const onKeyUp = (e: KeyboardEvent) => {
 };
 
 export function useHookKeyboard() {
+    perfCount("Keyboard.useHookKeyboard.render");
     useMount(() => {
+        perfLog("Keyboard.useHookKeyboard.mountStart");
         // Set up listeners
         let cleanupFns: (() => void)[];
         try {
@@ -93,6 +100,7 @@ export function useHookKeyboard() {
 
         // Return cleanup function
         return () => {
+            perfLog("Keyboard.useHookKeyboard.cleanup");
             try {
                 for (const cleanup of cleanupFns) {
                     cleanup();

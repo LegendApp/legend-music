@@ -7,8 +7,10 @@ import { localAudioControls } from "@/components/LocalAudioPlayer";
 import { Panel, PanelGroup, ResizeHandle } from "@/components/ResizablePanels";
 import type { LibraryTrack } from "@/systems/LibraryState";
 import { library$, libraryUI$ } from "@/systems/LibraryState";
+import { perfCount, perfLog } from "@/utils/perfLogger";
 
 export function MediaLibraryView() {
+    perfCount("MediaLibraryView.render");
     return (
         <View className="flex-1 bg-black/5 border-l border-white/10" style={styles.window}>
             <PanelGroup direction="horizontal">
@@ -34,6 +36,7 @@ export function MediaLibraryView() {
 }
 
 function LibraryTree() {
+    perfCount("MediaLibrary.LibraryTree.render");
     const selectedItem = use$(libraryUI$.selectedItem);
     const expandedNodes = use$(libraryUI$.expandedNodes);
     const artists = use$(library$.artists);
@@ -149,10 +152,15 @@ function LibraryTree() {
 }
 
 function TrackList() {
+    perfCount("MediaLibrary.TrackList.render");
     const selectedItem = use$(libraryUI$.selectedItem);
     const allTracks = use$(library$.tracks);
 
     const tracks = useMemo(() => {
+        perfLog("MediaLibrary.TrackList.useMemo", {
+            selectedItem,
+            allTracks: allTracks.length,
+        });
         if (!selectedItem) {
             return [];
         }
@@ -181,6 +189,9 @@ function TrackList() {
     const renderTrack = useCallback(
         ({ item, index }: ListRenderItemInfo<LibraryTrack>) => (
             <Pressable
+                onLayout={() => {
+                    perfCount("MediaLibrary.TrackList.trackLayout");
+                }}
                 className="flex-row items-center rounded-lg bg-white/5 px-2 py-2 hover:bg-white/10"
                 onPress={() => handleTrackPress(index)}
             >

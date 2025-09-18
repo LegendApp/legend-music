@@ -1,6 +1,7 @@
 import { observable } from "@legendapp/state";
 import { type LocalTrack, localMusicSettings$, localMusicState$ } from "@/systems/LocalMusicState";
 import { createJSONManager } from "@/utils/JSONManager";
+import { perfCount, perfLog, perfTime } from "@/utils/perfLogger";
 
 export interface LibraryItem {
     id: string;
@@ -41,10 +42,12 @@ export const library$ = observable({
 });
 
 function normalizeTracks(localTracks: LocalTrack[]): LibraryTrack[] {
-    return localTracks.map((track) => ({ ...track }));
+    perfCount("LibraryState.normalizeTracks");
+    return perfTime("LibraryState.normalizeTracks", () => localTracks.map((track) => ({ ...track })));
 }
 
 function buildArtistItems(tracks: LibraryTrack[]): LibraryItem[] {
+    perfCount("LibraryState.buildArtistItems");
     const artistMap = new Map<string, { count: number }>();
 
     for (const track of tracks) {
@@ -77,11 +80,13 @@ function slugify(value: string): string {
 }
 
 function syncLibraryFromLocalState(): void {
+    perfLog("LibraryState.sync.start");
     const localTracks = localMusicState$.tracks.get();
     const normalizedTracks = normalizeTracks(localTracks);
 
     library$.tracks.set(normalizedTracks);
     library$.artists.set(buildArtistItems(normalizedTracks));
+    perfLog("LibraryState.sync.end", { trackCount: normalizedTracks.length });
 }
 
 syncLibraryFromLocalState();
