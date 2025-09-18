@@ -1,5 +1,2 @@
-1. Clicking a song in the media library should play it
-2. Media library needs a splitview that can be dragged to resize
-3. Stoplight hiding is applying to settings and media library windows. Should only be for main window.
-4. CPU usage
-5. Remove SplitView or fix it?
+1. MediaLibrary should use the same TrackItem as in Playlist. Extract TrackItem to its own file to import from both.
+2. MediaLibrary should have less padding and be left aligned. Items in LibraryTree should be the same height as TrackItem.
