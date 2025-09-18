@@ -1,6 +1,6 @@
 import { use$, useObservable } from "@legendapp/state/react";
-import { useCallback, useRef } from "react";
-import { Text, View } from "react-native";
+import { useCallback, useEffect, useRef } from "react";
+import { InteractionManager, Text, type TextInput as TextInputNative, View } from "react-native";
 import { Button } from "@/components/Button";
 import { DropdownMenu, type DropdownMenuRootRef } from "@/components/DropdownMenu";
 import { localAudioControls } from "@/components/LocalAudioPlayer";
@@ -36,7 +36,6 @@ export function PlaylistSelector() {
     const availablePlaylistIds = availablePlaylists.map((playlist) => playlist.id);
 
     const selectedPlaylist$ = stateSaved$.playlist;
-    const selectedPlaylist = use$(selectedPlaylist$);
 
     // Search state
     const searchQuery$ = useObservable("");
@@ -44,6 +43,9 @@ export function PlaylistSelector() {
 
     // Dropdown menu ref
     const dropdownMenuRef = useRef<DropdownMenuRootRef>(null);
+
+    // Search input ref for autofocus
+    const searchInputRef = useRef<TextInputNative>(null);
 
     const isLibraryOpen = use$(libraryUI$.isOpen);
 
@@ -58,8 +60,6 @@ export function PlaylistSelector() {
         setCurrentPlaylist(playlistId, "file");
         console.log("Selected local files playlist");
     };
-
-    const isLocalFilesSelected = selectedPlaylist === "LOCAL_FILES";
 
     // Filter search results
     const searchResults = searchQuery.trim()
@@ -91,6 +91,32 @@ export function PlaylistSelector() {
 
         searchQuery$.set(""); // Clear search after selection
     };
+
+    const focusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    useEffect(() => {
+        return () => {
+            if (focusTimeoutRef.current) {
+                clearTimeout(focusTimeoutRef.current);
+                focusTimeoutRef.current = null;
+            }
+        };
+    }, []);
+
+    const handleSearchDropdownOpenChange = useCallback((open: boolean) => {
+        if (focusTimeoutRef.current) {
+            clearTimeout(focusTimeoutRef.current);
+            focusTimeoutRef.current = null;
+        }
+
+        if (open) {
+            focusTimeoutRef.current = setTimeout(() => {
+                InteractionManager.runAfterInteractions(() => {
+                    searchInputRef.current?.focus();
+                });
+            }, 80);
+        }
+    }, []);
 
     useOnHotkeys({
         Search: () => {
@@ -141,37 +167,46 @@ export function PlaylistSelector() {
                         maxWidthMatchTrigger={true}
                     />
                 </View>
-                <DropdownMenu.Root ref={dropdownMenuRef} closeOnSelect={false}>
+                <DropdownMenu.Root
+                    ref={dropdownMenuRef}
+                    closeOnSelect={false}
+                    onOpenChange={handleSearchDropdownOpenChange}
+                >
                     <DropdownMenu.Trigger asChild>
                         <Button icon="magnifyingglass" variant="icon" size="small" className="ml-2 hover:bg-white/10" />
                     </DropdownMenu.Trigger>
-                    <DropdownMenu.Content>
-                        <StyledInput value$={searchQuery$} placeholder="Search tracks..." className="mb-2" />
-                        {/* <View className="p-2">
-                                {searchResults.length > 0 && (
-                                    <View className="max-h-64">
-                                        {searchResults.map((track) => (
-                                            <DropdownMenu.Item
-                                                key={track.id}
-                                                onSelect={() => handleTrackSelect(track)}
-                                                className="p-2 hover:bg-white/10 rounded-md"
-                                            >
-                                                <View className="flex-1">
-                                                    <Text className="text-white font-medium text-sm">
-                                                        {track.title}
-                                                    </Text>
-                                                    <Text className="text-white/60 text-xs">
-                                                        {track.artist} • {track.duration}
-                                                    </Text>
-                                                </View>
-                                            </DropdownMenu.Item>
-                                        ))}
-                                    </View>
-                                )}
-                                {searchQuery.trim() && searchResults.length === 0 && (
-                                    <Text className="text-white/60 text-sm p-2">No tracks found</Text>
-                                )}
-                            </View> */}
+                    <DropdownMenu.Content directionalHint="topCenter">
+                        <StyledInput
+                            ref={searchInputRef}
+                            value$={searchQuery$}
+                            placeholder="Search tracks..."
+                            className="mb-2"
+                            ignoreDropdownState={true}
+                            autoFocus
+                        />
+                        <View className="p-2">
+                            {searchResults.length > 0 && (
+                                <View className="max-h-64">
+                                    {searchResults.map((track) => (
+                                        <DropdownMenu.Item
+                                            key={track.id}
+                                            onSelect={() => handleTrackSelect(track)}
+                                            className="p-2 hover:bg-white/10 rounded-md"
+                                        >
+                                            <View className="flex-1">
+                                                <Text className="text-white font-medium text-sm">{track.title}</Text>
+                                                <Text className="text-white/60 text-xs">
+                                                    {track.artist} • {track.duration}
+                                                </Text>
+                                            </View>
+                                        </DropdownMenu.Item>
+                                    ))}
+                                </View>
+                            )}
+                            {searchQuery.trim() && searchResults.length === 0 && (
+                                <Text className="text-white/60 text-sm p-2">No tracks found</Text>
+                            )}
+                        </View>
                     </DropdownMenu.Content>
                 </DropdownMenu.Root>
                 <Button

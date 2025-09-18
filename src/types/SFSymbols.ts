@@ -109,6 +109,8 @@ export type BaseSFSymbol =
     | "star"
     | "heart"
     | "person"
+    | "person.crop.circle"
+    | "opticaldisc"
     | "lock"
     | "key"
     | "bookmark"

@@ -1,20 +1,22 @@
 import type { Observable } from "@legendapp/state";
 import { use$ } from "@legendapp/state/react";
-import { memo, useCallback } from "react";
+import { forwardRef, useCallback } from "react";
 import { TextInput as TextInputNative } from "react-native";
 
 import { state$ } from "@/systems/State";
 
 export interface TextInputProps extends React.ComponentProps<typeof TextInputNative> {
     value$?: Observable<string>;
+    ignoreDropdownState?: boolean;
 }
 
-export const TextInput = memo(function TextInput({
+export const TextInput = forwardRef<TextInputNative, TextInputProps>(function TextInput({
     value: valueProp,
     value$,
     onChangeText: onChangeTextProp,
+    ignoreDropdownState = false,
     ...rest
-}: TextInputProps) {
+}, ref) {
     const isDropdownOpen = use$(state$.isDropdownOpen);
     const value = value$ ? value$.peek() : valueProp;
 
@@ -23,7 +25,7 @@ export const TextInput = memo(function TextInput({
             value$.set(text);
         }
         onChangeTextProp?.(text);
-    }, []);
+    }, [value$, onChangeTextProp]);
 
-    return <TextInputNative {...rest} defaultValue={value} onChangeText={onChangeText} editable={!isDropdownOpen} />;
+    return <TextInputNative {...rest} ref={ref} defaultValue={value} onChangeText={onChangeText} editable={ignoreDropdownState || !isDropdownOpen} />;
 });

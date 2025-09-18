@@ -7,8 +7,10 @@ import { localAudioControls } from "@/components/LocalAudioPlayer";
 import { Panel, PanelGroup, ResizeHandle } from "@/components/ResizablePanels";
 import { type TrackData, TrackItem } from "@/components/TrackItem";
 import { useListItemStyles } from "@/hooks/useListItemStyles";
+import { Icon } from "@/systems/Icon";
 import type { LibraryItem, LibraryTrack } from "@/systems/LibraryState";
 import { library$, libraryUI$ } from "@/systems/LibraryState";
+import type { SFSymbols } from "@/types/SFSymbols";
 import { cn } from "@/utils/cn";
 import { perfCount, perfLog } from "@/utils/perfLogger";
 
@@ -125,11 +127,11 @@ function LibraryTree() {
         [listItemStyles, selectItem, selectedItem?.id],
     );
 
-    const collectionTabs: Array<{ id: "artists" | "albums" | "playlists"; label: string }> = useMemo(
+    const collectionTabs: Array<{ id: "artists" | "albums" | "playlists"; label: string; icon: SFSymbols }> = useMemo(
         () => [
-            { id: "artists", label: "Artists" },
-            { id: "albums", label: "Albums" },
-            { id: "playlists", label: "Playlists" },
+            { id: "artists", label: "Artists", icon: "person.crop.circle" },
+            { id: "albums", label: "Albums", icon: "opticaldisc" },
+            { id: "playlists", label: "Playlists", icon: "music.note.list" },
         ],
         [],
     );
@@ -149,19 +151,16 @@ function LibraryTree() {
                         className={listItemStyles.getRowClassName({
                             variant: "compact",
                             isActive: selectedCollection === tab.id,
-                            className: "flex-1",
+                            className: "flex-1 items-center justify-center px-2",
                         })}
+                        accessibilityLabel={tab.label}
                     >
-                        <Text
-                            className={cn(
-                                "text-sm",
-                                selectedCollection === tab.id
-                                    ? listItemStyles.text.primary
-                                    : listItemStyles.text.secondary,
-                            )}
-                        >
-                            {tab.label}
-                        </Text>
+                        <Icon
+                            name={tab.icon}
+                            size={17}
+                            marginTop={-8}
+                            color={selectedCollection === tab.id ? undefined : "rgba(255,255,255,0.55)"}
+                        />
                     </Button>
                 ))}
             </View>
