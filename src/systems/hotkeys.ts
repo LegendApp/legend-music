@@ -7,6 +7,9 @@ import { createJSONManager } from "@/utils/JSONManager";
 const DEFAULT_HOTKEYS = {
     Search: KeyCodes.KEY_J,
     ToggleLibrary: `${KeyCodes.MODIFIER_COMMAND}+${KeyCodes.KEY_L}`,
+    PlayPause: KeyCodes.KEY_MEDIA_PLAY_PAUSE,
+    NextTrack: KeyCodes.KEY_MEDIA_NEXT,
+    PreviousTrack: KeyCodes.KEY_MEDIA_PREVIOUS,
 } as const;
 
 export type HotkeyName = keyof typeof DEFAULT_HOTKEYS;
@@ -17,6 +20,15 @@ export const HotkeyMetadata: Record<HotkeyName, { description: string; repeat?: 
     },
     ToggleLibrary: {
         description: "Toggle media library",
+    },
+    PlayPause: {
+        description: "Toggle playback",
+    },
+    NextTrack: {
+        description: "Play next track",
+    },
+    PreviousTrack: {
+        description: "Play previous track",
     },
 };
 

@@ -19,7 +19,7 @@ LogBox.ignoreLogs(["Open debugger", "unknown error"]);
 function App(): React.JSX.Element | null {
     return (
         <ThemeProvider>
-            {/* <HookKeyboard /> */}
+            <HookKeyboard />
             <VibrancyView blendingMode="behindWindow" material="sidebar" style={styles.vibrancy}>
                 <View className="flex-1 bg-background-primary/40">
                     <PortalProvider>

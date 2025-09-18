@@ -40,6 +40,11 @@ export const KeyCodes = {
   KEY_F19: 80,
   KEY_F20: 90,
 
+  // Media Keys
+  KEY_MEDIA_PLAY_PAUSE: 10001,
+  KEY_MEDIA_NEXT: 10002,
+  KEY_MEDIA_PREVIOUS: 10003,
+
   // Alphanumeric Keys
   KEY_A: 0,
   KEY_B: 11,
@@ -149,6 +154,9 @@ export const KeyText: Record<number, string> = (() => {
     [KeyCodes.KEY_COMMA]: ',',
     [KeyCodes.KEY_PERIOD]: '.',
     [KeyCodes.KEY_SLASH]: '/',
+    [KeyCodes.KEY_MEDIA_PLAY_PAUSE]: 'Play/Pause',
+    [KeyCodes.KEY_MEDIA_NEXT]: 'Next Track',
+    [KeyCodes.KEY_MEDIA_PREVIOUS]: 'Previous Track',
     [KeyCodes.MODIFIER_COMMAND]: '⌘',
     [KeyCodes.MODIFIER_SHIFT]: '⇧',
     [KeyCodes.MODIFIER_OPTION]: '⌥',
