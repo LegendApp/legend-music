@@ -1,5 +1,6 @@
 import { LegendList } from "@legendapp/list";
 import { use$, useSelector } from "@legendapp/state/react";
+import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { AlbumArt } from "@/components/AlbumArt";
@@ -30,7 +31,6 @@ interface TrackItemProps {
 }
 
 const TrackItem = ({ track, index, onTrackClick }: TrackItemProps) => {
-    const localPlayerState = use$(localPlayerState$);
     const playlistStyle = use$(settings$.general.playlistStyle);
 
     const isPlaying = useSelector(() => {
@@ -141,19 +141,24 @@ type PlaylistTrackWithSuggestions = PlaylistTrack & {
 
 export function Playlist() {
     const localMusicState = use$(localMusicState$);
-    const localPlayerState = use$(localPlayerState$);
+    const currentTrackIndex = use$(localPlayerState$.currentIndex);
+    const isPlayerActive = use$(localPlayerState$.isPlaying);
     const playlistStyle = use$(settings$.general.playlistStyle);
 
     // Only show local files playlist
-    const playlist: PlaylistTrackWithSuggestions[] = localMusicState.tracks.map((track, index) => ({
-        id: track.id,
-        title: track.title,
-        artist: track.artist,
-        duration: track.duration,
-        thumbnail: track.thumbnail || "",
-        index,
-        isPlaying: index === localPlayerState.currentIndex && localPlayerState.isPlaying,
-    }));
+    const playlist: PlaylistTrackWithSuggestions[] = useMemo(
+        () =>
+            localMusicState.tracks.map((track, index) => ({
+                id: track.id,
+                title: track.title,
+                artist: track.artist,
+                duration: track.duration,
+                thumbnail: track.thumbnail || "",
+                index,
+                isPlaying: index === currentTrackIndex && isPlayerActive,
+            })),
+        [localMusicState.tracks, currentTrackIndex, isPlayerActive],
+    );
 
     const handleTrackClick = (index: number) => {
         const track = playlist[index];
@@ -164,12 +169,16 @@ export function Playlist() {
         }
 
         // Handle local file playback
-        console.log("Playing local file at index:", index);
+        if (__DEV__) {
+            console.log("Playing local file at index:", index);
+        }
         const tracks = localMusicState.tracks;
         const localTrack = tracks[index];
 
         if (localTrack) {
-            console.log("Playing:", localTrack.title, "by", localTrack.artist);
+            if (__DEV__) {
+                console.log("Playing:", localTrack.title, "by", localTrack.artist);
+            }
             // Load the entire playlist and start playing at the selected index
             localAudioControls.loadPlaylist(tracks, index);
         }
@@ -186,9 +195,7 @@ export function Playlist() {
                               ? "Error scanning local files"
                               : "No local MP3 files found"}
                     </Text>
-                    <Text className="text-white/40 text-sm mt-2">
-                        Add MP3 files to /Users/jay/Downloads/mp3
-                    </Text>
+                    <Text className="text-white/40 text-sm mt-2">Add MP3 files to /Users/jay/Downloads/mp3</Text>
                 </View>
             ) : (
                 <LegendList

@@ -30,7 +30,6 @@ function formatTime(seconds: number): string {
     return formatted;
 }
 
-
 export function PlaybackArea() {
     const currentTrack = use$(localPlayerState$.currentTrack);
     const isLoading = use$(localPlayerState$.isLoading);
@@ -55,9 +54,7 @@ export function PlaybackArea() {
                         {currentTrack?.artist || " "}
                     </Text>
                     <Text className="text-white/50 text-xs" style={{ fontVariant: ["tabular-nums"] }}>
-                        <Memo>
-                            {() => `${formatTime(currentLocalTime$.get())} / ${formatTime(duration$.get())}`}
-                        </Memo>
+                        <Memo>{() => `${formatTime(currentLocalTime$.get())} / ${formatTime(duration$.get())}`}</Memo>
                     </Text>
                 </View>
 

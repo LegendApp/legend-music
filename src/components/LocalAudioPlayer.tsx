@@ -33,7 +33,9 @@ let audioPlayer: ReturnType<typeof useAudioPlayer> | null = null;
 // Expose control methods for local audio
 export const localAudioControls = {
     loadTrack: async (filePath: string, title: string, artist: string) => {
-        console.log("Loading track:", filePath, title, artist);
+        if (__DEV__) {
+            console.log("Loading track:", filePath, title, artist);
+        }
         const track = {
             id: filePath,
             filePath,
@@ -51,7 +53,9 @@ export const localAudioControls = {
             try {
                 const result = await audioPlayer.loadTrack(filePath);
                 if (result.success) {
-                    console.log("sucess");
+                    if (__DEV__) {
+                        console.log("Track loaded successfully");
+                    }
                     localAudioControls.play();
                 } else {
                     localPlayerState$.error.set(result.error || "Failed to load track");
@@ -133,7 +137,9 @@ export const localAudioControls = {
             localPlayerState$.currentIndex.set(index);
             const track = currentPlaylist[index];
             localAudioControls.loadTrack(track.filePath, track.title, track.artist);
-            console.log("Playing track:", track.title);
+            if (__DEV__) {
+                console.log("Playing track:", track.title);
+            }
             // Auto-play after loading
             setTimeout(() => localAudioControls.play(), 100);
         }
@@ -181,7 +187,9 @@ export function LocalAudioPlayer() {
     useEffect(() => {
         const listeners = [
             player.addListener("onLoadSuccess", (data) => {
-                console.log("Audio loaded successfully:", data);
+                if (__DEV__) {
+                    console.log("Audio loaded successfully:", data);
+                }
                 localPlayerState$.duration.set(data.duration);
                 localPlayerState$.isLoading.set(false);
                 localPlayerState$.error.set(null);
@@ -195,17 +203,23 @@ export function LocalAudioPlayer() {
             }),
 
             player.addListener("onPlaybackStateChanged", (data) => {
-                console.log("Playback state changed:", data.isPlaying);
+                if (__DEV__) {
+                    console.log("Playback state changed:", data.isPlaying);
+                }
                 localPlayerState$.isPlaying.set(data.isPlaying);
             }),
 
             player.addListener("onProgress", (data) => {
                 localPlayerState$.currentTime.set(data.currentTime);
-                localPlayerState$.duration.set(data.duration);
+                if (data.duration !== localPlayerState$.duration.peek()) {
+                    localPlayerState$.duration.set(data.duration);
+                }
             }),
 
             player.addListener("onCompletion", () => {
-                console.log("Track completed, playing next if available");
+                if (__DEV__) {
+                    console.log("Track completed, playing next if available");
+                }
                 localPlayerState$.isPlaying.set(false);
                 localAudioControls.playNext();
             }),
