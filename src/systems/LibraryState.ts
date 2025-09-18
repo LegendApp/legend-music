@@ -1,136 +1,114 @@
-import { observable } from '@legendapp/state'
-import { createJSONManager } from '@/utils/JSONManager'
+import { observable } from "@legendapp/state";
+import { type LocalTrack, localMusicSettings$, localMusicState$ } from "@/systems/LocalMusicState";
+import { createJSONManager } from "@/utils/JSONManager";
 
 export interface LibraryItem {
-    id: string
-    type: 'artist' | 'album' | 'playlist' | 'track'
-    name: string
-    children?: LibraryItem[]
-    trackCount?: number
-    duration?: number
+    id: string;
+    type: "artist" | "album" | "playlist" | "track" | "all";
+    name: string;
+    children?: LibraryItem[];
+    trackCount?: number;
+    duration?: number;
 }
 
-export interface Track {
-    id: string
-    title: string
-    artist: string
-    album: string
-    duration: number
-    filePath: string
-    albumArt?: string
-    metadata?: any
+export interface LibraryTrack {
+    id: string;
+    title: string;
+    artist: string;
+    duration: string;
+    filePath: string;
+    fileName: string;
+    album?: string;
+    thumbnail?: string;
 }
 
 // Library UI state (persistent)
 export const libraryUI$ = createJSONManager({
-    filename: 'libraryUI',
+    filename: "libraryUI",
     initialValue: {
         isOpen: false,
         selectedItem: null as LibraryItem | null,
-        searchQuery: '',
+        searchQuery: "",
         expandedNodes: [] as string[],
     },
-})
+});
 
 // Non-persistent UI state
 export const libraryUIState$ = observable({
     // Add any non-persistent state here if needed
-})
+});
 
-// Library data
+// Library data derived from local music state
 export const library$ = observable({
     artists: [] as LibraryItem[],
-    albums: [] as LibraryItem[],
     playlists: [] as LibraryItem[],
-    tracks: [] as Track[],
+    tracks: [] as LibraryTrack[],
     isScanning: false,
     lastScanTime: null as Date | null,
-})
+});
 
-// Mock data for development
-library$.artists.set([
-    {
-        id: 'artist-1',
-        type: 'artist',
-        name: 'Radiohead',
-        trackCount: 15,
-        children: [
-            {
-                id: 'album-1',
-                type: 'album',
-                name: 'OK Computer',
-                trackCount: 12,
-            },
-            {
-                id: 'album-2',
-                type: 'album',
-                name: 'In Rainbows',
-                trackCount: 10,
-            }
-        ]
-    },
-    {
-        id: 'artist-2',
-        type: 'artist',
-        name: 'The Beatles',
-        trackCount: 25,
-        children: [
-            {
-                id: 'album-3',
-                type: 'album',
-                name: 'Abbey Road',
-                trackCount: 17,
-            }
-        ]
-    }
-])
+function normalizeTracks(localTracks: LocalTrack[]): LibraryTrack[] {
+    return localTracks.map((track) => ({
+        id: track.id,
+        title: track.title,
+        artist: track.artist,
+        duration: track.duration,
+        filePath: track.filePath,
+        fileName: track.fileName,
+        thumbnail: track.thumbnail,
+    }));
+}
 
-library$.playlists.set([
-    {
-        id: 'playlist-1',
-        type: 'playlist',
-        name: 'Favorites',
-        trackCount: 8,
-    },
-    {
-        id: 'playlist-2',
-        type: 'playlist',
-        name: 'Rock.m3u',
-        trackCount: 12,
-    }
-])
+function buildArtistItems(tracks: LibraryTrack[]): LibraryItem[] {
+    const artistMap = new Map<string, { count: number }>();
 
-library$.tracks.set([
-    {
-        id: 'track-1',
-        title: 'Paranoid Android',
-        artist: 'Radiohead',
-        album: 'OK Computer',
-        duration: 383,
-        filePath: '/Users/music/radiohead/paranoid.mp3',
-    },
-    {
-        id: 'track-2', 
-        title: 'Subterranean Homesick Alien',
-        artist: 'Radiohead',
-        album: 'OK Computer',
-        duration: 267,
-        filePath: '/Users/music/radiohead/subterranean.mp3',
-    },
-    {
-        id: 'track-3',
-        title: 'Exit Music (For a Film)',
-        artist: 'Radiohead',
-        album: 'OK Computer',
-        duration: 264,
-        filePath: '/Users/music/radiohead/exit.mp3',
-    },
-    {
-        id: 'track-4',
-        title: 'Come Together',
-        artist: 'The Beatles',
-        album: 'Abbey Road',
-        duration: 259,
-        filePath: '/Users/music/beatles/come_together.mp3',
+    for (const track of tracks) {
+        const entry = artistMap.get(track.artist);
+        if (entry) {
+            entry.count += 1;
+        } else {
+            artistMap.set(track.artist, { count: 1 });
+        }
     }
-])
+
+    return Array.from(artistMap.entries())
+        .map(([name, { count }]) => ({
+            id: `artist-${slugify(name)}`,
+            type: "artist" as const,
+            name,
+            trackCount: count,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function slugify(value: string): string {
+    const slug = value
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+
+    return slug || "unknown";
+}
+
+function syncLibraryFromLocalState(): void {
+    const localTracks = localMusicState$.tracks.get();
+    const normalizedTracks = normalizeTracks(localTracks);
+
+    library$.tracks.set(normalizedTracks);
+    library$.artists.set(buildArtistItems(normalizedTracks));
+}
+
+syncLibraryFromLocalState();
+library$.isScanning.set(localMusicState$.isScanning.get());
+const initialLastScan = localMusicSettings$.lastScanTime.get();
+library$.lastScanTime.set(initialLastScan ? new Date(initialLastScan) : null);
+
+localMusicState$.tracks.onChange(syncLibraryFromLocalState);
+localMusicState$.isScanning.onChange(({ value }) => {
+    library$.isScanning.set(value);
+});
+
+localMusicSettings$.lastScanTime.onChange(({ value }) => {
+    library$.lastScanTime.set(value ? new Date(value) : null);
+});
