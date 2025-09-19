@@ -24,8 +24,8 @@ export function MainContainer() {
         <View className="flex-1 flex-row items-stretch">
             <View className="flex-1">
                 <PlaybackArea />
-                <PlaylistSelector />
                 <Playlist />
+                <PlaylistSelector />
                 <Unregistered />
             </View>
             <LocalAudioPlayer />

@@ -56,7 +56,7 @@ export function PlaybackArea() {
     });
 
     return (
-        <View className="px-3 pt-3">
+        <View className="px-3 pt-3 border-b border-white/10">
             <View className="flex-row items-center">
                 {/* Album Art */}
                 <View className="mr-3">

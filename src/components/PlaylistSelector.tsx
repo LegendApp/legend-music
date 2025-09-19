@@ -79,7 +79,7 @@ export function PlaylistSelector() {
     });
 
     return (
-        <View className="px-1 border-b border-t border-white/10">
+        <View className="px-1 border-t border-white/10">
             <View className="flex-row items-center">
                 <View className="flex-1">
                     <SelectLegendList
