@@ -3,6 +3,7 @@ import { use$ } from "@legendapp/state/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
+import { observable } from "@legendapp/state";
 import { localAudioControls, localPlayerState$, queue$ } from "@/components/LocalAudioPlayer";
 import { type TrackData, TrackItem } from "@/components/TrackItem";
 import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
@@ -10,6 +11,11 @@ import type { LocalTrack } from "@/systems/LocalMusicState";
 import { localMusicState$ } from "@/systems/LocalMusicState";
 import { settings$ } from "@/systems/Settings";
 import { perfCount, perfLog } from "@/utils/perfLogger";
+
+// Global state to track whether playlist is actively being navigated
+export const playlistNavigationState$ = observable({
+    hasSelection: false,
+});
 
 type PlaylistTrackWithSuggestions = TrackData & {
     queueEntryId: string;
@@ -197,6 +203,11 @@ export function Playlist() {
         } else if (selectedIndex >= playlist.length) {
             setSelectedIndex(playlist.length - 1);
         }
+    }, [playlist.length, selectedIndex]);
+
+    // Update global navigation state
+    useEffect(() => {
+        playlistNavigationState$.hasSelection.set(playlist.length > 0 && selectedIndex !== -1);
     }, [playlist.length, selectedIndex]);
 
     const msg =

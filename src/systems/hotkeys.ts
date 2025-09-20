@@ -8,6 +8,7 @@ const DEFAULT_HOTKEYS = {
     Search: KeyCodes.KEY_J,
     ToggleLibrary: `${KeyCodes.MODIFIER_COMMAND}+${KeyCodes.KEY_L}`,
     PlayPause: KeyCodes.KEY_MEDIA_PLAY_PAUSE,
+    PlayPauseSpace: KeyCodes.KEY_SPACE,
     NextTrack: KeyCodes.KEY_MEDIA_NEXT,
     PreviousTrack: KeyCodes.KEY_MEDIA_PREVIOUS,
 } as const;
@@ -23,6 +24,9 @@ export const HotkeyMetadata: Record<HotkeyName, { description: string; repeat?: 
     },
     PlayPause: {
         description: "Toggle playback",
+    },
+    PlayPauseSpace: {
+        description: "Toggle playback (space bar)",
     },
     NextTrack: {
         description: "Play next track",
