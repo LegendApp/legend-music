@@ -61,7 +61,23 @@
     },
     "expo": {
         "autolinking": {
-            "exclude": ["expo-asset", "expo-constants", "expo-font", "expo-keep-awake", "expo-linking", "expo-sqlite"]
+            "exclude": [
+"expo",
+"expo-asset",
+"expo-checkbox",
+"expo-constants",
+"expo-font",
+"expo-keep-awake",
+"expo-linking",
+"expo-modules-autolinking",
+"expo-navigation-bar",
+"expo-router",
+"expo-splash-screen",
+"expo-sqlite",
+"expo-status-bar",
+"expo-system-ui"
+]
+
         }
     }
 }

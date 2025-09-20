@@ -77,9 +77,9 @@ PODS:
   - FRNVibrancyView (0.3.0):
     - React
   - glog (0.3.5)
-  - hermes-engine (0.78.2):
-    - hermes-engine/Pre-built (= 0.78.2)
-  - hermes-engine/Pre-built (0.78.2)
+  - hermes-engine (0.78.3):
+    - hermes-engine/Pre-built (= 0.78.3)
+  - hermes-engine/Pre-built (0.78.3)
   - RCT-Folly (2024.11.18.00):
     - boost
     - DoubleConversion
@@ -1982,8 +1982,8 @@ SPEC CHECKSUMS:
   FRNCallout: e577aacb860692b6e0a5d2c5c3797ac9875ad068
   FRNVibrancyView: 975f7e8ea14999015c3224743057418574833afa
   glog: b7594b792ee4e02ed1f44b01d046ca25fa713e3d
-  hermes-engine: 2771b98fb813fdc6f92edd7c9c0035ecabf9fee7
-  RCT-Folly: abec2d7f4af402b4957c44e86ceff8725b23c1b4
+  hermes-engine: b5c9cfbe6415f1b0b24759f2942c8f33e9af6347
+  RCT-Folly: e8b53d8c0d2d9df4a6a8b0a368a1a91fc62a88cb
   RCTDeprecation: cf39863b43871c2031050605fb884019b6193910
   RCTRequired: 8e45f166ea2d154c59dd209c5bb710ad3ac0e752
   RCTTypeSafety: 28651c7820ad239ac978b3a0cca1f1486a19408a

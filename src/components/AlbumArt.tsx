@@ -225,7 +225,7 @@ export function AlbumArt({ uri, size = "medium", fallbackIcon = "♪", className
             {...imageProps}
             source={{ uri: imageUri || uri }}
             className={cn(containerClasses, "bg-white/10")}
-            resizeMode="contain"
+            resizeMode="cover"
             onError={() => {
                 setHasError(true);
                 setImageUri(null);
