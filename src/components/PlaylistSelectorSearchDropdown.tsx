@@ -11,6 +11,7 @@ import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
 import { library$ } from "@/systems/LibraryState";
 import type { LibraryItem } from "@/systems/LibraryState";
 import type { LocalTrack } from "@/systems/LocalMusicState";
+import { playlistNavigationState$ } from "@/components/Playlist";
 import { cn } from "@/utils/cn";
 
 interface PlaylistSelectorSearchDropdownProps {
@@ -96,6 +97,8 @@ export const PlaylistSelectorSearchDropdown = forwardRef<DropdownMenuRootRef, Pl
         const handleOpenChange = useCallback(
             (open: boolean) => {
                 isOpen$.set(open);
+                // Update global state to disable queue navigation when search is open
+                playlistNavigationState$.isSearchDropdownOpen.set(open);
                 if (!open) {
                     searchQuery$.set("");
                     shiftPressedRef.current = false;

@@ -15,6 +15,7 @@ import { perfCount, perfLog } from "@/utils/perfLogger";
 // Global state to track whether playlist is actively being navigated
 export const playlistNavigationState$ = observable({
     hasSelection: false,
+    isSearchDropdownOpen: false,
 });
 
 type PlaylistTrackWithSuggestions = TrackData & {
@@ -155,8 +156,8 @@ export function Playlist() {
     // Keyboard navigation
     useEffect(() => {
         const handleKeyDown = (event: { keyCode: number; modifiers: number }) => {
-            // Only handle keyboard events when there are tracks in the queue
-            if (playlist.length === 0) {
+            // Only handle keyboard events when there are tracks in the queue and search dropdown is not open
+            if (playlist.length === 0 || playlistNavigationState$.isSearchDropdownOpen.get()) {
                 return false;
             }
 
