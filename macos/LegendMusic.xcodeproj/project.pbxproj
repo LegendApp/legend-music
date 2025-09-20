@@ -14,6 +14,8 @@
 		514201582437B4B40078DB4F /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 514201572437B4B40078DB4F /* main.m */; };
 		690B85542E7C1B4C009B767D /* RNSplitView.m in Sources */ = {isa = PBXBuildFile; fileRef = 690B85522E7C1B4C009B767D /* RNSplitView.m */; };
 		690D93E62DD37F08002EFC73 /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 690D93E52DD37F08002EFC73 /* AppDelegate.mm */; };
+		69118FE92E7F652300F00B75 /* DragDropView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69118FE72E7F652300F00B75 /* DragDropView.swift */; };
+		69118FEA2E7F652300F00B75 /* DragDropBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 69118FE62E7F652300F00B75 /* DragDropBridge.m */; };
 		696BC82C2E0EFA2500FFFA66 /* WindowControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 696BC8292E0EFA2500FFFA66 /* WindowControls.swift */; };
 		696BC82D2E0EFA2500FFFA66 /* WindowControlsBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 696BC82A2E0EFA2500FFFA66 /* WindowControlsBridge.m */; };
 		697C9C7D2E7D4F6400AB8492 /* TextInputSearch.m in Sources */ = {isa = PBXBuildFile; fileRef = 697C9C7B2E7D4F6400AB8492 /* TextInputSearch.m */; };
@@ -44,6 +46,8 @@
 		690B85522E7C1B4C009B767D /* RNSplitView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RNSplitView.m; sourceTree = "<group>"; };
 		690D93E42DD37F08002EFC73 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		690D93E52DD37F08002EFC73 /* AppDelegate.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = AppDelegate.mm; sourceTree = "<group>"; };
+		69118FE62E7F652300F00B75 /* DragDropBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = DragDropBridge.m; sourceTree = "<group>"; };
+		69118FE72E7F652300F00B75 /* DragDropView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DragDropView.swift; sourceTree = "<group>"; };
 		696BC8292E0EFA2500FFFA66 /* WindowControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowControls.swift; sourceTree = "<group>"; };
 		696BC82A2E0EFA2500FFFA66 /* WindowControlsBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = WindowControlsBridge.m; sourceTree = "<group>"; };
 		697C9C7A2E7D4F6400AB8492 /* TextInputSearch.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TextInputSearch.h; sourceTree = "<group>"; };
@@ -104,6 +108,7 @@
 		5142014A2437B4B30078DB4F /* LegendMusic-macOS */ = {
 			isa = PBXGroup;
 			children = (
+				69118FE82E7F652300F00B75 /* DragDrop */,
 				697C9C7C2E7D4F6400AB8492 /* TextInputSearch */,
 				690B85532E7C1B4C009B767D /* SplitView */,
 				698A69F32E1838D0001B4A90 /* KeyboardManager */,
@@ -140,6 +145,15 @@
 				690B85522E7C1B4C009B767D /* RNSplitView.m */,
 			);
 			path = SplitView;
+			sourceTree = "<group>";
+		};
+		69118FE82E7F652300F00B75 /* DragDrop */ = {
+			isa = PBXGroup;
+			children = (
+				69118FE62E7F652300F00B75 /* DragDropBridge.m */,
+				69118FE72E7F652300F00B75 /* DragDropView.swift */,
+			);
+			path = DragDrop;
 			sourceTree = "<group>";
 		};
 		696BC82B2E0EFA2500FFFA66 /* WindowControls */ = {
@@ -486,6 +500,8 @@
 				69D53FB72DC6653D0004AD94 /* SFSymbol.swift in Sources */,
 				698A69F42E1838D0001B4A90 /* RNKeyboardManager.swift in Sources */,
 				698A69F52E1838D0001B4A90 /* KeyboardManagerBridge.m in Sources */,
+				69118FE92E7F652300F00B75 /* DragDropView.swift in Sources */,
+				69118FEA2E7F652300F00B75 /* DragDropBridge.m in Sources */,
 				697C9C7D2E7D4F6400AB8492 /* TextInputSearch.m in Sources */,
 				698A69F62E1838D0001B4A90 /* KeyboardManager.swift in Sources */,
 				690B85542E7C1B4C009B767D /* RNSplitView.m in Sources */,
@@ -681,10 +697,7 @@
 				);
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
@@ -743,10 +756,7 @@
 					"\"$(inherited)\"",
 				);
 				MTL_ENABLE_DEBUG_INFO = NO;
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				USE_HERMES = true;
