@@ -1,8 +1,8 @@
 import * as FileSystem from "expo-file-system/next";
 import { useEffect, useState } from "react";
 import { Image, type ImageProps, Text, View } from "react-native";
+import { ensureCacheDirectory, getCacheDirectory } from "@/utils/cacheDirectories";
 import { cn } from "@/utils/cn";
-import { getCacheDirectory, ensureCacheDirectory } from "@/utils/cacheDirectories";
 
 interface AlbumArtProps extends Omit<ImageProps, "source"> {
     uri?: string;
@@ -225,7 +225,7 @@ export function AlbumArt({ uri, size = "medium", fallbackIcon = "♪", className
             {...imageProps}
             source={{ uri: imageUri || uri }}
             className={cn(containerClasses, "bg-white/10")}
-            resizeMode="cover"
+            resizeMode="contain"
             onError={() => {
                 setHasError(true);
                 setImageUri(null);

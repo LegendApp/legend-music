@@ -1,6 +1,7 @@
 import { observable } from "@legendapp/state";
 import { Directory, File } from "expo-file-system/next";
 import * as ID3 from "id3js";
+import type { JsMediaTagsSuccess } from "jsmediatags/build2/jsmediatags";
 import jsmediatags from "jsmediatags/build2/jsmediatags";
 import AudioPlayer from "@/native-modules/AudioPlayer";
 import { stateSaved$ } from "@/systems/State";
@@ -84,6 +85,26 @@ function isImageValue(value: unknown): value is ID3ImageValue {
     }
 
     return false;
+}
+
+function imageDataToUint8Array(data: ID3ImageValue["data"]): Uint8Array | null {
+    if (!data) {
+        return null;
+    }
+
+    if (data instanceof ArrayBuffer) {
+        return new Uint8Array(data);
+    }
+
+    if (ArrayBuffer.isView(data)) {
+        return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+    }
+
+    if (Array.isArray(data)) {
+        return Uint8Array.from(data);
+    }
+
+    return null;
 }
 
 function getThumbnailCacheKey(input: string): string {
@@ -179,16 +200,8 @@ function extractEmbeddedArtwork(filePath: string, tags: unknown): string | undef
         return undefined;
     }
 
-    const imageData = image.data;
-    let buffer: Uint8Array;
-
-    if (imageData instanceof ArrayBuffer) {
-        buffer = new Uint8Array(imageData);
-    } else if (ArrayBuffer.isView(imageData)) {
-        buffer = new Uint8Array(imageData.buffer, imageData.byteOffset, imageData.byteLength);
-    } else if (Array.isArray(imageData)) {
-        buffer = Uint8Array.from(imageData);
-    } else {
+    const buffer = imageDataToUint8Array(image.data);
+    if (!buffer) {
         return undefined;
     }
 
@@ -213,173 +226,33 @@ function extractEmbeddedArtwork(filePath: string, tags: unknown): string | undef
         buffer[1] === 0x00 &&
         buffer[2] === 0xd8 &&
         (buffer[3] === 0xff || buffer[3] === 0x00);
+
+    let bufferToWrite = buffer;
     if (!looksLikeJpeg && looksUnsyncedJpeg) {
-        console.warn(
-            `Artwork appears unsynchronized (0xFF00 markers) for ${fileNameFromPath(filePath)}; trying to strip 0x00 stuffing`,
-        );
-    } else if (!looksLikeJpeg && extension === "jpg") {
-        console.warn(
-            `Artwork bytes for ${fileNameFromPath(filePath)} do not start with JPEG magic: ${buffer[0]}, ${buffer[1]}, ${buffer[2]}`,
-        );
-    }
-    const variants: Array<{
-        suffix: string;
-        write: (file: File, data: Uint8Array) => void | Promise<void>;
-        description: string;
-        prepareBuffer?: () => Uint8Array;
-    }> = [
-        {
-            suffix: "",
-            description: "FileHandle.writeBytes direct",
-            write: (file, data) => {
-                const handle = file.open();
-                try {
-                    handle.offset = 0;
-                    handle.writeBytes(data);
-                } finally {
-                    handle.close();
-                }
-            },
-        },
-        // {
-        //     suffix: "-test2",
-        //     description: "File.write with shared buffer",
-        //     write: (file, data) => {
-        //         file.write(data);
-        //     },
-        // },
-        // {
-        //     suffix: "-test3",
-        //     description: "FileHandle chunked writes",
-        //     write: (file, data) => {
-        //         const handle = file.open();
-        //         try {
-        //             handle.offset = 0;
-        //             const chunkSize = 64 * 1024;
-        //             for (let offset = 0; offset < data.byteLength; offset += chunkSize) {
-        //                 const slice = data.subarray(offset, Math.min(offset + chunkSize, data.byteLength));
-        //                 handle.writeBytes(slice);
-        //             }
-        //         } finally {
-        //             handle.close();
-        //         }
-        //     },
-        // },
-        // {
-        //     suffix: "-test4",
-        //     description: "File.write with cloned Uint8Array",
-        //     prepareBuffer: () => Uint8Array.from(buffer),
-        //     write: (file, data) => {
-        //         file.write(data);
-        //     },
-        // },
-        // {
-        //     suffix: "-test5",
-        //     description: "File.write with sliced ArrayBuffer copy",
-        //     prepareBuffer: () =>
-        //         new Uint8Array(buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)),
-        //     write: (file, data) => {
-        //         file.write(data);
-        //     },
-        // },
-        // {
-        //     suffix: "-test6",
-        //     description: "WritableStream writer",
-        //     write: async (file, data) => {
-        //         // Writable API is async, chunk once then close.
-        //         const stream = file.writableStream();
-        //         const writer = stream.getWriter();
-        //         try {
-        //             await writer.write(data);
-        //         } finally {
-        //             await writer.close();
-        //         }
-        //     },
-        // },
-        // {
-        //     suffix: "-unsync",
-        //     description: "Unsynchronization bytes stripped",
-        //     prepareBuffer: () => stripUnsynchronization(buffer),
-        //     write: (file, data) => {
-        //         file.write(data);
-        //     },
-        // },
-        // {
-        //     suffix: "-skip4",
-        //     description: "Skip first 4 bytes (possible data length indicator)",
-        //     prepareBuffer: () => buffer.subarray(4),
-        //     write: (file, data) => {
-        //         file.write(data);
-        //     },
-        // },
-    ];
-
-    for (const variant of variants) {
-        const variantFile = new File(thumbnailsDir, `${cacheKey}${variant.suffix}.${extension}`);
-        try {
-            variantFile.create({ overwrite: true, intermediates: true });
-            const variantBuffer = variant.prepareBuffer ? variant.prepareBuffer() : buffer;
-            variant.write(variantFile, variantBuffer);
-
-            try {
-                const writtenBytes = variantFile.bytes();
-                if (writtenBytes.length !== variantBuffer.length) {
-                    console.warn(
-                        `Artwork cache mismatch (${variant.suffix || "base"}): length ${writtenBytes.length} !== ${variantBuffer.length}`,
-                    );
-                } else {
-                    let mismatchIndex = -1;
-                    for (let i = 0; i < writtenBytes.length; i++) {
-                        if (writtenBytes[i] !== variantBuffer[i]) {
-                            mismatchIndex = i;
-                            break;
-                        }
-                    }
-                    if (mismatchIndex !== -1) {
-                        console.warn(
-                            `Artwork cache mismatch (${variant.suffix || "base"}) at byte ${mismatchIndex}: wrote ${writtenBytes[mismatchIndex]}, expected ${variantBuffer[mismatchIndex]}`,
-                        );
-                    } else {
-                        console.log(
-                            `Artwork cache write succeeded (${variant.suffix || "base"}): ${variant.description} -> ${variantFile.uri}`,
-                        );
-                    }
-                }
-            } catch (verifyError) {
-                console.warn(
-                    `Failed to verify cached album art bytes (${variant.suffix || "base"}) for ${filePath}:`,
-                    verifyError,
-                );
-            }
-        } catch (error) {
-            console.warn(`Failed to cache album art (${variant.suffix || "base"}) for ${filePath}:`, error);
-        }
+        bufferToWrite = stripUnsynchronization(buffer);
     }
 
-    return new File(thumbnailsDir, `${cacheKey}.${extension}`).uri;
+    const cacheFile = new File(thumbnailsDir, `${cacheKey}.${extension}`);
+    try {
+        cacheFile.create({ overwrite: true, intermediates: true });
+        cacheFile.write(bufferToWrite);
+        return cacheFile.uri;
+    } catch (error) {
+        console.warn(`Failed to cache album art for ${filePath}:`, error);
+        return undefined;
+    }
 }
 
-async function extractArtworkWithJsMediaTags(filePath: string): Promise<string | undefined> {
+async function readTagsWithJsMediaTags(filePath: string): Promise<JsMediaTagsSuccess | undefined> {
     return new Promise((resolve) => {
         try {
             new jsmediatags.Reader(filePath).setTagsToRead(["picture"]).read({
                 onSuccess: (data) => {
-                    void (async () => {
-                        try {
-                            const thumbnail = extractEmbeddedArtwork(filePath, data.tags);
-                            resolve(thumbnail);
-                        } catch (error) {
-                            console.warn(
-                                `Failed to cache artwork via jsmediatags for ${fileNameFromPath(filePath)}:`,
-                                error,
-                            );
-                            resolve(undefined);
-                        }
-                    })();
+                    resolve(data);
                 },
                 onError: (error) => {
                     console.warn(
-                        `jsmediatags failed to read artwork for ${fileNameFromPath(filePath)}:`,
+                        `jsmediatags failed to read tags for ${fileNameFromPath(filePath)}:`,
                         error?.info ?? error,
                     );
                     resolve(undefined);
@@ -392,18 +265,80 @@ async function extractArtworkWithJsMediaTags(filePath: string): Promise<string |
     });
 }
 
+const thumbnailLoadPromises = new Map<string, Promise<string | undefined>>();
+
+function updateTrackThumbnail(trackId: string, thumbnail?: string): void {
+    const tracks = localMusicState$.tracks.get();
+    const index = tracks.findIndex((track) => track.id === trackId);
+    if (index === -1) {
+        return;
+    }
+
+    if (tracks[index].thumbnail === thumbnail) {
+        return;
+    }
+
+    const nextTracks = [...tracks];
+    nextTracks[index] = { ...nextTracks[index], thumbnail };
+    localMusicState$.tracks.set(nextTracks);
+}
+
+async function loadThumbnailForTrack(filePath: string): Promise<string | undefined> {
+    const tags = await readTagsWithJsMediaTags(filePath);
+    if (!tags?.tags) {
+        return undefined;
+    }
+
+    try {
+        return await extractEmbeddedArtwork(filePath, tags.tags);
+    } catch (error) {
+        console.warn(`Failed to extract artwork via jsmediatags for ${fileNameFromPath(filePath)}:`, error);
+        return undefined;
+    }
+}
+
+export async function ensureLocalTrackThumbnail(track: LocalTrack): Promise<string | undefined> {
+    if (track.thumbnail) {
+        return track.thumbnail;
+    }
+
+    const existing = thumbnailLoadPromises.get(track.filePath);
+    if (existing) {
+        const uri = await existing;
+        if (uri) {
+            updateTrackThumbnail(track.id, uri);
+        }
+        return uri;
+    }
+
+    const loadPromise = (async () => {
+        const uri = await loadThumbnailForTrack(track.filePath);
+        if (uri) {
+            updateTrackThumbnail(track.id, uri);
+        }
+        return uri;
+    })();
+
+    thumbnailLoadPromises.set(track.filePath, loadPromise);
+
+    try {
+        return await loadPromise;
+    } finally {
+        thumbnailLoadPromises.delete(track.filePath);
+    }
+}
+
 // Extract metadata from ID3 tags with filename fallback
 async function extractId3Metadata(
     filePath: string,
     fileName: string,
-): Promise<{ title: string; artist: string; duration?: string; thumbnail?: string }> {
+): Promise<{ title: string; artist: string; duration?: string }> {
     perfCount("LocalMusic.extractId3Metadata");
 
     const fallback = parseFilenameOnly(fileName);
     let title = fallback.title;
     let artist = fallback.artist;
     let duration: string | undefined;
-    let thumbnail: string | undefined;
 
     try {
         // First try to extract ID3 tags
@@ -417,22 +352,9 @@ async function extractId3Metadata(
             if (tagDurationSeconds !== null) {
                 duration = formatDuration(tagDurationSeconds);
             }
-
-            // try {
-            //     thumbnail = await extractEmbeddedArtwork(filePath, tags);
-            // } catch (error) {
-            //     console.warn(`Failed to extract artwork from ${fileName}:`, error);
-            // }
         }
     } catch (error) {
         console.warn(`Failed to read ID3 tags from ${fileName}:`, error);
-    }
-
-    if (!thumbnail) {
-        const jsMediaTagsThumbnail = await extractArtworkWithJsMediaTags(filePath);
-        if (jsMediaTagsThumbnail) {
-            thumbnail = jsMediaTagsThumbnail;
-        }
     }
 
     if (!duration) {
@@ -450,7 +372,6 @@ async function extractId3Metadata(
         title,
         artist,
         duration,
-        thumbnail,
     };
 }
 
@@ -565,7 +486,6 @@ async function scanDirectory(directoryPath: string): Promise<LocalTrack[]> {
                         duration: metadata.duration || "0:00",
                         filePath,
                         fileName: item.name,
-                        thumbnail: metadata.thumbnail,
                     };
 
                     tracks.push(track);

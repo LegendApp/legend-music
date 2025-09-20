@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { View } from "react-native";
 import { useAudioPlayer } from "@/native-modules/AudioPlayer";
 import type { LocalTrack } from "@/systems/LocalMusicState";
+import { ensureLocalTrackThumbnail } from "@/systems/LocalMusicState";
 import { perfCount, perfDelta, perfLog } from "@/utils/perfLogger";
 
 export interface LocalPlayerState {
@@ -60,6 +61,22 @@ function createQueuedTrack(track: LocalTrack): QueuedTrack {
         ...track,
         queueEntryId: createQueueEntryId(track.id),
     };
+}
+
+function isQueuedTrack(track: LocalTrack): track is QueuedTrack {
+    return typeof (track as Partial<QueuedTrack>).queueEntryId === "string";
+}
+
+function updateQueueEntry(queueEntryId: string, updates: Partial<QueuedTrack>): void {
+    const tracks = getQueueSnapshot();
+    const index = tracks.findIndex((queued) => queued.queueEntryId === queueEntryId);
+    if (index === -1) {
+        return;
+    }
+
+    const nextQueue = [...tracks];
+    nextQueue[index] = { ...nextQueue[index], ...updates };
+    setQueueTracks(nextQueue);
 }
 
 function asArray(input: QueueInput): LocalTrack[] {
@@ -128,6 +145,22 @@ async function loadTrackInternal(track: LocalTrack, autoPlay: boolean): Promise<
     localPlayerState$.currentTrack.set(track);
     localPlayerState$.isLoading.set(true);
     localPlayerState$.error.set(null);
+
+    const queueEntryId = isQueuedTrack(track) ? track.queueEntryId : undefined;
+    void ensureLocalTrackThumbnail(track).then((thumbnail) => {
+        if (!thumbnail) {
+            return;
+        }
+
+        if (queueEntryId) {
+            updateQueueEntry(queueEntryId, { thumbnail });
+        }
+
+        const current = localPlayerState$.currentTrack.peek();
+        if (current && current.id === track.id && current.thumbnail !== thumbnail) {
+            localPlayerState$.currentTrack.set({ ...current, thumbnail });
+        }
+    });
 
     if (!audioPlayer) {
         localPlayerState$.isLoading.set(false);
