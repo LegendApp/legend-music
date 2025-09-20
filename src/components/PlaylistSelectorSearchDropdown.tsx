@@ -1,3 +1,4 @@
+import { LegendList } from "@legendapp/list";
 import { use$, useObservable } from "@legendapp/state/react";
 import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type GestureResponderEvent, Text, View } from "react-native";
@@ -191,30 +192,35 @@ export const PlaylistSelectorSearchDropdown = forwardRef<DropdownMenuRootRef, Pl
                     {trimmedQuery && (
                         <View>
                             {searchResults.length > 0 && (
-                                <View className="max-h-64">
-                                    {searchResults.map((track, index) => (
-                                        <DropdownMenu.Item
-                                            key={track.id}
-                                            onSelect={(event) => {
-                                                const action = getActionFromEvent(event);
-                                                handleTrackAction(track, action);
-                                            }}
-                                            variant="unstyled"
-                                            className={cn(
-                                                "hover:bg-white/10 rounded-md",
-                                                highlightedIndex === index && "bg-white/20",
-                                            )}
-                                        >
-                                            <TrackItem
-                                                track={track}
-                                                index={index}
-                                                onTrackClick={(_, event) => {
+                                <View style={{ maxHeight: 256 }}>
+                                    <LegendList
+                                        data={searchResults}
+                                        keyExtractor={(track) => track.id}
+                                        style={{ maxHeight: 256 }}
+                                        renderItem={({ item: track, index }) => (
+                                            <DropdownMenu.Item
+                                                key={track.id}
+                                                onSelect={(event) => {
                                                     const action = getActionFromEvent(event);
                                                     handleTrackAction(track, action);
                                                 }}
-                                            />
-                                        </DropdownMenu.Item>
-                                    ))}
+                                                variant="unstyled"
+                                                className={cn(
+                                                    "hover:bg-white/10 rounded-md",
+                                                    highlightedIndex === index && "bg-white/20",
+                                                )}
+                                            >
+                                                <TrackItem
+                                                    track={track}
+                                                    index={index}
+                                                    onTrackClick={(_, event) => {
+                                                        const action = getActionFromEvent(event);
+                                                        handleTrackAction(track, action);
+                                                    }}
+                                                />
+                                            </DropdownMenu.Item>
+                                        )}
+                                    />
                                 </View>
                             )}
                             {trimmedQuery && searchResults.length === 0 && (
