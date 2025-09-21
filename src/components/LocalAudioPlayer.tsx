@@ -4,8 +4,8 @@ import { View } from "react-native";
 import { useAudioPlayer } from "@/native-modules/AudioPlayer";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import { ensureLocalTrackThumbnail } from "@/systems/LocalMusicState";
+import { clearQueueM3U, loadQueueFromM3U, saveQueueToM3U } from "@/utils/m3uManager";
 import { perfCount, perfDelta, perfLog } from "@/utils/perfLogger";
-import { saveQueueToM3U, loadQueueFromM3U, clearQueueM3U } from "@/utils/m3uManager";
 
 export interface LocalPlayerState {
     isPlaying: boolean;
@@ -103,7 +103,7 @@ function setQueueTracks(tracks: QueuedTrack[]): void {
 
     // Save to M3U file when queue changes (but not during initial load)
     if (queueInitialized) {
-        void saveQueueToM3U(tracks);
+        saveQueueToM3U(tracks);
     }
 }
 
@@ -305,7 +305,7 @@ async function initializeQueueFromCache(): Promise<void> {
             console.log(`Restored queue with ${queuedTracks.length} tracks from cache`);
         }
     } catch (error) {
-        console.error('Failed to initialize queue from cache:', error);
+        console.error("Failed to initialize queue from cache:", error);
     } finally {
         queueInitialized = true;
     }

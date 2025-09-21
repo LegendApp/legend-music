@@ -1,6 +1,7 @@
 import { File } from "expo-file-system/next";
 import type { LocalTrack } from "@/systems/LocalMusicState";
-import { type M3UTrack, parseM3U, writeM3U, parseDurationToSeconds, formatSecondsToMmSs } from "@/utils/m3u";
+import { getCacheDirectory } from "@/utils/cacheDirectories";
+import { formatSecondsToMmSs, type M3UTrack, parseDurationToSeconds, parseM3U, writeM3U } from "@/utils/m3u";
 
 const QUEUE_FILE_PATH = "queue.m3u";
 
@@ -16,7 +17,7 @@ function localTrackToM3UTrack(track: LocalTrack): M3UTrack {
         duration: durationSeconds,
         title: track.title,
         artist: track.artist,
-        filePath: track.filePath
+        filePath: track.filePath,
     };
 }
 
@@ -28,7 +29,7 @@ function m3uTrackToLocalTrack(track: M3UTrack): LocalTrack {
     const durationString = formatSecondsToMmSs(track.duration);
 
     // Extract filename from path
-    const fileName = track.filePath.split('/').pop() || track.filePath;
+    const fileName = track.filePath.split("/").pop() || track.filePath;
 
     return {
         id: track.filePath,
@@ -36,7 +37,7 @@ function m3uTrackToLocalTrack(track: M3UTrack): LocalTrack {
         artist: track.artist || "Unknown Artist",
         duration: durationString,
         filePath: track.filePath,
-        fileName
+        fileName,
     };
 }
 
@@ -49,11 +50,13 @@ export async function saveQueueToM3U(tracks: LocalTrack[]): Promise<void> {
         const playlist = { songs: m3uTracks, suggestions: [] };
         const m3uContent = writeM3U(playlist);
 
-        const file = new File(QUEUE_FILE_PATH);
+        const directory = getCacheDirectory("data");
+
+        const file = new File(directory, QUEUE_FILE_PATH);
         file.write(m3uContent);
         console.log(`Saved queue with ${tracks.length} tracks to ${QUEUE_FILE_PATH}`);
     } catch (error) {
-        console.error('Failed to save queue to M3U:', error);
+        console.error("Failed to save queue to M3U:", error);
     }
 }
 
@@ -62,10 +65,11 @@ export async function saveQueueToM3U(tracks: LocalTrack[]): Promise<void> {
  */
 export async function loadQueueFromM3U(): Promise<LocalTrack[]> {
     try {
-        const file = new File(QUEUE_FILE_PATH);
+        const directory = getCacheDirectory("data");
+        const file = new File(directory, QUEUE_FILE_PATH);
 
         if (!file.exists) {
-            console.log('No queue.m3u file found, starting with empty queue');
+            console.log("No queue.m3u file found, starting with empty queue");
             return [];
         }
 
@@ -76,7 +80,7 @@ export async function loadQueueFromM3U(): Promise<LocalTrack[]> {
         console.log(`Loaded queue with ${tracks.length} tracks from ${QUEUE_FILE_PATH}`);
         return tracks;
     } catch (error) {
-        console.error('Failed to load queue from M3U:', error);
+        console.error("Failed to load queue from M3U:", error);
         return [];
     }
 }
@@ -86,12 +90,13 @@ export async function loadQueueFromM3U(): Promise<LocalTrack[]> {
  */
 export async function clearQueueM3U(): Promise<void> {
     try {
-        const file = new File(QUEUE_FILE_PATH);
+        const directory = getCacheDirectory("data");
+        const file = new File(directory, QUEUE_FILE_PATH);
         if (file.exists) {
             file.delete();
-            console.log('Cleared queue.m3u file');
+            console.log("Cleared queue.m3u file");
         }
     } catch (error) {
-        console.error('Failed to clear queue M3U:', error);
+        console.error("Failed to clear queue M3U:", error);
     }
 }
