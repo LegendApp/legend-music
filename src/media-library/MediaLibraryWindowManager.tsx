@@ -5,9 +5,10 @@ import { useWindowManager } from "@/native-modules/WindowManager";
 import { useOnHotkeys } from "@/systems/keyboard/Keyboard";
 import { libraryUI$ } from "@/systems/LibraryState";
 import { perfCount, perfLog } from "@/utils/perfLogger";
+import { WindowsNavigator } from "@/windows";
 
-const MEDIA_LIBRARY_WINDOW_ID = "media-library";
-const MEDIA_LIBRARY_MODULE = "MediaLibraryWindow";
+const MEDIA_LIBRARY_WINDOW_KEY = "MediaLibraryWindow" as const;
+const MEDIA_LIBRARY_WINDOW_ID = WindowsNavigator.getIdentifier(MEDIA_LIBRARY_WINDOW_KEY);
 const MEDIA_LIBRARY_WIDTH = 420;
 const WINDOW_GAP = 16;
 
@@ -42,7 +43,7 @@ export const MediaLibraryWindowManager = () => {
     useEffect(() => {
         perfLog("MediaLibraryWindowManager.isOpenEffect", { isOpen });
         if (isOpen) {
-            void (async () => {
+            (async () => {
                 try {
                     perfLog("MediaLibraryWindowManager.openWindow.start");
                     const mainFrame = await windowManager.getMainWindowFrame();
@@ -51,14 +52,13 @@ export const MediaLibraryWindowManager = () => {
                     const x = mainFrame.x + mainFrame.width + WINDOW_GAP;
                     const y = mainFrame.y + (mainFrame.height - height);
 
-                    await windowManager.openWindow({
-                        identifier: MEDIA_LIBRARY_WINDOW_ID,
-                        moduleName: MEDIA_LIBRARY_MODULE,
-                        title: "Media Library",
-                        width,
-                        height,
+                    await WindowsNavigator.open(MEDIA_LIBRARY_WINDOW_KEY, {
                         x,
                         y,
+                        windowStyle: {
+                            width,
+                            height,
+                        },
                     });
                 } catch (error) {
                     console.error("Failed to open media library window:", error);
@@ -66,13 +66,10 @@ export const MediaLibraryWindowManager = () => {
                 }
             })();
         } else {
-            void (async () => {
+            (async () => {
                 try {
                     perfLog("MediaLibraryWindowManager.closeWindow.start");
-                    const result = await windowManager.closeWindow(MEDIA_LIBRARY_WINDOW_ID);
-                    if (!result.success && result.message !== "No window to close") {
-                        console.warn("Media library window close reported:", result.message ?? "unknown issue");
-                    }
+                    await WindowsNavigator.close(MEDIA_LIBRARY_WINDOW_KEY);
                 } catch (error) {
                     console.error("Failed to close media library window:", error);
                     perfLog("MediaLibraryWindowManager.closeWindow.error", error);

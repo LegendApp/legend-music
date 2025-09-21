@@ -1,10 +1,12 @@
 import { useMountOnce } from "@legendapp/state/react";
 
-import { useWindowManager, type WindowOptions } from "@/native-modules/WindowManager";
+import { useWindowManager } from "@/native-modules/WindowManager";
 import { state$ } from "@/systems/State";
 import { perfCount, perfLog } from "@/utils/perfLogger";
+import { WindowsNavigator } from "@/windows";
 
-const SETTINGS_WINDOW_ID = "settings";
+const SETTINGS_WINDOW_KEY = "SettingsWindow" as const;
+const SETTINGS_WINDOW_ID = WindowsNavigator.getIdentifier(SETTINGS_WINDOW_KEY);
 
 export const SettingsWindowManager = () => {
     const windowManager = useWindowManager();
@@ -15,22 +17,14 @@ export const SettingsWindowManager = () => {
             perfLog("SettingsWindowManager.showSettingsChange", { value });
             if (value) {
                 try {
-                    const options: WindowOptions = {
-                        identifier: SETTINGS_WINDOW_ID,
-                        moduleName: "SettingsWindow",
-                        title: "Settings",
-                        width: 800,
-                        height: 800,
-                    };
-
-                    await windowManager.openWindow(options);
+                    await WindowsNavigator.open(SETTINGS_WINDOW_KEY);
                 } catch (error) {
                     console.error("Failed to open window:", error);
                     perfLog("SettingsWindowManager.openWindow.error", error);
                 }
             } else {
                 try {
-                    await windowManager.closeWindow(SETTINGS_WINDOW_ID);
+                    await WindowsNavigator.close(SETTINGS_WINDOW_KEY);
                 } catch (error) {
                     console.error("Failed to close settings window:", error);
                     perfLog("SettingsWindowManager.closeWindow.error", error);

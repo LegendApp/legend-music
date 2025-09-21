@@ -6,15 +6,104 @@ if (!WindowManager) {
     throw new Error("WindowManager native module is not available");
 }
 
+const windowManagerConstants = WindowManager.getConstants?.() ?? {};
+
+export enum WindowStyleMask {
+    Borderless = "Borderless",
+    Titled = "Titled",
+    Closable = "Closable",
+    Miniaturizable = "Miniaturizable",
+    Resizable = "Resizable",
+    UnifiedTitleAndToolbar = "UnifiedTitleAndToolbar",
+    FullScreen = "FullScreen",
+    FullSizeContentView = "FullSizeContentView",
+    UtilityWindow = "UtilityWindow",
+    DocModalWindow = "DocModalWindow",
+    NonactivatingPanel = "NonactivatingPanel",
+}
+
+const windowStyleMaskMap: Record<WindowStyleMask, number> = {
+    [WindowStyleMask.Borderless]: windowManagerConstants.STYLE_MASK_BORDERLESS ?? 0,
+    [WindowStyleMask.Titled]: windowManagerConstants.STYLE_MASK_TITLED ?? 0,
+    [WindowStyleMask.Closable]: windowManagerConstants.STYLE_MASK_CLOSABLE ?? 0,
+    [WindowStyleMask.Miniaturizable]: windowManagerConstants.STYLE_MASK_MINIATURIZABLE ?? 0,
+    [WindowStyleMask.Resizable]: windowManagerConstants.STYLE_MASK_RESIZABLE ?? 0,
+    [WindowStyleMask.UnifiedTitleAndToolbar]: windowManagerConstants.STYLE_MASK_UNIFIED_TITLE_AND_TOOLBAR ?? 0,
+    [WindowStyleMask.FullScreen]: windowManagerConstants.STYLE_MASK_FULL_SCREEN ?? 0,
+    [WindowStyleMask.FullSizeContentView]: windowManagerConstants.STYLE_MASK_FULL_SIZE_CONTENT_VIEW ?? 0,
+    [WindowStyleMask.UtilityWindow]: windowManagerConstants.STYLE_MASK_UTILITY_WINDOW ?? 0,
+    [WindowStyleMask.DocModalWindow]: windowManagerConstants.STYLE_MASK_DOC_MODAL_WINDOW ?? 0,
+    [WindowStyleMask.NonactivatingPanel]: windowManagerConstants.STYLE_MASK_NONACTIVATING_PANEL ?? 0,
+};
+
+export type WindowStyleOptions = {
+    mask?: WindowStyleMask[];
+    width?: number;
+    height?: number;
+    titlebarAppearsTransparent?: boolean;
+};
+
 export type WindowOptions = {
     identifier?: string;
     moduleName?: string;
     title?: string;
-    width?: number;
-    height?: number;
     x?: number;
     y?: number;
+    windowStyle?: WindowStyleOptions;
     initialProperties?: Record<string, unknown>;
+};
+
+type NativeWindowStyleOptions = Omit<WindowStyleOptions, "mask"> & {
+    mask?: number;
+};
+
+type NativeWindowOptions = Omit<WindowOptions, "windowStyle"> & {
+    windowStyle?: NativeWindowStyleOptions;
+    width?: number;
+    height?: number;
+};
+
+const convertMaskArrayToBitwise = (mask?: WindowStyleMask[]) => {
+    if (!mask || mask.length === 0) {
+        return undefined;
+    }
+
+    return mask.reduce((result, maskValue) => {
+        const nativeMask = windowStyleMaskMap[maskValue];
+        return result | nativeMask;
+    }, 0);
+};
+
+const convertWindowStyleToNative = (windowStyle?: WindowStyleOptions): NativeWindowStyleOptions | undefined => {
+    if (!windowStyle) {
+        return undefined;
+    }
+
+    const { mask, ...rest } = windowStyle;
+
+    return {
+        ...rest,
+        mask: convertMaskArrayToBitwise(mask),
+    };
+};
+
+const convertOptionsToNative = (options: WindowOptions = {}): NativeWindowOptions => {
+    const nativeWindowStyle = convertWindowStyleToNative(options.windowStyle);
+
+    const nativeOptions: NativeWindowOptions = {
+        ...options,
+        windowStyle: nativeWindowStyle,
+    };
+
+    if (nativeWindowStyle?.width !== undefined) {
+        nativeOptions.width = nativeWindowStyle.width;
+    }
+
+    if (nativeWindowStyle?.height !== undefined) {
+        nativeOptions.height = nativeWindowStyle.height;
+    }
+
+    return nativeOptions;
 };
 
 export type WindowFrame = {
@@ -26,27 +115,48 @@ export type WindowFrame = {
 
 export type WindowClosedEvent = {
     identifier: string;
+    moduleName?: string;
 };
 
-type WindowManagerType = {
-    openWindow: (options?: WindowOptions) => Promise<{ success: boolean }>;
+export type WindowFocusedEvent = {
+    identifier: string;
+    moduleName?: string;
+};
+
+type NativeWindowManagerType = {
+    openWindow: (options?: NativeWindowOptions) => Promise<{ success: boolean }>;
     closeWindow: (identifier?: string) => Promise<{ success: boolean; message?: string }>;
     getMainWindowFrame: () => Promise<WindowFrame>;
     setMainWindowFrame: (frame: WindowFrame) => Promise<{ success: boolean }>;
 };
 
-const windowManagerEmitter = new NativeEventEmitter(WindowManager);
+const windowManagerModule = WindowManager as NativeWindowManagerType;
 
-export const useWindowManager = (): WindowManagerType & {
+const windowManagerEmitter = new NativeEventEmitter(windowManagerModule);
+
+export type WindowManagerBridge = {
+    openWindow: (options?: WindowOptions) => Promise<{ success: boolean }>;
+    closeWindow: (identifier?: string) => Promise<{ success: boolean; message?: string }>;
+    getMainWindowFrame: () => Promise<WindowFrame>;
+    setMainWindowFrame: (frame: WindowFrame) => Promise<{ success: boolean }>;
     onWindowClosed: (callback: (event: WindowClosedEvent) => void) => { remove: () => void };
-} => {
+    onWindowFocused: (callback: (event: WindowFocusedEvent) => void) => { remove: () => void };
+};
+
+export const useWindowManager = (): WindowManagerBridge => {
     return {
-        openWindow: (options = {}) => WindowManager.openWindow(options),
-        closeWindow: (identifier?: string) => WindowManager.closeWindow(identifier),
-        getMainWindowFrame: () => WindowManager.getMainWindowFrame(),
-        setMainWindowFrame: (frame: WindowFrame) => WindowManager.setMainWindowFrame(frame),
+        openWindow: (options = {}) => windowManagerModule.openWindow(convertOptionsToNative(options)),
+        closeWindow: (identifier?: string) => windowManagerModule.closeWindow(identifier),
+        getMainWindowFrame: () => windowManagerModule.getMainWindowFrame(),
+        setMainWindowFrame: (frame: WindowFrame) => windowManagerModule.setMainWindowFrame(frame),
         onWindowClosed: (callback: (event: WindowClosedEvent) => void) => {
             const subscription = windowManagerEmitter.addListener("onWindowClosed", callback);
+            return {
+                remove: () => subscription.remove(),
+            };
+        },
+        onWindowFocused: (callback: (event: WindowFocusedEvent) => void) => {
+            const subscription = windowManagerEmitter.addListener("onWindowFocused", callback);
             return {
                 remove: () => subscription.remove(),
             };
@@ -54,4 +164,9 @@ export const useWindowManager = (): WindowManagerType & {
     };
 };
 
-export default WindowManager as WindowManagerType;
+export const openWindow = (options: WindowOptions = {}) =>
+    windowManagerModule.openWindow(convertOptionsToNative(options));
+
+export const closeWindow = (identifier?: string) => windowManagerModule.closeWindow(identifier);
+
+export default windowManagerModule;

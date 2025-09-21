@@ -6,11 +6,34 @@
 @interface WindowManager() <NSWindowDelegate>
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSWindow *> *windows;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, RCTRootView *> *rootViews;
+- (nullable NSDictionary *)initialPropsFromOptions:(NSDictionary *)options;
 @end
 
 @implementation WindowManager
 
 RCT_EXPORT_MODULE();
+
++ (BOOL)requiresMainQueueSetup
+{
+  return YES;
+}
+
+- (NSDictionary *)constantsToExport
+{
+  return @{ 
+    @"STYLE_MASK_BORDERLESS": @(NSWindowStyleMaskBorderless),
+    @"STYLE_MASK_TITLED": @(NSWindowStyleMaskTitled),
+    @"STYLE_MASK_CLOSABLE": @(NSWindowStyleMaskClosable),
+    @"STYLE_MASK_MINIATURIZABLE": @(NSWindowStyleMaskMiniaturizable),
+    @"STYLE_MASK_RESIZABLE": @(NSWindowStyleMaskResizable),
+    @"STYLE_MASK_UNIFIED_TITLE_AND_TOOLBAR": @(NSWindowStyleMaskUnifiedTitleAndToolbar),
+    @"STYLE_MASK_FULL_SCREEN": @(NSWindowStyleMaskFullScreen),
+    @"STYLE_MASK_FULL_SIZE_CONTENT_VIEW": @(NSWindowStyleMaskFullSizeContentView),
+    @"STYLE_MASK_UTILITY_WINDOW": @(NSWindowStyleMaskUtilityWindow),
+    @"STYLE_MASK_DOC_MODAL_WINDOW": @(NSWindowStyleMaskDocModalWindow),
+    @"STYLE_MASK_NONACTIVATING_PANEL": @(NSWindowStyleMaskNonactivatingPanel)
+  };
+}
 
 - (instancetype)init {
   self = [super init];
@@ -22,7 +45,7 @@ RCT_EXPORT_MODULE();
 }
 
 - (NSArray<NSString *> *)supportedEvents {
-  return @[@"onWindowClosed", @"onMainWindowMoved", @"onMainWindowResized"];
+  return @[@"onWindowClosed", @"onMainWindowMoved", @"onMainWindowResized", @"onWindowFocused"];
 }
 
 - (dispatch_queue_t)methodQueue {
@@ -33,14 +56,27 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject) {
   NSString *identifier = options[@"identifier"];
-  if (![identifier isKindOfClass:[NSString class]] || identifier.length == 0) {
-    identifier = @"default";
+  NSString *moduleName = options[@"moduleName"];
+
+  if (![moduleName isKindOfClass:[NSString class]] || moduleName.length == 0) {
+    moduleName = identifier;
   }
 
-  NSString *title = options[@"title"] ?: @"New Window";
-  NSString *moduleName = options[@"moduleName"] ?: @"SettingsWindow";
-  CGFloat width = options[@"width"] ? [options[@"width"] floatValue] : 400;
-  CGFloat height = options[@"height"] ? [options[@"height"] floatValue] : 300;
+  if (![identifier isKindOfClass:[NSString class]] || identifier.length == 0) {
+    identifier = moduleName ?: @"default";
+  }
+
+  NSString *title = options[@"title"] ?: moduleName ?: @"New Window";
+
+  NSDictionary *windowStyle = options[@"windowStyle"];
+  NSNumber *maskNumber = windowStyle[@"mask"];
+  NSNumber *transparentTitlebar = windowStyle[@"titlebarAppearsTransparent"];
+
+  NSNumber *widthNumber = windowStyle[@"width"] ?: options[@"width"];
+  NSNumber *heightNumber = windowStyle[@"height"] ?: options[@"height"];
+  CGFloat width = widthNumber ? [widthNumber floatValue] : 400;
+  CGFloat height = heightNumber ? [heightNumber floatValue] : 300;
+
   NSNumber *originX = options[@"x"];
   NSNumber *originY = options[@"y"];
 
@@ -50,11 +86,14 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
     CGFloat newWidth = frame.size.width;
     CGFloat newHeight = frame.size.height;
 
-    if (options[@"width"]) {
+    BOOL hasWidth = widthNumber != nil;
+    BOOL hasHeight = heightNumber != nil;
+
+    if (hasWidth) {
       newWidth = width;
     }
 
-    if (options[@"height"]) {
+    if (hasHeight) {
       newHeight = height;
     }
 
@@ -69,16 +108,36 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
 
     NSRect newFrame = NSMakeRect(origin.x, origin.y, newWidth, newHeight);
     [existingWindow setFrame:newFrame display:YES animate:NO];
+
+    if (maskNumber) {
+      [existingWindow setStyleMask:[maskNumber unsignedIntegerValue]];
+    }
+
+    if (transparentTitlebar != nil) {
+      [existingWindow setTitlebarAppearsTransparent:[transparentTitlebar boolValue]];
+    }
+
+    existingWindow.title = title;
+
+    existingWindow.delegate = self;
+
+    RCTRootView *existingRootView = self.rootViews[identifier];
+    NSDictionary *initialProps = [self initialPropsFromOptions:options];
+    if (existingRootView && initialProps) {
+      existingRootView.appProperties = initialProps;
+    }
+
     [existingWindow makeKeyAndOrderFront:nil];
     resolve(@{@"success": @YES});
     return;
   }
 
-  NSRect frame = NSMakeRect(0, 0, width, height);
-  NSUInteger styleMask = NSWindowStyleMaskTitled |
+  NSUInteger styleMask = maskNumber ? [maskNumber unsignedIntegerValue] : (NSWindowStyleMaskTitled |
                         NSWindowStyleMaskClosable |
                         NSWindowStyleMaskResizable |
-                        NSWindowStyleMaskMiniaturizable;
+                        NSWindowStyleMaskMiniaturizable);
+
+  NSRect frame = NSMakeRect(0, 0, width, height);
 
   NSWindow *window = [[NSWindow alloc] initWithContentRect:frame
                                                styleMask:styleMask
@@ -87,6 +146,9 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
 
   [window setReleasedWhenClosed:NO];
   [window setTitle:title];
+  if (transparentTitlebar != nil) {
+    [window setTitlebarAppearsTransparent:[transparentTitlebar boolValue]];
+  }
 
   if (originX || originY) {
     NSRect currentFrame = [window frame];
@@ -108,11 +170,7 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
     return;
   }
 
-  NSDictionary *initialProps = nil;
-  id initialPropsCandidate = options[@"initialProperties"];
-  if ([initialPropsCandidate isKindOfClass:[NSDictionary class]]) {
-    initialProps = initialPropsCandidate;
-  }
+  NSDictionary *initialProps = [self initialPropsFromOptions:options];
 
   RCTRootView *rootView = [[RCTRootView alloc] initWithBridge:bridge
                                                    moduleName:moduleName
@@ -292,10 +350,40 @@ RCT_EXPORT_METHOD(setMainWindowFrame:(NSDictionary *)frameDict
 }
 
 - (void)handleWindowClosedForIdentifier:(NSString *)identifier {
+  NSString *moduleName = @"";
+  RCTRootView *rootView = self.rootViews[identifier];
+  if (rootView && [rootView.moduleName length] > 0) {
+    moduleName = rootView.moduleName;
+  }
+
   [self.windows removeObjectForKey:identifier];
   [self.rootViews removeObjectForKey:identifier];
 
-  [self sendEventWithName:@"onWindowClosed" body:@{ @"identifier": identifier ?: @"" }];
+  [self sendEventWithName:@"onWindowClosed" body:@{ @"identifier": identifier ?: @"", @"moduleName": moduleName ?: @"" }];
+}
+
+- (nullable NSDictionary *)initialPropsFromOptions:(NSDictionary *)options {
+  id initialPropsCandidate = options[@"initialProperties"];
+  if ([initialPropsCandidate isKindOfClass:[NSDictionary class]]) {
+    return initialPropsCandidate;
+  }
+  return nil;
+}
+
+- (void)windowDidBecomeKey:(NSNotification *)notification {
+  NSWindow *keyWindow = notification.object;
+  NSString *identifier = [self identifierForWindow:keyWindow];
+  if (!identifier) {
+    return;
+  }
+
+  NSString *moduleName = @"";
+  RCTRootView *rootView = self.rootViews[identifier];
+  if (rootView && [rootView.moduleName length] > 0) {
+    moduleName = rootView.moduleName;
+  }
+
+  [self sendEventWithName:@"onWindowFocused" body:@{ @"identifier": identifier, @"moduleName": moduleName ?: @"" }];
 }
 
 
