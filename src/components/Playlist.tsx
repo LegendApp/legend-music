@@ -9,6 +9,7 @@ import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import { localMusicState$ } from "@/systems/LocalMusicState";
 import { settings$ } from "@/systems/Settings";
+import { state$ } from "@/systems/State";
 import { perfCount, perfLog } from "@/utils/perfLogger";
 import { DragDropView } from "@/native-modules/DragDropView";
 
@@ -132,8 +133,8 @@ export function Playlist() {
     // Keyboard navigation
     useEffect(() => {
         const handleKeyDown = (event: { keyCode: number; modifiers: number }) => {
-            // Only handle keyboard events when there are tracks in the queue and search dropdown is not open
-            if (playlist.length === 0 || playlistNavigationState$.isSearchDropdownOpen.get()) {
+            // Only handle keyboard events when there are tracks in the queue and no dropdowns are open
+            if (playlist.length === 0 || playlistNavigationState$.isSearchDropdownOpen.get() || state$.isDropdownOpen.get()) {
                 return false;
             }
 
