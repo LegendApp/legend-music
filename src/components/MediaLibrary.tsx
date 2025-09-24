@@ -1,12 +1,12 @@
 import { LegendList } from "@legendapp/list";
 import { use$ } from "@legendapp/state/react";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { StyleSheet, Text, View, type GestureResponderEvent } from "react-native";
 import { Button } from "@/components/Button";
 import { localAudioControls } from "@/components/LocalAudioPlayer";
 import { Panel, PanelGroup, ResizeHandle } from "@/components/ResizablePanels";
 import { type TrackData, TrackItem } from "@/components/TrackItem";
-import { TextInputSearch } from "@/components/TextInputSearch";
+import { TextInputSearch, type TextInputSearchRef } from "@/components/TextInputSearch";
 import { useListItemStyles } from "@/hooks/useListItemStyles";
 import { Icon } from "@/systems/Icon";
 import type { LibraryItem, LibraryTrack } from "@/systems/LibraryState";
@@ -18,14 +18,36 @@ import { perfCount, perfLog } from "@/utils/perfLogger";
 export function MediaLibraryView() {
     perfCount("MediaLibraryView.render");
     const searchQuery = use$(libraryUI$.searchQuery);
+    const searchInputRef = useRef<TextInputSearchRef>(null);
+
+    const handleClearSearch = useCallback(() => {
+        libraryUI$.searchQuery.set("");
+        searchInputRef.current?.focus();
+    }, []);
+
     return (
         <View className="flex-1 bg-black/5 border-l border-white/10" style={styles.window}>
             <View style={styles.searchContainer}>
-                <TextInputSearch
-                    value$={libraryUI$.searchQuery}
-                    placeholder="Search library"
-                    style={styles.searchInput}
-                />
+                <View style={styles.searchInputWrapper}>
+                    <TextInputSearch
+                        ref={searchInputRef}
+                        value$={libraryUI$.searchQuery}
+                        placeholder="Search library"
+                        style={styles.searchInput}
+                    />
+                    {searchQuery ? (
+                        <View style={styles.searchClearButtonContainer}>
+                            <Button
+                                icon="xmark.circle.fill"
+                                variant="icon"
+                                size="small"
+                                accessibilityLabel="Clear search"
+                                onPress={handleClearSearch}
+                                className="bg-transparent hover:bg-white/10"
+                            />
+                        </View>
+                    ) : null}
+                </View>
             </View>
             <View className="flex-1">
                 <PanelGroup direction="horizontal">
@@ -448,11 +470,23 @@ const styles = StyleSheet.create({
         paddingTop: 12,
         paddingBottom: 8,
     },
+    searchInputWrapper: {
+        position: "relative",
+        justifyContent: "center",
+    },
     searchInput: {
         borderRadius: 8,
         backgroundColor: "rgba(255,255,255,0.1)",
         paddingVertical: 8,
         paddingHorizontal: 12,
+        paddingRight: 40,
+    },
+    searchClearButtonContainer: {
+        position: "absolute",
+        right: 8,
+        top: 0,
+        bottom: 0,
+        justifyContent: "center",
     },
     statusBar: {
         borderTopWidth: StyleSheet.hairlineWidth,
