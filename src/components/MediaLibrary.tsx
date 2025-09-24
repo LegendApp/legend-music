@@ -3,7 +3,6 @@ import { use$ } from "@legendapp/state/react";
 import { useCallback, useEffect, useMemo } from "react";
 import { StyleSheet, Text, View, type GestureResponderEvent } from "react-native";
 import { Button } from "@/components/Button";
-import { DropdownMenu } from "@/components/DropdownMenu";
 import { localAudioControls } from "@/components/LocalAudioPlayer";
 import { Panel, PanelGroup, ResizeHandle } from "@/components/ResizablePanels";
 import { type TrackData, TrackItem } from "@/components/TrackItem";
@@ -258,35 +257,15 @@ function TrackList() {
 
     const renderTrack = useCallback(
         ({ item, index }: { item: TrackData; index: number }) => (
-            <View className="flex-row items-center">
-                <View className="flex-1">
-                    <TrackItem
-                        track={item}
-                        index={index}
-                        onTrackClick={handleTrackClick}
-                        showIndex={false}
-                        showAlbumArt={false}
-                    />
-                </View>
-                <DropdownMenu.Root>
-                    <DropdownMenu.Trigger asChild>
-                        <Button icon="ellipsis" variant="icon" size="small" className="ml-1 hover:bg-white/10" />
-                    </DropdownMenu.Trigger>
-                    <DropdownMenu.Content
-                        scrolls={false}
-                        className="bg-background-tertiary border border-border-primary rounded-md min-w-[160px]"
-                    >
-                        <DropdownMenu.Item onSelect={() => handleTrackAction(index, "enqueue")}>
-                            <DropdownMenu.ItemTitle>Enqueue</DropdownMenu.ItemTitle>
-                        </DropdownMenu.Item>
-                        <DropdownMenu.Item onSelect={() => handleTrackAction(index, "play-next")}>
-                            <DropdownMenu.ItemTitle>Play Next</DropdownMenu.ItemTitle>
-                        </DropdownMenu.Item>
-                    </DropdownMenu.Content>
-                </DropdownMenu.Root>
-            </View>
+            <TrackItem
+                track={item}
+                index={index}
+                onTrackClick={handleTrackClick}
+                showIndex={false}
+                showAlbumArt={false}
+            />
         ),
-        [handleTrackAction],
+        [handleTrackClick],
     );
 
     if (!selectedItem) {
