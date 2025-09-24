@@ -6,7 +6,7 @@ import { createJSONManager } from "@/utils/JSONManager";
 // Default hotkey settings
 const DEFAULT_HOTKEYS = {
     Search: KeyCodes.KEY_J,
-    ToggleLibrary: `${KeyCodes.MODIFIER_COMMAND}+${KeyCodes.KEY_L}`,
+    ToggleLibrary: KeyCodes.KEY_L,
     PlayPause: KeyCodes.KEY_MEDIA_PLAY_PAUSE,
     PlayPauseSpace: KeyCodes.KEY_SPACE,
     NextTrack: KeyCodes.KEY_MEDIA_NEXT,

@@ -22,7 +22,8 @@ const windowsConfig = {
         options: {
             title: "Media Library",
             windowStyle: {
-                width: 420,
+                width: 600,
+                height: 600,
                 mask: [WindowStyleMask.Titled, WindowStyleMask.Closable, WindowStyleMask.Resizable],
             },
         },

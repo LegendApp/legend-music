@@ -19,6 +19,7 @@
 - Write modern TypeScript, prefer functional React components, and reuse hooks from `src/hooks/` where possible.
 - Import via path aliases defined in `tsconfig.json` (`@/` for `src`, `@legend-kit/` for design kit utilities).
 - Tailwind-style `className` usage should reference tokens from `global.css` and stay aligned with palettes in `src/theme/`.
+- StyleSheet shoult not be used, use Tailwind-style `className` instead.
 
 ## Testing Guidelines
 - Jest and `react-test-renderer` power unit tests; colocate new specs under `__tests__/` or near the code using the `.test.tsx` suffix.
@@ -29,3 +30,8 @@
 - Follow the existing history: concise, imperative subjects without trailing punctuation (e.g., `Improve playback area`).
 - Group related work per commit, mention issue IDs when relevant, and document native steps (`bundle exec pod install`) in the body.
 - PRs should describe intent, list validation commands, and include screenshots or screen recordings for UI changes while calling out any macOS-specific setup.
+
+## Task Completion Guidelines
+- When asked to do multiple tasks in a plan file, when finished with each task:
+    1. Mark the task complete in the plan file and save it
+    2. Create a commit with a summarized description of the task, not including the [] prefix.
