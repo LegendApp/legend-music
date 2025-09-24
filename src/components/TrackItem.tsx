@@ -20,6 +20,7 @@ export interface TrackData {
     isPlaying?: boolean;
     isSeparator?: boolean;
     fromSuggestions?: boolean;
+    queueEntryId?: string;
 }
 
 interface TrackItemProps {
@@ -36,9 +37,24 @@ export const TrackItem = ({ track, index, onTrackClick, showIndex = true, showAl
     const playlistStyle = use$(settings$.general.playlistStyle);
     const listItemStyles = useListItemStyles();
 
+    const trackIsPlayingFlag = track.isPlaying;
+    const trackQueueEntryId = track.queueEntryId;
     const isPlaying = useSelector(() => {
+        if (typeof trackIsPlayingFlag === "boolean") {
+            return trackIsPlayingFlag;
+        }
+
         const currentTrack = localPlayerState$.currentTrack.get();
-        return currentTrack === track || currentTrack?.id === track.id;
+        if (!currentTrack) {
+            return false;
+        }
+
+        const currentQueueEntryId = (currentTrack as { queueEntryId?: string }).queueEntryId;
+        if (trackQueueEntryId && currentQueueEntryId) {
+            return currentQueueEntryId === trackQueueEntryId;
+        }
+
+        return currentTrack.id === track.id;
     });
 
     // Handle separator items
