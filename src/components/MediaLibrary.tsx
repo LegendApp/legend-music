@@ -6,6 +6,7 @@ import { Button } from "@/components/Button";
 import { localAudioControls } from "@/components/LocalAudioPlayer";
 import { Panel, PanelGroup, ResizeHandle } from "@/components/ResizablePanels";
 import { type TrackData, TrackItem } from "@/components/TrackItem";
+import { TextInputSearch } from "@/components/TextInputSearch";
 import { useListItemStyles } from "@/hooks/useListItemStyles";
 import { Icon } from "@/systems/Icon";
 import type { LibraryItem, LibraryTrack } from "@/systems/LibraryState";
@@ -191,12 +192,14 @@ function LibraryTree() {
 function TrackList() {
     perfCount("MediaLibrary.TrackList.render");
     const selectedItem = use$(libraryUI$.selectedItem);
+    const searchQuery = use$(libraryUI$.searchQuery);
     const allTracks = use$(library$.tracks);
 
     const { trackItems, sourceTracks } = useMemo(() => {
         perfLog("MediaLibrary.TrackList.useMemo", {
             selectedItem,
             allTracks: allTracks.length,
+            searchQuery,
         });
         if (!selectedItem) {
             return { trackItems: [] as TrackData[], sourceTracks: [] as LibraryTrack[] };
@@ -214,6 +217,16 @@ function TrackList() {
             filteredTracks = allTracks;
         }
 
+        const query = (searchQuery ?? "").trim().toLowerCase();
+        if (query) {
+            filteredTracks = filteredTracks.filter((track) => {
+                const title = track.title?.toLowerCase() ?? "";
+                const artist = track.artist?.toLowerCase() ?? "";
+                const album = track.album?.toLowerCase() ?? "";
+                return title.includes(query) || artist.includes(query) || album.includes(query);
+            });
+        }
+
         return {
             sourceTracks: filteredTracks,
             trackItems: filteredTracks.map((track) => ({
@@ -225,7 +238,7 @@ function TrackList() {
                 thumbnail: track.thumbnail,
             })),
         };
-    }, [allTracks, selectedItem]);
+    }, [allTracks, searchQuery, selectedItem]);
 
     const tracks = trackItems;
 
@@ -283,6 +296,13 @@ function TrackList() {
 
     return (
         <View style={styles.trackListContainer}>
+            <View style={styles.searchContainer}>
+                <TextInputSearch
+                    value$={libraryUI$.searchQuery}
+                    placeholder="Search tracks"
+                    style={styles.searchInput}
+                />
+            </View>
             <LegendList
                 data={tracks}
                 keyExtractor={keyExtractor}
@@ -396,6 +416,17 @@ const styles = StyleSheet.create({
         color: "rgba(255,255,255,0.6)",
         fontSize: 14,
         textAlign: "left",
+    },
+    searchContainer: {
+        paddingHorizontal: 10,
+        paddingTop: 10,
+        paddingBottom: 6,
+    },
+    searchInput: {
+        borderRadius: 8,
+        backgroundColor: "rgba(255,255,255,0.08)",
+        paddingVertical: 6,
+        paddingHorizontal: 10,
     },
     statusBar: {
         borderTopWidth: StyleSheet.hairlineWidth,
