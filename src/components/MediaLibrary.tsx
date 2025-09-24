@@ -17,8 +17,16 @@ import { perfCount, perfLog } from "@/utils/perfLogger";
 
 export function MediaLibraryView() {
     perfCount("MediaLibraryView.render");
+    const searchQuery = use$(libraryUI$.searchQuery);
     return (
         <View className="flex-1 bg-black/5 border-l border-white/10" style={styles.window}>
+            <View style={styles.searchContainer}>
+                <TextInputSearch
+                    value$={libraryUI$.searchQuery}
+                    placeholder="Search library"
+                    style={styles.searchInput}
+                />
+            </View>
             <View className="flex-1">
                 <PanelGroup direction="horizontal">
                     <Panel
@@ -29,13 +37,13 @@ export function MediaLibraryView() {
                         order={0}
                         className="border-r border-white/10"
                     >
-                        <LibraryTree />
+                        <LibraryTree searchQuery={searchQuery} />
                     </Panel>
 
                     <ResizeHandle panelId="sidebar" />
 
                     <Panel id="tracklist" minSize={80} defaultSize={200} order={1} flex>
-                        <TrackList />
+                        <TrackList searchQuery={searchQuery} />
                     </Panel>
                 </PanelGroup>
             </View>
@@ -46,7 +54,11 @@ export function MediaLibraryView() {
     );
 }
 
-function LibraryTree() {
+interface LibraryTreeProps {
+    searchQuery: string;
+}
+
+function LibraryTree({ searchQuery }: LibraryTreeProps) {
     perfCount("MediaLibrary.LibraryTree.render");
     const selectedItem = use$(libraryUI$.selectedItem);
     const selectedCollection = use$(libraryUI$.selectedCollection);
@@ -70,16 +82,28 @@ function LibraryTree() {
         [tracks.length],
     );
 
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
     const collectionItems = useMemo(() => {
+        let items: LibraryItem[];
         switch (selectedCollection) {
             case "albums":
-                return albums;
+                items = albums;
+                break;
             case "playlists":
-                return [allSongsItem, ...playlists];
+                items = [allSongsItem, ...playlists];
+                break;
             default:
-                return artists;
+                items = artists;
+                break;
         }
-    }, [albums, allSongsItem, artists, playlists, selectedCollection]);
+
+        if (!normalizedQuery) {
+            return items;
+        }
+
+        return items.filter((item) => item.name.toLowerCase().includes(normalizedQuery));
+    }, [albums, allSongsItem, artists, normalizedQuery, playlists, selectedCollection]);
 
     useEffect(() => {
         const collectionTypeMap: Record<string, LibraryItem["type"][]> = {
@@ -88,11 +112,14 @@ function LibraryTree() {
             playlists: ["playlist"],
         };
         const allowedTypes = collectionTypeMap[selectedCollection] ?? ["artist"];
+        if (normalizedQuery) {
+            return;
+        }
         if (!selectedItem || !allowedTypes.includes(selectedItem.type)) {
             const nextSelection = collectionItems[0] ?? null;
             libraryUI$.selectedItem.set(nextSelection);
         }
-    }, [collectionItems, selectedCollection, selectedItem]);
+    }, [collectionItems, normalizedQuery, selectedCollection, selectedItem]);
 
     const handleCollectionChange = useCallback((collection: "artists" | "albums" | "playlists") => {
         libraryUI$.selectedCollection.set(collection);
@@ -189,10 +216,13 @@ function LibraryTree() {
     );
 }
 
-function TrackList() {
+interface TrackListProps {
+    searchQuery: string;
+}
+
+function TrackList({ searchQuery }: TrackListProps) {
     perfCount("MediaLibrary.TrackList.render");
     const selectedItem = use$(libraryUI$.selectedItem);
-    const searchQuery = use$(libraryUI$.searchQuery);
     const allTracks = use$(library$.tracks);
 
     const { trackItems, sourceTracks } = useMemo(() => {
@@ -201,29 +231,32 @@ function TrackList() {
             allTracks: allTracks.length,
             searchQuery,
         });
-        if (!selectedItem) {
+        const normalizedQuery = (searchQuery ?? "").trim().toLowerCase();
+
+        if (!selectedItem && !normalizedQuery) {
             return { trackItems: [] as TrackData[], sourceTracks: [] as LibraryTrack[] };
         }
 
         let filteredTracks: LibraryTrack[];
-        if (selectedItem.type === "artist") {
+        if (normalizedQuery) {
+            filteredTracks = allTracks;
+        } else if (selectedItem?.type === "artist") {
             filteredTracks = allTracks.filter((track) => track.artist === selectedItem.name);
-        } else if (selectedItem.type === "album") {
+        } else if (selectedItem?.type === "album") {
             const albumName = selectedItem.album ?? selectedItem.name;
             filteredTracks = allTracks.filter((track) => (track.album ?? "Unknown Album") === albumName);
-        } else if (selectedItem.type === "playlist") {
+        } else if (selectedItem?.type === "playlist") {
             filteredTracks = allTracks;
         } else {
             filteredTracks = allTracks;
         }
 
-        const query = (searchQuery ?? "").trim().toLowerCase();
-        if (query) {
+        if (normalizedQuery) {
             filteredTracks = filteredTracks.filter((track) => {
                 const title = track.title?.toLowerCase() ?? "";
                 const artist = track.artist?.toLowerCase() ?? "";
                 const album = track.album?.toLowerCase() ?? "";
-                return title.includes(query) || artist.includes(query) || album.includes(query);
+                return title.includes(normalizedQuery) || artist.includes(normalizedQuery) || album.includes(normalizedQuery);
             });
         }
 
@@ -296,13 +329,6 @@ function TrackList() {
 
     return (
         <View style={styles.trackListContainer}>
-            <View style={styles.searchContainer}>
-                <TextInputSearch
-                    value$={libraryUI$.searchQuery}
-                    placeholder="Search tracks"
-                    style={styles.searchInput}
-                />
-            </View>
             <LegendList
                 data={tracks}
                 keyExtractor={keyExtractor}
@@ -418,15 +444,15 @@ const styles = StyleSheet.create({
         textAlign: "left",
     },
     searchContainer: {
-        paddingHorizontal: 10,
-        paddingTop: 10,
-        paddingBottom: 6,
+        paddingHorizontal: 12,
+        paddingTop: 12,
+        paddingBottom: 8,
     },
     searchInput: {
         borderRadius: 8,
-        backgroundColor: "rgba(255,255,255,0.08)",
-        paddingVertical: 6,
-        paddingHorizontal: 10,
+        backgroundColor: "rgba(255,255,255,0.1)",
+        paddingVertical: 8,
+        paddingHorizontal: 12,
     },
     statusBar: {
         borderTopWidth: StyleSheet.hairlineWidth,
