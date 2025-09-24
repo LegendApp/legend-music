@@ -18,24 +18,29 @@ export function MediaLibraryView() {
     perfCount("MediaLibraryView.render");
     return (
         <View className="flex-1 bg-black/5 border-l border-white/10" style={styles.window}>
-            <PanelGroup direction="horizontal">
-                <Panel
-                    id="sidebar"
-                    minSize={80}
-                    maxSize={300}
-                    defaultSize={200}
-                    order={0}
-                    className="border-r border-white/10"
-                >
-                    <LibraryTree />
-                </Panel>
+            <View className="flex-1">
+                <PanelGroup direction="horizontal">
+                    <Panel
+                        id="sidebar"
+                        minSize={80}
+                        maxSize={300}
+                        defaultSize={200}
+                        order={0}
+                        className="border-r border-white/10"
+                    >
+                        <LibraryTree />
+                    </Panel>
 
-                <ResizeHandle panelId="sidebar" />
+                    <ResizeHandle panelId="sidebar" />
 
-                <Panel id="tracklist" minSize={80} defaultSize={200} order={1} flex>
-                    <TrackList />
-                </Panel>
-            </PanelGroup>
+                    <Panel id="tracklist" minSize={80} defaultSize={200} order={1} flex>
+                        <TrackList />
+                    </Panel>
+                </PanelGroup>
+            </View>
+            <View style={styles.statusBar}>
+                <Text style={styles.statusText}>Shift click to play next</Text>
+            </View>
         </View>
     );
 }
@@ -391,5 +396,16 @@ const styles = StyleSheet.create({
         color: "rgba(255,255,255,0.6)",
         fontSize: 14,
         textAlign: "left",
+    },
+    statusBar: {
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: "rgba(255,255,255,0.15)",
+        backgroundColor: "rgba(0,0,0,0.2)",
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+    },
+    statusText: {
+        fontSize: 12,
+        color: "rgba(255,255,255,0.55)",
     },
 });
