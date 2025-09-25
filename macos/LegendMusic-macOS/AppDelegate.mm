@@ -14,6 +14,11 @@
 @end
 
 
+@interface AppDelegate ()
+@property (nonatomic, assign) BOOL mainWindowFrameAdjusted;
+@end
+
+
 @implementation AppDelegate
 
 - (void)applicationDidFinishLaunching:(NSNotification *)notification
@@ -188,6 +193,17 @@
 - (void)windowDidBecomeKey:(NSNotification *)notification
 {
   NSWindow *window = notification.object;
+
+  if (!self.mainWindowFrameAdjusted && window == self.window) {
+    CGFloat titleBarHeight = NSHeight(window.frame) - NSHeight(window.contentLayoutRect);
+    if (titleBarHeight > 0.0) {
+      NSRect frame = window.frame;
+      frame.size.height += titleBarHeight;
+      frame.origin.y -= titleBarHeight;
+      [window setFrame:frame display:NO animate:NO];
+    }
+    self.mainWindowFrameAdjusted = YES;
+  }
 
   // Autosave name should already be set in loadReactNativeWindow
 
