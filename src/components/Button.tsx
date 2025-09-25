@@ -1,10 +1,13 @@
-import type { PropsWithChildren } from "react";
+import { type PropsWithChildren, useRef } from "react";
 import { type GestureResponderEvent, Pressable, type PressableProps } from "react-native";
-
+import type { NativeMouseEvent } from "react-native-macos";
 import { Icon } from "@/systems/Icon";
 import { startNavMeasurement } from "@/systems/NavTime";
 import type { SFSymbols } from "@/types/SFSymbols";
 import { cn } from "@/utils/cn";
+
+const DOUBLE_CLICK_DURATION = 300;
+const DOUBLE_CLICK_DISTANCE = 4;
 
 export interface ButtonProps extends PressableProps {
     className?: string;
@@ -14,6 +17,7 @@ export interface ButtonProps extends PressableProps {
     iconSize?: number;
     onMouseDown?: (event: GestureResponderEvent) => void;
     onMouseUp?: (event: GestureResponderEvent) => void;
+    onDoubleClick?: (event: GestureResponderEvent) => void;
 }
 
 export function Button({
@@ -26,14 +30,33 @@ export function Button({
     iconSize: iconSizeProp,
     onMouseDown,
     onMouseUp,
+    onDoubleClick,
     onPressIn,
     onPressOut,
     ...props
 }: PropsWithChildren<ButtonProps>) {
-    const handlePress = (e: any) => {
-        // Only handle left mouse button clicks (button 0)
-        // For React Native on macOS, check if the native event has button info
-        if (e?.nativeEvent?.button !== undefined && e.nativeEvent.button !== 0) {
+    const lastPressRef = useRef<{ time: number; x: number; y: number } | null>(null);
+    const handlePress = (event: GestureResponderEvent) => {
+        const nativeEvent = event.nativeEvent as unknown as NativeMouseEvent;
+        if (nativeEvent?.button !== undefined && nativeEvent.button !== 0) {
+            // Only handle left mouse button clicks (button 0)
+            // For React Native on macOS, check if the native event has button info
+            return;
+        }
+
+        const now = Date.now();
+        const currentX = nativeEvent?.pageX ?? 0;
+        const currentY = nativeEvent?.pageY ?? 0;
+        const previous = lastPressRef.current;
+        const isDoubleClick =
+            previous !== null &&
+            now - previous.time <= DOUBLE_CLICK_DURATION &&
+            Math.hypot(previous.x - currentX, previous.y - currentY) <= DOUBLE_CLICK_DISTANCE;
+
+        lastPressRef.current = { time: now, x: currentX, y: currentY };
+
+        if (isDoubleClick && onDoubleClick) {
+            onDoubleClick(event);
             return;
         }
 
@@ -41,7 +64,7 @@ export function Button({
         startNavMeasurement();
 
         // Call the original onPress handler if it exists
-        onPress?.(e);
+        onPress?.(event);
     };
 
     const handlePressIn = (event: GestureResponderEvent) => {

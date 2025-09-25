@@ -236,7 +236,7 @@ export function Playlist() {
                             <TrackItem
                                 track={track}
                                 index={index}
-                                onTrackClick={handleTrackClick}
+                                onDoubleClick={handleTrackClick}
                                 isSelected={index === selectedIndex}
                             />
                         )}

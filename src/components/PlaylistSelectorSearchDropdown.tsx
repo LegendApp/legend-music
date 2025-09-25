@@ -272,7 +272,7 @@ export const PlaylistSelectorSearchDropdown = forwardRef<DropdownMenuRootRef, Pl
                                                             <TrackItem
                                                                 track={result.item}
                                                                 index={index}
-                                                                onTrackClick={(_, event) => {
+                                                                onClick={(_, event) => {
                                                                     const action = getActionFromEvent(event);
                                                                     handleSearchResultAction(result, action);
                                                                 }}

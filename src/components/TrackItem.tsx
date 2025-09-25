@@ -1,6 +1,6 @@
 import { use$, useSelector } from "@legendapp/state/react";
 import { type GestureResponderEvent, Text, View } from "react-native";
-
+import type { NativeMouseEvent } from "react-native-macos";
 import { AlbumArt } from "@/components/AlbumArt";
 import { Button } from "@/components/Button";
 import { localPlayerState$ } from "@/components/LocalAudioPlayer";
@@ -26,7 +26,8 @@ export interface TrackData {
 interface TrackItemProps {
     track: TrackData;
     index: number;
-    onTrackClick: (index: number, event?: GestureResponderEvent) => void;
+    onClick?: (index: number, event?: GestureResponderEvent) => void;
+    onDoubleClick?: (index: number, event?: GestureResponderEvent) => void;
     showIndex?: boolean;
     showAlbumArt?: boolean;
     isSelected?: boolean;
@@ -36,7 +37,8 @@ interface TrackItemProps {
 export const TrackItem = ({
     track,
     index,
-    onTrackClick,
+    onClick,
+    onDoubleClick,
     showIndex = true,
     showAlbumArt = true,
     isSelected = false,
@@ -84,7 +86,9 @@ export const TrackItem = ({
             return;
         }
 
-        const button = event?.nativeEvent?.button;
+        const nativeEvent = event.nativeEvent as unknown as NativeMouseEvent;
+
+        const button = nativeEvent?.button;
         const isSecondaryClick = typeof button === "number" ? button !== 0 : false;
 
         const nativeAny = event.nativeEvent as unknown as { ctrlKey?: boolean; type?: string };
@@ -107,7 +111,8 @@ export const TrackItem = ({
         return (
             <Button
                 className={rowClassName}
-                onPress={(event) => onTrackClick(index, event)}
+                onPress={onClick ? (event) => onClick(index, event) : undefined}
+                onDoubleClick={onDoubleClick ? (event) => onDoubleClick(index, event) : undefined}
                 onMouseDown={handleMouseDown}
             >
                 {showIndex && (
@@ -142,8 +147,14 @@ export const TrackItem = ({
     const indexTone = track.fromSuggestions ? listItemStyles.text.muted : listItemStyles.text.secondary;
     const titleTone = track.fromSuggestions ? listItemStyles.text.secondary : listItemStyles.text.primary;
     const subtitleTone = track.fromSuggestions ? listItemStyles.text.muted : listItemStyles.text.secondary;
+
     return (
-        <Button className={rowClassName} onPress={(event) => onTrackClick(index, event)} onMouseDown={handleMouseDown}>
+        <Button
+            className={rowClassName}
+            onPress={onClick ? (event) => onClick(index, event) : undefined}
+            onDoubleClick={onDoubleClick ? (event) => onDoubleClick(index, event) : undefined}
+            onMouseDown={handleMouseDown}
+        >
             {showIndex && (
                 <Text className={cn("text-base w-8", indexTone)}>
                     {(track.index ?? index) >= 0 ? (track.index ?? index) + 1 : ""}

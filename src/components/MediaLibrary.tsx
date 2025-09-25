@@ -441,7 +441,7 @@ function TrackList({ searchQuery }: TrackListProps) {
             <TrackItem
                 track={item}
                 index={index}
-                onTrackClick={handleTrackClick}
+                onClick={handleTrackClick}
                 onTrackContextMenu={handleTrackContextMenu}
                 showIndex={false}
                 showAlbumArt={false}
