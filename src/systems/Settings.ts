@@ -10,6 +10,7 @@ export interface AppSettings {
     };
     general: {
         playlistStyle: PlaylistStyle;
+        showHints: boolean;
     };
     registration: {
         isRegistered: boolean;
@@ -31,6 +32,7 @@ export const settings$ = createJSONManager<AppSettings>({
         // General settings
         general: {
             playlistStyle: "comfortable",
+            showHints: true,
         },
         // Registration settings
         registration: {

@@ -11,6 +11,7 @@ import { useListItemStyles } from "@/hooks/useListItemStyles";
 import { Icon } from "@/systems/Icon";
 import type { LibraryItem, LibraryTrack } from "@/systems/LibraryState";
 import { library$, libraryUI$ } from "@/systems/LibraryState";
+import { settings$ } from "@/systems/Settings";
 import type { SFSymbols } from "@/types/SFSymbols";
 import { cn } from "@/utils/cn";
 import { perfCount, perfLog } from "@/utils/perfLogger";
@@ -19,6 +20,7 @@ export function MediaLibraryView() {
     perfCount("MediaLibraryView.render");
     const searchQuery = use$(libraryUI$.searchQuery);
     const searchInputRef = useRef<TextInputSearchRef>(null);
+    const showHints = use$(settings$.general.showHints);
 
     const handleClearSearch = useCallback(() => {
         libraryUI$.searchQuery.set("");
@@ -71,9 +73,11 @@ export function MediaLibraryView() {
                     </Panel>
                 </PanelGroup>
             </View>
-            <View style={styles.statusBar}>
-                <Text style={styles.statusText}>Shift click to play next</Text>
-            </View>
+            {showHints ? (
+                <View style={styles.statusBar}>
+                    <Text style={styles.statusText}>Shift click to play next</Text>
+                </View>
+            ) : null}
         </View>
     );
 }
