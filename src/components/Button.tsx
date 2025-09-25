@@ -1,5 +1,5 @@
 import type { PropsWithChildren } from "react";
-import { Pressable, type PressableProps } from "react-native";
+import { type GestureResponderEvent, Pressable, type PressableProps } from "react-native";
 
 import { Icon } from "@/systems/Icon";
 import { startNavMeasurement } from "@/systems/NavTime";
@@ -12,8 +12,8 @@ export interface ButtonProps extends PressableProps {
     variant?: "icon" | "icon-bg" | "primary" | "secondary" | "accent" | "destructive" | "inverse";
     size?: "small" | "medium" | "large";
     iconSize?: number;
-    onMouseDown?: () => void;
-    onMouseUp?: () => void;
+    onMouseDown?: (event: GestureResponderEvent) => void;
+    onMouseUp?: (event: GestureResponderEvent) => void;
 }
 
 export function Button({
@@ -26,6 +26,8 @@ export function Button({
     iconSize: iconSizeProp,
     onMouseDown,
     onMouseUp,
+    onPressIn,
+    onPressOut,
     ...props
 }: PropsWithChildren<ButtonProps>) {
     const handlePress = (e: any) => {
@@ -40,6 +42,16 @@ export function Button({
 
         // Call the original onPress handler if it exists
         onPress?.(e);
+    };
+
+    const handlePressIn = (event: GestureResponderEvent) => {
+        onMouseDown?.(event);
+        onPressIn?.(event);
+    };
+
+    const handlePressOut = (event: GestureResponderEvent) => {
+        onMouseUp?.(event);
+        onPressOut?.(event);
     };
 
     const iconSize = iconSizeProp ?? (size === "small" ? 14 : size === "large" ? 24 : 18);
@@ -67,8 +79,8 @@ export function Button({
                 className,
             )}
             onPress={handlePress}
-            onPressIn={onMouseDown}
-            onPressOut={onMouseUp}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
         >
             {icon && <Icon name={icon} size={iconSize} />}
             {children}

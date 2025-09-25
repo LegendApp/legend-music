@@ -30,9 +30,18 @@ interface TrackItemProps {
     showIndex?: boolean;
     showAlbumArt?: boolean;
     isSelected?: boolean;
+    onTrackContextMenu?: (index: number, event: GestureResponderEvent) => void;
 }
 
-export const TrackItem = ({ track, index, onTrackClick, showIndex = true, showAlbumArt = true, isSelected = false }: TrackItemProps) => {
+export const TrackItem = ({
+    track,
+    index,
+    onTrackClick,
+    showIndex = true,
+    showAlbumArt = true,
+    isSelected = false,
+    onTrackContextMenu,
+}: TrackItemProps) => {
     perfCount("TrackItem.render");
     const playlistStyle = use$(settings$.general.playlistStyle);
     const listItemStyles = useListItemStyles();
@@ -70,6 +79,22 @@ export const TrackItem = ({ track, index, onTrackClick, showIndex = true, showAl
         );
     }
 
+    const handleMouseDown = (event: GestureResponderEvent) => {
+        if (!onTrackContextMenu) {
+            return;
+        }
+
+        const button = event?.nativeEvent?.button;
+        const isSecondaryClick = typeof button === "number" ? button !== 0 : false;
+
+        const nativeAny = event.nativeEvent as unknown as { ctrlKey?: boolean; type?: string };
+        const isCtrlClick = nativeAny?.ctrlKey === true;
+
+        if (isSecondaryClick || isCtrlClick || nativeAny?.type === "contextmenu") {
+            onTrackContextMenu(index, event);
+        }
+    };
+
     // Compact mode: single line format "${number}. ${artist} - ${song}"
     if (playlistStyle === "compact") {
         const rowClassName = cn(
@@ -80,7 +105,11 @@ export const TrackItem = ({ track, index, onTrackClick, showIndex = true, showAl
         const indexTone = track.fromSuggestions ? listItemStyles.text.muted : listItemStyles.text.secondary;
         const primaryTone = track.fromSuggestions ? listItemStyles.text.secondary : listItemStyles.text.primary;
         return (
-            <Button className={rowClassName} onPress={(event) => onTrackClick(index, event)}>
+            <Button
+                className={rowClassName}
+                onPress={(event) => onTrackClick(index, event)}
+                onMouseDown={handleMouseDown}
+            >
                 {showIndex && (
                     <View className="min-w-7">
                         <Text className={cn("tabular-nums text-xs", indexTone)}>
@@ -114,7 +143,7 @@ export const TrackItem = ({ track, index, onTrackClick, showIndex = true, showAl
     const titleTone = track.fromSuggestions ? listItemStyles.text.secondary : listItemStyles.text.primary;
     const subtitleTone = track.fromSuggestions ? listItemStyles.text.muted : listItemStyles.text.secondary;
     return (
-        <Button className={rowClassName} onPress={(event) => onTrackClick(index, event)}>
+        <Button className={rowClassName} onPress={(event) => onTrackClick(index, event)} onMouseDown={handleMouseDown}>
             {showIndex && (
                 <Text className={cn("text-base w-8", indexTone)}>
                     {(track.index ?? index) >= 0 ? (track.index ?? index) + 1 : ""}

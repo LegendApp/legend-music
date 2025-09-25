@@ -26,6 +26,7 @@
 		69D53FB82DC6653D0004AD94 /* SFSymbolBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 69D53FB52DC6653D0004AD94 /* SFSymbolBridge.m */; };
 		69EDA80D2DC90E2E00CCB7F7 /* WindowManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 69EDA80B2DC90E2E00CCB7F7 /* WindowManager.m */; };
 		69EDA8112DC910FA00CCB7F7 /* MenuEvents.m in Sources */ = {isa = PBXBuildFile; fileRef = 69EDA80F2DC910FA00CCB7F7 /* MenuEvents.m */; };
+		69EDB1012DCA10FA00CCB7F7 /* ContextMenuManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 69EDB0FF2DCA10FA00CCB7F7 /* ContextMenuManager.m */; };
 		A1B2C3D4E5F607801234567 /* AudioPlayer.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D6E5F607801234567 /* AudioPlayer.m */; };
 		BEF2DD5FAECBF3C737045F10 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E3812CA0776629430D89D5DA /* PrivacyInfo.xcprivacy */; };
 		DD7A5E943F53F74817727672 /* libPods-LegendMusic-macOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D923D34EAC788A5DE1EAAF00 /* libPods-LegendMusic-macOS.a */; };
@@ -62,6 +63,8 @@
 		69EDA80B2DC90E2E00CCB7F7 /* WindowManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = WindowManager.m; sourceTree = "<group>"; };
 		69EDA80E2DC910FA00CCB7F7 /* MenuEvents.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MenuEvents.h; sourceTree = "<group>"; };
 		69EDA80F2DC910FA00CCB7F7 /* MenuEvents.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MenuEvents.m; sourceTree = "<group>"; };
+		69EDB0FE2DCA10FA00CCB7F7 /* ContextMenuManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ContextMenuManager.h; sourceTree = "<group>"; };
+		69EDB0FF2DCA10FA00CCB7F7 /* ContextMenuManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ContextMenuManager.m; sourceTree = "<group>"; };
 		A1B2C3D5E5F607801234567 /* AudioPlayer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AudioPlayer.h; sourceTree = "<group>"; };
 		A1B2C3D6E5F607801234567 /* AudioPlayer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AudioPlayer.m; sourceTree = "<group>"; };
 		D923D34EAC788A5DE1EAAF00 /* libPods-LegendMusic-macOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-LegendMusic-macOS.a"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -122,6 +125,7 @@
 				514201532437B4B40078DB4F /* Main.storyboard */,
 				A1B2C3D7E5F607801234567 /* AudioPlayer */,
 				69EDA8102DC910FA00CCB7F7 /* MenuEvents */,
+				69EDB1022DCA10FA00CCB7F7 /* ContextMenuManager */,
 				69D53FB62DC6653D0004AD94 /* SFSymbol */,
 				696BC82B2E0EFA2500FFFA66 /* WindowControls */,
 				69EDA80C2DC90E2E00CCB7F7 /* WindowManager */,
@@ -209,6 +213,15 @@
 				69EDA80F2DC910FA00CCB7F7 /* MenuEvents.m */,
 			);
 			path = MenuEvents;
+			sourceTree = "<group>";
+		};
+		69EDB1022DCA10FA00CCB7F7 /* ContextMenuManager */ = {
+			isa = PBXGroup;
+			children = (
+				69EDB0FE2DCA10FA00CCB7F7 /* ContextMenuManager.h */,
+				69EDB0FF2DCA10FA00CCB7F7 /* ContextMenuManager.m */,
+			);
+			path = ContextMenuManager;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -510,6 +523,7 @@
 				69D53FB82DC6653D0004AD94 /* SFSymbolBridge.m in Sources */,
 				696BC82C2E0EFA2500FFFA66 /* WindowControls.swift in Sources */,
 				696BC82D2E0EFA2500FFFA66 /* WindowControlsBridge.m in Sources */,
+				69EDB1012DCA10FA00CCB7F7 /* ContextMenuManager.m in Sources */,
 				1F88FA766E6115322310F4C0 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

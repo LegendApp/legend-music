@@ -1,13 +1,14 @@
 import { LegendList } from "@legendapp/list";
 import { use$ } from "@legendapp/state/react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { StyleSheet, Text, View, type GestureResponderEvent } from "react-native";
+import { type GestureResponderEvent, StyleSheet, Text, View } from "react-native";
 import { Button } from "@/components/Button";
 import { localAudioControls } from "@/components/LocalAudioPlayer";
 import { Panel, PanelGroup, ResizeHandle } from "@/components/ResizablePanels";
-import { type TrackData, TrackItem } from "@/components/TrackItem";
 import { TextInputSearch, type TextInputSearchRef } from "@/components/TextInputSearch";
+import { type TrackData, TrackItem } from "@/components/TrackItem";
 import { useListItemStyles } from "@/hooks/useListItemStyles";
+import { type ContextMenuItem, showContextMenu } from "@/native-modules/ContextMenu";
 import { Icon } from "@/systems/Icon";
 import type { LibraryItem, LibraryTrack } from "@/systems/LibraryState";
 import { library$, libraryUI$ } from "@/systems/LibraryState";
@@ -15,6 +16,11 @@ import { settings$ } from "@/systems/Settings";
 import type { SFSymbols } from "@/types/SFSymbols";
 import { cn } from "@/utils/cn";
 import { perfCount, perfLog } from "@/utils/perfLogger";
+
+const MEDIA_LIBRARY_CONTEXT_MENU_ITEMS: ContextMenuItem[] = [
+    { id: "queue-add", title: "Add to Queue" },
+    { id: "queue-play-next", title: "Play Next" },
+];
 
 export function MediaLibraryView() {
     perfCount("MediaLibraryView.render");
@@ -290,7 +296,11 @@ function TrackList({ searchQuery }: TrackListProps) {
                 const title = track.title?.toLowerCase() ?? "";
                 const artist = track.artist?.toLowerCase() ?? "";
                 const album = track.album?.toLowerCase() ?? "";
-                return title.includes(normalizedQuery) || artist.includes(normalizedQuery) || album.includes(normalizedQuery);
+                return (
+                    title.includes(normalizedQuery) ||
+                    artist.includes(normalizedQuery) ||
+                    album.includes(normalizedQuery)
+                );
             });
         }
 
@@ -328,6 +338,26 @@ function TrackList({ searchQuery }: TrackListProps) {
         [sourceTracks],
     );
 
+    const handleTrackContextMenu = useCallback(
+        async (index: number, event: GestureResponderEvent) => {
+            const { nativeEvent } = event;
+            const x = (nativeEvent as any).pageX ?? nativeEvent.locationX ?? 0;
+            const y = (nativeEvent as any).pageY ?? nativeEvent.locationY ?? 0;
+
+            const selection = await showContextMenu(MEDIA_LIBRARY_CONTEXT_MENU_ITEMS, { x, y });
+            if (!selection) {
+                return;
+            }
+
+            if (selection === "queue-play-next") {
+                handleTrackAction(index, "play-next");
+            } else {
+                handleTrackAction(index, "enqueue");
+            }
+        },
+        [handleTrackAction],
+    );
+
     const getActionFromEvent = useCallback((event?: GestureResponderEvent): "enqueue" | "play-next" => {
         return event?.nativeEvent?.shiftKey ? "play-next" : "enqueue";
     }, []);
@@ -346,11 +376,12 @@ function TrackList({ searchQuery }: TrackListProps) {
                 track={item}
                 index={index}
                 onTrackClick={handleTrackClick}
+                onTrackContextMenu={handleTrackContextMenu}
                 showIndex={false}
                 showAlbumArt={false}
             />
         ),
-        [handleTrackClick],
+        [handleTrackClick, handleTrackContextMenu],
     );
 
     if (!selectedItem) {
