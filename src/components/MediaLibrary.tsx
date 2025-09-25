@@ -116,6 +116,69 @@ function LibraryTree({ searchQuery }: LibraryTreeProps) {
         [tracks.length],
     );
 
+    const getTracksForItem = useCallback(
+        (item: LibraryItem | null): LibraryTrack[] => {
+            if (!item) {
+                return [];
+            }
+
+            if (Array.isArray(item.children) && item.children.length > 0) {
+                const childIds = new Set(item.children.map((child) => child.id));
+                return tracks.filter((track) => childIds.has(track.id));
+            }
+
+            switch (item.type) {
+                case "artist":
+                    return tracks.filter((track) => track.artist === item.name);
+                case "album": {
+                    const albumName = item.album ?? item.name ?? "Unknown Album";
+                    return tracks.filter((track) => (track.album ?? "Unknown Album") === albumName);
+                }
+                case "playlist":
+                    if (item.id === allSongsItem.id) {
+                        return tracks;
+                    }
+                    return tracks;
+                default:
+                    return [];
+            }
+        },
+        [allSongsItem.id, tracks],
+    );
+
+    const handleItemContextMenu = useCallback(
+        async (item: LibraryItem, event: GestureResponderEvent) => {
+            const button = event?.nativeEvent?.button;
+            const isSecondaryClick = typeof button === "number" ? button !== 0 : false;
+            const nativeAny = event.nativeEvent as unknown as { ctrlKey?: boolean; type?: string };
+            const isCtrlClick = nativeAny?.ctrlKey === true;
+            if (!isSecondaryClick && nativeAny?.type !== "contextmenu" && !isCtrlClick) {
+                return;
+            }
+
+            const tracksForItem = getTracksForItem(item);
+            if (tracksForItem.length === 0) {
+                return;
+            }
+
+            const { nativeEvent } = event;
+            const x = (nativeEvent as any).pageX ?? nativeEvent.locationX ?? 0;
+            const y = (nativeEvent as any).pageY ?? nativeEvent.locationY ?? 0;
+
+            const selection = await showContextMenu(MEDIA_LIBRARY_CONTEXT_MENU_ITEMS, { x, y });
+            if (!selection) {
+                return;
+            }
+
+            if (selection === "queue-play-next") {
+                localAudioControls.queue.insertNext(tracksForItem);
+            } else {
+                localAudioControls.queue.append(tracksForItem);
+            }
+        },
+        [getTracksForItem],
+    );
+
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
     const collectionItems = useMemo(() => {
@@ -171,6 +234,9 @@ function LibraryTree({ searchQuery }: LibraryTreeProps) {
             return (
                 <Button
                     onPress={() => selectItem(item)}
+                    onMouseDown={(event) => {
+                        void handleItemContextMenu(item, event);
+                    }}
                     className={listItemStyles.getRowClassName({
                         variant: "compact",
                         isActive: isSelected,
@@ -197,7 +263,7 @@ function LibraryTree({ searchQuery }: LibraryTreeProps) {
                 </Button>
             );
         },
-        [listItemStyles, selectItem, selectedItem?.id],
+        [handleItemContextMenu, listItemStyles, selectItem, selectedItem?.id],
     );
 
     const collectionTabs: Array<{ id: "artists" | "albums" | "playlists"; label: string; icon: SFSymbols }> = useMemo(

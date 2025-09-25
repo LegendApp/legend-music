@@ -17,10 +17,7 @@ type NativeContextMenuModule = {
 
 const { ContextMenuManager = {} as NativeContextMenuModule } = NativeModules;
 
-export async function showContextMenu(
-    items: ContextMenuItem[],
-    location: ContextMenuLocation,
-): Promise<string | null> {
+export async function showContextMenu(items: ContextMenuItem[], location: ContextMenuLocation): Promise<string | null> {
     if (Platform.OS !== "macos") {
         return null;
     }
