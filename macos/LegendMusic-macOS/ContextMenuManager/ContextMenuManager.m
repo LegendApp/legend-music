@@ -121,8 +121,6 @@ RCT_EXPORT_METHOD(showMenu:(NSArray<NSDictionary *> *)items
   }
 
   NSPoint point = NSMakePoint(x, y);
-  NSRect bounds = targetView.bounds;
-  point.y = bounds.size.height - point.y;
 
   [menu popUpMenuPositioningItem:nil atLocation:point inView:targetView];
 }
