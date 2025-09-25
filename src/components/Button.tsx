@@ -1,6 +1,7 @@
 import { type PropsWithChildren, useRef } from "react";
 import { type GestureResponderEvent, Pressable, type PressableProps } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
+
 import { Icon } from "@/systems/Icon";
 import { startNavMeasurement } from "@/systems/NavTime";
 import type { SFSymbols } from "@/types/SFSymbols";
@@ -9,72 +10,78 @@ import { cn } from "@/utils/cn";
 const DOUBLE_CLICK_DURATION = 300;
 const DOUBLE_CLICK_DISTANCE = 4;
 
-export interface ButtonProps extends PressableProps {
+export interface ButtonProps
+    extends Omit<PressableProps, "onPress" | "onPressIn" | "onPressOut" | "onClick" | "onMouseDown" | "onMouseUp"> {
     className?: string;
     icon?: SFSymbols;
     variant?: "icon" | "icon-bg" | "primary" | "secondary" | "accent" | "destructive" | "inverse";
     size?: "small" | "medium" | "large";
     iconSize?: number;
+    onClick?: (event: GestureResponderEvent) => void;
     onMouseDown?: (event: GestureResponderEvent) => void;
     onMouseUp?: (event: GestureResponderEvent) => void;
     onDoubleClick?: (event: GestureResponderEvent) => void;
+    onRightClick?: (event: GestureResponderEvent) => void;
 }
 
 export function Button({
     children,
     className,
-    onPress,
     icon,
     variant,
     size,
     iconSize: iconSizeProp,
+    onClick,
     onMouseDown,
     onMouseUp,
     onDoubleClick,
-    onPressIn,
-    onPressOut,
+    onRightClick,
     ...props
 }: PropsWithChildren<ButtonProps>) {
-    const lastPressRef = useRef<{ time: number; x: number; y: number } | null>(null);
-    const handlePress = (event: GestureResponderEvent) => {
+    const lastClickRef = useRef<{ time: number; x: number; y: number } | null>(null);
+
+    const handleClick = (event: GestureResponderEvent) => {
         const nativeEvent = event.nativeEvent as unknown as NativeMouseEvent;
+
         if (nativeEvent?.button !== undefined && nativeEvent.button !== 0) {
-            // Only handle left mouse button clicks (button 0)
-            // For React Native on macOS, check if the native event has button info
+            // Only handle left mouse button clicks
             return;
         }
 
         const now = Date.now();
-        const currentX = nativeEvent?.pageX ?? 0;
-        const currentY = nativeEvent?.pageY ?? 0;
-        const previous = lastPressRef.current;
+        const currentX = nativeEvent?.pageX ?? nativeEvent?.clientX ?? nativeEvent?.x ?? 0;
+        const currentY = nativeEvent?.pageY ?? nativeEvent?.clientY ?? nativeEvent?.y ?? 0;
+        const previous = lastClickRef.current;
         const isDoubleClick =
             previous !== null &&
             now - previous.time <= DOUBLE_CLICK_DURATION &&
             Math.hypot(previous.x - currentX, previous.y - currentY) <= DOUBLE_CLICK_DISTANCE;
 
-        lastPressRef.current = { time: now, x: currentX, y: currentY };
+        lastClickRef.current = { time: now, x: currentX, y: currentY };
 
         if (isDoubleClick && onDoubleClick) {
             onDoubleClick(event);
             return;
         }
 
-        // Start measuring navigation time
         startNavMeasurement();
-
-        // Call the original onPress handler if it exists
-        onPress?.(event);
+        onClick?.(event);
     };
 
-    const handlePressIn = (event: GestureResponderEvent) => {
-        onMouseDown?.(event);
-        onPressIn?.(event);
+    const handleMouseDown = (event: GestureResponderEvent) => {
+        const nativeEvent = event.nativeEvent as unknown as NativeMouseEvent;
+
+        if (nativeEvent?.button === 2 || nativeEvent.ctrlKey) {
+            onRightClick?.(event);
+        } else {
+            onMouseDown?.(event);
+        }
     };
 
-    const handlePressOut = (event: GestureResponderEvent) => {
+    const handleMouseUp = (event: GestureResponderEvent) => {
+        const nativeEvent = event.nativeEvent as unknown as NativeMouseEvent;
+
         onMouseUp?.(event);
-        onPressOut?.(event);
     };
 
     const iconSize = iconSizeProp ?? (size === "small" ? 14 : size === "large" ? 24 : 18);
@@ -101,9 +108,9 @@ export function Button({
                 variant === "destructive" && "rounded-md bg-background-destructive",
                 className,
             )}
-            onPress={handlePress}
-            onPressIn={handlePressIn}
-            onPressOut={handlePressOut}
+            onPress={handleClick}
+            onPressIn={handleMouseDown}
+            onPressOut={handleMouseUp}
         >
             {icon && <Icon name={icon} size={iconSize} />}
             {children}

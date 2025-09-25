@@ -52,7 +52,7 @@ export function MediaLibraryView() {
                                 variant="icon"
                                 size="small"
                                 accessibilityLabel="Clear search"
-                                onPress={handleClearSearch}
+                                onClick={handleClearSearch}
                                 className="bg-transparent hover:bg-white/10"
                             />
                         </View>
@@ -233,7 +233,7 @@ function LibraryTree({ searchQuery }: LibraryTreeProps) {
             const isSelected = selectedItem?.id === item.id;
             return (
                 <Button
-                    onPress={() => selectItem(item)}
+                    onClick={() => selectItem(item)}
                     onMouseDown={(event) => {
                         void handleItemContextMenu(item, event);
                     }}
@@ -286,7 +286,7 @@ function LibraryTree({ searchQuery }: LibraryTreeProps) {
                 {collectionTabs.map((tab) => (
                     <Button
                         key={tab.id}
-                        onPress={() => handleCollectionChange(tab.id)}
+                        onClick={() => handleCollectionChange(tab.id)}
                         className={listItemStyles.getRowClassName({
                             variant: "compact",
                             isActive: selectedCollection === tab.id,

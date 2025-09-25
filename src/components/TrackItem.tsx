@@ -1,6 +1,5 @@
 import { use$, useSelector } from "@legendapp/state/react";
 import { type GestureResponderEvent, Text, View } from "react-native";
-import type { NativeMouseEvent } from "react-native-macos";
 import { AlbumArt } from "@/components/AlbumArt";
 import { Button } from "@/components/Button";
 import { localPlayerState$ } from "@/components/LocalAudioPlayer";
@@ -81,22 +80,12 @@ export const TrackItem = ({
         );
     }
 
-    const handleMouseDown = (event: GestureResponderEvent) => {
+    const handleRightClick = (event: GestureResponderEvent) => {
         if (!onTrackContextMenu) {
             return;
         }
 
-        const nativeEvent = event.nativeEvent as unknown as NativeMouseEvent;
-
-        const button = nativeEvent?.button;
-        const isSecondaryClick = typeof button === "number" ? button !== 0 : false;
-
-        const nativeAny = event.nativeEvent as unknown as { ctrlKey?: boolean; type?: string };
-        const isCtrlClick = nativeAny?.ctrlKey === true;
-
-        if (isSecondaryClick || isCtrlClick || nativeAny?.type === "contextmenu") {
-            onTrackContextMenu(index, event);
-        }
+        onTrackContextMenu(index, event);
     };
 
     // Compact mode: single line format "${number}. ${artist} - ${song}"
@@ -111,9 +100,9 @@ export const TrackItem = ({
         return (
             <Button
                 className={rowClassName}
-                onPress={onClick ? (event) => onClick(index, event) : undefined}
+                onClick={onClick ? (event) => onClick(index, event) : undefined}
                 onDoubleClick={onDoubleClick ? (event) => onDoubleClick(index, event) : undefined}
-                onMouseDown={handleMouseDown}
+                onRightClick={handleRightClick}
             >
                 {showIndex && (
                     <View className="min-w-7">
@@ -151,9 +140,9 @@ export const TrackItem = ({
     return (
         <Button
             className={rowClassName}
-            onPress={onClick ? (event) => onClick(index, event) : undefined}
+            onClick={onClick ? (event) => onClick(index, event) : undefined}
             onDoubleClick={onDoubleClick ? (event) => onDoubleClick(index, event) : undefined}
-            onMouseDown={handleMouseDown}
+            onRightClick={handleRightClick}
         >
             {showIndex && (
                 <Text className={cn("text-base w-8", indexTone)}>

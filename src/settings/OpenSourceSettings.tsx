@@ -83,7 +83,7 @@ export function OpenSourceSettings() {
                             transparency and community-driven development.
                         </Text>
                         <Button 
-                            onPress={handleOpenLegendMusicSource}
+                            onClick={handleOpenLegendMusicSource}
                             className="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg self-start shadow-lg"
                         >
                             <Text className="text-white font-semibold">
@@ -100,7 +100,7 @@ export function OpenSourceSettings() {
                         A comprehensive suite of tools built on Legend State/List/Motion with premium apps and development tools.
                     </Text>
                     <Button 
-                        onPress={() => handleOpenLink("https://legendapp.com/kit")}
+                        onClick={() => handleOpenLink("https://legendapp.com/kit")}
                         className="bg-blue-600/80 hover:bg-blue-600 px-3 py-1.5 rounded self-start"
                     >
                         <Text className="text-white font-medium text-sm">
@@ -129,7 +129,7 @@ export function OpenSourceSettings() {
                                     </Text>
                                 </View>
                                 <Button 
-                                    onPress={() => handleOpenLink(library.url)}
+                                    onClick={() => handleOpenLink(library.url)}
                                     className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg border border-white/20 shadow-sm"
                                 >
                                     <Text className="text-white/90 text-sm font-medium">

@@ -86,7 +86,7 @@ export function Unregistered() {
                         </Text>
                         <View className="flex-row space-x-3">
                             <Button
-                                onPress={handleOpenLegendKit}
+                                onClick={handleOpenLegendKit}
                                 className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 px-4 py-2 rounded-lg"
                             >
                                 <Text className="text-white font-medium text-sm">
@@ -94,7 +94,7 @@ export function Unregistered() {
                                 </Text>
                             </Button>
                             <Button
-                                onPress={handleRegister}
+                                onClick={handleRegister}
                                 className="bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2 rounded-lg"
                             >
                                 <Text className="text-white font-medium text-sm">

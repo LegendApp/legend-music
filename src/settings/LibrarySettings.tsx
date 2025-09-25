@@ -30,7 +30,7 @@ export const LibrarySettings = observer(function LibrarySettings() {
                         </View>
 
                         <View className="pt-4 border-t border-border-primary">
-                            <Button variant="primary" onPress={handleRescanLibrary} className="h-9 px-4">
+                            <Button variant="primary" onClick={handleRescanLibrary} className="h-9 px-4">
                                 <Text className="text-white font-medium text-sm">Rescan Library Now</Text>
                             </Button>
                         </View>

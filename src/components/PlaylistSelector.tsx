@@ -219,7 +219,7 @@ export function PlaylistSelector() {
                     variant="icon"
                     size="small"
                     iconSize={14}
-                    onPress={handleSaveQueue}
+                    onClick={handleSaveQueue}
                     className="ml-2 hover:bg-white/10"
                     disabled={queue.tracks.length === 0}
                 />
@@ -228,7 +228,7 @@ export function PlaylistSelector() {
                     variant="icon"
                     size="small"
                     iconSize={14}
-                    onPress={toggleLibraryWindow}
+                    onClick={toggleLibraryWindow}
                     className={`ml-2 hover:bg-white/10 ${isLibraryOpen ? "bg-white/15" : ""}`}
                 />
             </View>

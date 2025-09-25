@@ -27,7 +27,7 @@ export function SidebarButton({ text, value, selectedItem$, indentLevel = 0 }: S
                 isSelected && "bg-white/20",
                 !isSelected && !isDropdownOpen && "hover:bg-white/20",
             )}
-            onPress={(e: GestureResponderEventWithButton) => {
+            onClick={(e: GestureResponderEventWithButton) => {
                 if (e.nativeEvent.button === 2) {
                     console.log("right click");
                     e.preventDefault();

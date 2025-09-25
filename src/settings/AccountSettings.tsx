@@ -58,7 +58,7 @@ export function AccountSettings() {
                                 If you have any questions or need support, we're here to help.
                             </Text>
                             <Button 
-                                onPress={handleContactSupport}
+                                onClick={handleContactSupport}
                                 className="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg self-start shadow-lg"
                             >
                                 <Text className="text-white font-semibold">
@@ -106,7 +106,7 @@ export function AccountSettings() {
                                 Legend Music and other Legend apps, plus advanced development tools.
                             </Text>
                             <Button 
-                                onPress={handleGetLegendKit}
+                                onClick={handleGetLegendKit}
                                 className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 px-8 py-4 rounded-xl self-start shadow-lg"
                             >
                                 <Text className="text-white font-bold text-lg">
@@ -125,7 +125,7 @@ export function AccountSettings() {
                                 fund continued development while keeping the app free and open source for everyone.
                             </Text>
                             <Button 
-                                onPress={handleRegister}
+                                onClick={handleRegister}
                                 className="bg-white/10 hover:bg-white/20 border border-white/20 px-8 py-4 rounded-xl self-start shadow-lg"
                             >
                                 <Text className="text-white font-semibold text-lg">

@@ -103,7 +103,7 @@ export function PlaybackArea() {
                             variant="icon-bg"
                             iconSize={14}
                             size="medium"
-                            onPress={localAudioControls.playPrevious}
+                            onClick={localAudioControls.playPrevious}
                             className="bg-transparent"
                             // className="bg-white/15 hover:bg-white/25 active:bg-white/35 border-white/10 rounded-full"
                         /> */}
@@ -113,7 +113,7 @@ export function PlaybackArea() {
                         variant="icon"
                         iconSize={16}
                         size="small"
-                        onPress={localAudioControls.togglePlayPause}
+                        onClick={localAudioControls.togglePlayPause}
                         // className="bg-white/15 hover:bg-white/25 active:bg-white/35 border-white/15 rounded-full"
                     />
 
@@ -122,7 +122,7 @@ export function PlaybackArea() {
                         variant="icon"
                         iconSize={16}
                         size="small"
-                        onPress={localAudioControls.playNext}
+                        onClick={localAudioControls.playNext}
                         // className="bg-transparent"
                         // className="bg-white/15 hover:bg-white/25 active:bg-white/35 border-white/10 rounded-full"
                     />

@@ -326,7 +326,7 @@ function Item({ children, onSelect, value, className = "", disabled = false, var
                 disabled && "opacity-50",
                 className,
             )}
-            onPress={handlePress}
+            onClick={handlePress}
             disabled={disabled}
         >
             {children}
@@ -372,7 +372,7 @@ function CheckboxItem({ children, checked = false, onCheckedChange, value, class
     return (
         <Button
             className={cn("py-2 px-3 rounded-md hover:bg-white/10 flex-row items-center", className)}
-            onPress={handlePress}
+            onClick={handlePress}
         >
             {children}
         </Button>
