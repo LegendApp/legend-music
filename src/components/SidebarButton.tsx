@@ -1,9 +1,9 @@
 import type { Observable } from "@legendapp/state";
 import { use$ } from "@legendapp/state/react";
 import { Text, View } from "react-native";
+import type { NativeMouseEvent } from "react-native-macos";
 
 import { state$ } from "@/systems/State";
-import type { GestureResponderEventWithButton } from "@/types/types";
 import { cn } from "@/utils/cn";
 import { Button } from "./Button";
 
@@ -27,11 +27,10 @@ export function SidebarButton({ text, value, selectedItem$, indentLevel = 0 }: S
                 isSelected && "bg-white/20",
                 !isSelected && !isDropdownOpen && "hover:bg-white/20",
             )}
-            onClick={(e: GestureResponderEventWithButton) => {
-                if (e.nativeEvent.button === 2) {
+            onClick={(e: NativeMouseEvent) => {
+                if (e.button === 2) {
                     console.log("right click");
-                    e.preventDefault();
-                    e.stopPropagation();
+                    // Right click handled - no need to set selection
                 } else {
                     selectedItem$.set(value);
                 }

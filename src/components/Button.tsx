@@ -17,11 +17,11 @@ export interface ButtonProps
     variant?: "icon" | "icon-bg" | "primary" | "secondary" | "accent" | "destructive" | "inverse";
     size?: "small" | "medium" | "large";
     iconSize?: number;
-    onClick?: (event: GestureResponderEvent) => void;
-    onMouseDown?: (event: GestureResponderEvent) => void;
-    onMouseUp?: (event: GestureResponderEvent) => void;
-    onDoubleClick?: (event: GestureResponderEvent) => void;
-    onRightClick?: (event: GestureResponderEvent) => void;
+    onClick?: (event: NativeMouseEvent) => void;
+    onMouseDown?: (event: NativeMouseEvent) => void;
+    onMouseUp?: (event: NativeMouseEvent) => void;
+    onDoubleClick?: (event: NativeMouseEvent) => void;
+    onRightClick?: (event: NativeMouseEvent) => void;
 }
 
 export function Button({
@@ -60,28 +60,28 @@ export function Button({
         lastClickRef.current = { time: now, x: currentX, y: currentY };
 
         if (isDoubleClick && onDoubleClick) {
-            onDoubleClick(event);
+            onDoubleClick(nativeEvent);
             return;
         }
 
         startNavMeasurement();
-        onClick?.(event);
+        onClick?.(nativeEvent);
     };
 
     const handleMouseDown = (event: GestureResponderEvent) => {
         const nativeEvent = event.nativeEvent as unknown as NativeMouseEvent;
 
         if (nativeEvent?.button === 2 || nativeEvent.ctrlKey) {
-            onRightClick?.(event);
+            onRightClick?.(nativeEvent);
         } else {
-            onMouseDown?.(event);
+            onMouseDown?.(nativeEvent);
         }
     };
 
     const handleMouseUp = (event: GestureResponderEvent) => {
         const nativeEvent = event.nativeEvent as unknown as NativeMouseEvent;
 
-        onMouseUp?.(event);
+        onMouseUp?.(nativeEvent);
     };
 
     const iconSize = iconSizeProp ?? (size === "small" ? 14 : size === "large" ? 24 : 18);

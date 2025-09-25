@@ -2,6 +2,7 @@ import { LegendList } from "@legendapp/list";
 import { use$, useObservable } from "@legendapp/state/react";
 import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type GestureResponderEvent, Text, useWindowDimensions, View } from "react-native";
+import type { NativeMouseEvent } from "react-native-macos";
 
 import { Button } from "@/components/Button";
 import { DropdownMenu, type DropdownMenuRootRef } from "@/components/DropdownMenu";
@@ -122,25 +123,26 @@ export const PlaylistSelectorSearchDropdown = forwardRef<DropdownMenuRootRef, Pl
             [onOpenChange, searchQuery$],
         );
 
-        const getActionFromEvent = useCallback((event?: GestureResponderEvent): "enqueue" | "play-next" => {
-            const nativeEvent = event?.nativeEvent as
-                | (GestureResponderEvent["nativeEvent"] & { shiftKey?: boolean; modifierFlags?: number })
-                | undefined;
-
-            if (nativeEvent) {
-                if (nativeEvent.shiftKey) {
-                    return "play-next";
+        const getActionFromEvent = useCallback(
+            (event?: NativeMouseEvent | GestureResponderEvent): "enqueue" | "play-next" => {
+                if (event) {
+                    // Check if it's a NativeMouseEvent (direct from Button)
+                    if ("shiftKey" in event && event.shiftKey) {
+                        return "play-next";
+                    }
+                    // Check if it's a GestureResponderEvent (from DropdownMenu)
+                    if ("nativeEvent" in event) {
+                        const nativeEvent = event.nativeEvent as any;
+                        if (nativeEvent?.shiftKey) {
+                            return "play-next";
+                        }
+                    }
                 }
-                if (
-                    typeof nativeEvent.modifierFlags === "number" &&
-                    (nativeEvent.modifierFlags & KeyCodes.MODIFIER_SHIFT) === KeyCodes.MODIFIER_SHIFT
-                ) {
-                    return "play-next";
-                }
-            }
 
-            return shiftPressedRef.current ? "play-next" : "enqueue";
-        }, []);
+                return shiftPressedRef.current ? "play-next" : "enqueue";
+            },
+            [],
+        );
 
         const handleSearchResultAction = useCallback(
             (result: SearchResult, action: "enqueue" | "play-next") => {

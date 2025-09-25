@@ -1,5 +1,6 @@
 import { use$, useSelector } from "@legendapp/state/react";
-import { type GestureResponderEvent, Text, View } from "react-native";
+import { Text, View } from "react-native";
+import type { NativeMouseEvent } from "react-native-macos";
 import { AlbumArt } from "@/components/AlbumArt";
 import { Button } from "@/components/Button";
 import { localPlayerState$ } from "@/components/LocalAudioPlayer";
@@ -25,23 +26,23 @@ export interface TrackData {
 interface TrackItemProps {
     track: TrackData;
     index: number;
-    onClick?: (index: number, event?: GestureResponderEvent) => void;
-    onDoubleClick?: (index: number, event?: GestureResponderEvent) => void;
     showIndex?: boolean;
     showAlbumArt?: boolean;
     isSelected?: boolean;
-    onTrackContextMenu?: (index: number, event: GestureResponderEvent) => void;
+    onClick?: (index: number, event?: NativeMouseEvent) => void;
+    onDoubleClick?: (index: number, event?: NativeMouseEvent) => void;
+    onRightClick?: (index: number, event: NativeMouseEvent) => void;
 }
 
 export const TrackItem = ({
     track,
     index,
-    onClick,
-    onDoubleClick,
     showIndex = true,
     showAlbumArt = true,
     isSelected = false,
-    onTrackContextMenu,
+    onClick,
+    onDoubleClick,
+    onRightClick,
 }: TrackItemProps) => {
     perfCount("TrackItem.render");
     const playlistStyle = use$(settings$.general.playlistStyle);
@@ -80,12 +81,12 @@ export const TrackItem = ({
         );
     }
 
-    const handleRightClick = (event: GestureResponderEvent) => {
-        if (!onTrackContextMenu) {
+    const handleRightClick = (event: NativeMouseEvent) => {
+        if (!onRightClick) {
             return;
         }
 
-        onTrackContextMenu(index, event);
+        onRightClick(index, event);
     };
 
     // Compact mode: single line format "${number}. ${artist} - ${song}"

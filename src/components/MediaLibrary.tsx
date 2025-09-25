@@ -1,7 +1,8 @@
 import { LegendList } from "@legendapp/list";
 import { use$ } from "@legendapp/state/react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { type GestureResponderEvent, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import type { NativeMouseEvent } from "react-native-macos";
 import { Button } from "@/components/Button";
 import { localAudioControls } from "@/components/LocalAudioPlayer";
 import { Panel, PanelGroup, ResizeHandle } from "@/components/ResizablePanels";
@@ -147,12 +148,11 @@ function LibraryTree({ searchQuery }: LibraryTreeProps) {
     );
 
     const handleItemContextMenu = useCallback(
-        async (item: LibraryItem, event: GestureResponderEvent) => {
-            const button = event?.nativeEvent?.button;
+        async (item: LibraryItem, event: NativeMouseEvent) => {
+            const button = event?.button;
             const isSecondaryClick = typeof button === "number" ? button !== 0 : false;
-            const nativeAny = event.nativeEvent as unknown as { ctrlKey?: boolean; type?: string };
-            const isCtrlClick = nativeAny?.ctrlKey === true;
-            if (!isSecondaryClick && nativeAny?.type !== "contextmenu" && !isCtrlClick) {
+            const isCtrlClick = event?.ctrlKey === true;
+            if (!isSecondaryClick && !isCtrlClick) {
                 return;
             }
 
@@ -161,9 +161,8 @@ function LibraryTree({ searchQuery }: LibraryTreeProps) {
                 return;
             }
 
-            const { nativeEvent } = event;
-            const x = (nativeEvent as any).pageX ?? nativeEvent.locationX ?? 0;
-            const y = (nativeEvent as any).pageY ?? nativeEvent.locationY ?? 0;
+            const x = event.pageX ?? event.x ?? 0;
+            const y = event.pageY ?? event.y ?? 0;
 
             const selection = await showContextMenu(MEDIA_LIBRARY_CONTEXT_MENU_ITEMS, { x, y });
             if (!selection) {
@@ -405,10 +404,9 @@ function TrackList({ searchQuery }: TrackListProps) {
     );
 
     const handleTrackContextMenu = useCallback(
-        async (index: number, event: GestureResponderEvent) => {
-            const { nativeEvent } = event;
-            const x = (nativeEvent as any).pageX ?? nativeEvent.locationX ?? 0;
-            const y = (nativeEvent as any).pageY ?? nativeEvent.locationY ?? 0;
+        async (index: number, event: NativeMouseEvent) => {
+            const x = event.pageX ?? event.x ?? 0;
+            const y = event.pageY ?? event.y ?? 0;
 
             const selection = await showContextMenu(MEDIA_LIBRARY_CONTEXT_MENU_ITEMS, { x, y });
             if (!selection) {
@@ -424,12 +422,12 @@ function TrackList({ searchQuery }: TrackListProps) {
         [handleTrackAction],
     );
 
-    const getActionFromEvent = useCallback((event?: GestureResponderEvent): "enqueue" | "play-next" => {
-        return event?.nativeEvent?.shiftKey ? "play-next" : "enqueue";
+    const getActionFromEvent = useCallback((event?: NativeMouseEvent): "enqueue" | "play-next" => {
+        return event?.shiftKey ? "play-next" : "enqueue";
     }, []);
 
     const handleTrackClick = useCallback(
-        (index: number, event?: GestureResponderEvent) => {
+        (index: number, event?: NativeMouseEvent) => {
             const action = getActionFromEvent(event);
             handleTrackAction(index, action);
         },
@@ -442,7 +440,7 @@ function TrackList({ searchQuery }: TrackListProps) {
                 track={item}
                 index={index}
                 onClick={handleTrackClick}
-                onTrackContextMenu={handleTrackContextMenu}
+                onRightClick={handleTrackContextMenu}
                 showIndex={false}
                 showAlbumArt={false}
             />
