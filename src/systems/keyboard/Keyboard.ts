@@ -112,18 +112,41 @@ export function useHookKeyboard() {
     });
 }
 
+const nativeHotkeyMap = {
+    Up: KeyCodes.KEY_UP,
+    Down: KeyCodes.KEY_DOWN,
+    Enter: KeyCodes.KEY_RETURN,
+    Space: KeyCodes.KEY_SPACE,
+    Delete: KeyCodes.KEY_DELETE,
+} as const;
+
+type NativeHotkeyName = keyof typeof nativeHotkeyMap;
+type HotkeyBindingName = HotkeyName | NativeHotkeyName;
+
 // Updated HotkeyCallbacks to map hotkey names to simple action functions
-type HotkeyCallbacks = Partial<Record<HotkeyName, () => void>>;
+type HotkeyCallbacks = Partial<Record<HotkeyBindingName, () => void>>;
+
+function isNativeHotkey(name: string): name is NativeHotkeyName {
+    return name in nativeHotkeyMap;
+}
 
 export function onHotkeys(hotkeyCallbacks: HotkeyCallbacks) {
     const hotkeyMap = new Map<string[], () => void>();
     const repeatActions = new Set<string[]>();
 
     // Process each combination and its callback
-    for (const [name, action] of Object.entries(hotkeyCallbacks)) {
+    for (const name of Object.keys(hotkeyCallbacks) as HotkeyBindingName[]) {
+        const action = hotkeyCallbacks[name];
         if (action) {
+            if (isNativeHotkey(name)) {
+                const keys = [nativeHotkeyMap[name].toString()];
+                hotkeyMap.set(keys, action);
+                continue;
+            }
+
             // Get the configured key for this hotkey from hotkeys$
-            const configuredKey = getHotkey(name as any);
+            const hotkeyName = name as HotkeyName;
+            const configuredKey = getHotkey(hotkeyName);
             if (!configuredKey) {
                 console.warn(`No hotkey configuration found for ${name}`);
                 continue;
@@ -136,7 +159,7 @@ export function onHotkeys(hotkeyCallbacks: HotkeyCallbacks) {
             hotkeyMap.set(keys, action);
 
             // Get metadata for this hotkey
-            const metadata = getHotkeyMetadata(name as any);
+            const metadata = getHotkeyMetadata(hotkeyName);
 
             if (metadata?.repeat) {
                 repeatActions.add(keys);
@@ -147,8 +170,8 @@ export function onHotkeys(hotkeyCallbacks: HotkeyCallbacks) {
                 // Get keyText from KeyText mapping for numeric keys
                 const keyText = typeof configuredKey === "number" ? KeyText[configuredKey] : configuredKey;
 
-                hotkeyRegistry$[name].set({
-                    name,
+                hotkeyRegistry$[hotkeyName].set({
+                    name: hotkeyName,
                     key: configuredKey,
                     description: metadata.description,
                     repeat: metadata.repeat,

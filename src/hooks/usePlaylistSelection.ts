@@ -1,10 +1,11 @@
 import type { Observable } from "@legendapp/state";
 import { useObservable } from "@legendapp/state/react";
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import type { NativeMouseEvent } from "react-native-macos";
 
 import { playlistNavigationState$ } from "@/state/playlistNavigationState";
-import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
+import { keysPressed$, useOnHotkeys } from "@/systems/keyboard/Keyboard";
+import { KeyCodes } from "@/systems/keyboard/KeyboardManager";
 import { state$ } from "@/systems/State";
 
 interface UsePlaylistSelectionOptions<T extends { isSeparator?: boolean }> {
@@ -34,6 +35,7 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
     const selectedIndices$ = useObservable<Set<number>>(new Set());
     const selectionAnchor$ = useObservable<number>(-1);
     const selectionFocus$ = useObservable<number>(-1);
+    const itemsLength = items.length;
 
     const updateSelectionState = useCallback(
         (nextSelection: Set<number>) => {
@@ -99,6 +101,26 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
         [selectedIndices$, selectionAnchor$, selectionFocus$, setAnchorAndFocus, updateSelectionState],
     );
 
+    const isModifierPressed = useCallback((modifier: number) => {
+        return Boolean(keysPressed$.get()[modifier]);
+    }, []);
+
+    const shouldHandleHotkeys = useCallback(() => {
+        if (itemsLength === 0) {
+            return false;
+        }
+
+        if (playlistNavigationState$.isSearchDropdownOpen.get()) {
+            return false;
+        }
+
+        if (state$.isDropdownOpen.get()) {
+            return false;
+        }
+
+        return true;
+    }, [itemsLength]);
+
     const getPrimarySelectionIndex = useCallback(() => {
         const focusIndex = selectionFocus$.get();
         if (focusIndex !== -1) {
@@ -110,6 +132,62 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
         }
         return Math.min(...currentSelection);
     }, [selectedIndices$, selectionFocus$]);
+
+    const moveSelectionUp = useCallback(() => {
+        if (!shouldHandleHotkeys()) {
+            return;
+        }
+
+        const hasShift = isModifierPressed(KeyCodes.MODIFIER_SHIFT);
+        const currentFocus = selectionFocus$.get();
+        const currentSelection = selectedIndices$.get();
+        const currentIndex =
+            currentFocus !== -1 ? currentFocus : currentSelection.size > 0 ? Math.min(...currentSelection) : 0;
+        const nextIndex = currentIndex <= 0 ? itemsLength - 1 : currentIndex - 1;
+
+        if (hasShift && selectionAnchor$.get() !== -1) {
+            applyRangeSelection(selectionAnchor$.get(), nextIndex);
+        } else {
+            applySingleSelection(nextIndex);
+        }
+    }, [
+        applyRangeSelection,
+        applySingleSelection,
+        isModifierPressed,
+        itemsLength,
+        selectedIndices$,
+        selectionAnchor$,
+        selectionFocus$,
+        shouldHandleHotkeys,
+    ]);
+
+    const moveSelectionDown = useCallback(() => {
+        if (!shouldHandleHotkeys()) {
+            return;
+        }
+
+        const hasShift = isModifierPressed(KeyCodes.MODIFIER_SHIFT);
+        const currentFocus = selectionFocus$.get();
+        const currentSelection = selectedIndices$.get();
+        const currentIndex =
+            currentFocus !== -1 ? currentFocus : currentSelection.size > 0 ? Math.max(...currentSelection) : -1;
+        const nextIndex = currentIndex >= itemsLength - 1 || currentIndex === -1 ? 0 : currentIndex + 1;
+
+        if (hasShift && selectionAnchor$.get() !== -1) {
+            applyRangeSelection(selectionAnchor$.get(), nextIndex);
+        } else {
+            applySingleSelection(nextIndex);
+        }
+    }, [
+        applyRangeSelection,
+        applySingleSelection,
+        isModifierPressed,
+        itemsLength,
+        selectedIndices$,
+        selectionAnchor$,
+        selectionFocus$,
+        shouldHandleHotkeys,
+    ]);
 
     const handleTrackClick = useCallback(
         (index: number, event?: NativeMouseEvent) => {
@@ -148,85 +226,23 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
         [applyRangeSelection, applySingleSelection, items, selectionAnchor$, toggleSelection],
     );
 
-    useEffect(() => {
-        const handleKeyDown = (event: { keyCode: number; modifiers: number }) => {
-            if (
-                items.length === 0 ||
-                playlistNavigationState$.isSearchDropdownOpen.get() ||
-                state$.isDropdownOpen.get()
-            ) {
-                return false;
-            }
+    const activateSelection = useCallback(() => {
+        if (!shouldHandleHotkeys()) {
+            return;
+        }
 
-            switch (event.keyCode) {
-                case KeyCodes.KEY_UP: {
-                    const hasShift = KeyboardManager.hasModifier(event, KeyCodes.MODIFIER_SHIFT);
-                    const currentFocus = selectionFocus$.get();
-                    const currentSelection = selectedIndices$.get();
-                    const currentIndex =
-                        currentFocus !== -1
-                            ? currentFocus
-                            : currentSelection.size > 0
-                              ? Math.min(...currentSelection)
-                              : 0;
-                    const newIndex = currentIndex <= 0 ? items.length - 1 : currentIndex - 1;
-                    if (hasShift && selectionAnchor$.get() !== -1) {
-                        applyRangeSelection(selectionAnchor$.get(), newIndex);
-                    } else {
-                        applySingleSelection(newIndex);
-                    }
-                    return true;
-                }
+        const currentIndex = getPrimarySelectionIndex();
+        if (currentIndex >= 0 && currentIndex < itemsLength) {
+            handleTrackClick(currentIndex);
+        }
+    }, [getPrimarySelectionIndex, handleTrackClick, itemsLength, shouldHandleHotkeys]);
 
-                case KeyCodes.KEY_DOWN: {
-                    const hasShift = KeyboardManager.hasModifier(event, KeyCodes.MODIFIER_SHIFT);
-                    const currentFocus = selectionFocus$.get();
-                    const currentSelection = selectedIndices$.get();
-                    const currentIndex =
-                        currentFocus !== -1
-                            ? currentFocus
-                            : currentSelection.size > 0
-                              ? Math.max(...currentSelection)
-                              : -1;
-                    const nextIndex = currentIndex >= items.length - 1 || currentIndex === -1 ? 0 : currentIndex + 1;
-                    if (hasShift && selectionAnchor$.get() !== -1) {
-                        applyRangeSelection(selectionAnchor$.get(), nextIndex);
-                    } else {
-                        applySingleSelection(nextIndex);
-                    }
-                    return true;
-                }
-
-                case KeyCodes.KEY_RETURN:
-                case KeyCodes.KEY_SPACE: {
-                    const currentIndex = getPrimarySelectionIndex();
-                    if (currentIndex >= 0 && currentIndex < items.length) {
-                        handleTrackClick(currentIndex);
-                    }
-                    return true;
-                }
-
-                default:
-                    return false;
-            }
-        };
-
-        const removeListener = KeyboardManager.addKeyDownListener(handleKeyDown);
-        return () => {
-            removeListener();
-        };
-    }, [
-        applyRangeSelection,
-        applySingleSelection,
-        getPrimarySelectionIndex,
-        handleTrackClick,
-        items,
-        selectedIndices$,
-        selectionAnchor$,
-        selectionFocus$,
-        toggleSelection,
-        updateSelectionState,
-    ]);
+    useOnHotkeys({
+        Up: moveSelectionUp,
+        Down: moveSelectionDown,
+        Enter: activateSelection,
+        Space: activateSelection,
+    });
 
     return {
         selectedIndices$,

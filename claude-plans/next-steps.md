@@ -1,6 +1,7 @@
 [x] usePlaylistSelection.ts has a lot of duplicated code. Clean it up to reuse code where it makes sense.
-[] Replace the keyboard events in usePlaylistSelection.ts with useOnHotkeys. You'll need to add Up/Down types to HotkeyCallbacks.
+[x] Replace the keyboard events in usePlaylistSelection.ts with useOnHotkeys. You'll need to add Up/Down types to HotkeyCallbacks.
 [] Add a delete key handler in usePlaylistSelection.ts to delete the selected items from the playlist.
+[] Add a Cmd + A hotkey to select all items in the playlist.
 
 ## Punt (do not do these)
 1. Try to fix album art
