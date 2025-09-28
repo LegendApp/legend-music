@@ -104,8 +104,6 @@ export const TrackItem = ({
         const indexTone = track.fromSuggestions ? listItemStyles.text.muted : listItemStyles.text.secondary;
         const primaryTone = track.fromSuggestions ? listItemStyles.text.secondary : listItemStyles.text.primary;
 
-        console.log("rowClassName", isSelected, rowClassName);
-
         return (
             <Button
                 className={rowClassName}

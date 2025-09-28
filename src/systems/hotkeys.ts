@@ -11,6 +11,11 @@ const DEFAULT_HOTKEYS = {
     PlayPauseSpace: KeyCodes.KEY_SPACE,
     NextTrack: KeyCodes.KEY_MEDIA_NEXT,
     PreviousTrack: KeyCodes.KEY_MEDIA_PREVIOUS,
+    Up: KeyCodes.KEY_UP,
+    Down: KeyCodes.KEY_DOWN,
+    Enter: KeyCodes.KEY_RETURN,
+    Space: KeyCodes.KEY_SPACE,
+    Delete: KeyCodes.KEY_DELETE,
 } as const;
 
 export type HotkeyName = keyof typeof DEFAULT_HOTKEYS;
@@ -33,6 +38,21 @@ export const HotkeyMetadata: Record<HotkeyName, { description: string; repeat?: 
     },
     PreviousTrack: {
         description: "Play previous track",
+    },
+    Up: {
+        description: "Move selection up",
+    },
+    Down: {
+        description: "Move selection down",
+    },
+    Enter: {
+        description: "Activate selection",
+    },
+    Space: {
+        description: "Activate selection",
+    },
+    Delete: {
+        description: "Delete selected items",
     },
 };
 

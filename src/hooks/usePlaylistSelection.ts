@@ -2,7 +2,7 @@ import type { Observable } from "@legendapp/state";
 import { useObservable } from "@legendapp/state/react";
 import { useCallback } from "react";
 import type { NativeMouseEvent } from "react-native-macos";
-
+import { queue$ } from "@/components/LocalAudioPlayer";
 import { playlistNavigationState$ } from "@/state/playlistNavigationState";
 import { keysPressed$, useOnHotkeys } from "@/systems/keyboard/Keyboard";
 import { KeyCodes } from "@/systems/keyboard/KeyboardManager";
@@ -36,7 +36,6 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
     const selectedIndices$ = useObservable<Set<number>>(new Set());
     const selectionAnchor$ = useObservable<number>(-1);
     const selectionFocus$ = useObservable<number>(-1);
-    const itemsLength = items.length;
 
     const updateSelectionState = useCallback(
         (nextSelection: Set<number>) => {
@@ -111,7 +110,7 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
         return Boolean(keysPressed$.get()[modifier]);
     }, []);
 
-    const shouldHandleHotkeys = useCallback(() => {
+    const shouldHandleHotkeys = useCallback((itemsLength: number) => {
         if (itemsLength === 0) {
             return false;
         }
@@ -125,7 +124,7 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
         }
 
         return true;
-    }, [itemsLength]);
+    }, []);
 
     const getPrimarySelectionIndex = useCallback(() => {
         const focusIndex = selectionFocus$.get();
@@ -140,7 +139,9 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
     }, [selectedIndices$, selectionFocus$]);
 
     const moveSelectionUp = useCallback(() => {
-        if (!shouldHandleHotkeys()) {
+        console.log("up");
+        const itemsLength = queue$.tracks.length;
+        if (!shouldHandleHotkeys(itemsLength)) {
             return;
         }
 
@@ -160,7 +161,6 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
         applyRangeSelection,
         applySingleSelection,
         isModifierPressed,
-        itemsLength,
         selectedIndices$,
         selectionAnchor$,
         selectionFocus$,
@@ -168,7 +168,10 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
     ]);
 
     const moveSelectionDown = useCallback(() => {
-        if (!shouldHandleHotkeys()) {
+        const itemsLength = queue$.tracks.length;
+        console.log("down", shouldHandleHotkeys(itemsLength));
+
+        if (!shouldHandleHotkeys(itemsLength)) {
             return;
         }
 
@@ -177,7 +180,9 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
         const currentSelection = selectedIndices$.get();
         const currentIndex =
             currentFocus !== -1 ? currentFocus : currentSelection.size > 0 ? Math.max(...currentSelection) : -1;
-        const nextIndex = currentIndex >= itemsLength - 1 || currentIndex === -1 ? 0 : currentIndex + 1;
+        const nextIndex = currentIndex >= queue$.tracks.length - 1 || currentIndex === -1 ? 0 : currentIndex + 1;
+
+        console.log("moveSelectionDown", currentIndex, nextIndex);
 
         if (hasShift && selectionAnchor$.get() !== -1) {
             applyRangeSelection(selectionAnchor$.get(), nextIndex);
@@ -188,7 +193,6 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
         applyRangeSelection,
         applySingleSelection,
         isModifierPressed,
-        itemsLength,
         selectedIndices$,
         selectionAnchor$,
         selectionFocus$,
@@ -233,7 +237,8 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
     );
 
     const activateSelection = useCallback(() => {
-        if (!shouldHandleHotkeys()) {
+        const itemsLength = queue$.tracks.length;
+        if (!shouldHandleHotkeys(itemsLength)) {
             return;
         }
 
@@ -241,10 +246,11 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
         if (currentIndex >= 0 && currentIndex < itemsLength) {
             handleTrackClick(currentIndex);
         }
-    }, [getPrimarySelectionIndex, handleTrackClick, itemsLength, shouldHandleHotkeys]);
+    }, [getPrimarySelectionIndex, handleTrackClick, shouldHandleHotkeys]);
 
     const handleDeleteHotkey = useCallback(() => {
-        if (!onDeleteSelection || !shouldHandleHotkeys()) {
+        const itemsLength = queue$.tracks.length;
+        if (!onDeleteSelection || !shouldHandleHotkeys(itemsLength)) {
             return;
         }
 
