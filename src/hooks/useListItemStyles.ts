@@ -7,6 +7,7 @@ export type ListItemVariant = "default" | "compact";
 interface RowOptions {
     variant?: ListItemVariant;
     isActive?: boolean;
+    isSelected?: boolean;
     isInteractive?: boolean;
     className?: string;
 }
@@ -39,6 +40,7 @@ export function useListItemStyles(): ListItemStyles {
         };
         const hoverRow = "hover:bg-white/10 active:bg-white/15 hover:border-white/10";
         const activeRow = "bg-blue-500/20 border-blue-400/30";
+        const selectedRow = "bg-white/10 border-white/10";
 
         const textPalette: ListItemTextPalette = {
             primary: "text-text-primary",
@@ -50,10 +52,18 @@ export function useListItemStyles(): ListItemStyles {
         const getRowClassName = ({
             variant = "default",
             isActive = false,
+            isSelected = false,
             isInteractive = true,
             className,
         }: RowOptions = {}): string =>
-            cn(baseRow, rowVariants[variant], isInteractive ? hoverRow : "", isActive ? activeRow : "", className);
+            cn(
+                baseRow,
+                rowVariants[variant],
+                isInteractive ? hoverRow : "",
+                isActive ? activeRow : "",
+                isSelected ? selectedRow : "",
+                className,
+            );
 
         const getMetaClassName = ({ className }: MetaOptions = {}): string => cn(textPalette.meta, className);
 

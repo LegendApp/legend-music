@@ -1,7 +1,7 @@
+import type { Observable } from "@legendapp/state";
 import { use$, useSelector } from "@legendapp/state/react";
 import { Text, View } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
-import { AlbumArt } from "@/components/AlbumArt";
 import { Button } from "@/components/Button";
 import { localPlayerState$ } from "@/components/LocalAudioPlayer";
 import { useListItemStyles } from "@/hooks/useListItemStyles";
@@ -29,6 +29,7 @@ interface TrackItemProps {
     showIndex?: boolean;
     showAlbumArt?: boolean;
     isSelected?: boolean;
+    selectedIndex$?: Observable<number>;
     onClick?: (index: number, event?: NativeMouseEvent) => void;
     onDoubleClick?: (index: number, event?: NativeMouseEvent) => void;
     onRightClick?: (index: number, event: NativeMouseEvent) => void;
@@ -39,7 +40,7 @@ export const TrackItem = ({
     index,
     showIndex = true,
     showAlbumArt = true,
-    isSelected = false,
+    selectedIndex$,
     onClick,
     onDoubleClick,
     onRightClick,
@@ -68,6 +69,10 @@ export const TrackItem = ({
         return currentTrack.id === track.id;
     });
 
+    const isSelected = use$(() => {
+        return selectedIndex$?.get() === index || false;
+    });
+
     // Handle separator items
     if (track.isSeparator) {
         return (
@@ -92,12 +97,14 @@ export const TrackItem = ({
     // Compact mode: single line format "${number}. ${artist} - ${song}"
     if (playlistStyle === "compact") {
         const rowClassName = cn(
-            listItemStyles.getRowClassName({ variant: "compact", isActive: isPlaying }),
+            listItemStyles.getRowClassName({ variant: "compact", isActive: isPlaying, isSelected }),
             track.fromSuggestions ? "opacity-75" : "",
-            isSelected ? "ring-2 ring-white/30" : "",
         );
         const indexTone = track.fromSuggestions ? listItemStyles.text.muted : listItemStyles.text.secondary;
         const primaryTone = track.fromSuggestions ? listItemStyles.text.secondary : listItemStyles.text.primary;
+
+        console.log("rowClassName", isSelected, rowClassName);
+
         return (
             <Button
                 className={rowClassName}
@@ -127,55 +134,4 @@ export const TrackItem = ({
             </Button>
         );
     }
-
-    // Comfortable mode: current existing layout
-    const rowClassName = cn(
-        listItemStyles.getRowClassName({ isActive: isPlaying }),
-        track.fromSuggestions ? "opacity-75" : "",
-        isSelected ? "ring-2 ring-white/30" : "",
-    );
-    const indexTone = track.fromSuggestions ? listItemStyles.text.muted : listItemStyles.text.secondary;
-    const titleTone = track.fromSuggestions ? listItemStyles.text.secondary : listItemStyles.text.primary;
-    const subtitleTone = track.fromSuggestions ? listItemStyles.text.muted : listItemStyles.text.secondary;
-
-    return (
-        <Button
-            className={rowClassName}
-            onClick={onClick ? (event) => onClick(index, event) : undefined}
-            onDoubleClick={onDoubleClick ? (event) => onDoubleClick(index, event) : undefined}
-            onRightClick={handleRightClick}
-        >
-            {showIndex && (
-                <Text className={cn("text-base w-8", indexTone)}>
-                    {(track.index ?? index) >= 0 ? (track.index ?? index) + 1 : ""}
-                </Text>
-            )}
-
-            {showAlbumArt && (
-                <AlbumArt
-                    uri={track.thumbnail}
-                    size="medium"
-                    fallbackIcon="♪"
-                    className={track.fromSuggestions ? "opacity-75" : ""}
-                />
-            )}
-
-            <View className={cn("flex-1 mr-8", showAlbumArt ? "ml-4" : showIndex ? "ml-2" : "")}>
-                <Text className={cn("text-sm font-medium", titleTone)} numberOfLines={1}>
-                    {track.title}
-                </Text>
-                <Text className={cn("text-sm", subtitleTone)} numberOfLines={1}>
-                    {track.album ? `${track.artist} • ${track.album}` : track.artist}
-                </Text>
-            </View>
-
-            <Text
-                className={listItemStyles.getMetaClassName({
-                    className: cn("text-base", track.fromSuggestions ? listItemStyles.text.muted : ""),
-                })}
-            >
-                {track.duration}
-            </Text>
-        </Button>
-    );
 };
