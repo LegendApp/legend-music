@@ -3,9 +3,9 @@ import { useObservable } from "@legendapp/state/react";
 import { useCallback, useEffect } from "react";
 import type { NativeMouseEvent } from "react-native-macos";
 
+import { playlistNavigationState$ } from "@/state/playlistNavigationState";
 import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
 import { state$ } from "@/systems/State";
-import { playlistNavigationState$ } from "@/state/playlistNavigationState";
 
 interface UsePlaylistSelectionOptions<T extends { isSeparator?: boolean }> {
     items: T[];
@@ -14,6 +14,17 @@ interface UsePlaylistSelectionOptions<T extends { isSeparator?: boolean }> {
 interface UsePlaylistSelectionResult {
     selectedIndices$: Observable<Set<number>>;
     handleTrackClick: (index: number, event?: NativeMouseEvent) => void;
+}
+
+function createRangeSelection(start: number, end: number): Set<number> {
+    const [minIndex, maxIndex] = start < end ? [start, end] : [end, start];
+    const selection = new Set<number>();
+
+    for (let i = minIndex; i <= maxIndex; i += 1) {
+        selection.add(i);
+    }
+
+    return selection;
 }
 
 export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
@@ -30,6 +41,62 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
             playlistNavigationState$.hasSelection.set(nextSelection.size > 0);
         },
         [selectedIndices$],
+    );
+
+    const setAnchorAndFocus = useCallback(
+        (anchor: number, focus: number) => {
+            selectionAnchor$.set(anchor);
+            selectionFocus$.set(focus);
+        },
+        [selectionAnchor$, selectionFocus$],
+    );
+
+    const applySingleSelection = useCallback(
+        (index: number) => {
+            updateSelectionState(new Set<number>([index]));
+            setAnchorAndFocus(index, index);
+        },
+        [setAnchorAndFocus, updateSelectionState],
+    );
+
+    const applyRangeSelection = useCallback(
+        (anchor: number, focus: number) => {
+            updateSelectionState(createRangeSelection(anchor, focus));
+            selectionFocus$.set(focus);
+        },
+        [selectionFocus$, updateSelectionState],
+    );
+
+    const toggleSelection = useCallback(
+        (index: number) => {
+            const nextSelection = new Set(selectedIndices$.get());
+
+            if (nextSelection.has(index)) {
+                nextSelection.delete(index);
+                updateSelectionState(nextSelection);
+
+                if (nextSelection.size === 0) {
+                    setAnchorAndFocus(-1, -1);
+                    return;
+                }
+
+                if (selectionFocus$.get() === index) {
+                    const nextFocus = Math.min(...nextSelection);
+                    selectionFocus$.set(nextFocus);
+
+                    if (!nextSelection.has(selectionAnchor$.get())) {
+                        selectionAnchor$.set(nextFocus);
+                    }
+                }
+
+                return;
+            }
+
+            nextSelection.add(index);
+            updateSelectionState(nextSelection);
+            setAnchorAndFocus(index, index);
+        },
+        [selectedIndices$, selectionAnchor$, selectionFocus$, setAnchorAndFocus, updateSelectionState],
     );
 
     const getPrimarySelectionIndex = useCallback(() => {
@@ -54,8 +121,6 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
 
             const isShiftPressed = event?.shiftKey;
             const isMultiToggle = event?.metaKey || event?.ctrlKey;
-            const currentSelection = selectedIndices$.get();
-
             if (__DEV__) {
                 console.log("Queue -> select index", index, {
                     shift: isShiftPressed,
@@ -66,49 +131,21 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
             if (isShiftPressed) {
                 const anchorIndex = selectionAnchor$.get();
                 const start = anchorIndex !== -1 ? anchorIndex : index;
-                const [minIndex, maxIndex] = start < index ? [start, index] : [index, start];
-                const nextSelection = new Set<number>();
-                for (let i = minIndex; i <= maxIndex; i += 1) {
-                    nextSelection.add(i);
-                }
-                updateSelectionState(nextSelection);
+                applyRangeSelection(start, index);
                 if (anchorIndex === -1) {
                     selectionAnchor$.set(index);
                 }
-                selectionFocus$.set(index);
                 return;
             }
 
             if (isMultiToggle) {
-                const nextSelection = new Set(currentSelection);
-                if (nextSelection.has(index)) {
-                    nextSelection.delete(index);
-                    updateSelectionState(nextSelection);
-                    if (nextSelection.size === 0) {
-                        selectionAnchor$.set(-1);
-                        selectionFocus$.set(-1);
-                    } else if (selectionFocus$.get() === index) {
-                        const nextFocus = Math.min(...nextSelection);
-                        selectionFocus$.set(nextFocus);
-                        if (!nextSelection.has(selectionAnchor$.get())) {
-                            selectionAnchor$.set(nextFocus);
-                        }
-                    }
-                } else {
-                    nextSelection.add(index);
-                    updateSelectionState(nextSelection);
-                    selectionAnchor$.set(index);
-                    selectionFocus$.set(index);
-                }
+                toggleSelection(index);
                 return;
             }
 
-            const nextSelection = new Set<number>([index]);
-            updateSelectionState(nextSelection);
-            selectionAnchor$.set(index);
-            selectionFocus$.set(index);
+            applySingleSelection(index);
         },
-        [items, selectedIndices$, selectionAnchor$, selectionFocus$, updateSelectionState],
+        [applyRangeSelection, applySingleSelection, items, selectionAnchor$, toggleSelection],
     );
 
     useEffect(() => {
@@ -134,18 +171,9 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
                               : 0;
                     const newIndex = currentIndex <= 0 ? items.length - 1 : currentIndex - 1;
                     if (hasShift && selectionAnchor$.get() !== -1) {
-                        const anchor = selectionAnchor$.get();
-                        const [minIndex, maxIndex] = anchor < newIndex ? [anchor, newIndex] : [newIndex, anchor];
-                        const rangeSelection = new Set<number>();
-                        for (let i = minIndex; i <= maxIndex; i += 1) {
-                            rangeSelection.add(i);
-                        }
-                        updateSelectionState(rangeSelection);
-                        selectionFocus$.set(newIndex);
+                        applyRangeSelection(selectionAnchor$.get(), newIndex);
                     } else {
-                        updateSelectionState(new Set([newIndex]));
-                        selectionAnchor$.set(newIndex);
-                        selectionFocus$.set(newIndex);
+                        applySingleSelection(newIndex);
                     }
                     return true;
                 }
@@ -162,18 +190,9 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
                               : -1;
                     const nextIndex = currentIndex >= items.length - 1 || currentIndex === -1 ? 0 : currentIndex + 1;
                     if (hasShift && selectionAnchor$.get() !== -1) {
-                        const anchor = selectionAnchor$.get();
-                        const [minIndex, maxIndex] = anchor < nextIndex ? [anchor, nextIndex] : [nextIndex, anchor];
-                        const rangeSelection = new Set<number>();
-                        for (let i = minIndex; i <= maxIndex; i += 1) {
-                            rangeSelection.add(i);
-                        }
-                        updateSelectionState(rangeSelection);
-                        selectionFocus$.set(nextIndex);
+                        applyRangeSelection(selectionAnchor$.get(), nextIndex);
                     } else {
-                        updateSelectionState(new Set([nextIndex]));
-                        selectionAnchor$.set(nextIndex);
-                        selectionFocus$.set(nextIndex);
+                        applySingleSelection(nextIndex);
                     }
                     return true;
                 }
@@ -197,12 +216,15 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
             removeListener();
         };
     }, [
+        applyRangeSelection,
+        applySingleSelection,
         getPrimarySelectionIndex,
         handleTrackClick,
         items,
         selectedIndices$,
         selectionAnchor$,
         selectionFocus$,
+        toggleSelection,
         updateSelectionState,
     ]);
 
