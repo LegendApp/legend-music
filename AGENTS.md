@@ -35,4 +35,4 @@
 - When asked to do multiple tasks in a plan file, when finished with each task:
     1. Mark the task complete in the plan file and save it
     2. Create a commit with a summarized description of the task, not including the [] prefix.
-- When finished with the tasks, check the plan file again and if any new tasks have been added, continue doing those tasks.
+- When finished with the tasks and changes are committed to git, check the plan file again and if any new tasks have been added, continue doing those tasks.
