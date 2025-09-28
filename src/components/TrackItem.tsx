@@ -29,7 +29,7 @@ interface TrackItemProps {
     showIndex?: boolean;
     showAlbumArt?: boolean;
     isSelected?: boolean;
-    selectedIndex$?: Observable<number>;
+    selectedIndices$?: Observable<Set<number>>;
     onClick?: (index: number, event?: NativeMouseEvent) => void;
     onDoubleClick?: (index: number, event?: NativeMouseEvent) => void;
     onRightClick?: (index: number, event: NativeMouseEvent) => void;
@@ -40,7 +40,7 @@ export const TrackItem = ({
     index,
     showIndex = true,
     showAlbumArt = true,
-    selectedIndex$,
+    selectedIndices$,
     onClick,
     onDoubleClick,
     onRightClick,
@@ -70,7 +70,8 @@ export const TrackItem = ({
     });
 
     const isSelected = use$(() => {
-        return selectedIndex$?.get() === index || false;
+        const currentSelection = selectedIndices$?.get();
+        return currentSelection ? currentSelection.has(index) : false;
     });
 
     // Handle separator items

@@ -1,23 +1,15 @@
 import { LegendList } from "@legendapp/list";
-import { observable } from "@legendapp/state";
-import { use$, useObservable } from "@legendapp/state/react";
+import { use$ } from "@legendapp/state/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { localAudioControls, localPlayerState$, queue$ } from "@/components/LocalAudioPlayer";
 import { type TrackData, TrackItem } from "@/components/TrackItem";
 import { DragDropView } from "@/native-modules/DragDropView";
-import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import { localMusicState$ } from "@/systems/LocalMusicState";
 import { settings$ } from "@/systems/Settings";
-import { state$ } from "@/systems/State";
 import { perfCount, perfLog } from "@/utils/perfLogger";
-
-// Global state to track whether playlist is actively being navigated
-export const playlistNavigationState$ = observable({
-    hasSelection: false,
-    isSearchDropdownOpen: false,
-});
+import { usePlaylistSelection } from "@/hooks/usePlaylistSelection";
 
 type PlaylistTrackWithSuggestions = TrackData & {
     queueEntryId: string;
@@ -33,7 +25,6 @@ export function Playlist() {
     const isPlayerActive = use$(localPlayerState$.isPlaying);
     const playlistStyle = use$(settings$.general.playlistStyle);
     const [isDragOver, setIsDragOver] = useState(false);
-    const selectedIndex$ = useObservable<number>(-1);
 
     // Render the active playback queue
     const playlist: PlaylistTrackWithSuggestions[] = useMemo(
@@ -59,20 +50,9 @@ export function Playlist() {
         });
     }, [playlist.length, currentTrackIndex, isPlayerActive, playlist]);
 
-    const handleTrackClick = (index: number) => {
-        const track = playlist[index];
-
-        // Don't allow clicking on separator items
-        if (track?.isSeparator) {
-            return;
-        }
-
-        if (__DEV__) {
-            console.log("Queue -> play index", index);
-        }
-        selectedIndex$.set(index);
-        playlistNavigationState$.hasSelection.set(index !== -1);
-    };
+    const { selectedIndices$, handleTrackClick } = usePlaylistSelection({
+        items: playlist,
+    });
 
     const handleTrackDoubleClick = (index: number) => {
         const track = playlist[index];
@@ -85,6 +65,7 @@ export function Playlist() {
         if (__DEV__) {
             console.log("Queue -> play index", index);
         }
+        handleTrackClick(index);
         localAudioControls.playTrackAtIndex(index);
     };
 
@@ -144,55 +125,6 @@ export function Playlist() {
         },
         [handleFileDrop],
     );
-
-    // Keyboard navigation
-    useEffect(() => {
-        const handleKeyDown = (event: { keyCode: number; modifiers: number }) => {
-            // Only handle keyboard events when there are tracks in the queue and no dropdowns are open
-            if (
-                playlist.length === 0 ||
-                playlistNavigationState$.isSearchDropdownOpen.get() ||
-                state$.isDropdownOpen.get()
-            ) {
-                return false;
-            }
-
-            switch (event.keyCode) {
-                case KeyCodes.KEY_UP:
-                    selectedIndex$.set((prev) => {
-                        const newIndex = prev <= 0 ? playlist.length - 1 : prev - 1;
-                        return newIndex;
-                    });
-                    return true;
-
-                case KeyCodes.KEY_DOWN:
-                    selectedIndex$.set((prev) => {
-                        const newIndex = prev >= playlist.length - 1 ? 0 : prev + 1;
-                        return newIndex;
-                    });
-                    return true;
-
-                case KeyCodes.KEY_RETURN:
-                case KeyCodes.KEY_SPACE:
-                    {
-                        const currentIndex = selectedIndex$.get();
-                        if (currentIndex >= 0 && currentIndex < playlist.length) {
-                            handleTrackClick(currentIndex);
-                        }
-                    }
-                    return true;
-
-                default:
-                    return false;
-            }
-        };
-
-        const removeListener = KeyboardManager.addKeyDownListener(handleKeyDown);
-
-        return () => {
-            removeListener();
-        };
-    }, [playlist.length, handleTrackClick, selectedIndex$]);
 
     // Initialize selected index when playlist changes
     // useEffect(() => {
@@ -256,7 +188,7 @@ export function Playlist() {
                                 index={index}
                                 onClick={handleTrackClick}
                                 onDoubleClick={handleTrackDoubleClick}
-                                selectedIndex$={selectedIndex$}
+                                selectedIndices$={selectedIndices$}
                             />
                         )}
                     />

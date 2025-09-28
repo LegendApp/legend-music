@@ -3,11 +3,12 @@ import { use$ } from "@legendapp/state/react";
 import { View } from "react-native";
 import { LocalAudioPlayer, localAudioControls } from "@/components/LocalAudioPlayer";
 import { PlaybackArea } from "@/components/PlaybackArea";
-import { Playlist, playlistNavigationState$ } from "@/components/Playlist";
+import { Playlist } from "@/components/Playlist";
 import { PlaylistSelector } from "@/components/PlaylistSelector";
 import { Unregistered } from "@/components/Unregistered";
 import { useOnHotkeys } from "@/systems/keyboard/Keyboard";
 import { perfCount, perfLog } from "@/utils/perfLogger";
+import { playlistNavigationState$ } from "@/state/playlistNavigationState";
 
 export function MainContainer() {
     perfCount("MainContainer.render");

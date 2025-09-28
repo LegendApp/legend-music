@@ -40,7 +40,7 @@ export function useListItemStyles(): ListItemStyles {
         };
         const hoverRow = "hover:bg-white/10 active:bg-white/15 hover:border-white/10";
         const activeRow = "bg-blue-500/20 border-blue-400/30";
-        const selectedRow = "bg-white/10 border-white/10";
+        const selectedRow = "bg-white/10";
 
         const textPalette: ListItemTextPalette = {
             primary: "text-text-primary",
