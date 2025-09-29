@@ -1,6 +1,7 @@
 #import "AudioPlayer.h"
 #import <React/RCTLog.h>
 #import <AppKit/AppKit.h>
+#import <math.h>
 
 @implementation AudioPlayer
 
@@ -477,10 +478,13 @@ RCT_EXPORT_METHOD(clearNowPlayingInfo)
     if ([keyPath isEqualToString:@"status"]) {
         AVPlayerItem *item = (AVPlayerItem *)object;
         if (item.status == AVPlayerItemStatusReadyToPlay) {
-            // Get duration
+            // Get duration if it is numeric; indefinite durations report NaN
             CMTime duration = item.duration;
-            if (CMTIME_IS_VALID(duration)) {
-                self.duration = CMTimeGetSeconds(duration);
+            if (CMTIME_IS_NUMERIC(duration)) {
+                double seconds = CMTimeGetSeconds(duration);
+                if (isfinite(seconds)) {
+                    self.duration = seconds;
+                }
             }
             self.currentTime = 0;
 
@@ -516,9 +520,12 @@ RCT_EXPORT_METHOD(clearNowPlayingInfo)
     } else if ([keyPath isEqualToString:@"duration"]) {
         AVPlayerItem *item = (AVPlayerItem *)object;
         CMTime duration = item.duration;
-        if (CMTIME_IS_VALID(duration)) {
-            self.duration = CMTimeGetSeconds(duration);
-            [self updateNowPlayingDuration:self.duration];
+        if (CMTIME_IS_NUMERIC(duration)) {
+            double seconds = CMTimeGetSeconds(duration);
+            if (isfinite(seconds)) {
+                self.duration = seconds;
+                [self updateNowPlayingDuration:self.duration];
+            }
         }
     }
 }
@@ -601,18 +608,66 @@ RCT_EXPORT_METHOD(seek:(double)seconds
             return;
         }
 
-        // Clamp seek time to valid range
-        double clampedTime = MAX(0, MIN(seconds, self.duration));
-        CMTime seekTime = CMTimeMakeWithSeconds(clampedTime, NSEC_PER_SEC);
+        // Clamp seek time to valid range, guarding against NaN when duration is still indefinite
+        if (!isfinite(seconds)) {
+            reject(@"INVALID_TIME", @"Seek time must be a finite number", nil);
+            return;
+        }
 
-        [self.player seekToTime:seekTime completionHandler:^(BOOL finished) {
-            if (finished) {
-                self.currentTime = clampedTime;
-                [self updateNowPlayingElapsedTime:self.currentTime];
-                resolve(@{@"success": @YES});
-            } else {
-                reject(@"SEEK_FAILED", @"Seek operation failed", nil);
+        double targetSeconds = seconds < 0 ? 0 : seconds;
+        double durationSeconds = self.duration;
+
+        if (!isfinite(durationSeconds) || durationSeconds <= 0) {
+            CMTime itemDuration = self.playerItem.duration;
+            if (CMTIME_IS_NUMERIC(itemDuration)) {
+                double computedDuration = CMTimeGetSeconds(itemDuration);
+                if (isfinite(computedDuration)) {
+                    durationSeconds = computedDuration;
+                }
             }
+        }
+
+        if (isfinite(durationSeconds) && durationSeconds > 0) {
+            targetSeconds = MIN(targetSeconds, durationSeconds);
+        }
+
+        CMTime seekTime = CMTimeMakeWithSeconds(targetSeconds, NSEC_PER_SEC);
+        if (!CMTIME_IS_VALID(seekTime)) {
+            reject(@"INVALID_TIME", @"Computed seek time is invalid", nil);
+            return;
+        }
+
+        double desiredTime = targetSeconds;
+
+        [self.player seekToTime:seekTime
+               toleranceBefore:kCMTimeZero
+                toleranceAfter:kCMTimeZero
+          completionHandler:^(BOOL finished) {
+            double resolvedTime = desiredTime;
+            CMTime currentTime = self.player.currentTime;
+            if (CMTIME_IS_VALID(currentTime)) {
+                double computed = CMTimeGetSeconds(currentTime);
+                if (isfinite(computed)) {
+                    resolvedTime = computed;
+                }
+            }
+
+            BOOL reachedTarget = finished;
+            if (!reachedTarget && isfinite(resolvedTime) && isfinite(desiredTime)) {
+                reachedTarget = fabs(resolvedTime - desiredTime) <= 0.2;
+            }
+
+            double commitTime = isfinite(resolvedTime) ? resolvedTime : desiredTime;
+            if (isfinite(commitTime)) {
+                self.currentTime = commitTime;
+                [self updateNowPlayingElapsedTime:self.currentTime];
+            }
+
+            if (!reachedTarget) {
+                RCTLogWarn(@"AVPlayer seek reported unfinished completion (target: %f, actual: %f)", desiredTime, resolvedTime);
+            }
+
+            resolve(@{@"success": @(reachedTarget)});
         }];
     });
 }
