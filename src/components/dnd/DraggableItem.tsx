@@ -100,6 +100,9 @@ export const DraggableItem = <T,>({
                 // Set dragging state first
                 setIsDragging(true);
 
+                // Clear any previous drop highlight
+                activeDropZone$.set(null);
+
                 // Trigger the drag start callback
                 onDragStart?.();
 
@@ -153,18 +156,16 @@ export const DraggableItem = <T,>({
 
     // Shared function to handle drag end
     const handleDragEnd = () => {
-        // Handle drop
-        const activeDropZone = activeDropZone$.get();
-        const isDropped = activeDropZone !== null;
+        const activeDropZoneId = activeDropZone$.get();
+        const dropZone = activeDropZoneId ? getDropZoneById(activeDropZoneId) : undefined;
+        const draggedItemValue = draggedItem$.get();
+        const isDropped = Boolean(dropZone && draggedItemValue);
 
-        // If dropped, trigger the onDrop handler of the drop zone
-        if (isDropped && activeDropZone) {
-            const dropZone = getDropZoneById(activeDropZone);
-            if (dropZone && draggedItem$.get()) {
-                // Call the onDrop handler of the drop zone
-                dropZone.onDrop(draggedItem$.get()!);
-            }
+        if (isDropped && dropZone && draggedItemValue) {
+            dropZone.onDrop(draggedItemValue);
         }
+
+        activeDropZone$.set(null);
 
         // Reset the drag state
         setIsDragging(false);
@@ -183,11 +184,6 @@ export const DraggableItem = <T,>({
             if (finished) {
                 // Trigger the drag end callback
                 onDragEnd?.();
-
-                // Reset active drop zone after animation completes
-                if (isDropped) {
-                    activeDropZone$.set(null);
-                }
 
                 // Ensure pan is fully reset to prevent offset on next drag
                 pan.setOffset({ x: 0, y: 0 });

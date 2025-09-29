@@ -5,11 +5,13 @@ import { type LayoutChangeEvent, type LayoutRectangle, View } from "react-native
 import { cn } from "@/utils/cn";
 import { type DraggedItem, useDragDrop } from "./DragDropContext";
 
+type DroppableZoneChildren = ReactNode | ((isActive: boolean) => ReactNode);
+
 interface DroppableZoneProps {
     id?: string;
     allowDrop: (item: DraggedItem) => boolean;
     onDrop: (item: DraggedItem) => void;
-    children: ReactNode;
+    children?: DroppableZoneChildren;
     className?: string;
     activeClassName?: string;
 }
@@ -40,6 +42,7 @@ export const DroppableZone = ({
         width: 0,
         height: 0,
     });
+    const viewRef = useRef<View>(null);
 
     // Register the drop zone on mount and unregister on unmount
     useEffect(() => {
@@ -51,20 +54,42 @@ export const DroppableZone = ({
     }, [id, registerDropZone, unregisterDropZone, allowDrop, onDrop]);
 
     // Handle layout changes
-    const onLayout = (event: LayoutChangeEvent) => {
-        const layout = event.nativeEvent.layout;
-        Object.assign(layoutRef.current, layout);
+    const updateRectFromWindow = () => {
+        if (!viewRef.current) {
+            return;
+        }
 
-        // Update the drop zone's rect
-        updateDropZoneRect(id, layout);
+        viewRef.current.measureInWindow((x, y, width, height) => {
+            const rect: LayoutRectangle = {
+                x,
+                y,
+                width,
+                height,
+            };
+
+            Object.assign(layoutRef.current, rect);
+            updateDropZoneRect(id, rect);
+        });
     };
+
+    const onLayout = (_event: LayoutChangeEvent) => {
+        updateRectFromWindow();
+    };
+
+    useEffect(() => {
+        if (draggedItem) {
+            requestAnimationFrame(updateRectFromWindow);
+        }
+    }, [draggedItem]);
 
     // Determine if this zone is active (has a dragged item over it)
     const isActive = draggedItem !== null && activeDropZone === id;
 
+    const renderedChildren = typeof children === "function" ? children(isActive) : children;
+
     return (
-        <View onLayout={onLayout} className={cn(className, isActive && activeClassName)}>
-            {children}
+        <View ref={viewRef} onLayout={onLayout} className={cn(className, isActive && activeClassName)}>
+            {renderedChildren}
         </View>
     );
 };

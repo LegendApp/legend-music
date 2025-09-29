@@ -99,6 +99,8 @@ export const DragDropProvider = ({ children }: DragDropProviderProps) => {
         if (!draggedItem) return;
 
         let foundDropZone = false;
+        let closestZoneId: string | null = null;
+        let closestDistance = Number.POSITIVE_INFINITY;
 
         // Check each drop zone
         for (const [zoneId, dropZone] of dropZonesRef.current.entries()) {
@@ -117,6 +119,25 @@ export const DragDropProvider = ({ children }: DragDropProviderProps) => {
                 foundDropZone = true;
                 break;
             }
+
+            if (canDrop) {
+                const withinHorizontalBounds = x >= rect.x && x <= rect.x + rect.width;
+                if (withinHorizontalBounds) {
+                    const centerY = rect.y + rect.height / 2;
+                    const distance = Math.abs(centerY - y);
+                    if (distance < closestDistance) {
+                        closestDistance = distance;
+                        closestZoneId = zoneId;
+                    }
+                }
+            }
+        }
+
+        if (!foundDropZone && closestZoneId !== null) {
+            if (activeDropZone !== closestZoneId) {
+                activeDropZone$.set(closestZoneId);
+            }
+            foundDropZone = true;
         }
 
         // If no drop zone was found, clear the active drop zone
