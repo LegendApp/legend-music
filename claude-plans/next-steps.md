@@ -1,8 +1,4 @@
-[x] usePlaylistSelection.ts has a lot of duplicated code. Clean it up to reuse code where it makes sense.
-[x] Replace the keyboard events in usePlaylistSelection.ts with useOnHotkeys. You'll need to add Up/Down types to HotkeyCallbacks.
-[x] Add a delete key handler in usePlaylistSelection.ts to delete the selected items from the playlist.
-[x] Add a Cmd + A hotkey to select all items in the playlist.
-[x] Moving selection up and down in @usePlaylistSelection.ts is very similar. Extract base code to a helper function and keep only the unique parts in each function.
+[x] Enable dragging tracks on the playlist to reorder them. It should show a blue line at the target position while dragging.
 
 ## Punt (do not do these)
 1. Try to fix album art

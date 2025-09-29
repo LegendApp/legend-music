@@ -10,12 +10,20 @@ import type { LocalTrack } from "@/systems/LocalMusicState";
 import { localMusicState$ } from "@/systems/LocalMusicState";
 import { settings$ } from "@/systems/Settings";
 import { perfCount, perfLog } from "@/utils/perfLogger";
+import { DraggableItem, type DraggedItem, DroppableZone } from "./dnd";
 
 type PlaylistTrackWithSuggestions = TrackData & {
     queueEntryId: string;
     fromSuggestions?: true;
     isSeparator?: boolean;
 };
+
+type PlaylistDragData = {
+    type: "playlist-track";
+    queueEntryId: string;
+};
+
+const PLAYLIST_DRAG_ZONE_ID = "playlist-tracks";
 
 export function Playlist() {
     perfCount("Playlist.render");
@@ -59,10 +67,37 @@ export function Playlist() {
         localAudioControls.queue.remove(indices);
     }, []);
 
-    const { selectedIndices$, handleTrackClick } = usePlaylistSelection({
+    const { selectedIndices$, handleTrackClick, syncSelectionAfterReorder } = usePlaylistSelection({
         items: playlist,
         onDeleteSelection: handleDeleteSelection,
     });
+
+    const allowPlaylistDrop = useCallback((item: DraggedItem<PlaylistDragData>) => {
+        return item.sourceZoneId === PLAYLIST_DRAG_ZONE_ID && item.data?.type === "playlist-track";
+    }, []);
+
+    const handleReorderDrop = useCallback(
+        (item: DraggedItem<PlaylistDragData>, targetPosition: number) => {
+            if (item.data?.type !== "playlist-track") {
+                return;
+            }
+
+            const sourceIndex = playlist.findIndex((track) => track.queueEntryId === item.data.queueEntryId);
+            if (sourceIndex === -1) {
+                return;
+            }
+
+            const boundedTarget = Math.max(0, Math.min(targetPosition, playlist.length));
+
+            if (sourceIndex === boundedTarget || (sourceIndex < boundedTarget && sourceIndex + 1 === boundedTarget)) {
+                return;
+            }
+
+            localAudioControls.queue.reorder(sourceIndex, boundedTarget);
+            syncSelectionAfterReorder(sourceIndex, boundedTarget);
+        },
+        [playlist, syncSelectionAfterReorder],
+    );
 
     const handleTrackDoubleClick = (index: number) => {
         const track = playlist[index];
@@ -191,15 +226,31 @@ export function Playlist() {
                         contentContainerStyle={styles.container}
                         waitForInitialLayout={false}
                         estimatedItemSize={playlistStyle === "compact" ? 32 : 50}
+                        ListHeaderComponent={
+                            <PlaylistDropZone position={0} allowDrop={allowPlaylistDrop} onDrop={handleReorderDrop} />
+                        }
                         recycleItems
                         renderItem={({ item: track, index }) => (
-                            <TrackItem
-                                track={track}
-                                index={index}
-                                onClick={handleTrackClick}
-                                onDoubleClick={handleTrackDoubleClick}
-                                selectedIndices$={selectedIndices$}
-                            />
+                            <View>
+                                <DraggableItem
+                                    id={track.queueEntryId}
+                                    zoneId={PLAYLIST_DRAG_ZONE_ID}
+                                    data={{ type: "playlist-track", queueEntryId: track.queueEntryId }}
+                                >
+                                    <TrackItem
+                                        track={track}
+                                        index={index}
+                                        onClick={handleTrackClick}
+                                        onDoubleClick={handleTrackDoubleClick}
+                                        selectedIndices$={selectedIndices$}
+                                    />
+                                </DraggableItem>
+                                <PlaylistDropZone
+                                    position={index + 1}
+                                    allowDrop={allowPlaylistDrop}
+                                    onDrop={handleReorderDrop}
+                                />
+                            </View>
                         )}
                     />
                 </>
@@ -213,3 +264,23 @@ const styles = StyleSheet.create({
         paddingVertical: 2,
     },
 });
+
+interface PlaylistDropZoneProps {
+    position: number;
+    allowDrop: (item: DraggedItem<PlaylistDragData>) => boolean;
+    onDrop: (item: DraggedItem<PlaylistDragData>, position: number) => void;
+}
+
+function PlaylistDropZone({ position, allowDrop, onDrop }: PlaylistDropZoneProps) {
+    const dropId = `playlist-drop-${position}`;
+
+    return (
+        <DroppableZone
+            id={dropId}
+            allowDrop={(item) => allowDrop(item as DraggedItem<PlaylistDragData>)}
+            onDrop={(item) => onDrop(item as DraggedItem<PlaylistDragData>, position)}
+            className="mx-3 my-1 h-[3px] rounded-full bg-transparent"
+            activeClassName="bg-blue-500"
+        />
+    );
+}

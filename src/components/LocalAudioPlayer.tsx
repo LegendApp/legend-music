@@ -298,6 +298,62 @@ function queueInsertNext(input: QueueInput, options: QueueUpdateOptions = {}): v
     }
 }
 
+function queueReorder(fromIndex: number, toIndex: number): void {
+    const tracks = getQueueSnapshot();
+    const length = tracks.length;
+
+    if (length === 0) {
+        return;
+    }
+
+    const from = clampIndex(fromIndex, length);
+    if (from === -1 || from >= length) {
+        return;
+    }
+
+    const boundedTarget = Math.max(0, Math.min(toIndex, length));
+
+    if (from === boundedTarget || (from < boundedTarget && from + 1 === boundedTarget)) {
+        return;
+    }
+
+    const nextQueue = [...tracks];
+    const [moved] = nextQueue.splice(from, 1);
+
+    if (!moved) {
+        return;
+    }
+
+    let insertIndex = boundedTarget;
+    if (from < boundedTarget) {
+        insertIndex = Math.max(0, boundedTarget - 1);
+    }
+    insertIndex = Math.max(0, Math.min(insertIndex, nextQueue.length));
+
+    perfLog("Queue.reorder", { fromIndex: from, toIndex: boundedTarget, insertIndex });
+
+    nextQueue.splice(insertIndex, 0, moved);
+    setQueueTracks(nextQueue);
+
+    const currentIndex = localPlayerState$.currentIndex.peek();
+    if (currentIndex === -1) {
+        return;
+    }
+
+    const currentTrack = tracks[currentIndex];
+    if (!currentTrack) {
+        localPlayerState$.currentIndex.set(Math.min(currentIndex, nextQueue.length - 1));
+        return;
+    }
+
+    const nextCurrentIndex = nextQueue.findIndex((track) => track.queueEntryId === currentTrack.queueEntryId);
+    if (nextCurrentIndex !== -1) {
+        localPlayerState$.currentIndex.set(nextCurrentIndex);
+    } else {
+        localPlayerState$.currentIndex.set(Math.min(currentIndex, nextQueue.length - 1));
+    }
+}
+
 function queueRemoveIndices(indices: number[]): void {
     if (indices.length === 0) {
         return;
@@ -387,6 +443,7 @@ export const queueControls = {
     replace: queueReplace,
     append: queueAppend,
     insertNext: queueInsertNext,
+    reorder: queueReorder,
     remove: queueRemoveIndices,
     clear: queueClear,
     initializeFromCache: initializeQueueFromCache,

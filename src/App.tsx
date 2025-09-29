@@ -3,6 +3,7 @@ import { VibrancyView } from "@fluentui-react-native/vibrancy-view";
 import { PortalProvider } from "@gorhom/portal";
 import type React from "react";
 import { LogBox, StyleSheet, View } from "react-native";
+import { DragDropProvider } from "@/components/dnd";
 import { MainContainer } from "@/components/MainContainer";
 import { TitleBar } from "@/components/TitleBar";
 import { MediaLibraryWindowManager } from "@/media-library/MediaLibraryWindowManager";
@@ -29,7 +30,9 @@ function App(): React.JSX.Element | null {
             <VibrancyView blendingMode="behindWindow" material="sidebar" style={styles.vibrancy}>
                 <View className="flex-1 bg-background-primary/40">
                     <PortalProvider>
-                        <MainContainer />
+                        <DragDropProvider>
+                            <MainContainer />
+                        </DragDropProvider>
                     </PortalProvider>
                 </View>
             </VibrancyView>

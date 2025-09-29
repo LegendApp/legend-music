@@ -16,6 +16,7 @@ interface UsePlaylistSelectionOptions<T extends { isSeparator?: boolean }> {
 interface UsePlaylistSelectionResult {
     selectedIndices$: Observable<Set<number>>;
     handleTrackClick: (index: number, event?: NativeMouseEvent) => void;
+    syncSelectionAfterReorder: (fromIndex: number, toIndex: number) => void;
 }
 
 function createRangeSelection(start: number, end: number): Set<number> {
@@ -194,6 +195,75 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
         moveSelection("down");
     }, [moveSelection]);
 
+    const syncSelectionAfterReorder = useCallback(
+        (fromIndex: number, toIndex: number) => {
+            const length = itemsLength;
+            if (length === 0) {
+                return;
+            }
+
+            const boundedFrom = Math.max(0, Math.min(fromIndex, length - 1));
+            const boundedTarget = Math.max(0, Math.min(toIndex, length));
+
+            if (boundedFrom === boundedTarget || (boundedFrom < boundedTarget && boundedFrom + 1 === boundedTarget)) {
+                return;
+            }
+
+            const isMovingDown = boundedFrom < boundedTarget;
+            const finalIndex = isMovingDown
+                ? Math.max(0, Math.min(boundedTarget - 1, length - 1))
+                : Math.max(0, Math.min(boundedTarget, length - 1));
+
+            const currentSelection = selectedIndices$.get();
+
+            if (currentSelection.size === 0) {
+                return;
+            }
+
+            const nextSelection = new Set<number>();
+            currentSelection.forEach((index) => {
+                if (index === boundedFrom) {
+                    nextSelection.add(finalIndex);
+                } else if (isMovingDown && index > boundedFrom && index < boundedTarget) {
+                    nextSelection.add(index - 1);
+                } else if (!isMovingDown && index >= boundedTarget && index < boundedFrom) {
+                    nextSelection.add(index + 1);
+                } else {
+                    nextSelection.add(index);
+                }
+            });
+
+            updateSelectionState(nextSelection);
+
+            const adjustIndex = (index: number): number => {
+                if (index === boundedFrom) {
+                    return finalIndex;
+                }
+
+                if (isMovingDown && index > boundedFrom && index < boundedTarget) {
+                    return index - 1;
+                }
+
+                if (!isMovingDown && index >= boundedTarget && index < boundedFrom) {
+                    return index + 1;
+                }
+
+                return index;
+            };
+
+            const anchor = selectionAnchor$.get();
+            if (anchor !== -1) {
+                selectionAnchor$.set(adjustIndex(anchor));
+            }
+
+            const focus = selectionFocus$.get();
+            if (focus !== -1) {
+                selectionFocus$.set(adjustIndex(focus));
+            }
+        },
+        [itemsLength, selectedIndices$, selectionAnchor$, selectionFocus$, updateSelectionState],
+    );
+
     const handleTrackClick = useCallback(
         (index: number, event?: NativeMouseEvent) => {
             const track = items[index];
@@ -295,5 +365,6 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
     return {
         selectedIndices$,
         handleTrackClick,
+        syncSelectionAfterReorder,
     };
 }
