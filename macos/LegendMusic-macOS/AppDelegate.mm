@@ -2,6 +2,7 @@
 #import "WindowManager.h"
 
 #import <React/RCTBundleURLProvider.h>
+#import <React/RCTDevloadingViewSetEnabled.h>
 #import <React/RCTBridge.h>
 #import <React/RCTLinkingManager.h>
 #import <React/RCTCxxBridgeDelegate.h>
@@ -27,6 +28,10 @@
   // You can add your custom initial props in the dictionary below.
   // They will be passed down to the ViewController used by React Native.
   self.initialProps = @{};
+
+  // Sometimes the "loading bar" gets stuck on and you have to kill the app to fix it;
+  // by turning it off here, we avoid that issue
+  RCTDevLoadingViewSetEnabled(false);
 
   /**
    *  Use a notification observer to modify the window properties once the window has been created.
