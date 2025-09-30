@@ -224,7 +224,13 @@ export const PlaylistSelectorSearchDropdown = forwardRef<DropdownMenuRootRef, Pl
         return (
             <DropdownMenu.Root ref={ref} isOpen$={isOpen$} onOpenChange={handleOpenChange}>
                 <DropdownMenu.Trigger asChild>
-                    <Button icon="magnifyingglass" variant="icon" size="small" className="ml-2 hover:bg-white/10" />
+                    <Button
+                        icon="magnifyingglass"
+                        variant="icon"
+                        size="small"
+                        className="ml-2 hover:bg-white/10"
+                        tooltip="Search playlists"
+                    />
                 </DropdownMenu.Trigger>
                 <DropdownMenu.Content
                     directionalHint="topCenter"

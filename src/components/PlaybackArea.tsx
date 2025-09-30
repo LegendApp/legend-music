@@ -79,7 +79,8 @@ export function PlaybackArea() {
                     </Text>
                 </View>
             </View>
-            <View className={cn("group flex-row items-center pb-1 pt-1", !currentTrack && "opacity-0")}
+            <View
+                className={cn("group flex-row items-center pb-1 pt-1", !currentTrack && "opacity-0")}
                 onMouseLeave={() => setIsSliderHovered(false)}
             >
                 <Text
@@ -129,6 +130,7 @@ export function PlaybackArea() {
                         iconSize={16}
                         size="small"
                         onClick={localAudioControls.togglePlayPause}
+                        tooltip={isPlaying ? "Pause" : "Play"}
                         // className="bg-white/15 hover:bg-white/25 active:bg-white/35 border-white/15 rounded-full"
                     />
 
@@ -138,6 +140,7 @@ export function PlaybackArea() {
                         iconSize={16}
                         size="small"
                         onClick={localAudioControls.playNext}
+                        tooltip="Next"
                         // className="bg-transparent"
                         // className="bg-white/15 hover:bg-white/25 active:bg-white/35 border-white/10 rounded-full"
                     />

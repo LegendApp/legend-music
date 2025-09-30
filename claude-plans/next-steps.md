@@ -1,7 +1,7 @@
-[x] Clicking the slider in PlaybackArea.tsx is not seeking
-[x] Hovering over the playback area should display the current time and duration. See @PlaybackArea.tsx and that display code is already in there but commented out.
-[x] Replace all usage of StyleSheet in MediaLibrary.tsx with tailwind classNames.
-[x] Change the position of the SelectLegendList in @PlaylistSelector to be positioned above the trigger. See @PlaylistSelectorSearchDropdown.tsx for an example of positioning a dropdown right below the trigger.
+[x] Create a system where buttons show tooltips after being hovered for 1 second
+[] handleSaveQueue in PlaylistSelector.tsx should open a native save file dialog to save an m3u file
+[] LocalMusicState.ts should load all .m3u files in the getCacheDirectory("playlists") folder into a playlists field on localMusicState$
+[] PlaylistSelector.tsx should source its availablePlaylists from localMusicState$
 
 ## Punt (do not do these)
 1. Try to fix album art

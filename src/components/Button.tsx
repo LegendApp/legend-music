@@ -1,4 +1,4 @@
-import { type PropsWithChildren, useRef } from "react";
+import { type PropsWithChildren, useEffect, useRef } from "react";
 import { type GestureResponderEvent, Pressable, type PressableProps } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 
@@ -6,6 +6,7 @@ import { Icon } from "@/systems/Icon";
 import { startNavMeasurement } from "@/systems/NavTime";
 import type { SFSymbols } from "@/types/SFSymbols";
 import { cn } from "@/utils/cn";
+import { useTooltip } from "./TooltipProvider";
 
 const DOUBLE_CLICK_DURATION = 300;
 const DOUBLE_CLICK_DISTANCE = 4;
@@ -17,6 +18,7 @@ export interface ButtonProps
     variant?: "icon" | "icon-bg" | "primary" | "secondary" | "accent" | "destructive" | "inverse";
     size?: "small" | "medium" | "large";
     iconSize?: number;
+    tooltip?: string;
     onClick?: (event: NativeMouseEvent) => void;
     onMouseDown?: (event: NativeMouseEvent) => void;
     onMouseUp?: (event: NativeMouseEvent) => void;
@@ -36,9 +38,27 @@ export function Button({
     onMouseUp,
     onDoubleClick,
     onRightClick,
+    tooltip,
     ...props
 }: PropsWithChildren<ButtonProps>) {
+    const { showTooltip, hideTooltip } = useTooltip();
+    const pressableRef = useRef<any>(null);
     const lastClickRef = useRef<{ time: number; x: number; y: number } | null>(null);
+    const tooltipTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const pressableAccessibilityLabel = props.accessibilityLabel;
+    const { onHoverIn, onHoverOut, ...restPressableProps } = props;
+    const tooltipText =
+        tooltip ?? (typeof pressableAccessibilityLabel === "string" ? pressableAccessibilityLabel : undefined);
+
+    const clearTooltipTimeout = () => {
+        if (tooltipTimeoutRef.current) {
+            clearTimeout(tooltipTimeoutRef.current);
+            tooltipTimeoutRef.current = null;
+        }
+    };
+
+    useEffect(() => () => clearTooltipTimeout(), []);
 
     const handleClick = (event: GestureResponderEvent) => {
         const nativeEvent = event.nativeEvent as unknown as NativeMouseEvent;
@@ -70,6 +90,8 @@ export function Button({
 
     const handleMouseDown = (event: GestureResponderEvent) => {
         const nativeEvent = event.nativeEvent as unknown as NativeMouseEvent;
+        clearTooltipTimeout();
+        hideTooltip();
 
         if (nativeEvent?.button === 2 || nativeEvent.ctrlKey) {
             onRightClick?.(nativeEvent);
@@ -84,12 +106,45 @@ export function Button({
         onMouseUp?.(nativeEvent);
     };
 
+    const handleHoverIn = (event: any) => {
+        onHoverIn?.(event);
+
+        if (!tooltipText || restPressableProps.disabled) {
+            return;
+        }
+
+        clearTooltipTimeout();
+
+        tooltipTimeoutRef.current = setTimeout(() => {
+            const target = pressableRef.current;
+
+            if (target?.measureInWindow) {
+                target.measureInWindow((x: number, y: number, width: number, height: number) => {
+                    showTooltip({
+                        text: tooltipText,
+                        anchorX: x + width / 2,
+                        anchorY: y,
+                        anchorHeight: height,
+                        placement: "bottom",
+                    });
+                });
+            }
+        }, 1000);
+    };
+
+    const handleHoverOut = (event: any) => {
+        onHoverOut?.(event);
+        clearTooltipTimeout();
+        hideTooltip();
+    };
+
     const iconSize = iconSizeProp ?? (size === "small" ? 14 : size === "large" ? 24 : 18);
     const isIcon = variant === "icon" || variant === "icon-bg";
 
     return (
         <Pressable
-            {...props}
+            {...restPressableProps}
+            ref={pressableRef}
             className={cn(
                 icon && children && "flex-row items-center gap-1",
                 icon && !children && "items-center justify-center",
@@ -111,6 +166,8 @@ export function Button({
             onPress={handleClick}
             onPressIn={handleMouseDown}
             onPressOut={handleMouseUp}
+            onHoverIn={handleHoverIn}
+            onHoverOut={handleHoverOut}
         >
             {icon && <Icon name={icon} size={iconSize} />}
             {children}
