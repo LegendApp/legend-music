@@ -1,6 +1,6 @@
 import type { Observable } from "@legendapp/state";
 import { use$ } from "@legendapp/state/react";
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { AlbumArt } from "@/components/AlbumArt";
 import { Button } from "@/components/Button";
@@ -45,6 +45,13 @@ export function PlaybackArea() {
     const isPlaying = use$(localPlayerState$.isPlaying);
     const currentLocalTime$ = localPlayerState$.currentTime;
     const duration = use$(localPlayerState$.duration);
+    const [isSliderHovered, setIsSliderHovered] = useState(false);
+
+    useEffect(() => {
+        if (!currentTrack) {
+            setIsSliderHovered(false);
+        }
+    }, [currentTrack]);
 
     perfLog("PlaybackArea.state", {
         track: currentTrack?.title,
@@ -72,8 +79,16 @@ export function PlaybackArea() {
                     </Text>
                 </View>
             </View>
-            <View className={cn("flex-row items-center pb-2 pt-1", !currentTrack && "opacity-0")}>
-                <Text className="text-white/50 text-xs pr-2" style={{ fontVariant: ["tabular-nums"] }}>
+            <View className={cn("group flex-row items-center pb-1 pt-1", !currentTrack && "opacity-0")}
+                onMouseLeave={() => setIsSliderHovered(false)}
+            >
+                <Text
+                    className={cn(
+                        "text-white/70 text-xs pr-2 transition-opacity duration-150",
+                        isSliderHovered ? "opacity-100" : "opacity-0",
+                    )}
+                    style={{ fontVariant: ["tabular-nums"] }}
+                >
                     {duration ? (
                         <>
                             <CurrentTime currentLocalTime$={currentLocalTime$} />
@@ -88,6 +103,7 @@ export function PlaybackArea() {
                     minimumValue={0}
                     $maximumValue={localPlayerState$.duration}
                     $value={currentLocalTime$}
+                    onHoverChange={setIsSliderHovered}
                     onSlidingComplete={(value) => {
                         localAudioControls.seek(value);
                     }}

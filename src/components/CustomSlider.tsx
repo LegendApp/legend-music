@@ -13,6 +13,7 @@ interface CustomSliderProps {
     minimumValue: number;
     $maximumValue: Observable<number>;
     onSlidingComplete?: (value: number) => void;
+    onHoverChange?: (hovered: boolean) => void;
     disabled?: boolean;
     style?: any;
     minimumTrackTintColor?: string;
@@ -24,6 +25,7 @@ export function CustomSlider({
     minimumValue,
     $maximumValue,
     onSlidingComplete,
+    onHoverChange,
     disabled: disabledProp = false,
     style,
     minimumTrackTintColor = "#ffffff",
@@ -119,14 +121,22 @@ export function CustomSlider({
 
     const handleHoverIn = () => {
         perfLog("CustomSlider.handleHoverIn", { disabled: isDisabled$.get() });
-        if (isDisabled$.get()) return;
+        if (isDisabled$.get()) {
+            onHoverChange?.(false);
+            return;
+        }
         isHovered$.set(true);
+        onHoverChange?.(true);
     };
 
     const handleHoverOut = () => {
         perfLog("CustomSlider.handleHoverOut", { disabled: isDisabled$.get() });
-        if (isDisabled$.get()) return;
+        if (isDisabled$.get()) {
+            onHoverChange?.(false);
+            return;
+        }
         isHovered$.set(false);
+        onHoverChange?.(false);
     };
 
     const handlePress = (event: GestureResponderEvent) => {

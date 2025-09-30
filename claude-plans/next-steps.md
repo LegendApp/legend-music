@@ -1,5 +1,5 @@
 [x] Clicking the slider in PlaybackArea.tsx is not seeking
-[] Hovering over the playback area should display the current time and duration. See @PlaybackArea.tsx and that display code is already in there but commented out.
+[x] Hovering over the playback area should display the current time and duration. See @PlaybackArea.tsx and that display code is already in there but commented out.
 [] Replace all usage of StyleSheet in MediaLibrary.tsx with tailwind classNames.
 [] Change the position of the SelectLegendList in @PlaylistSelector to be positioned above the trigger. See @PlaylistSelectorSearchDropdown.tsx for an example of positioning a dropdown right below the trigger.
 
