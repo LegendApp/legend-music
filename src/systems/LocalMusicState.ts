@@ -589,6 +589,7 @@ export async function loadLocalPlaylists(): Promise<void> {
     }
 
     const playlists: LocalPlaylist[] = [];
+    const toFilePath = (value: string): string => (value.startsWith("file://") ? new URL(value).pathname : value);
 
     for (const entry of entries) {
         if (!(entry instanceof File)) {
@@ -604,12 +605,13 @@ export async function loadLocalPlaylists(): Promise<void> {
             const trackPaths = content
                 .split(/\r?\n/)
                 .map((line) => line.trim())
-                .filter((line) => line.length > 0 && !line.startsWith("#"));
+                .filter((line) => line.length > 0 && !line.startsWith("#"))
+                .map((line) => toFilePath(line));
 
             playlists.push({
-                id: entry.uri,
+                id: toFilePath(entry.uri),
                 name: entry.name.replace(/\.m3u$/i, ""),
-                filePath: entry.uri,
+                filePath: toFilePath(entry.uri),
                 trackPaths,
                 trackCount: trackPaths.length,
             });
@@ -626,7 +628,7 @@ export async function loadLocalPlaylists(): Promise<void> {
 
 // Set current playlist selection
 export function setCurrentPlaylist(playlistId: string, playlistType: "file"): void {
-    localMusicState$.isLocalFilesSelected.set(true);
+    localMusicState$.isLocalFilesSelected.set(playlistId === "LOCAL_FILES");
 
     console.log("setCurrentPlaylist", playlistId, playlistType);
 
@@ -651,8 +653,12 @@ export function initializeLocalMusic(): void {
     // Restore isLocalFilesSelected state based on saved playlist type
     const savedPlaylistType = stateSaved$.playlistType.get();
     if (savedPlaylistType === "file") {
-        localMusicState$.isLocalFilesSelected.set(true);
-        console.log("Restored Local Files playlist selection on startup");
+        const savedPlaylistId = stateSaved$.playlist.get();
+        const isLocalFiles = savedPlaylistId === "LOCAL_FILES";
+        localMusicState$.isLocalFilesSelected.set(isLocalFiles);
+        if (isLocalFiles) {
+            console.log("Restored Local Files playlist selection on startup");
+        }
     }
 
     loadLocalPlaylists().catch((error) => {

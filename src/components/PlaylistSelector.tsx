@@ -1,6 +1,6 @@
 import { use$ } from "@legendapp/state/react";
 import { File } from "expo-file-system/next";
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { Text, View } from "react-native";
 import { Button } from "@/components/Button";
 import type { DropdownMenuRootRef } from "@/components/DropdownMenu";
@@ -11,7 +11,7 @@ import { useOnHotkeys } from "@/systems/keyboard/Keyboard";
 import type { LibraryItem } from "@/systems/LibraryState";
 import { library$, libraryUI$ } from "@/systems/LibraryState";
 import type { LocalTrack } from "@/systems/LocalMusicState";
-import { localMusicState$, setCurrentPlaylist } from "@/systems/LocalMusicState";
+import { loadLocalPlaylists, localMusicState$, setCurrentPlaylist } from "@/systems/LocalMusicState";
 import { stateSaved$ } from "@/systems/State";
 import { showSaveDialog } from "@/native-modules/FileDialog";
 import { ensureCacheDirectory, getCacheDirectory } from "@/utils/cacheDirectories";
@@ -42,11 +42,12 @@ function generateM3UPlaylist(tracks: { title: string; artist: string; filePath: 
     return lines.join("\n");
 }
 
-interface LocalPlaylist {
+interface PlaylistOption {
     id: string;
     name: string;
     count: number;
-    type: "file";
+    type: "local-files" | "saved";
+    trackPaths?: string[];
 }
 
 export function PlaylistSelector() {
@@ -55,17 +56,37 @@ export function PlaylistSelector() {
     const library = use$(library$);
     const queue = use$(queue$);
 
-    // Create local files playlist
-    const localFilesPlaylist: LocalPlaylist = {
-        id: "LOCAL_FILES",
-        name: "Local Files",
-        count: localMusicState.tracks.length,
-        type: "file",
-    };
+    const localFilesPlaylist = useMemo<PlaylistOption>(
+        () => ({
+            id: "LOCAL_FILES",
+            name: "Local Files",
+            count: localMusicState.tracks.length,
+            type: "local-files",
+        }),
+        [localMusicState.tracks.length],
+    );
 
-    // Only use local files playlist
-    const availablePlaylists = [localFilesPlaylist];
-    const availablePlaylistIds = availablePlaylists.map((playlist) => playlist.id);
+    const savedPlaylistOptions = useMemo<PlaylistOption[]>(
+        () =>
+            localMusicState.playlists.map((playlist) => ({
+                id: playlist.id,
+                name: playlist.name,
+                count: playlist.trackCount,
+                type: "saved",
+                trackPaths: playlist.trackPaths,
+            })),
+        [localMusicState.playlists],
+    );
+
+    const availablePlaylists = useMemo(
+        () => [localFilesPlaylist, ...savedPlaylistOptions],
+        [localFilesPlaylist, savedPlaylistOptions],
+    );
+    const availablePlaylistIds = useMemo(() => availablePlaylists.map((playlist) => playlist.id), [availablePlaylists]);
+    const playlistMap = useMemo(
+        () => new Map(availablePlaylists.map((playlist) => [playlist.id, playlist])),
+        [availablePlaylists],
+    );
 
     const selectedPlaylist$ = stateSaved$.playlist;
 
@@ -77,20 +98,49 @@ export function PlaylistSelector() {
         libraryUI$.isOpen.set(!libraryUI$.isOpen.get());
     }, []);
 
+    const tracksByPath = useMemo(
+        () => new Map(localMusicState.tracks.map((track) => [track.filePath, track])),
+        [localMusicState.tracks],
+    );
+
     const handlePlaylistSelect = (playlistId: string) => {
         perfLog("PlaylistSelector.handlePlaylistSelect", { playlistId });
-        console.log("Navigating to playlist:", playlistId);
-        setCurrentPlaylist(playlistId, "file");
-        console.log("Selected local files playlist");
+        const playlist = playlistMap.get(playlistId);
 
-        if (playlistId === "LOCAL_FILES") {
+        if (!playlist) {
+            console.warn("Playlist not found:", playlistId);
+            return;
+        }
+
+        console.log("Navigating to playlist:", playlistId, playlist.name);
+
+        if (playlist.type === "local-files") {
             const tracks = localMusicState.tracks;
             if (tracks.length > 0) {
                 localAudioControls.queue.replace(tracks, { startIndex: 0, playImmediately: true });
             } else {
                 localAudioControls.queue.clear();
             }
+        } else {
+            const trackPaths = playlist.trackPaths ?? [];
+            const resolvedTracks = trackPaths
+                .map((path) => tracksByPath.get(path))
+                .filter((track): track is LocalTrack => track !== undefined);
+
+            if (resolvedTracks.length > 0) {
+                localAudioControls.queue.replace(resolvedTracks, { startIndex: 0, playImmediately: true });
+            } else {
+                console.warn(`No tracks resolved for playlist ${playlist.name}`);
+                localAudioControls.queue.clear();
+            }
+
+            const missingCount = trackPaths.length - resolvedTracks.length;
+            if (missingCount > 0) {
+                console.warn(`Playlist ${playlist.name} is missing ${missingCount} tracks from the library`);
+            }
         }
+
+        setCurrentPlaylist(playlistId, "file");
     };
 
     const handleTrackSelect = (track: LocalTrack, action: "enqueue" | "play-next") => {
@@ -166,6 +216,8 @@ export function PlaylistSelector() {
             file.create({ overwrite: true, intermediates: true });
             file.write(m3uContent);
 
+            await loadLocalPlaylists();
+
             console.log(`Playlist saved to: ${file.uri}`);
             console.log(`Saved ${queue.tracks.length} tracks to playlist`);
         } catch (error) {
@@ -192,7 +244,7 @@ export function PlaylistSelector() {
                         getItemKey={(playlist) => playlist}
                         renderItem={(playlistId, mode) => {
                             if (!playlistId) return <Text>Null</Text>;
-                            const playlist = playlistId === "LOCAL_FILES" ? localFilesPlaylist : null;
+                            const playlist = playlistMap.get(playlistId);
 
                             if (!playlist) {
                                 console.log("Playlist not found:", playlistId);
@@ -207,9 +259,12 @@ export function PlaylistSelector() {
                                 );
                             }
                             return (
-                                <View className="flex-row items-center">
+                                <View className="flex-row items-center justify-between gap-3">
                                     <Text className="text-text-primary text-sm font-medium flex-1">
                                         {playlist.name}
+                                    </Text>
+                                    <Text className="text-text-secondary text-xs">
+                                        {playlist.count} {playlist.count === 1 ? "track" : "tracks"}
                                     </Text>
                                 </View>
                             );
