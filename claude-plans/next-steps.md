@@ -1,7 +1,5 @@
-[x] Create a system where buttons show tooltips after being hovered for 1 second
-[x] handleSaveQueue in PlaylistSelector.tsx should open a native save file dialog to save an m3u file
-[x] LocalMusicState.ts should load all .m3u files in the getCacheDirectory("playlists") folder into a playlists field on localMusicState$
-[x] PlaylistSelector.tsx should source its availablePlaylists from localMusicState$
+[x] The dropdown PlaylistSelector.tsx should be the width of the window and the height should flex to the size of its content, with a minimum of 200px and maximum of 600px.
+[] PlaylistSelectorSearchDropdown should source from the playlists in localMusicState$ in addition to tracks as it does now. If a playlist is selected it should replace the queue with the contents of the playlist.
 
 ## Punt (do not do these)
 1. Try to fix album art

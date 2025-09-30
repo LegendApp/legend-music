@@ -2,6 +2,7 @@ import { LegendList, type LegendListRenderItemProps } from "@legendapp/list";
 import type { Observable, ObservableParam } from "@legendapp/state";
 import { use$, useObservable } from "@legendapp/state/react";
 import type { ReactNode } from "react";
+import { useMemo } from "react";
 import { Text, View } from "react-native";
 import { DropdownMenu } from "@/components/DropdownMenu";
 import { WithCheckbox } from "@/components/WithCheckbox";
@@ -30,6 +31,12 @@ export interface SelectLegendListPropsBase<T> {
         | "topLeftEdge"
         | "topCenter"
         | "topRightEdge";
+    contentMaxHeightClassName?: string;
+    contentMinWidth?: number;
+    contentMaxWidth?: number;
+    contentScrolls?: boolean;
+    minContentHeight?: number;
+    maxContentHeight?: number;
 }
 
 export interface SelectLegendListProps<T> extends SelectLegendListPropsBase<T> {
@@ -91,9 +98,26 @@ export function SelectLegendListMultiple<T>({
     caretPosition = "right",
     textClassName,
     directionalHint = "bottonLeftEdge",
+    contentMaxHeightClassName = "max-h-96",
+    contentMinWidth,
+    contentMaxWidth,
+    contentScrolls = false,
+    minContentHeight,
+    maxContentHeight,
     // maxWidthMatchTrigger = false,
 }: SelectLegendListMultipleProps<T>) {
     const selectedItems = use$<T[]>(selectedItems$);
+
+    const contentContainerStyle = useMemo(() => {
+        const style: { width: string; minHeight?: number; maxHeight?: number } = { width: "100%" };
+        if (minContentHeight !== undefined) {
+            style.minHeight = minContentHeight;
+        }
+        if (maxContentHeight !== undefined) {
+            style.maxHeight = maxContentHeight;
+        }
+        return style;
+    }, [minContentHeight, maxContentHeight]);
 
     const handleSelectItem = (item: T) => {
         const index = selectedItems.indexOf(item);
@@ -155,21 +179,20 @@ export function SelectLegendListMultiple<T>({
             </DropdownMenu.Trigger>
             <DropdownMenu.Content
                 className={className}
-                maxHeightClassName="max-h-96"
-                scrolls={false}
+                maxHeightClassName={contentMaxHeightClassName}
+                scrolls={contentScrolls}
                 directionalHint={directionalHint}
+                minWidth={contentMinWidth}
+                maxWidth={contentMaxWidth}
                 // maxWidthMatchTrigger={maxWidthMatchTrigger}
             >
-                <View style={{ maxHeight: 384 }}>
+                <View style={contentContainerStyle}>
                     <LegendList
                         data={items}
                         keyExtractor={getItemKey}
                         renderItem={renderListItem}
                         // contentContainerStyle={{ padding: 4 }}
-                        style={{
-                            // width: maxWidthMatchTrigger ? "100%" : 400,
-                            height: "100%",
-                        }}
+                        style={{ flex: 1 }}
                     />
                 </View>
             </DropdownMenu.Content>

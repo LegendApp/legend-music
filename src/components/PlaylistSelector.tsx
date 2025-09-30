@@ -1,19 +1,19 @@
 import { use$ } from "@legendapp/state/react";
 import { File } from "expo-file-system/next";
 import { useCallback, useMemo, useRef } from "react";
-import { Text, View } from "react-native";
+import { Text, View, useWindowDimensions } from "react-native";
 import { Button } from "@/components/Button";
 import type { DropdownMenuRootRef } from "@/components/DropdownMenu";
 import { localAudioControls, queue$ } from "@/components/LocalAudioPlayer";
 import { PlaylistSelectorSearchDropdown } from "@/components/PlaylistSelectorSearchDropdown";
 import { SelectLegendList } from "@/components/SelectLegendList";
+import { showSaveDialog } from "@/native-modules/FileDialog";
 import { useOnHotkeys } from "@/systems/keyboard/Keyboard";
 import type { LibraryItem } from "@/systems/LibraryState";
 import { library$, libraryUI$ } from "@/systems/LibraryState";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import { loadLocalPlaylists, localMusicState$, setCurrentPlaylist } from "@/systems/LocalMusicState";
 import { stateSaved$ } from "@/systems/State";
-import { showSaveDialog } from "@/native-modules/FileDialog";
 import { ensureCacheDirectory, getCacheDirectory } from "@/utils/cacheDirectories";
 import { perfCount, perfLog } from "@/utils/perfLogger";
 
@@ -46,7 +46,7 @@ interface PlaylistOption {
     id: string;
     name: string;
     count: number;
-    type: "local-files" | "saved";
+    type: "all-files" | "saved";
     trackPaths?: string[];
 }
 
@@ -55,13 +55,15 @@ export function PlaylistSelector() {
     const localMusicState = use$(localMusicState$);
     const library = use$(library$);
     const queue = use$(queue$);
+    const { width: windowWidth } = useWindowDimensions();
+    const dropdownWidth = Math.max(windowWidth - 16, 320);
 
     const localFilesPlaylist = useMemo<PlaylistOption>(
         () => ({
-            id: "LOCAL_FILES",
-            name: "Local Files",
+            id: "ALL_FILES",
+            name: "All Files",
             count: localMusicState.tracks.length,
-            type: "local-files",
+            type: "all-files",
         }),
         [localMusicState.tracks.length],
     );
@@ -114,7 +116,7 @@ export function PlaylistSelector() {
 
         console.log("Navigating to playlist:", playlistId, playlist.name);
 
-        if (playlist.type === "local-files") {
+        if (playlist.type === "all-files") {
             const tracks = localMusicState.tracks;
             if (tracks.length > 0) {
                 localAudioControls.queue.replace(tracks, { startIndex: 0, playImmediately: true });
@@ -242,6 +244,7 @@ export function PlaylistSelector() {
                         placeholder="Local Files"
                         onSelectItem={handlePlaylistSelect}
                         getItemKey={(playlist) => playlist}
+                        className="min-h-[200px]"
                         renderItem={(playlistId, mode) => {
                             if (!playlistId) return <Text>Null</Text>;
                             const playlist = playlistMap.get(playlistId);
@@ -271,6 +274,12 @@ export function PlaylistSelector() {
                         }}
                         unstyled={true}
                         triggerClassName="hover:bg-white/10 rounded-md h-8 px-2"
+                        contentMaxHeightClassName="max-h-[600px]"
+                        contentMinWidth={dropdownWidth}
+                        contentMaxWidth={dropdownWidth}
+                        minContentHeight={200}
+                        maxContentHeight={600}
+                        contentScrolls={true}
                         directionalHint="topLeftEdge"
                         // showCaret={true}
                         // caretPosition="right"
