@@ -23,6 +23,13 @@ export interface SelectLegendListPropsBase<T> {
     caretPosition?: "right" | "left";
     textClassName?: string;
     maxWidthMatchTrigger?: boolean;
+    directionalHint?:
+        | "bottonLeftEdge"
+        | "bottomCenter"
+        | "bottomRightEdge"
+        | "topLeftEdge"
+        | "topCenter"
+        | "topRightEdge";
 }
 
 export interface SelectLegendListProps<T> extends SelectLegendListPropsBase<T> {
@@ -83,6 +90,7 @@ export function SelectLegendListMultiple<T>({
     showCaret = false,
     caretPosition = "right",
     textClassName,
+    directionalHint = "bottonLeftEdge",
     // maxWidthMatchTrigger = false,
 }: SelectLegendListMultipleProps<T>) {
     const selectedItems = use$<T[]>(selectedItems$);
@@ -149,6 +157,7 @@ export function SelectLegendListMultiple<T>({
                 className={className}
                 maxHeightClassName="max-h-96"
                 scrolls={false}
+                directionalHint={directionalHint}
                 // maxWidthMatchTrigger={maxWidthMatchTrigger}
             >
                 <View style={{ maxHeight: 384 }}>

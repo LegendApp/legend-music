@@ -202,6 +202,7 @@ export function PlaylistSelector() {
                         }}
                         unstyled={true}
                         triggerClassName="hover:bg-white/10 rounded-md h-8 px-2"
+                        directionalHint="topLeftEdge"
                         // showCaret={true}
                         // caretPosition="right"
                         // caretClassName="text-white/70 hover:text-white"
