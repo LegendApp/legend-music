@@ -715,7 +715,7 @@ RCT_EXPORT_METHOD(getCurrentState:(RCTPromiseResolveBlock)resolve
     __weak typeof(self) weakSelf = self;
     // Throttle updates: emit every 2s on a background queue to minimize CPU impact
     dispatch_queue_t backgroundQueue = dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0);
-    CMTime interval = CMTimeMakeWithSeconds(2.0, NSEC_PER_SEC);
+    CMTime interval = CMTimeMakeWithSeconds(1.0, NSEC_PER_SEC);
     self.timeObserver = [self.player addPeriodicTimeObserverForInterval:interval
                                                                    queue:backgroundQueue
                                                               usingBlock:^(CMTime time) {
@@ -724,7 +724,7 @@ RCT_EXPORT_METHOD(getCurrentState:(RCTPromiseResolveBlock)resolve
             NSTimeInterval newTime = CMTimeGetSeconds(time);
 
             // Only send updates if time has changed significantly (avoid redundant events)
-            if (fabs(newTime - strongSelf.currentTime) >= 1.0) {
+            if (fabs(newTime - strongSelf.currentTime) >= 0.5) {
                 strongSelf.currentTime = newTime;
                 [strongSelf updateNowPlayingElapsedTime:strongSelf.currentTime];
 
