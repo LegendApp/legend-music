@@ -1,5 +1,5 @@
 [x] Create a system where buttons show tooltips after being hovered for 1 second
-[] handleSaveQueue in PlaylistSelector.tsx should open a native save file dialog to save an m3u file
+[x] handleSaveQueue in PlaylistSelector.tsx should open a native save file dialog to save an m3u file
 [] LocalMusicState.ts should load all .m3u files in the getCacheDirectory("playlists") folder into a playlists field on localMusicState$
 [] PlaylistSelector.tsx should source its availablePlaylists from localMusicState$
 

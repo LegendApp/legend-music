@@ -13,6 +13,8 @@ import { library$, libraryUI$ } from "@/systems/LibraryState";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import { localMusicState$, setCurrentPlaylist } from "@/systems/LocalMusicState";
 import { stateSaved$ } from "@/systems/State";
+import { showSaveDialog } from "@/native-modules/FileDialog";
+import { ensureCacheDirectory, getCacheDirectory } from "@/utils/cacheDirectories";
 import { perfCount, perfLog } from "@/utils/perfLogger";
 
 function generateM3UPlaylist(tracks: { title: string; artist: string; filePath: string; duration?: string }[]): string {
@@ -137,19 +139,31 @@ export function PlaylistSelector() {
         }
 
         try {
-            // Generate M3U playlist content
             const m3uContent = generateM3UPlaylist(queue.tracks);
-
-            // Create a filename with timestamp
             const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
             const filename = `Queue-${timestamp}.m3u`;
 
-            // Use Downloads directory
-            const downloadsPath = "/Users/jay/Downloads";
-            const file = new File(downloadsPath, filename);
+            const playlistDirectory = getCacheDirectory("playlists");
+            ensureCacheDirectory(playlistDirectory);
 
-            // Write the playlist file
-            file.create({ overwrite: true });
+            const defaultDirectoryUri = playlistDirectory.uri;
+            const defaultDirectoryPath = defaultDirectoryUri.startsWith("file://")
+                ? new URL(defaultDirectoryUri).pathname
+                : defaultDirectoryUri;
+
+            const savePath = await showSaveDialog({
+                defaultName: filename,
+                directory: defaultDirectoryPath,
+                allowedFileTypes: ["m3u", "m3u8"],
+            });
+
+            if (!savePath) {
+                console.log("Save queue cancelled by user");
+                return;
+            }
+
+            const file = new File(savePath);
+            file.create({ overwrite: true, intermediates: true });
             file.write(m3uContent);
 
             console.log(`Playlist saved to: ${file.uri}`);
@@ -223,6 +237,7 @@ export function PlaylistSelector() {
                     onClick={handleSaveQueue}
                     className="ml-2 hover:bg-white/10"
                     disabled={queue.tracks.length === 0}
+                    tooltip="Save queue"
                 />
                 <Button
                     icon={isLibraryOpen ? "sidebar.right" : "sidebar.right"}
@@ -231,6 +246,7 @@ export function PlaylistSelector() {
                     iconSize={14}
                     onClick={toggleLibraryWindow}
                     className={`ml-2 hover:bg-white/10 ${isLibraryOpen ? "bg-white/15" : ""}`}
+                    tooltip={isLibraryOpen ? "Hide library" : "Show library"}
                 />
             </View>
         </View>
