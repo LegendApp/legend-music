@@ -1,7 +1,7 @@
 import { LegendList } from "@legendapp/list";
 import { use$ } from "@legendapp/state/react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 import { Button } from "@/components/Button";
 import { localAudioControls } from "@/components/LocalAudioPlayer";
@@ -35,8 +35,8 @@ export function MediaLibraryView() {
     }, []);
 
     return (
-        <View className="flex-1 bg-black/5 border-l border-white/10" style={styles.window}>
-            <View style={styles.searchContainer} className="px-3 pt-3 pb-2">
+        <View className="flex-1 min-w-[360px] min-h-0 bg-black/5 border-l border-white/10">
+            <View className="px-3 pt-3 pb-2">
                 <View className="relative">
                     <View className="bg-background-tertiary border border-border-primary rounded-md px-3 py-1.5 pr-10">
                         <TextInputSearch
@@ -81,8 +81,8 @@ export function MediaLibraryView() {
                 </PanelGroup>
             </View>
             {showHints ? (
-                <View style={styles.statusBar}>
-                    <Text style={styles.statusText}>Shift click to play next</Text>
+                <View className="border-t border-white/15 bg-black/20 px-3 py-2">
+                    <Text className="text-xs text-white/60">Shift click to play next</Text>
                 </View>
             ) : null}
         </View>
@@ -280,7 +280,7 @@ function LibraryTree({ searchQuery }: LibraryTreeProps) {
     }, [collectionTabs, selectedCollection]);
 
     return (
-        <View style={styles.treeContainer}>
+        <View className="flex-1 min-h-0">
             <View className="mb-1 flex-row gap-1.5">
                 {collectionTabs.map((tab) => (
                     <Button
@@ -307,13 +307,13 @@ function LibraryTree({ searchQuery }: LibraryTreeProps) {
                 data={collectionItems}
                 keyExtractor={(item) => item.id}
                 renderItem={renderRow}
-                style={styles.treeScroll}
-                contentContainerStyle={styles.treeContent}
+                style={{ flex: 1 }}
+                contentContainerStyle={{ alignItems: "stretch" }}
                 estimatedItemSize={44}
                 waitForInitialLayout={false}
                 ListEmptyComponent={
-                    <View style={styles.treeEmptyState}>
-                        <Text style={styles.treeInfo}>No {emptyLabel} found</Text>
+                    <View className="py-4 px-2">
+                        <Text className="mt-3 text-xs text-white/40">No {emptyLabel} found</Text>
                     </View>
                 }
             />
@@ -450,26 +450,35 @@ function TrackList({ searchQuery }: TrackListProps) {
 
     if (!selectedItem) {
         return (
-            <View style={[styles.trackListContainer, styles.trackListPlaceholder]}>
-                <Text style={styles.placeholderText}>Select an item to view tracks</Text>
+            <View className="flex-1 min-h-0 justify-center items-start px-2.5">
+                <Text className="text-sm text-white/60 text-left">Select an item to view tracks</Text>
             </View>
         );
     }
 
     return (
-        <View style={styles.trackListContainer}>
+        <View className="flex-1 min-h-0">
             <LegendList
                 data={tracks}
                 keyExtractor={keyExtractor}
                 renderItem={renderTrack}
-                style={styles.trackList}
-                contentContainerStyle={tracks.length ? styles.trackListContent : styles.trackListEmpty}
+                style={{ flex: 1 }}
+                contentContainerStyle=
+                    {tracks.length
+                        ? undefined
+                        : {
+                              flexGrow: 1,
+                              justifyContent: "center",
+                              alignItems: "flex-start",
+                              paddingVertical: 16,
+                              paddingHorizontal: 10,
+                          }}
                 waitForInitialLayout={false}
                 estimatedItemSize={64}
                 recycleItems
                 ListEmptyComponent={
-                    <View style={styles.emptyState}>
-                        <Text style={styles.placeholderText}>No tracks found</Text>
+                    <View className="items-start justify-center py-4 px-2.5">
+                        <Text className="text-sm text-white/60 text-left">No tracks found</Text>
                     </View>
                 }
             />
@@ -495,97 +504,3 @@ function formatDuration(value: string): string {
     const secs = Math.round(numeric % 60);
     return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
-
-const styles = StyleSheet.create({
-    window: {
-        flex: 1,
-        minWidth: 360,
-        minHeight: 0,
-    },
-    contentRow: {
-        display: "flex",
-        flexDirection: "row",
-        flex: 1,
-        minHeight: 0,
-    },
-    treeColumn: {
-        minWidth: 220,
-        maxWidth: 300,
-        minHeight: 0,
-    },
-    trackColumn: {
-        flex: 1,
-        minHeight: 0,
-    },
-    treeContainer: {
-        flex: 1,
-    },
-    treeScroll: {
-        flex: 1,
-    },
-    treeContent: {
-        alignItems: "stretch",
-    },
-    treeInfo: {
-        color: "rgba(255,255,255,0.4)",
-        fontSize: 12,
-        marginTop: 12,
-    },
-    treeEmptyState: {
-        paddingVertical: 16,
-        paddingHorizontal: 8,
-    },
-    trackListContainer: {
-        flex: 1,
-        minHeight: 0,
-    },
-    trackListHeading: {
-        color: "#ffffff",
-        fontSize: 14,
-        fontWeight: "600",
-        marginBottom: 12,
-    },
-    trackList: {
-        flex: 1,
-    },
-    trackListContent: {},
-    trackListEmpty: {
-        flexGrow: 1,
-        justifyContent: "center",
-        alignItems: "flex-start",
-        paddingVertical: 16,
-        paddingHorizontal: 10,
-    },
-    emptyState: {
-        alignItems: "flex-start",
-        justifyContent: "center",
-        paddingVertical: 16,
-        paddingHorizontal: 10,
-    },
-    trackListPlaceholder: {
-        justifyContent: "center",
-        alignItems: "flex-start",
-        paddingHorizontal: 10,
-    },
-    placeholderText: {
-        color: "rgba(255,255,255,0.6)",
-        fontSize: 14,
-        textAlign: "left",
-    },
-    searchContainer: {
-        paddingHorizontal: 12,
-        paddingTop: 12,
-        paddingBottom: 8,
-    },
-    statusBar: {
-        borderTopWidth: StyleSheet.hairlineWidth,
-        borderTopColor: "rgba(255,255,255,0.15)",
-        backgroundColor: "rgba(0,0,0,0.2)",
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-    },
-    statusText: {
-        fontSize: 12,
-        color: "rgba(255,255,255,0.55)",
-    },
-});
