@@ -70,20 +70,20 @@ export const PlaylistSelectorSearchDropdown = forwardRef<DropdownMenuRootRef, Pl
                 .map((track): SearchResult => ({ type: "track", item: track }));
 
             // Search albums
-            // const matchingAlbums = library.albums
-            //     .filter((album) => album.name.toLowerCase().includes(lowerQuery))
-            //     .slice(0, 3)
-            //     .map((album): SearchResult => ({ type: "library", item: album }));
+            const matchingAlbums = library.albums
+                .filter((album) => album.name.toLowerCase().includes(lowerQuery))
+                .slice(0, 3)
+                .map((album): SearchResult => ({ type: "library", item: album }));
 
-            // // Search artists
-            // const matchingArtists = library.artists
-            //     .filter((artist) => artist.name.toLowerCase().includes(lowerQuery))
-            //     .slice(0, 3)
-            //     .map((artist): SearchResult => ({ type: "library", item: artist }));
+            // Search artists
+            const matchingArtists = library.artists
+                .filter((artist) => artist.name.toLowerCase().includes(lowerQuery))
+                .slice(0, 3)
+                .map((artist): SearchResult => ({ type: "library", item: artist }));
 
             // Combine results: albums first, then artists, then tracks
-            // results.push(...matchingAlbums);
-            // results.push(...matchingArtists);
+            results.push(...matchingAlbums);
+            results.push(...matchingArtists);
             results.push(...matchingTracks);
 
             return results.slice(0, 20);
