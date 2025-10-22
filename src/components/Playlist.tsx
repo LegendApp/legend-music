@@ -200,7 +200,7 @@ export function Playlist() {
                 if (filtered.length === 0) {
                     showDropFeedback({
                         type: "warning",
-                        message: "All dropped tracks are already in the queue.",
+                        message: "No tracks to add to the queue.",
                     });
                     return;
                 }
@@ -230,7 +230,7 @@ export function Playlist() {
             if (filtered.length === 0) {
                 showDropFeedback({
                     type: "warning",
-                    message: "All dropped tracks are already in the queue.",
+                    message: "No tracks to add to the queue.",
                 });
                 return;
             }
@@ -431,7 +431,7 @@ export function Playlist() {
             allowedFileTypes={["mp3", "wav", "m4a", "aac", "flac"]}
         >
             {dropFeedback ? (
-                <View className="pointer-events-none absolute top-3 right-3 z-20">
+                <View className="pointer-events-none absolute bottom-6 left-0 right-0 z-20 items-center">
                     <View
                         className={cn(
                             "px-3 py-2 rounded-md border shadow-lg backdrop-blur-md",
@@ -554,36 +554,11 @@ interface TrackIdentity {
 }
 
 export function filterTracksForInsert(
-    existingQueue: TrackIdentity[],
+    _existingQueue: TrackIdentity[],
     incomingTracks: LocalTrack[],
 ): { filtered: LocalTrack[]; skipped: number } {
-    const seen = new Set<string>();
-
-    for (const track of existingQueue) {
-        const key = track.filePath ?? track.id ?? track.queueEntryId;
-        if (key) {
-            seen.add(key);
-        }
-    }
-
-    const filtered: LocalTrack[] = [];
-    let skipped = 0;
-
-    for (const track of incomingTracks) {
-        const key = track.filePath ?? track.id;
-        if (key && seen.has(key)) {
-            skipped += 1;
-            continue;
-        }
-
-        if (key) {
-            seen.add(key);
-        }
-
-        filtered.push(track);
-    }
-
-    return { filtered, skipped };
+    // Duplicates are allowed in the queue, so return a copy of the incoming tracks.
+    return { filtered: incomingTracks.slice(), skipped: 0 };
 }
 
 interface PlaylistDropZoneProps {

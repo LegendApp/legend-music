@@ -18,18 +18,17 @@ const makeTrack = (id: string, overrides: Partial<LocalTrack> = {}): LocalTrack 
 });
 
 describe("filterTracksForInsert", () => {
-    it("filters out tracks already present in the queue", () => {
+    it("includes tracks already present in the queue", () => {
         const existing = [makeQueueItem("a")];
         const incoming = [makeTrack("a"), makeTrack("b")];
 
         const result = filterTracksForInsert(existing, incoming);
 
-        expect(result.filtered).toHaveLength(1);
-        expect(result.filtered[0]?.id).toBe("b");
-        expect(result.skipped).toBe(1);
+        expect(result.filtered.map((track) => track.id)).toEqual(["a", "b"]);
+        expect(result.skipped).toBe(0);
     });
 
-    it("filters duplicate tracks within the drop payload while preserving order", () => {
+    it("keeps duplicate tracks within the drop payload", () => {
         const existing = [makeQueueItem("duplicate", { filePath: "/shared/path.mp3" })];
         const incoming = [
             makeTrack("unique-1"),
@@ -40,8 +39,13 @@ describe("filterTracksForInsert", () => {
 
         const result = filterTracksForInsert(existing, incoming);
 
-        expect(result.filtered.map((track) => track.id)).toEqual(["unique-1", "unique-2"]);
-        expect(result.skipped).toBe(2);
+        expect(result.filtered.map((track) => track.id)).toEqual([
+            "unique-1",
+            "duplicate",
+            "duplicate-again",
+            "unique-2",
+        ]);
+        expect(result.skipped).toBe(0);
     });
 
     it("allows tracks without identifiers to pass through", () => {
