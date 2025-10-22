@@ -2,7 +2,7 @@ import { LegendList } from "@legendapp/list";
 import type { Observable } from "@legendapp/state";
 import { use$, useObservable } from "@legendapp/state/react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { Text, View } from "react-native";
+import { Platform, Text, View } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 import { Button } from "@/components/Button";
 import { DraggableItem, MEDIA_LIBRARY_DRAG_ZONE_ID, type MediaLibraryDragData } from "@/components/dnd";
@@ -19,6 +19,7 @@ import { settings$ } from "@/systems/Settings";
 import type { SFSymbols } from "@/types/SFSymbols";
 import { cn } from "@/utils/cn";
 import { perfCount, perfLog } from "@/utils/perfLogger";
+import { TrackDragSource, type NativeDragTrack } from "@/native-modules/TrackDragSource";
 
 const MEDIA_LIBRARY_CONTEXT_MENU_ITEMS: ContextMenuItem[] = [
     { id: "queue-add", title: "Add to Queue" },
@@ -500,6 +501,10 @@ function TrackList({ searchQuery }: TrackListProps) {
         [setSingleSelection, toggleSelection],
     );
 
+    const handleNativeDragStart = useCallback(() => {
+        skipClickRef.current = true;
+    }, []);
+
     const getSelectionIndicesForDrag = useCallback(
         (activeIndex: number) => {
             const currentSelection = selectedIndices$.get();
@@ -542,9 +547,10 @@ function TrackList({ searchQuery }: TrackListProps) {
                 onMouseDown={handleTrackMouseDown}
                 selectedIndices$={selectedIndices$}
                 buildDragData={buildDragData}
+                onNativeDragStart={handleNativeDragStart}
             />
         ),
-        [buildDragData, handleTrackClick, handleTrackContextMenu, handleTrackMouseDown, selectedIndices$],
+        [buildDragData, handleTrackClick, handleTrackContextMenu, handleTrackMouseDown, handleNativeDragStart, selectedIndices$],
     );
 
     if (!selectedItem) {
@@ -593,6 +599,7 @@ interface LibraryTrackRowProps {
     onMouseDown: (index: number, event: NativeMouseEvent) => void;
     selectedIndices$: Observable<Set<number>>;
     buildDragData: (activeIndex: number) => MediaLibraryDragData;
+    onNativeDragStart: () => void;
 }
 
 function LibraryTrackRow({
@@ -603,12 +610,36 @@ function LibraryTrackRow({
     onMouseDown,
     selectedIndices$,
     buildDragData,
+    onNativeDragStart,
 }: LibraryTrackRowProps) {
+    const dragData = buildDragData(index);
+
+    if (Platform.OS === "macos") {
+        return (
+            <TrackDragSource
+                tracks={dragData.tracks as NativeDragTrack[]}
+                onDragStart={onNativeDragStart}
+                className="flex-1"
+            >
+                <TrackItem
+                    track={track}
+                    index={index}
+                    onClick={onClick}
+                    onRightClick={onRightClick}
+                    onMouseDown={onMouseDown}
+                    showIndex={false}
+                    showAlbumArt={false}
+                    selectedIndices$={selectedIndices$}
+                />
+            </TrackDragSource>
+        );
+    }
+
     return (
         <DraggableItem
             id={`library-track-${track.id}`}
             zoneId={MEDIA_LIBRARY_DRAG_ZONE_ID}
-            data={() => buildDragData(index)}
+            data={() => dragData}
             className="flex-1"
         >
             <TrackItem

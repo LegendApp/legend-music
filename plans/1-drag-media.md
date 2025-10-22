@@ -26,9 +26,17 @@ Allow users to drag one or more tracks from the media library into the active pl
 - Extend component or integration tests to simulate drag events from media library to playlist and assert resulting state.
 - Manually verify drag gestures with single and multi-track selections, including edge cases like empty playlists and long lists requiring auto-scroll.
 
+## Cross-Window Native Drag
+- Bridge macOS `NSDraggingSource`/`NSDraggingDestination` APIs so drag sessions initiated in one window are recognized in another.
+- Serialize media track metadata onto the pasteboard and rehydrate it in the drop destination before dispatching to queue mutations.
+- Provide native hover feedback to highlight valid drop targets and reject unsupported payloads gracefully.
+
 ## Steps
 - [x] Confirm drag/drop primitives support cross-panel payloads and extend them for track metadata if needed.
 - [x] Add draggable affordances to media library items emitting track payloads.
 - [x] Make the main playlist droppable and handle track insertion logic with persistence.
 - [x] Implement visual feedback and user messaging for successful drops and conflicts.
 - [x] Cover the new flows with automated tests and perform manual verification.
+- [x] Implement native drag source for media library rows using `NSDraggingSource`.
+- [x] Register playlist window as `NSDraggingDestination` and translate drops into queue operations.
+- [x] Add native-level drop affordances and update docs/tests to cover cross-window drag scenarios.

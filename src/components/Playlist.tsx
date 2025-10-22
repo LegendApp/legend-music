@@ -5,7 +5,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { localAudioControls, localPlayerState$, queue$ } from "@/components/LocalAudioPlayer";
 import { type TrackData, TrackItem } from "@/components/TrackItem";
 import { usePlaylistSelection } from "@/hooks/usePlaylistSelection";
-import { DragDropView } from "@/native-modules/DragDropView";
+import { DragDropView, type NativeDragTrack, type TrackDragEvent } from "@/native-modules/DragDropView";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import { localMusicState$ } from "@/systems/LocalMusicState";
 import { settings$ } from "@/systems/Settings";
@@ -40,8 +40,11 @@ export function Playlist() {
     const isPlayerActive = use$(localPlayerState$.isPlaying);
     const playlistStyle = use$(settings$.general.playlistStyle);
     const [isDragOver, setIsDragOver] = useState(false);
+    const [isTrackDragOver, setIsTrackDragOver] = useState(false);
+    const [trackDropIndicatorIndex, setTrackDropIndicatorIndex] = useState<number | null>(null);
     const [dropFeedback, setDropFeedback] = useState<DropFeedback | null>(null);
     const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const dropAreaHeightRef = useRef(0);
 
     // Render the active playback queue
     const playlist: PlaylistTrackWithSuggestions[] = useMemo(
@@ -116,6 +119,24 @@ export function Playlist() {
         return false;
     }, []);
 
+    const computeDropIndexFromLocation = useCallback(
+        (locationY: number) => {
+            const height = dropAreaHeightRef.current;
+            const length = playlist.length;
+
+            if (height <= 0 || length === 0) {
+                return queueTracks.length;
+            }
+
+            const clampedY = Math.min(Math.max(locationY, 0), height);
+            const distanceFromTop = height - clampedY;
+            const ratio = height > 0 ? distanceFromTop / height : 1;
+            const index = Math.round(ratio * length);
+            return Math.max(0, Math.min(index, queueTracks.length));
+        },
+        [playlist.length, queueTracks.length],
+    );
+
     const handleDropAtPosition = useCallback(
         (item: DraggedItem<DragData>, targetPosition: number) => {
             if (item.data?.type === "playlist-track") {
@@ -164,6 +185,66 @@ export function Playlist() {
             }
         },
         [playlist, queueTracks, showDropFeedback, syncSelectionAfterReorder],
+    );
+
+    const handleNativeTracksDrop = useCallback(
+        (tracks: LocalTrack[], dropIndex?: number) => {
+            const { filtered, skipped } = filterTracksForInsert(queueTracks, tracks);
+
+            if (filtered.length === 0) {
+                showDropFeedback({
+                    type: "warning",
+                    message: "All dropped tracks are already in the queue.",
+                });
+                return;
+            }
+
+            const boundedPosition = Math.max(0, Math.min(dropIndex ?? queueTracks.length, queueTracks.length));
+
+            localAudioControls.queue.insertAt(boundedPosition, filtered);
+
+            if (skipped > 0) {
+                showDropFeedback({
+                    type: "warning",
+                    message: `Added ${formatTrackCount(filtered.length)} (skipped ${formatTrackCount(skipped)} already in queue).`,
+                });
+            } else {
+                showDropFeedback({
+                    type: "success",
+                    message: `Added ${formatTrackCount(filtered.length)} to the queue.`,
+                });
+            }
+        },
+        [queueTracks, showDropFeedback],
+    );
+
+    const handleTrackDragEnter = useCallback(() => {
+        setIsTrackDragOver(true);
+    }, []);
+
+    const handleTrackDragLeave = useCallback(() => {
+        setIsTrackDragOver(false);
+        setTrackDropIndicatorIndex(null);
+    }, []);
+
+    const handleTrackDragHover = useCallback(
+        (event: { nativeEvent: TrackDragEvent }) => {
+            const dropIndex = computeDropIndexFromLocation(event.nativeEvent.location.y);
+            setTrackDropIndicatorIndex(dropIndex);
+        },
+        [computeDropIndexFromLocation],
+    );
+
+    const handleTrackDrop = useCallback(
+        (event: { nativeEvent: TrackDragEvent }) => {
+            setIsTrackDragOver(false);
+            const { tracks, location } = event.nativeEvent;
+            const dropIndex = computeDropIndexFromLocation(location.y);
+            setTrackDropIndicatorIndex(null);
+            const converted = convertNativeTracksToLocal(tracks as NativeDragTrack[]);
+            handleNativeTracksDrop(converted, dropIndex);
+        },
+        [computeDropIndexFromLocation, handleNativeTracksDrop],
     );
 
     const handleTrackDoubleClick = (index: number) => {
@@ -254,6 +335,16 @@ export function Playlist() {
     //     playlistNavigationState$.hasSelection.set(playlist.length > 0 && selectedIndex !== -1);
     // }, [playlist.length, selectedIndex]);
 
+    const overlayClassName = isDragOver
+        ? "bg-blue-500/20 border-2 border-blue-500 border-dashed"
+        : isTrackDragOver
+          ? "bg-emerald-500/15 border-2 border-emerald-400 border-dashed"
+          : "";
+
+    const dropIndicatorTop = trackDropIndicatorIndex !== null && playlist.length > 0 && dropAreaHeightRef.current > 0
+        ? (dropAreaHeightRef.current * (trackDropIndicatorIndex / Math.max(playlist.length, 1)))
+        : null;
+
     const msg =
         playlist.length === 0
             ? localMusicState.isScanning
@@ -265,10 +356,17 @@ export function Playlist() {
 
     return (
         <DragDropView
-            className={`flex-1 ${isDragOver ? "bg-blue-500/20 border-2 border-blue-500 border-dashed" : ""}`}
+            className={cn("flex-1", overlayClassName)}
             onDragEnter={handleDragEnter}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
+            onTrackDragEnter={handleTrackDragEnter}
+            onTrackDragLeave={handleTrackDragLeave}
+            onTrackDragHover={handleTrackDragHover}
+            onTrackDrop={handleTrackDrop}
+            onLayout={(event) => {
+                dropAreaHeightRef.current = event.nativeEvent.layout.height;
+            }}
             allowedFileTypes={["mp3", "wav", "m4a", "aac", "flac"]}
         >
             {dropFeedback ? (
@@ -301,11 +399,26 @@ export function Playlist() {
                 </View>
             ) : (
                 <>
-                    {isDragOver && (
-                        <View className="absolute inset-0 z-10 flex-1 items-center justify-center bg-blue-500/20">
-                            <View className="bg-blue-500 px-4 py-2 rounded-lg">
-                                <Text className="text-white font-medium">Drop files to add to queue</Text>
+                    {(isDragOver || isTrackDragOver) && (
+                        <View className="absolute inset-0 z-10 flex-1 items-center justify-center">
+                            <View
+                                className={cn(
+                                    "px-4 py-2 rounded-lg",
+                                    isTrackDragOver ? "bg-emerald-500" : "bg-blue-500",
+                                )}
+                            >
+                                <Text className="text-white font-medium">
+                                    {isTrackDragOver ? "Drop tracks to add to queue" : "Drop files to add to queue"}
+                                </Text>
                             </View>
+                        </View>
+                    )}
+                    {dropIndicatorTop !== null && isTrackDragOver && (
+                        <View
+                            className="pointer-events-none absolute left-0 right-0 z-20"
+                            style={{ top: dropIndicatorTop - 1 }}
+                        >
+                            <View className="h-[2px] bg-emerald-400/80" />
                         </View>
                     )}
                     <LegendList
@@ -360,6 +473,19 @@ const styles = StyleSheet.create({
 
 function formatTrackCount(count: number): string {
     return `${count} track${count === 1 ? "" : "s"}`;
+}
+
+function convertNativeTracksToLocal(tracks: NativeDragTrack[]): LocalTrack[] {
+    return tracks.map((track) => ({
+        id: track.id,
+        title: track.title,
+        artist: track.artist,
+        album: track.album,
+        duration: track.duration ?? "0:00",
+        filePath: track.filePath ?? track.id,
+        fileName: track.fileName ?? track.title,
+        thumbnail: track.thumbnail,
+    }));
 }
 
 interface TrackIdentity {

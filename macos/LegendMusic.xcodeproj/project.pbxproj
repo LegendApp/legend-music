@@ -22,6 +22,9 @@
 		698A69F42E1838D0001B4A90 /* RNKeyboardManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 698A69F22E1838D0001B4A90 /* RNKeyboardManager.swift */; };
 		698A69F52E1838D0001B4A90 /* KeyboardManagerBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 698A69F12E1838D0001B4A90 /* KeyboardManagerBridge.m */; };
 		698A69F62E1838D0001B4A90 /* KeyboardManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 698A69F02E1838D0001B4A90 /* KeyboardManager.swift */; };
+		69B7C91B2E9C2A4A00980C4D /* DragDropConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69B7C91A2E9C2A4A00980C4D /* DragDropConstants.swift */; };
+		69B7C91D2E9C2A9000980C4D /* TrackDraggableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69B7C91C2E9C2A9000980C4D /* TrackDraggableView.swift */; };
+		69B7C91F2E9C2AD800980C4D /* TrackDragSourceBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 69B7C91E2E9C2AD800980C4D /* TrackDragSourceBridge.m */; };
 		69D53FB72DC6653D0004AD94 /* SFSymbol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69D53FB42DC6653D0004AD94 /* SFSymbol.swift */; };
 		69D53FB82DC6653D0004AD94 /* SFSymbolBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 69D53FB52DC6653D0004AD94 /* SFSymbolBridge.m */; };
 		69EDA80D2DC90E2E00CCB7F7 /* WindowManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 69EDA80B2DC90E2E00CCB7F7 /* WindowManager.m */; };
@@ -57,6 +60,9 @@
 		698A69F02E1838D0001B4A90 /* KeyboardManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardManager.swift; sourceTree = "<group>"; };
 		698A69F12E1838D0001B4A90 /* KeyboardManagerBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KeyboardManagerBridge.m; sourceTree = "<group>"; };
 		698A69F22E1838D0001B4A90 /* RNKeyboardManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RNKeyboardManager.swift; sourceTree = "<group>"; };
+		69B7C91A2E9C2A4A00980C4D /* DragDropConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DragDropConstants.swift; sourceTree = "<group>"; };
+		69B7C91C2E9C2A9000980C4D /* TrackDraggableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackDraggableView.swift; sourceTree = "<group>"; };
+		69B7C91E2E9C2AD800980C4D /* TrackDragSourceBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TrackDragSourceBridge.m; sourceTree = "<group>"; };
 		69C9C0F32E0E056300FE0F5C /* LegendMusic-macOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "LegendMusic-macOS.entitlements"; sourceTree = "<group>"; };
 		69D53FB42DC6653D0004AD94 /* SFSymbol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SFSymbol.swift; sourceTree = "<group>"; };
 		69D53FB52DC6653D0004AD94 /* SFSymbolBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SFSymbolBridge.m; sourceTree = "<group>"; };
@@ -160,6 +166,9 @@
 			children = (
 				69118FE62E7F652300F00B75 /* DragDropBridge.m */,
 				69118FE72E7F652300F00B75 /* DragDropView.swift */,
+				69B7C91A2E9C2A4A00980C4D /* DragDropConstants.swift */,
+				69B7C91C2E9C2A9000980C4D /* TrackDraggableView.swift */,
+				69B7C91E2E9C2AD800980C4D /* TrackDragSourceBridge.m */,
 			);
 			path = DragDrop;
 			sourceTree = "<group>";
@@ -526,8 +535,11 @@
 				69D53FB72DC6653D0004AD94 /* SFSymbol.swift in Sources */,
 				698A69F42E1838D0001B4A90 /* RNKeyboardManager.swift in Sources */,
 				698A69F52E1838D0001B4A90 /* KeyboardManagerBridge.m in Sources */,
+				69B7C91B2E9C2A4A00980C4D /* DragDropConstants.swift in Sources */,
 				69118FE92E7F652300F00B75 /* DragDropView.swift in Sources */,
 				69118FEA2E7F652300F00B75 /* DragDropBridge.m in Sources */,
+				69B7C91D2E9C2A9000980C4D /* TrackDraggableView.swift in Sources */,
+				69B7C91F2E9C2AD800980C4D /* TrackDragSourceBridge.m in Sources */,
 				697C9C7D2E7D4F6400AB8492 /* TextInputSearch.m in Sources */,
 				698A69F62E1838D0001B4A90 /* KeyboardManager.swift in Sources */,
 				690B85542E7C1B4C009B767D /* RNSplitView.m in Sources */,

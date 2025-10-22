@@ -6,12 +6,35 @@ interface DragDropEvent {
     files: string[];
 }
 
+export interface TrackDragEvent {
+    tracks: NativeDragTrack[];
+    location: {
+        x: number;
+        y: number;
+    };
+}
+
+export interface NativeDragTrack {
+    id: string;
+    title: string;
+    artist: string;
+    album?: string;
+    duration?: string;
+    filePath?: string;
+    fileName?: string;
+    thumbnail?: string;
+}
+
 interface DragDropViewProps extends ViewProps {
     children?: ReactNode;
     allowedFileTypes?: string[];
     onDragEnter?: () => void;
     onDragLeave?: () => void;
     onDrop?: (event: { nativeEvent: DragDropEvent }) => void;
+    onTrackDragEnter?: () => void;
+    onTrackDragLeave?: () => void;
+    onTrackDragHover?: (event: { nativeEvent: TrackDragEvent }) => void;
+    onTrackDrop?: (event: { nativeEvent: TrackDragEvent }) => void;
 }
 
 const NativeDragDropView = requireNativeComponent<DragDropViewProps>("RNDragDrop");
@@ -27,6 +50,10 @@ export function DragDropView({
     onDragEnter,
     onDragLeave,
     onDrop,
+    onTrackDragEnter,
+    onTrackDragLeave,
+    onTrackDragHover,
+    onTrackDrop,
     ...props
 }: DragDropViewProps) {
     return (
@@ -35,6 +62,10 @@ export function DragDropView({
             onDragEnter={onDragEnter}
             onDragLeave={onDragLeave}
             onDrop={onDrop}
+            onTrackDragEnter={onTrackDragEnter}
+            onTrackDragLeave={onTrackDragLeave}
+            onTrackDragHover={onTrackDragHover}
+            onTrackDrop={onTrackDrop}
             {...props}
         >
             {children}
