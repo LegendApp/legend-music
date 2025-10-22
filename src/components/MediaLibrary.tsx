@@ -1,9 +1,11 @@
 import { LegendList } from "@legendapp/list";
-import { use$ } from "@legendapp/state/react";
+import type { Observable } from "@legendapp/state";
+import { use$, useObservable } from "@legendapp/state/react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Text, View } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 import { Button } from "@/components/Button";
+import { DraggableItem, MEDIA_LIBRARY_DRAG_ZONE_ID, type MediaLibraryDragData } from "@/components/dnd";
 import { localAudioControls } from "@/components/LocalAudioPlayer";
 import { Panel, PanelGroup, ResizeHandle } from "@/components/ResizablePanels";
 import { TextInputSearch, type TextInputSearchRef } from "@/components/TextInputSearch";
@@ -344,6 +346,8 @@ function TrackList({ searchQuery }: TrackListProps) {
     perfCount("MediaLibrary.TrackList.render");
     const selectedItem = use$(libraryUI$.selectedItem);
     const allTracks = use$(library$.tracks);
+    const selectedIndices$ = useObservable<Set<number>>(new Set());
+    const skipClickRef = useRef(false);
 
     const { trackItems, sourceTracks } = useMemo(() => {
         perfLog("MediaLibrary.TrackList.useMemo", {
@@ -401,6 +405,14 @@ function TrackList({ searchQuery }: TrackListProps) {
 
     const keyExtractor = useCallback((item: TrackData) => item.id, []);
 
+    const clearSelection = useCallback(() => {
+        selectedIndices$.set(new Set());
+    }, [selectedIndices$]);
+
+    useEffect(() => {
+        clearSelection();
+    }, [clearSelection, selectedItem?.id, trackItems.length]);
+
     const handleTrackAction = useCallback(
         (index: number, action: "enqueue" | "play-next") => {
             const track = sourceTracks[index];
@@ -443,24 +455,96 @@ function TrackList({ searchQuery }: TrackListProps) {
 
     const handleTrackClick = useCallback(
         (index: number, event?: NativeMouseEvent) => {
+            if (skipClickRef.current) {
+                skipClickRef.current = false;
+                return;
+            }
+
             const action = getActionFromEvent(event);
             handleTrackAction(index, action);
         },
         [getActionFromEvent, handleTrackAction],
     );
 
+    const toggleSelection = useCallback(
+        (index: number) => {
+            const nextSelection = new Set(selectedIndices$.get());
+            if (nextSelection.has(index)) {
+                nextSelection.delete(index);
+            } else {
+                nextSelection.add(index);
+            }
+            selectedIndices$.set(nextSelection);
+        },
+        [selectedIndices$],
+    );
+
+    const setSingleSelection = useCallback(
+        (index: number) => {
+            selectedIndices$.set(new Set([index]));
+        },
+        [selectedIndices$],
+    );
+
+    const handleTrackMouseDown = useCallback(
+        (index: number, event: NativeMouseEvent) => {
+            if (event.metaKey) {
+                skipClickRef.current = true;
+                toggleSelection(index);
+                return;
+            }
+
+            skipClickRef.current = false;
+            setSingleSelection(index);
+        },
+        [setSingleSelection, toggleSelection],
+    );
+
+    const getSelectionIndicesForDrag = useCallback(
+        (activeIndex: number) => {
+            const currentSelection = selectedIndices$.get();
+            if (currentSelection.size > 1 && currentSelection.has(activeIndex)) {
+                return Array.from(currentSelection).sort((a, b) => a - b);
+            }
+
+            return [activeIndex];
+        },
+        [selectedIndices$],
+    );
+
+    const buildDragData = useCallback(
+        (activeIndex: number): MediaLibraryDragData => {
+            const indices = getSelectionIndicesForDrag(activeIndex);
+            const tracksToInclude = indices
+                .map((trackIndex) => sourceTracks[trackIndex])
+                .filter((track): track is LibraryTrack => Boolean(track))
+                .map((track) => ({ ...track }));
+
+            if (tracksToInclude.length === 0 && sourceTracks[activeIndex]) {
+                tracksToInclude.push({ ...sourceTracks[activeIndex] });
+            }
+
+            return {
+                type: "media-library-tracks",
+                tracks: tracksToInclude,
+            };
+        },
+        [getSelectionIndicesForDrag, sourceTracks],
+    );
+
     const renderTrack = useCallback(
         ({ item, index }: { item: TrackData; index: number }) => (
-            <TrackItem
+            <LibraryTrackRow
                 track={item}
                 index={index}
                 onClick={handleTrackClick}
                 onRightClick={handleTrackContextMenu}
-                showIndex={false}
-                showAlbumArt={false}
+                onMouseDown={handleTrackMouseDown}
+                selectedIndices$={selectedIndices$}
+                buildDragData={buildDragData}
             />
         ),
-        [handleTrackClick, handleTrackContextMenu],
+        [buildDragData, handleTrackClick, handleTrackContextMenu, handleTrackMouseDown, selectedIndices$],
     );
 
     if (!selectedItem) {
@@ -498,6 +582,46 @@ function TrackList({ searchQuery }: TrackListProps) {
                 }
             />
         </View>
+    );
+}
+
+interface LibraryTrackRowProps {
+    track: TrackData;
+    index: number;
+    onClick: (index: number, event?: NativeMouseEvent) => void;
+    onRightClick: (index: number, event: NativeMouseEvent) => void;
+    onMouseDown: (index: number, event: NativeMouseEvent) => void;
+    selectedIndices$: Observable<Set<number>>;
+    buildDragData: (activeIndex: number) => MediaLibraryDragData;
+}
+
+function LibraryTrackRow({
+    track,
+    index,
+    onClick,
+    onRightClick,
+    onMouseDown,
+    selectedIndices$,
+    buildDragData,
+}: LibraryTrackRowProps) {
+    return (
+        <DraggableItem
+            id={`library-track-${track.id}`}
+            zoneId={MEDIA_LIBRARY_DRAG_ZONE_ID}
+            data={() => buildDragData(index)}
+            className="flex-1"
+        >
+            <TrackItem
+                track={track}
+                index={index}
+                onClick={onClick}
+                onRightClick={onRightClick}
+                onMouseDown={onMouseDown}
+                showIndex={false}
+                showAlbumArt={false}
+                selectedIndices$={selectedIndices$}
+            />
+        </DraggableItem>
     );
 }
 

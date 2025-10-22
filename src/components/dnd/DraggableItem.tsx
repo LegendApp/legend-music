@@ -12,10 +12,12 @@ import {
 import { ShadowDropdown } from "@/utils/styles";
 import { useDragDrop } from "./DragDropContext";
 
+type DragDataResolver<T> = T | (() => T);
+
 interface DraggableItemProps<T = any> {
     id: string;
     zoneId: string;
-    data: T;
+    data: DragDataResolver<T>;
     children: ReactNode;
     disabled?: boolean;
     onDragStart?: () => void;
@@ -77,6 +79,10 @@ export const DraggableItem = <T,>({
     }, [isDragging]);
 
     // Create the pan responder for the original item
+    const resolveData = () => {
+        return typeof data === "function" ? (data as () => T)() : data;
+    };
+
     const originalPanResponder = useRef(
         PanResponder.create({
             onStartShouldSetPanResponder: () => !disabled,
@@ -109,7 +115,7 @@ export const DraggableItem = <T,>({
                 // Set the dragged item in the context
                 draggedItem$.set({
                     id,
-                    data,
+                    data: resolveData(),
                     sourceZoneId: zoneId,
                 });
 

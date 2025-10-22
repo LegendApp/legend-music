@@ -33,6 +33,7 @@ interface TrackItemProps {
     onClick?: (index: number, event?: NativeMouseEvent) => void;
     onDoubleClick?: (index: number, event?: NativeMouseEvent) => void;
     onRightClick?: (index: number, event: NativeMouseEvent) => void;
+    onMouseDown?: (index: number, event: NativeMouseEvent) => void;
 }
 
 export const TrackItem = ({
@@ -44,6 +45,7 @@ export const TrackItem = ({
     onClick,
     onDoubleClick,
     onRightClick,
+    onMouseDown,
 }: TrackItemProps) => {
     perfCount("TrackItem.render");
     const playlistStyle = use$(settings$.general.playlistStyle);
@@ -110,6 +112,7 @@ export const TrackItem = ({
                 onClick={onClick ? (event) => onClick(index, event) : undefined}
                 onDoubleClick={onDoubleClick ? (event) => onDoubleClick(index, event) : undefined}
                 onRightClick={handleRightClick}
+                onMouseDown={onMouseDown ? (event) => onMouseDown(index, event) : undefined}
             >
                 {showIndex && (
                     <View className="min-w-7">
