@@ -27,6 +27,7 @@ export interface NativeDragTrack {
     filePath?: string;
     fileName?: string;
     thumbnail?: string;
+    queueEntryId?: string;
 }
 
 interface DragDropViewProps extends ViewProps {
