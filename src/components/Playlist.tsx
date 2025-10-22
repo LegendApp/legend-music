@@ -90,7 +90,11 @@ export function Playlist() {
         localAudioControls.queue.remove(indices);
     }, []);
 
-    const { selectedIndices$, handleTrackClick: handleTrackClickBase, syncSelectionAfterReorder } = usePlaylistSelection({
+    const {
+        selectedIndices$,
+        handleTrackClick: handleTrackClickBase,
+        syncSelectionAfterReorder,
+    } = usePlaylistSelection({
         items: playlist,
         onDeleteSelection: handleDeleteSelection,
     });
@@ -593,9 +597,6 @@ export function Playlist() {
                         }
                         recycleItems
                         renderItem={({ item: track, index }) => {
-                            const nativeTrack =
-                                track.queueEntryId ? nativeDragTracksByEntryId.get(track.queueEntryId) : undefined;
-
                             const trackContent = (
                                 <TrackItem
                                     track={track}
@@ -607,21 +608,15 @@ export function Playlist() {
                             );
 
                             if (Platform.OS === "macos") {
-                                const macContent = nativeTrack ? (
-                                    <TrackDragSource
-                                        tracks={[nativeTrack]}
-                                        onDragStart={() => handleNativeDragStart(track.queueEntryId)}
-                                        className="flex-1"
-                                    >
-                                        {trackContent}
-                                    </TrackDragSource>
-                                ) : (
-                                    trackContent
-                                );
-
                                 return (
                                     <View>
-                                        {macContent}
+                                        <TrackDragSource
+                                            tracks={[convertTrackToNativeDrag(track)]}
+                                            onDragStart={() => handleNativeDragStart(track.queueEntryId)}
+                                            className="w-full"
+                                        >
+                                            {trackContent}
+                                        </TrackDragSource>
                                         <PlaylistDropZone
                                             position={index + 1}
                                             allowDrop={allowPlaylistDrop}
@@ -643,6 +638,7 @@ export function Playlist() {
                                             } satisfies PlaylistDragData
                                         }
                                         onDragStart={handleReorderDragStart}
+                                        className="w-full"
                                     >
                                         {trackContent}
                                     </DraggableItem>
@@ -691,6 +687,20 @@ function convertNativeTracksToLocal(tracks: NativeDragTrack[] = []): LocalTrack[
         fileName: track.fileName ?? track.title,
         thumbnail: track.thumbnail,
     }));
+}
+
+function convertTrackToNativeDrag(track: TrackData): NativeDragTrack {
+    return {
+        id: track.id,
+        title: track.title,
+        artist: track.artist,
+        album: track.album,
+        duration: track.duration,
+        filePath: undefined,
+        fileName: undefined,
+        thumbnail: track.thumbnail,
+        queueEntryId: track.queueEntryId,
+    };
 }
 
 interface TrackIdentity {
