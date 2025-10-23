@@ -27,4 +27,4 @@ Reduce maintenance drag by consolidating duplicated queue/selection logic, excis
 - [x] Extract shared queue + library track utilities and wire them into `PlaylistSelector` and `MediaLibrary`.
 - [x] Replace custom media-library selection with the common hook and centralize shift-action helpers.
 - [x] Remove unused components (`WithCheck`, `StyledInput`, `TextInput`, `VideoPlayer`) and trim dead styles.
-- [ ] Decompose `MediaLibrary`, `PlaylistSelector`, and `PlaylistSelectorSearchDropdown` into smaller units with targeted tests.
+- [x] Decompose `MediaLibrary`, `PlaylistSelector`, and `PlaylistSelectorSearchDropdown` into smaller units with targeted tests.

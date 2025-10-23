@@ -1,19 +1,25 @@
 import { LegendList } from "@legendapp/list";
-import { use$, useObservable } from "@legendapp/state/react";
-import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { use$ } from "@legendapp/state/react";
+import { forwardRef, useCallback, useEffect, useMemo, useRef } from "react";
 import { type GestureResponderEvent, Text, useWindowDimensions, View } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
+
 import { Button } from "@/components/Button";
 import { DropdownMenu, type DropdownMenuRootRef } from "@/components/DropdownMenu";
 import { TextInputSearch, type TextInputSearchRef } from "@/components/TextInputSearch";
 import { TrackItem } from "@/components/TrackItem";
-import { playlistNavigationState$ } from "@/state/playlistNavigationState";
-import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
 import type { LibraryItem } from "@/systems/LibraryState";
 import { library$ } from "@/systems/LibraryState";
 import type { LocalPlaylist, LocalTrack } from "@/systems/LocalMusicState";
 import { cn } from "@/utils/cn";
 import { getQueueAction } from "@/utils/queueActions";
+
+import {
+    type SearchResult,
+    useDropdownKeyboardNavigation,
+    usePlaylistSearchResults,
+    useSearchDropdownState,
+} from "./PlaylistSelectorSearchDropdown/hooks";
 
 interface PlaylistSelectorSearchDropdownProps {
     tracks: LocalTrack[];
@@ -29,18 +35,54 @@ export const PlaylistSelectorSearchDropdown = forwardRef<DropdownMenuRootRef, Pl
         { tracks, playlists, onSelectTrack, onSelectLibraryItem, onSelectPlaylist, onOpenChange },
         ref,
     ) {
-        const searchQuery$ = useObservable("");
-        const searchQuery = use$(searchQuery$);
-        const isOpen$ = useObservable(false);
-        const isOpen = use$(isOpen$);
-        const [highlightedIndex, setHighlightedIndex] = useState(-1);
+        const { searchQuery$, searchQuery, isOpen, isOpen$, handleOpenChange } = useSearchDropdownState(onOpenChange);
         const textInputRef = useRef<TextInputSearchRef>(null);
-        const shiftPressedRef = useRef(false);
         const { width: windowWidth } = useWindowDimensions();
 
         const library = use$(library$);
-        const trimmedQuery = searchQuery.trim();
         const effectiveWindowWidth = Math.max(windowWidth, 1);
+
+        const searchResults = usePlaylistSearchResults({
+            tracks,
+            playlists,
+            albums: library.albums,
+            artists: library.artists,
+            query: searchQuery,
+        });
+
+        const handleSearchResultAction = useCallback(
+            (result: SearchResult, action: "enqueue" | "play-next") => {
+                if (result.type === "track") {
+                    onSelectTrack(result.item, action);
+                } else if (result.type === "library") {
+                    onSelectLibraryItem?.(result.item, action);
+                } else if (result.type === "playlist") {
+                    onSelectPlaylist?.(result.item);
+                }
+            },
+            [onSelectLibraryItem, onSelectPlaylist, onSelectTrack],
+        );
+
+        const { highlightedIndex, shiftPressedRef } = useDropdownKeyboardNavigation({
+            isOpen,
+            resultsLength: searchResults.length,
+            onSubmit: (index, action) => {
+                const result = searchResults[index];
+                if (result) {
+                    handleSearchResultAction(result, action);
+                    shiftPressedRef.current = false;
+                    handleOpenChange(false);
+                }
+            },
+        });
+
+        useEffect(() => {
+            if (isOpen) {
+                setTimeout(() => {
+                    textInputRef.current?.focus();
+                }, 0);
+            }
+        }, [isOpen]);
 
         const anchorRect = useMemo(() => {
             const offsetTop = 16;
@@ -54,87 +96,14 @@ export const PlaylistSelectorSearchDropdown = forwardRef<DropdownMenuRootRef, Pl
             };
         }, [effectiveWindowWidth]);
 
-        type SearchResult =
-            | { type: "track"; item: LocalTrack }
-            | { type: "library"; item: LibraryItem }
-            | { type: "playlist"; item: LocalPlaylist };
-
-        const searchResults = useMemo(() => {
-            if (!trimmedQuery) {
-                return [] as SearchResult[];
-            }
-
-            const lowerQuery = trimmedQuery.toLowerCase();
-            const results: SearchResult[] = [];
-
-            const matchingPlaylists = playlists
-                .filter((playlist) => playlist.name.toLowerCase().includes(lowerQuery))
-                .slice(0, 5)
-                .map((playlist): SearchResult => ({ type: "playlist", item: playlist }));
-
-            // Search tracks
-            const matchingTracks = tracks
-                .filter(
-                    (track) =>
-                        track.title.toLowerCase().includes(lowerQuery) ||
-                        track.artist.toLowerCase().includes(lowerQuery) ||
-                        track.album?.toLowerCase().includes(lowerQuery),
-                )
-                .slice(0, 6)
-                .map((track): SearchResult => ({ type: "track", item: track }));
-
-            // Search albums
-            const matchingAlbums = library.albums
-                .filter((album) => album.name.toLowerCase().includes(lowerQuery))
-                .slice(0, 3)
-                .map((album): SearchResult => ({ type: "library", item: album }));
-
-            // Search artists
-            const matchingArtists = library.artists
-                .filter((artist) => artist.name.toLowerCase().includes(lowerQuery))
-                .slice(0, 3)
-                .map((artist): SearchResult => ({ type: "library", item: artist }));
-
-            // Combine results: albums first, then artists, then tracks
-            results.push(...matchingPlaylists);
-            results.push(...matchingAlbums);
-            results.push(...matchingArtists);
-            results.push(...matchingTracks);
-
-            return results.slice(0, 20);
-        }, [tracks, playlists, library.albums, library.artists, trimmedQuery]);
-
-        useEffect(() => {
-            if (!isOpen) {
-                setHighlightedIndex(-1);
-                return;
-            }
-
-            if (searchResults.length === 0) {
-                setHighlightedIndex(-1);
-                return;
-            }
-
-            setHighlightedIndex((prev) => {
-                if (prev < 0 || prev >= searchResults.length) {
-                    return 0;
-                }
-                return prev;
-            });
-        }, [isOpen, searchResults]);
-
-        const handleOpenChange = useCallback(
+        const handleDropdownOpenChange = useCallback(
             (open: boolean) => {
-                isOpen$.set(open);
-                // Update global state to disable queue navigation when search is open
-                playlistNavigationState$.isSearchDropdownOpen.set(open);
                 if (!open) {
-                    searchQuery$.set("");
                     shiftPressedRef.current = false;
                 }
-                onOpenChange?.(open);
+                handleOpenChange(open);
             },
-            [onOpenChange, searchQuery$],
+            [handleOpenChange, shiftPressedRef],
         );
 
         const getActionFromEvent = useCallback(
@@ -144,91 +113,11 @@ export const PlaylistSelectorSearchDropdown = forwardRef<DropdownMenuRootRef, Pl
                     shiftPressedFallback: shiftPressedRef.current,
                 });
             },
-            [],
+            [shiftPressedRef],
         );
-
-        const handleSearchResultAction = useCallback(
-            (result: SearchResult, action: "enqueue" | "play-next") => {
-                if (result.type === "track") {
-                    onSelectTrack(result.item, action);
-                } else if (result.type === "library") {
-                    onSelectLibraryItem?.(result.item, action);
-                } else if (result.type === "playlist") {
-                    onSelectPlaylist?.(result.item);
-                }
-                handleOpenChange(false);
-            },
-            [handleOpenChange, onSelectLibraryItem, onSelectPlaylist, onSelectTrack],
-        );
-
-        useEffect(() => {
-            const removeKeyDown = KeyboardManager.addKeyDownListener((event) => {
-                if (KeyboardManager.hasModifier(event, KeyCodes.MODIFIER_SHIFT)) {
-                    shiftPressedRef.current = true;
-                }
-
-                if (!isOpen || searchResults.length === 0) {
-                    return false;
-                }
-
-                if (event.keyCode === KeyCodes.KEY_DOWN) {
-                    setHighlightedIndex((prev) => {
-                        if (prev < 0) {
-                            return 0;
-                        }
-                        return (prev + 1) % searchResults.length;
-                    });
-                    return true;
-                }
-
-                if (event.keyCode === KeyCodes.KEY_UP) {
-                    setHighlightedIndex((prev) => {
-                        if (prev < 0) {
-                            return searchResults.length - 1;
-                        }
-                        return (prev - 1 + searchResults.length) % searchResults.length;
-                    });
-                    return true;
-                }
-
-                if (
-                    event.keyCode === KeyCodes.KEY_RETURN &&
-                    highlightedIndex >= 0 &&
-                    highlightedIndex < searchResults.length
-                ) {
-                    const action = KeyboardManager.hasModifier(event, KeyCodes.MODIFIER_SHIFT)
-                        ? "play-next"
-                        : "enqueue";
-                    handleSearchResultAction(searchResults[highlightedIndex], action);
-                    return true;
-                }
-
-                return false;
-            });
-
-            const removeKeyUp = KeyboardManager.addKeyUpListener((event) => {
-                if (!KeyboardManager.hasModifier(event, KeyCodes.MODIFIER_SHIFT)) {
-                    shiftPressedRef.current = false;
-                }
-                return false;
-            });
-
-            return () => {
-                removeKeyDown();
-                removeKeyUp();
-            };
-        }, [handleSearchResultAction, highlightedIndex, isOpen, searchResults]);
-
-        useEffect(() => {
-            if (isOpen) {
-                setTimeout(() => {
-                    textInputRef.current?.focus();
-                }, 0);
-            }
-        }, [isOpen]);
 
         return (
-            <DropdownMenu.Root ref={ref} isOpen$={isOpen$} onOpenChange={handleOpenChange}>
+            <DropdownMenu.Root ref={ref} isOpen$={isOpen$} onOpenChange={handleDropdownOpenChange}>
                 <DropdownMenu.Trigger asChild>
                     <Button
                         icon="magnifyingglass"
@@ -255,90 +144,130 @@ export const PlaylistSelectorSearchDropdown = forwardRef<DropdownMenuRootRef, Pl
                                 className="text-sm text-text-primary"
                             />
                         </View>
-                        {trimmedQuery && (
+
+                        {searchQuery.trim() ? (
                             <View>
-                                {searchResults.length > 0 && (
+                                {searchResults.length > 0 ? (
                                     <View style={{ maxHeight: 256 }}>
                                         <LegendList
                                             data={searchResults}
                                             keyExtractor={(result) => `${result.type}-${result.item.id}`}
                                             style={{ maxHeight: 256 }}
                                             extraData={{ highlightedIndex }}
-                                            renderItem={({ item: result, index }) => {
-                                                const key = `${result.type}-${result.item.id}`;
-                                                return (
-                                                    <DropdownMenu.Item
-                                                        key={key}
-                                                        onSelect={(event) => {
-                                                            const action = getActionFromEvent(event);
+                                            renderItem={({ item: result, index }) => (
+                                                <DropdownMenu.Item
+                                                    key={`${result.type}-${result.item.id}`}
+                                                    variant="unstyled"
+                                                    onSelect={(event) => {
+                                                        const action = getActionFromEvent(event);
+                                                        handleSearchResultAction(result, action);
+                                                        shiftPressedRef.current = false;
+                                                        handleOpenChange(false);
+                                                    }}
+                                                    className={cn(
+                                                        "hover:bg-white/10 rounded-md",
+                                                        highlightedIndex === index && "bg-white/20",
+                                                    )}
+                                                >
+                                                    <SearchResultContent
+                                                        result={result}
+                                                        index={index}
+                                                        highlighted={highlightedIndex === index}
+                                                        onSelect={(action) => {
                                                             handleSearchResultAction(result, action);
+                                                            shiftPressedRef.current = false;
+                                                            handleOpenChange(false);
                                                         }}
-                                                        variant="unstyled"
-                                                        className={cn(
-                                                            "hover:bg-white/10 rounded-md",
-                                                            highlightedIndex === index && "bg-white/20",
-                                                        )}
-                                                    >
-                                                        {result.type === "track" ? (
-                                                            <TrackItem
-                                                                track={result.item}
-                                                                index={index}
-                                                                onClick={(_, event) => {
-                                                                    const action = getActionFromEvent(event);
-                                                                    handleSearchResultAction(result, action);
-                                                                }}
-                                                            />
-                                                        ) : result.type === "library" ? (
-                                                            <View className="flex-row items-center px-3 py-2">
-                                                                <View className="mr-3 w-8 h-8 bg-white/10 rounded flex-row items-center justify-center">
-                                                                    <Text className="text-white/70 text-xs font-medium">
-                                                                        {result.item.type === "album" ? "♪" : "👤"}
-                                                                    </Text>
-                                                                </View>
-                                                                <View className="flex-1">
-                                                                    <Text className="text-white text-sm font-medium">
-                                                                        {result.item.name}
-                                                                    </Text>
-                                                                    <Text className="text-white/60 text-xs">
-                                                                        {result.item.type === "album"
-                                                                            ? `Album • ${result.item.trackCount} tracks`
-                                                                            : `Artist • ${result.item.trackCount} tracks`}
-                                                                    </Text>
-                                                                </View>
-                                                            </View>
-                                                        ) : (
-                                                            <View className="flex-row items-center px-3 py-2">
-                                                                <View className="mr-3 w-8 h-8 bg-white/10 rounded flex-row items-center justify-center">
-                                                                    <Text className="text-white/70 text-xs font-medium">
-                                                                        PL
-                                                                    </Text>
-                                                                </View>
-                                                                <View className="flex-1">
-                                                                    <Text className="text-white text-sm font-medium">
-                                                                        {result.item.name}
-                                                                    </Text>
-                                                                    <Text className="text-white/60 text-xs">
-                                                                        {result.item.trackCount === 1
-                                                                            ? "1 track"
-                                                                            : `${result.item.trackCount} tracks`}
-                                                                    </Text>
-                                                                </View>
-                                                            </View>
-                                                        )}
-                                                    </DropdownMenu.Item>
-                                                );
-                                            }}
+                                                        getActionFromEvent={getActionFromEvent}
+                                                    />
+                                                </DropdownMenu.Item>
+                                            )}
                                         />
                                     </View>
-                                )}
-                                {trimmedQuery && searchResults.length === 0 && (
+                                ) : (
                                     <Text className="text-white/60 text-sm p-2">No results found</Text>
                                 )}
                             </View>
-                        )}
+                        ) : null}
                     </View>
                 </DropdownMenu.Content>
             </DropdownMenu.Root>
         );
     },
 );
+
+interface SearchResultContentProps {
+    result: SearchResult;
+    index: number;
+    highlighted: boolean;
+    onSelect: (action: "enqueue" | "play-next") => void;
+    getActionFromEvent: (event?: NativeMouseEvent | GestureResponderEvent) => "enqueue" | "play-next";
+}
+
+function SearchResultContent({ result, index, highlighted, onSelect, getActionFromEvent }: SearchResultContentProps) {
+    const handleClick = useCallback(
+        (event?: NativeMouseEvent) => {
+            onSelect(getActionFromEvent(event));
+        },
+        [getActionFromEvent, onSelect],
+    );
+
+    const handleContextMenu = useCallback(
+        (event: NativeMouseEvent) => {
+            onSelect(getActionFromEvent(event));
+        },
+        [getActionFromEvent, onSelect],
+    );
+
+    if (result.type === "track") {
+        return (
+            <View className={cn("px-1", highlighted && "bg-white/10")}>
+                <TrackItem
+                    track={result.item}
+                    index={index}
+                    onClick={(_, event) => handleClick(event)}
+                    onRightClick={handleContextMenu}
+                />
+            </View>
+        );
+    }
+
+    const label = result.item.name;
+    const subtitle = getSubtitle(result);
+
+    return (
+        <View className={cn("flex-row items-center px-3 py-2", highlighted ? "bg-white/10 rounded-md" : "rounded-md")}>
+            <View className="mr-3 w-8 h-8 bg-white/10 rounded flex-row items-center justify-center">
+                <Text className="text-white/70 text-xs font-medium">{getGlyph(result)}</Text>
+            </View>
+            <View className="flex-1">
+                <Text className="text-white text-sm font-medium" numberOfLines={1}>
+                    {label}
+                </Text>
+                {subtitle ? <Text className="text-white/60 text-xs">{subtitle}</Text> : null}
+            </View>
+        </View>
+    );
+}
+
+function getGlyph(result: SearchResult) {
+    if (result.type === "library") {
+        return result.item.type === "album" ? "♪" : "👤";
+    }
+    return "PL";
+}
+
+function getSubtitle(result: SearchResult): string {
+    if (result.type === "library") {
+        const count = result.item.trackCount ?? 0;
+        const label = result.item.type === "album" ? "Album" : "Artist";
+        return count === 1 ? `${label} • 1 track` : `${label} • ${count} tracks`;
+    }
+
+    if (result.type === "playlist") {
+        const count = result.item.trackCount ?? 0;
+        return count === 1 ? "1 track" : `${count} tracks`;
+    }
+
+    return "";
+}
