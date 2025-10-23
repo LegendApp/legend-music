@@ -12,6 +12,7 @@ import { TextInputSearch, type TextInputSearchRef } from "@/components/TextInput
 import { type TrackData, TrackItem } from "@/components/TrackItem";
 import { useListItemStyles } from "@/hooks/useListItemStyles";
 import { type ContextMenuItem, showContextMenu } from "@/native-modules/ContextMenu";
+import { type NativeDragTrack, TrackDragSource } from "@/native-modules/TrackDragSource";
 import { Icon } from "@/systems/Icon";
 import type { LibraryItem, LibraryTrack } from "@/systems/LibraryState";
 import { library$, libraryUI$ } from "@/systems/LibraryState";
@@ -19,7 +20,7 @@ import { settings$ } from "@/systems/Settings";
 import type { SFSymbols } from "@/types/SFSymbols";
 import { cn } from "@/utils/cn";
 import { perfCount, perfLog } from "@/utils/perfLogger";
-import { TrackDragSource, type NativeDragTrack } from "@/native-modules/TrackDragSource";
+import { getTracksForLibraryItem } from "@/utils/trackResolution";
 
 const MEDIA_LIBRARY_CONTEXT_MENU_ITEMS: ContextMenuItem[] = [
     { id: "queue-add", title: "Add to Queue" },
@@ -122,30 +123,7 @@ function LibraryTree({ searchQuery }: LibraryTreeProps) {
 
     const getTracksForItem = useCallback(
         (item: LibraryItem | null): LibraryTrack[] => {
-            if (!item) {
-                return [];
-            }
-
-            if (Array.isArray(item.children) && item.children.length > 0) {
-                const childIds = new Set(item.children.map((child) => child.id));
-                return tracks.filter((track) => childIds.has(track.id));
-            }
-
-            switch (item.type) {
-                case "artist":
-                    return tracks.filter((track) => track.artist === item.name);
-                case "album": {
-                    const albumName = item.album ?? item.name ?? "Unknown Album";
-                    return tracks.filter((track) => (track.album ?? "Unknown Album") === albumName);
-                }
-                case "playlist":
-                    if (item.id === allSongsItem.id) {
-                        return tracks;
-                    }
-                    return tracks;
-                default:
-                    return [];
-            }
+            return getTracksForLibraryItem(tracks, item, { allTracksPlaylistId: allSongsItem.id });
         },
         [allSongsItem.id, tracks],
     );
@@ -213,7 +191,10 @@ function LibraryTree({ searchQuery }: LibraryTreeProps) {
         [albums, allSongsItem, artists, normalizedQuery, playlists],
     );
 
-    const collectionItems = useMemo(() => computeCollectionItems(selectedCollection), [computeCollectionItems, selectedCollection]);
+    const collectionItems = useMemo(
+        () => computeCollectionItems(selectedCollection),
+        [computeCollectionItems, selectedCollection],
+    );
 
     useEffect(() => {
         const collectionTypeMap: Record<string, LibraryItem["type"][]> = {
@@ -550,7 +531,14 @@ function TrackList({ searchQuery }: TrackListProps) {
                 onNativeDragStart={handleNativeDragStart}
             />
         ),
-        [buildDragData, handleTrackClick, handleTrackContextMenu, handleTrackMouseDown, handleNativeDragStart, selectedIndices$],
+        [
+            buildDragData,
+            handleTrackClick,
+            handleTrackContextMenu,
+            handleTrackMouseDown,
+            handleNativeDragStart,
+            selectedIndices$,
+        ],
     );
 
     if (!selectedItem) {
@@ -568,8 +556,8 @@ function TrackList({ searchQuery }: TrackListProps) {
                 keyExtractor={keyExtractor}
                 renderItem={renderTrack}
                 style={{ flex: 1 }}
-                contentContainerStyle=
-                    {tracks.length
+                contentContainerStyle={
+                    tracks.length
                         ? undefined
                         : {
                               flexGrow: 1,
@@ -577,7 +565,8 @@ function TrackList({ searchQuery }: TrackListProps) {
                               alignItems: "flex-start",
                               paddingVertical: 16,
                               paddingHorizontal: 10,
-                          }}
+                          }
+                }
                 waitForInitialLayout={false}
                 estimatedItemSize={64}
                 recycleItems

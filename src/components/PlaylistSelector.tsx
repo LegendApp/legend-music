@@ -1,7 +1,7 @@
 import { use$ } from "@legendapp/state/react";
 import { File } from "expo-file-system/next";
 import { useCallback, useMemo, useRef } from "react";
-import { Text, View, useWindowDimensions } from "react-native";
+import { Text, useWindowDimensions, View } from "react-native";
 import { Button } from "@/components/Button";
 import type { DropdownMenuRootRef } from "@/components/DropdownMenu";
 import { localAudioControls, queue$ } from "@/components/LocalAudioPlayer";
@@ -16,6 +16,7 @@ import { loadLocalPlaylists, localMusicState$, setCurrentPlaylist } from "@/syst
 import { stateSaved$ } from "@/systems/State";
 import { ensureCacheDirectory, getCacheDirectory } from "@/utils/cacheDirectories";
 import { perfCount, perfLog } from "@/utils/perfLogger";
+import { buildTrackLookup, getTracksForLibraryItem, resolvePlaylistTracks } from "@/utils/trackResolution";
 
 function generateM3UPlaylist(tracks: { title: string; artist: string; filePath: string; duration?: string }[]): string {
     const lines = ["#EXTM3U", ""];
@@ -100,10 +101,7 @@ export function PlaylistSelector() {
         libraryUI$.isOpen.set(!libraryUI$.isOpen.get());
     }, []);
 
-    const tracksByPath = useMemo(
-        () => new Map(localMusicState.tracks.map((track) => [track.filePath, track])),
-        [localMusicState.tracks],
-    );
+    const tracksByPath = useMemo(() => buildTrackLookup(localMusicState.tracks), [localMusicState.tracks]);
 
     const handlePlaylistSelect = (playlistId: string) => {
         perfLog("PlaylistSelector.handlePlaylistSelect", { playlistId });
@@ -116,30 +114,30 @@ export function PlaylistSelector() {
 
         console.log("Navigating to playlist:", playlistId, playlist.name);
 
-        if (playlist.type === "local-files") {
-            const tracks = localMusicState.tracks;
-            if (tracks.length > 0) {
-                localAudioControls.queue.replace(tracks, { startIndex: 0, playImmediately: true });
-            } else {
-                localAudioControls.queue.clear();
-            }
-        } else {
-            const trackPaths = playlist.trackPaths ?? [];
-            const resolvedTracks = trackPaths
-                .map((path) => tracksByPath.get(path))
-                .filter((track): track is LocalTrack => track !== undefined);
+        const { tracks: resolvedTracks, missingPaths } = resolvePlaylistTracks(
+            {
+                id: playlist.id,
+                name: playlist.name,
+                type: playlist.type,
+                trackPaths: playlist.trackPaths,
+            },
+            localMusicState.tracks,
+            tracksByPath,
+        );
 
-            if (resolvedTracks.length > 0) {
-                localAudioControls.queue.replace(resolvedTracks, { startIndex: 0, playImmediately: true });
+        if (resolvedTracks.length > 0) {
+            localAudioControls.queue.replace(resolvedTracks, { startIndex: 0, playImmediately: true });
+        } else {
+            if (playlist.type === "local-files") {
+                localAudioControls.queue.clear();
             } else {
                 console.warn(`No tracks resolved for playlist ${playlist.name}`);
                 localAudioControls.queue.clear();
             }
+        }
 
-            const missingCount = trackPaths.length - resolvedTracks.length;
-            if (missingCount > 0) {
-                console.warn(`Playlist ${playlist.name} is missing ${missingCount} tracks from the library`);
-            }
+        if (missingPaths.length > 0) {
+            console.warn(`Playlist ${playlist.name} is missing ${missingPaths.length} tracks from the library`);
         }
 
         setCurrentPlaylist(playlistId, "file");
@@ -161,14 +159,7 @@ export function PlaylistSelector() {
         perfLog("PlaylistSelector.handleLibraryItemSelect", { itemId: item.id, type: item.type, action });
         console.log("Selected library item:", item, "action:", action);
 
-        // Get tracks for the selected item
-        let tracksToAdd: LocalTrack[] = [];
-
-        if (item.type === "album") {
-            tracksToAdd = library.tracks.filter((track) => track.album === item.name);
-        } else if (item.type === "artist") {
-            tracksToAdd = library.tracks.filter((track) => track.artist === item.name);
-        }
+        const tracksToAdd = getTracksForLibraryItem(library.tracks, item);
 
         if (tracksToAdd.length === 0) {
             return;
@@ -186,10 +177,15 @@ export function PlaylistSelector() {
         (playlist: LocalPlaylist) => {
             perfLog("PlaylistSelector.handleSearchPlaylistSelect", { playlistId: playlist.id });
 
-            const trackPaths = playlist.trackPaths ?? [];
-            const resolvedTracks = trackPaths
-                .map((path) => tracksByPath.get(path))
-                .filter((track): track is LocalTrack => track !== undefined);
+            const { tracks: resolvedTracks, missingPaths } = resolvePlaylistTracks(
+                {
+                    id: playlist.id,
+                    name: playlist.name,
+                    trackPaths: playlist.trackPaths,
+                },
+                localMusicState.tracks,
+                tracksByPath,
+            );
 
             if (resolvedTracks.length > 0) {
                 localAudioControls.queue.replace(resolvedTracks, { startIndex: 0, playImmediately: true });
@@ -198,9 +194,8 @@ export function PlaylistSelector() {
                 localAudioControls.queue.clear();
             }
 
-            const missingCount = trackPaths.length - resolvedTracks.length;
-            if (missingCount > 0) {
-                console.warn(`Playlist ${playlist.name} is missing ${missingCount} tracks from the library`);
+            if (missingPaths.length > 0) {
+                console.warn(`Playlist ${playlist.name} is missing ${missingPaths.length} tracks from the library`);
             }
 
             setCurrentPlaylist(playlist.id, "file");
