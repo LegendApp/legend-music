@@ -26,6 +26,8 @@ const nativeHotkeyMap = {
     Enter: [KeyCodes.KEY_RETURN],
     Space: [KeyCodes.KEY_SPACE],
     Delete: [KeyCodes.KEY_DELETE],
+    ForwardDelete: [KeyCodes.KEY_FORWARD_DELETE],
+    Backspace: [KeyCodes.KEY_DELETE],
     SelectAll: [KeyCodes.MODIFIER_COMMAND, KeyCodes.KEY_A],
 } as const;
 

@@ -94,6 +94,7 @@ export const KeyCodes = {
     KEY_SPACE: 49,
     KEY_DELETE: 51,
     KEY_BACKSPACE: 51, // Same as DELETE on macOS
+    KEY_FORWARD_DELETE: 117,
     KEY_ESCAPE: 53,
     KEY_HELP: 114,
     KEY_HOME: 115,
@@ -144,6 +145,7 @@ export const KeyText: Record<number, string> = (() => {
         [KeyCodes.KEY_TAB]: "⇥",
         [KeyCodes.KEY_SPACE]: "Space",
         [KeyCodes.KEY_DELETE]: "⌫",
+        [KeyCodes.KEY_FORWARD_DELETE]: "⌦",
         [KeyCodes.KEY_ESCAPE]: "Esc",
         [KeyCodes.KEY_LEFT]: "←",
         [KeyCodes.KEY_RIGHT]: "→",

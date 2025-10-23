@@ -1,7 +1,8 @@
 import type { Observable } from "@legendapp/state";
-import { use$ } from "@legendapp/state/react";
+import { use$, useObserveEffect } from "@legendapp/state/react";
 import { memo, useEffect, useState } from "react";
-import { Text, View } from "react-native";
+import { Text, TextInput, View } from "react-native";
+import Animated, { useAnimatedProps, useSharedValue } from "react-native-reanimated";
 import { AlbumArt } from "@/components/AlbumArt";
 import { Button } from "@/components/Button";
 import { CustomSlider } from "@/components/CustomSlider";
@@ -12,9 +13,44 @@ import { perfCount, perfLog } from "@/utils/perfLogger";
 // Format time for local playback with caching to reduce computation
 const formatTimeCache = new Map<number, string>();
 
-const CurrentTime = memo(function CurrentTime({ currentLocalTime$ }: { currentLocalTime$: Observable<number> }) {
-    const time = use$(currentLocalTime$);
-    return formatTime(time);
+const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
+
+const CurrentTime = memo(function CurrentTime({
+    currentLocalTime$,
+    duration,
+}: {
+    currentLocalTime$: Observable<number>;
+    duration: number | undefined;
+}) {
+    const text = useSharedValue("asdf");
+
+    useObserveEffect(() => {
+        const currentTime = currentLocalTime$.get();
+        const formattedDuration = duration ? formatTime(duration) : undefined;
+        const display = formattedDuration ? `${formatTime(currentTime)} / ${formattedDuration}` : " ";
+        text.set(display);
+        console.log("CurrentTime.useObserveEffect", display);
+    });
+
+    // Animated prop maps shared value -> native TextInput "text" prop
+    const animatedProps = useAnimatedProps(() => {
+        console.log("CurrentTime.useAnimatedProps", text.get());
+        return {
+            defaultValue: text.get(),
+            text: text.get(),
+        };
+    });
+
+    return (
+        <AnimatedTextInput
+            className="text-white/70 text-xs pr-2 transition-opacity duration-150 w-[88px] absolute"
+            numberOfLines={1}
+            // ellipsizeMode="clip"
+            style={{ fontVariant: ["tabular-nums"] }}
+            animatedProps={animatedProps}
+            editable={false}
+        />
+    );
 });
 
 function formatTime(seconds: number): string {
@@ -83,22 +119,7 @@ export function PlaybackArea() {
                 className={cn("group flex-row items-center pb-1 pt-1", !currentTrack && "opacity-0")}
                 onMouseLeave={() => setIsSliderHovered(false)}
             >
-                <Text
-                    className={cn(
-                        "text-white/70 text-xs pr-2 transition-opacity duration-150",
-                        isSliderHovered ? "opacity-100" : "opacity-0",
-                    )}
-                    style={{ fontVariant: ["tabular-nums"] }}
-                >
-                    {duration ? (
-                        <>
-                            <CurrentTime currentLocalTime$={currentLocalTime$} />
-                            {duration ? ` / ${formatTime(duration)}` : " "}
-                        </>
-                    ) : (
-                        " "
-                    )}
-                </Text>
+                <CurrentTime currentLocalTime$={currentLocalTime$} duration={duration} />
                 <CustomSlider
                     style={{ height: 24, flex: 1 }}
                     minimumValue={0}

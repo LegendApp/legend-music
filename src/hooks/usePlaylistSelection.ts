@@ -361,12 +361,16 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
         setAnchorAndFocus(selectableIndices[0], selectableIndices[selectableIndices.length - 1]);
     }, [clearSelection, items, setAnchorAndFocus, shouldHandleHotkeys, updateSelectionState]);
 
+    const deleteHotkey = onDeleteSelection ? handleDeleteHotkey : undefined;
+
     useOnHotkeys({
         Up: moveSelectionUp,
         Down: moveSelectionDown,
         Enter: activateSelection,
         Space: activateSelection,
-        Delete: onDeleteSelection ? handleDeleteHotkey : undefined,
+        Delete: deleteHotkey,
+        Backspace: deleteHotkey,
+        ForwardDelete: deleteHotkey,
         SelectAll: selectAllItems,
     });
 

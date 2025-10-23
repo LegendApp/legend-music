@@ -273,7 +273,7 @@ export function Playlist() {
                     return;
                 }
 
-                localAudioControls.queue.insertAt(boundedTarget, filtered);
+                localAudioControls.queue.insertAt(boundedTarget, filtered, { playImmediately: false });
 
                 if (skipped > 0) {
                     showDropFeedback({
@@ -305,7 +305,7 @@ export function Playlist() {
 
             const boundedPosition = Math.max(0, Math.min(dropIndex ?? queueLength, queueLength));
 
-            localAudioControls.queue.insertAt(boundedPosition, filtered);
+            localAudioControls.queue.insertAt(boundedPosition, filtered, { playImmediately: false });
 
             if (skipped > 0) {
                 showDropFeedback({
