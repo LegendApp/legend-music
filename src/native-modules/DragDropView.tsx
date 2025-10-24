@@ -1,6 +1,7 @@
 import { cssInterop } from "nativewind";
 import { forwardRef, type ReactNode } from "react";
-import { requireNativeComponent, type ViewProps } from "react-native";
+import { type NativeSyntheticEvent, requireNativeComponent, type ViewProps } from "react-native";
+import type { NativeMouseEvent } from "react-native-macos";
 
 interface DragDropEvent {
     files: string[];
@@ -40,6 +41,7 @@ interface DragDropViewProps extends ViewProps {
     onTrackDragLeave?: () => void;
     onTrackDragHover?: (event: { nativeEvent: TrackDragEvent }) => void;
     onTrackDrop?: (event: { nativeEvent: TrackDragEvent }) => void;
+    onMouseDown?: (event: NativeSyntheticEvent<NativeMouseEvent>) => void;
 }
 
 const NativeDragDropView = requireNativeComponent<DragDropViewProps>("RNDragDrop");

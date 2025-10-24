@@ -34,6 +34,7 @@ interface TrackItemProps {
     onDoubleClick?: (index: number, event?: NativeMouseEvent) => void;
     onRightClick?: (index: number, event: NativeMouseEvent) => void;
     onMouseDown?: (index: number, event: NativeMouseEvent) => void;
+    disableHover?: boolean;
 }
 
 export const TrackItem = ({
@@ -45,6 +46,7 @@ export const TrackItem = ({
     onDoubleClick,
     onRightClick,
     onMouseDown,
+    disableHover = false,
 }: TrackItemProps) => {
     perfCount("TrackItem.render");
     const playlistStyle = use$(settings$.general.playlistStyle);
@@ -99,7 +101,12 @@ export const TrackItem = ({
     // Compact mode: single line format "${number}. ${artist} - ${song}"
     if (playlistStyle === "compact") {
         const rowClassName = cn(
-            listItemStyles.getRowClassName({ variant: "compact", isActive: isPlaying, isSelected }),
+            listItemStyles.getRowClassName({
+                variant: "compact",
+                isActive: isPlaying,
+                isSelected,
+                isInteractive: !disableHover,
+            }),
             track.fromSuggestions ? "opacity-75" : "",
             "w-full",
         );

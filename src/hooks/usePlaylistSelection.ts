@@ -16,6 +16,7 @@ interface UsePlaylistSelectionResult {
     selectedIndices$: Observable<Set<number>>;
     handleTrackClick: (index: number, event?: NativeMouseEvent) => void;
     syncSelectionAfterReorder: (fromIndex: number, toIndex: number) => void;
+    clearSelection: () => void;
 }
 
 function createRangeSelection(start: number, end: number): Set<number> {
@@ -49,6 +50,11 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
     });
 
     const clearSelection = useStableCallback(() => {
+        const currentSelection = selectedIndices$.get();
+        if (currentSelection.size === 0 && selectionAnchor$.get() === -1 && selectionFocus$.get() === -1) {
+            return;
+        }
+
         updateSelectionState(new Set());
         setAnchorAndFocus(-1, -1);
     });
@@ -345,5 +351,6 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
         selectedIndices$,
         handleTrackClick,
         syncSelectionAfterReorder,
+        clearSelection,
     };
 }

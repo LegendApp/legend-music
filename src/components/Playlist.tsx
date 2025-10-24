@@ -1,7 +1,16 @@
 import { LegendList } from "@legendapp/list";
 import { use$ } from "@legendapp/state/react";
 import { type ElementRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { findNodeHandle, Platform, StyleSheet, Text, UIManager, View } from "react-native";
+import {
+    findNodeHandle,
+    Platform,
+    StyleSheet,
+    Text,
+    UIManager,
+    View,
+    type NativeSyntheticEvent,
+} from "react-native";
+import type { NativeMouseEvent } from "react-native-macos";
 import { localAudioControls, localPlayerState$, queue$ } from "@/components/LocalAudioPlayer";
 import { type TrackData, TrackItem } from "@/components/TrackItem";
 import { usePlaylistSelection } from "@/hooks/usePlaylistSelection";
@@ -51,10 +60,13 @@ export function Playlist() {
     const [dropFeedback, setDropFeedback] = useState<DropFeedback | null>(null);
     const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const skipClickRef = useRef(false);
+    const skipBackgroundClearRef = useRef(false);
     const activeNativePlaylistDragRef = useRef<string | null>(null);
     const dropAreaRef = useRef<ElementRef<typeof DragDropView>>(null);
     const dropAreaWindowRectRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
     const lastDropIndexRef = useRef<number>(queueLength);
+    const previousPlayedIndexRef = useRef<number>(typeof currentTrackIndex === "number" ? currentTrackIndex : -1);
+    const wasPlayingRef = useRef<boolean>(isPlayerActive);
     const { draggedItem$, activeDropZone$, checkDropZones } = useDragDrop();
 
     // Render the active playback queue
@@ -90,34 +102,11 @@ export function Playlist() {
         localAudioControls.queue.remove(indices);
     }, []);
 
-    const {
-        selectedIndices$,
-        handleTrackClick: handleTrackClickBase,
-        syncSelectionAfterReorder,
-    } = usePlaylistSelection({
-        items: playlist,
-        onDeleteSelection: handleDeleteSelection,
-    });
-
-    const nativeDragTracksByEntryId = useMemo(() => {
-        const map = new Map<string, NativeDragTrack>();
-
-        for (const track of queueTracks) {
-            map.set(track.queueEntryId, {
-                id: track.id,
-                title: track.title,
-                artist: track.artist,
-                album: track.album,
-                duration: track.duration,
-                filePath: track.filePath,
-                fileName: track.fileName,
-                thumbnail: track.thumbnail,
-                queueEntryId: track.queueEntryId,
-            });
-        }
-
-        return map;
-    }, [queueTracks]);
+    const { selectedIndices$, handleTrackClick: handleTrackClickBase, syncSelectionAfterReorder, clearSelection } =
+        usePlaylistSelection({
+            items: playlist,
+            onDeleteSelection: handleDeleteSelection,
+        });
 
     const handleTrackClick = useCallback(
         (index: number, event?: Parameters<typeof handleTrackClickBase>[1]) => {
@@ -128,6 +117,38 @@ export function Playlist() {
             handleTrackClickBase(index, event);
         },
         [handleTrackClickBase],
+    );
+
+    const handleTrackMouseDown = useCallback(
+        (_index: number, event: NativeMouseEvent) => {
+            if (event.button !== 0) {
+                return;
+            }
+            skipBackgroundClearRef.current = true;
+        },
+        [skipBackgroundClearRef],
+    );
+
+    const handlePlaylistBackgroundMouseDown = useCallback(
+        (event: NativeSyntheticEvent<NativeMouseEvent>) => {
+            const nativeEvent = event.nativeEvent;
+            if (nativeEvent.button !== 0) {
+                return;
+            }
+
+            if (skipBackgroundClearRef.current) {
+                skipBackgroundClearRef.current = false;
+                return;
+            }
+
+            if (selectedIndices$.get().size === 0) {
+                return;
+            }
+
+            clearSelection();
+            skipBackgroundClearRef.current = false;
+        },
+        [clearSelection, selectedIndices$, skipBackgroundClearRef],
     );
 
     const handleReorderDragStart = useCallback(() => {
@@ -225,6 +246,21 @@ export function Playlist() {
     useEffect(() => {
         lastDropIndexRef.current = Math.min(lastDropIndexRef.current, queueLength);
     }, [queueLength]);
+
+    useEffect(() => {
+        const nextIndex = typeof currentTrackIndex === "number" ? currentTrackIndex : -1;
+        if (nextIndex >= 0 && nextIndex !== previousPlayedIndexRef.current) {
+            clearSelection();
+        }
+        previousPlayedIndexRef.current = nextIndex;
+    }, [clearSelection, currentTrackIndex]);
+
+    useEffect(() => {
+        if (isPlayerActive && !wasPlayingRef.current) {
+            clearSelection();
+        }
+        wasPlayingRef.current = isPlayerActive;
+    }, [clearSelection, isPlayerActive]);
 
     const allowPlaylistDrop = useCallback((item: DraggedItem<DragData>) => {
         if (item.data?.type === "playlist-track") {
@@ -443,6 +479,7 @@ export function Playlist() {
         }
         handleTrackClickBase(index);
         localAudioControls.playTrackAtIndex(index);
+        clearSelection();
     };
 
     const handleFileDrop = useCallback(async (files: string[]) => {
@@ -533,6 +570,7 @@ export function Playlist() {
         <DragDropView
             ref={dropAreaRef}
             className={cn("flex-1", overlayClassName)}
+            onMouseDown={handlePlaylistBackgroundMouseDown}
             onDragEnter={handleDragEnter}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
@@ -604,6 +642,8 @@ export function Playlist() {
                                     onClick={handleTrackClick}
                                     onDoubleClick={handleTrackDoubleClick}
                                     selectedIndices$={selectedIndices$}
+                                    onMouseDown={handleTrackMouseDown}
+                                    disableHover
                                 />
                             );
 
