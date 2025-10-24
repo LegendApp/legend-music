@@ -188,7 +188,7 @@ export function LibraryTree({ searchQuery }: LibraryTreeProps) {
                             }}
                             className={listItemStyles.getRowClassName({
                                 variant: "compact",
-                                isActive: isSelected,
+                                isSelected,
                             })}
                         >
                             <View className="flex-1 flex-row items-center justify-between overflow-hidden">

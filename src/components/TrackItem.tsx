@@ -35,6 +35,7 @@ interface TrackItemProps {
     onRightClick?: (index: number, event: NativeMouseEvent) => void;
     onMouseDown?: (index: number, event: NativeMouseEvent) => void;
     disableHover?: boolean;
+    suppressActiveState?: boolean;
 }
 
 export const TrackItem = ({
@@ -47,6 +48,7 @@ export const TrackItem = ({
     onRightClick,
     onMouseDown,
     disableHover = false,
+    suppressActiveState = false,
 }: TrackItemProps) => {
     perfCount("TrackItem.render");
     const playlistStyle = use$(settings$.general.playlistStyle);
@@ -103,7 +105,7 @@ export const TrackItem = ({
         const rowClassName = cn(
             listItemStyles.getRowClassName({
                 variant: "compact",
-                isActive: isPlaying,
+                isActive: !suppressActiveState && isPlaying,
                 isSelected,
                 isInteractive: !disableHover,
             }),

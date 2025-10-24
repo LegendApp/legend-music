@@ -97,13 +97,13 @@ export function useLibraryTrackList(searchQuery: string): UseLibraryTrackListRes
         [allTracks, searchQuery, selectedItem],
     );
 
-    const { selectedIndices$, handleTrackClick: handleSelectionClick } = usePlaylistSelection({
+    const { selectedIndices$, handleTrackClick: handleSelectionClick, clearSelection } = usePlaylistSelection({
         items: trackItems,
     });
 
     useEffect(() => {
-        selectedIndices$.set(new Set());
-    }, [selectedIndices$, selectedItem?.id, trackItems.length]);
+        clearSelection();
+    }, [clearSelection, selectedItem?.id, trackItems.length]);
 
     const handleTrackAction = useCallback(
         (index: number, action: QueueAction) => {

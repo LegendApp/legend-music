@@ -115,6 +115,7 @@ function LibraryTrackRow({
                     showIndex={false}
                     showAlbumArt={false}
                     selectedIndices$={selectedIndices$}
+                    suppressActiveState
                 />
             </TrackDragSource>
         );
@@ -135,6 +136,7 @@ function LibraryTrackRow({
                 showIndex={false}
                 showAlbumArt={false}
                 selectedIndices$={selectedIndices$}
+                suppressActiveState
             />
         </DraggableItem>
     );
