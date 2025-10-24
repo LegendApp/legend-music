@@ -8,7 +8,9 @@
         "test": "jest",
         "lint": "bunx biome check ./src && bunx biome format ./src",
         "lint:fix": "bunx biome lint --write ./src && bunx biome format --write ./src && bunx biome check --write ./src",
-        "build": "bun scripts/build.ts"
+        "build": "bun scripts/build.ts",
+        "package": "bun scripts/package-app.ts",
+        "publish": "bun run build && bun run package"
     },
     "dependencies": {
         "@fluentui-react-native/callout": "^0.27.3",

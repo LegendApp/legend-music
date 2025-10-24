@@ -1,0 +1,368 @@
+#!/usr/bin/env bun
+
+import { spawnSync } from "node:child_process";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import path, { join, resolve } from "node:path";
+
+// Types
+interface AppConfig {
+    APP_NAME: string;
+    TEAM_NAME: string;
+    TEAM_ID: string;
+    APPLE_ID: string;
+    APP_PASSWORD: string;
+    version: string;
+}
+
+// Helper functions
+function execCommand(command: string, args: string[], errorMessage: string) {
+    console.log(`Executing: ${command} ${args.join(" ")}`);
+    const result = spawnSync(command, args, { stdio: "inherit" });
+
+    if (result.error || result.status !== 0) {
+        console.error(errorMessage);
+        console.error(result.stderr?.toString() || result.error?.message);
+        process.exit(1);
+    }
+    return result;
+}
+
+function log(message: string) {
+    console.log(`=== ${message} ===`);
+}
+
+// Get configuration
+const PROJECT_ROOT = resolve(__dirname, "..");
+
+// Load and parse configuration
+function loadConfig(): AppConfig {
+    // Get version from package.json
+    const packageJsonPath = join(PROJECT_ROOT, "package.json");
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
+    const version = packageJson.version;
+
+    // Default values
+    const config: AppConfig = {
+        APP_NAME: "Legend Music",
+        TEAM_NAME: "",
+        TEAM_ID: "",
+        APPLE_ID: "",
+        APP_PASSWORD: "",
+        version,
+    };
+
+    // Load from .env file if exists
+    const envFilePath = join(PROJECT_ROOT, ".env");
+    if (existsSync(envFilePath)) {
+        console.log("Loading configuration from .env file");
+        const envContent = readFileSync(envFilePath, "utf-8");
+
+        // Extract environment variables directly
+        const envVars = ["APP_NAME", "TEAM_NAME", "TEAM_ID", "APPLE_ID", "APP_PASSWORD"] as const;
+
+        envVars.forEach((key) => {
+            const pattern = new RegExp(`${key}=["']?([^"'\\n]+)["']?`);
+            const match = envContent.match(pattern);
+            if (match && match[1]) {
+                config[key] = match[1];
+            }
+        });
+    } else {
+        console.error("Warning: .env file not found at", envFilePath);
+        process.exit(1);
+    }
+
+    return config;
+}
+
+// Function to notarize the app
+function notarizeApp(appPath: string, config: AppConfig, safeAppName: string) {
+    log(`Starting notarization process for ${appPath}`);
+
+    const appName = config.APP_NAME;
+
+    // Step 1: Code Sign the app
+    log("Code signing app");
+    execCommand(
+        "codesign",
+        [
+            "--force",
+            "--deep",
+            "--entitlements",
+            join(PROJECT_ROOT, `macos/${appName}-macOS/${appName}-macOS.entitlements`),
+            "--sign",
+            `Developer ID Application: ${config.TEAM_NAME} (${config.TEAM_ID})`,
+            "--options",
+            "runtime",
+            appPath,
+        ],
+        "Error code signing app:",
+    );
+
+    // Step 2: Create a ZIP archive for submission
+    log("Creating notarization ZIP archive");
+    const notarizationZipPath = `/tmp/${safeAppName}_notarize_temp.zip`;
+    execCommand(
+        "ditto",
+        ["-c", "-k", "--keepParent", appPath, notarizationZipPath],
+        "Error creating notarization zip archive:",
+    );
+
+    // Step 3: Submit for notarization
+    log("Submitting for notarization (this may take a while)");
+    execCommand(
+        "xcrun",
+        [
+            "notarytool",
+            "submit",
+            notarizationZipPath,
+            "--apple-id",
+            config.APPLE_ID,
+            "--password",
+            config.APP_PASSWORD,
+            "--team-id",
+            config.TEAM_ID,
+            "--wait",
+        ],
+        "Error submitting for notarization:",
+    );
+
+    // Step 4: Staple the notarization ticket to the app
+    log("Stapling notarization ticket to app");
+    execCommand("xcrun", ["stapler", "staple", appPath], "Error stapling notarization ticket:");
+
+    log("Notarization process completed successfully");
+}
+
+// Function to create a version info file for Sparkle
+function createVersionInfoFile(distDir: string, config: AppConfig, zipFileName: string) {
+    const infoPath = join(distDir, "sparkle-version-info.plist");
+    const content = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleShortVersionString</key>
+    <string>${config.version}</string>
+    <key>CFBundleVersion</key>
+    <string>${config.version.split(".").join("")}</string>
+    <key>FileName</key>
+    <string>${zipFileName}</string>
+</dict>
+</plist>`;
+
+    writeFileSync(infoPath, content, "utf-8");
+    console.log(`Created version info file at: ${infoPath}`);
+}
+
+// Function to parse CHANGELOG.md and generate HTML update files for each version
+function generateChangelogHtml(distDir: string, config: AppConfig, appName: string) {
+    log("Generating HTML update files from CHANGELOG.md");
+
+    const changelogPath = join(PROJECT_ROOT, "CHANGELOG.md");
+    if (!existsSync(changelogPath)) {
+        console.warn(`Warning: CHANGELOG.md not found at ${changelogPath}`);
+        console.warn("Skipping HTML update file generation");
+        return;
+    }
+
+    const changelogContent = readFileSync(changelogPath, "utf-8");
+
+    // Parse changelog into version blocks
+    // Format expected: ## x.x.x followed by release notes
+    const versionRegex = /## (\d+\.\d+\.\d+)\s+([\s\S]*?)(?=## \d+\.\d+\.\d+|$)/g;
+    let match: RegExpExecArray | null = null;
+
+    while ((match = versionRegex.exec(changelogContent)) !== null) {
+        const version = match[1];
+        const notes = match[2].trim();
+
+        // Save HTML file with the same naming pattern as the zip but with .html extension
+        const htmlFileName = `${appName} ${version}.html`;
+        const htmlFilePath = join(distDir, htmlFileName);
+
+        writeFileSync(htmlFilePath, notes, "utf-8");
+        console.log(`Generated HTML update file for version ${version}: ${htmlFilePath}`);
+    }
+
+    log("HTML update file generation complete");
+}
+
+// Function to check if version exists in CHANGELOG.md
+function checkVersionInChangelog(config: AppConfig) {
+    log("Checking for version in CHANGELOG.md");
+
+    const changelogPath = join(PROJECT_ROOT, "CHANGELOG.md");
+    if (!existsSync(changelogPath)) {
+        console.error(`Error: CHANGELOG.md not found at ${changelogPath}`);
+        process.exit(1);
+    }
+
+    const changelogContent = readFileSync(changelogPath, "utf-8");
+
+    // Look for the version header in the changelog
+    const versionHeaderRegex = new RegExp(`## ${config.version.replace(/\./g, "\\.")}`);
+
+    if (!versionHeaderRegex.test(changelogContent)) {
+        console.error(`Error: Version ${config.version} not found in CHANGELOG.md`);
+        console.error("Please add release notes for this version before packaging");
+        process.exit(1);
+    }
+
+    log(`Found version ${config.version} in CHANGELOG.md`);
+}
+
+// Function to generate appcast
+function generateAppcast(distDir: string, config: AppConfig) {
+    // Find generate-appcast
+    const generateAppcastPath = path.resolve(__dirname, "../macos/Pods/Sparkle/bin/generate_appcast");
+
+    if (!existsSync(generateAppcastPath)) {
+        console.warn(`Warning: generate_appcast not found at ${generateAppcastPath}`);
+        console.warn("Skipping appcast generation. To enable this feature, set SPARKLE_PATH in .env");
+        return;
+    }
+
+    log("Generating appcast from dist folder");
+    execCommand(
+        generateAppcastPath,
+        [
+            distDir,
+            "--download-url-prefix",
+            `https://github.com/LegendApp/legend-photos/releases/download/v${config.version}/`,
+        ],
+        "Error generating appcast:",
+    );
+    cpSync(join(distDir, "appcast.xml"), join(PROJECT_ROOT, "appcast.xml"), { force: true });
+
+    log("Appcast generation complete");
+}
+
+// Function to replace spaces with hyphens in appcast.xml and delta files
+function replaceSpacesInAppcast(distDir: string) {
+    log("Replacing spaces with hyphens in appcast.xml and delta files");
+
+    const appcastPath = join(distDir, "appcast.xml");
+    const appcastContent = readFileSync(appcastPath, "utf-8");
+
+    // First rename any delta files that have spaces
+    const deltaFiles = appcastContent.match(/Legend%20Photos[^"<>]+\.delta/g) || [];
+    console.log("deltaFiles", deltaFiles);
+    deltaFiles.forEach((deltaFile) => {
+        const oldPath = join(distDir, deltaFile.replace(/(%20)+/g, " "));
+        const newPath = join(distDir, deltaFile.replace(/(%20)+/g, "-"));
+        console.log("newPath", oldPath, newPath);
+
+        if (existsSync(oldPath)) {
+            cpSync(oldPath, newPath, { force: true });
+            rmSync(oldPath, { force: true });
+        }
+    });
+
+    // Now update the appcast.xml content to use the new filenames
+    const updatedContent = appcastContent.replace(/Legend(%20)Photos[^"<>]+\.delta/g, (match) => {
+        console.log("match", match);
+        return match.replace(/(%20)+/g, "-");
+    });
+
+    writeFileSync(appcastPath, updatedContent, "utf-8");
+
+    // Also update the root appcast.xml
+    const rootAppcastPath = join(PROJECT_ROOT, "appcast.xml");
+    writeFileSync(rootAppcastPath, updatedContent, "utf-8");
+
+    log("Space replacement in appcast.xml and delta files complete");
+}
+
+// Main execution
+function main() {
+    const DO_CHANGELOG = false;
+    const DO_SPARKLE = false;
+    // Load configuration
+    const config = loadConfig();
+
+    const appName = config.APP_NAME;
+
+    if (DO_CHANGELOG) {
+        // Check if this version exists in the changelog before proceeding
+        checkVersionInChangelog(config);
+    }
+
+    // Setup paths
+    const builtAppPath = join(PROJECT_ROOT, "macos/build/Build/Products/Release", `${appName}.app`);
+    const distDir = join(PROJECT_ROOT, "dist");
+
+    const appNameForZip = appName.replace(/\s+/g, "-");
+
+    // Use the same base filename both for the app and zip
+    const versionedAppName = `${appName}.app`;
+    const zipFileName = `${appNameForZip}-${config.version}.zip`;
+    const distAppPath = join(distDir, versionedAppName);
+    const zipFilePath = join(distDir, zipFileName);
+
+    // Check if app exists
+    if (!existsSync(builtAppPath)) {
+        console.error(`Error: App not found at ${builtAppPath}`);
+        console.error(`Make sure to build the app first with 'bun run build'`);
+        process.exit(1);
+    }
+
+    // Create dist directory if needed
+    if (!existsSync(distDir)) {
+        console.log(`Creating distribution directory: ${distDir}`);
+        mkdirSync(distDir, { recursive: true });
+    }
+
+    // Remove any previously packaged app to avoid permission issues when overwriting
+    if (existsSync(distAppPath)) {
+        log(`Removing existing app at ${versionedAppName}`);
+        try {
+            rmSync(distAppPath, { recursive: true, force: true });
+        } catch (error) {
+            console.error("Error removing existing app from dist directory:", error);
+            process.exit(1);
+        }
+    }
+
+    // Copy the app to dist with versioned name
+    log(`Copying app to dist directory as ${versionedAppName}`);
+    try {
+        cpSync(builtAppPath, distAppPath, { recursive: true, force: true });
+        console.log(`App copied successfully to: ${distAppPath}`);
+    } catch (error) {
+        console.error("Error copying app to dist directory:", error);
+        process.exit(1);
+    }
+
+    // Notarize the copied app
+    notarizeApp(distAppPath, config, appName);
+
+    // Create final zip
+    log(`Packaging ${appName} v${config.version}`);
+    log(`Creating distribution ZIP archive: ${zipFileName}`);
+    execCommand(
+        "ditto",
+        ["-ck", "-rsrc", "--sequesterRsrc", "--keepParent", distAppPath, zipFilePath],
+        "Error creating distribution zip archive:",
+    );
+
+    log("Packaging complete");
+    console.log(`App has been packaged to: ${zipFilePath}`);
+
+    if (DO_SPARKLE) {
+        // Create version info file for Sparkle
+        createVersionInfoFile(distDir, config, zipFileName);
+
+        if (DO_CHANGELOG) {
+            // Generate HTML update files from CHANGELOG.md
+            generateChangelogHtml(distDir, config, appName);
+        }
+
+        // Generate appcast
+        generateAppcast(distDir, config);
+
+        replaceSpacesInAppcast(distDir);
+    }
+}
+
+// Run the script
+main();
