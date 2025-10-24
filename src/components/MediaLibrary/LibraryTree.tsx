@@ -10,7 +10,6 @@ import { useListItemStyles } from "@/hooks/useListItemStyles";
 import { type ContextMenuItem, showContextMenu } from "@/native-modules/ContextMenu";
 import type { LibraryItem, LibraryTrack } from "@/systems/LibraryState";
 import { library$, libraryUI$ } from "@/systems/LibraryState";
-import type { SFSymbols } from "@/types/SFSymbols";
 import { cn } from "@/utils/cn";
 import { perfCount } from "@/utils/perfLogger";
 import { getTracksForLibraryItem } from "@/utils/trackResolution";
@@ -140,41 +139,8 @@ export function LibraryTree({ searchQuery }: LibraryTreeProps) {
         }
     }, [collectionItems, selectedCollection, selectedItem]);
 
-    const changeCollection = useCallback((collection: "artists" | "albums" | "playlists") => {
-        libraryUI$.selectedCollection.set(collection);
-    }, []);
-
-    const collectionTabs = useMemo(
-        () =>
-            [
-                { id: "artists", label: "Artists", icon: "person.crop.square" as SFSymbols },
-                { id: "albums", label: "Albums", icon: "rectangle.stack.person.crop" as SFSymbols },
-                { id: "playlists", label: "Playlists", icon: "music.note.list" as SFSymbols },
-            ] as const,
-        [],
-    );
-
     return (
         <View className="flex-1">
-            <View className="flex-row gap-1 px-1 pb-2">
-                {collectionTabs.map((tab) => (
-                    <Button
-                        key={tab.id}
-                        variant="ghost"
-                        size="small"
-                        icon={tab.icon}
-                        iconSize={14}
-                        className={cn(
-                            "flex-1 h-7",
-                            selectedCollection === tab.id ? "bg-white/15 text-white" : "bg-transparent text-white/70",
-                        )}
-                        onClick={() => changeCollection(tab.id)}
-                    >
-                        <Text className="text-xs font-medium">{tab.label}</Text>
-                    </Button>
-                ))}
-            </View>
-
             <LegendList
                 data={collectionItems}
                 keyExtractor={(item) => item.id}
