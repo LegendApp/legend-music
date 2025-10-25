@@ -1,0 +1,1 @@
+- [x] The playlist search size goes incorrect if I open the media library, it's using that window's size?

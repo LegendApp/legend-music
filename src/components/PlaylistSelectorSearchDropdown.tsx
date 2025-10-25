@@ -28,11 +28,12 @@ interface PlaylistSelectorSearchDropdownProps {
     onSelectLibraryItem?: (item: LibraryItem, action: QueueAction) => void;
     onSelectPlaylist?: (playlist: LocalPlaylist) => void;
     onOpenChange?: (open: boolean) => void;
+    dropdownWidth?: number;
 }
 
 export const PlaylistSelectorSearchDropdown = forwardRef<DropdownMenuRootRef, PlaylistSelectorSearchDropdownProps>(
     function PlaylistSelectorSearchDropdown(
-        { tracks, playlists, onSelectTrack, onSelectLibraryItem, onSelectPlaylist, onOpenChange },
+        { tracks, playlists, onSelectTrack, onSelectLibraryItem, onSelectPlaylist, onOpenChange, dropdownWidth },
         ref,
     ) {
         const { searchQuery$, searchQuery, isOpen, isOpen$, handleOpenChange } = useSearchDropdownState(onOpenChange);
@@ -41,6 +42,8 @@ export const PlaylistSelectorSearchDropdown = forwardRef<DropdownMenuRootRef, Pl
 
         const library = use$(library$);
         const effectiveWindowWidth = Math.max(windowWidth, 1);
+        const fallbackWidth = Math.max(effectiveWindowWidth - 16, 1);
+        const resolvedDropdownWidth = Math.max(dropdownWidth ?? fallbackWidth, 1);
 
         const searchResults = usePlaylistSearchResults({
             tracks,
@@ -86,15 +89,14 @@ export const PlaylistSelectorSearchDropdown = forwardRef<DropdownMenuRootRef, Pl
 
         const anchorRect = useMemo(() => {
             const offsetTop = 16;
-            const width = Math.max(effectiveWindowWidth, 1) - 16;
 
             return {
                 screenX: 8,
                 screenY: offsetTop,
-                width,
+                width: resolvedDropdownWidth,
                 height: 0,
             };
-        }, [effectiveWindowWidth]);
+        }, [resolvedDropdownWidth]);
 
         const handleDropdownOpenChange = useCallback(
             (open: boolean) => {
@@ -147,7 +149,7 @@ export const PlaylistSelectorSearchDropdown = forwardRef<DropdownMenuRootRef, Pl
                     setInitialFocus
                     variant="unstyled"
                 >
-                    <View style={{ width: anchorRect.width }}>
+                    <View style={{ width: resolvedDropdownWidth }}>
                         <View className="bg-background-tertiary border border-border-primary rounded-md px-3 py-1.5">
                             <TextInputSearch
                                 ref={textInputRef}

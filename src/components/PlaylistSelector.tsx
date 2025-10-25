@@ -1,6 +1,6 @@
 import { use$ } from "@legendapp/state/react";
-import { useMemo, useRef } from "react";
-import { Text, useWindowDimensions, View } from "react-native";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { type LayoutChangeEvent, Text, useWindowDimensions, View } from "react-native";
 
 import { Button } from "@/components/Button";
 import type { DropdownMenuRootRef } from "@/components/DropdownMenu";
@@ -24,7 +24,18 @@ export function PlaylistSelector() {
     const library = use$(library$);
     const queue = use$(queue$);
     const { width: windowWidth } = useWindowDimensions();
-    const dropdownWidth = Math.max(windowWidth - 16, 320);
+    const [layoutWidth, setLayoutWidth] = useState(0);
+    const handleLayout = useCallback((event: LayoutChangeEvent) => {
+        const nextWidth = event.nativeEvent.layout.width;
+        setLayoutWidth((prev) => {
+            if (Math.abs(prev - nextWidth) < 1) {
+                return prev;
+            }
+            return nextWidth;
+        });
+    }, []);
+    const baseWidth = layoutWidth > 0 ? layoutWidth : windowWidth;
+    const dropdownWidth = Math.max(baseWidth - 16, 320);
 
     const dropdownMenuRef = useRef<DropdownMenuRootRef>(null);
 
@@ -72,7 +83,7 @@ export function PlaylistSelector() {
     );
 
     return (
-        <View className="px-1 border-t border-white/10">
+        <View className="px-1 border-t border-white/10" onLayout={handleLayout}>
             <View className="flex-row items-center">
                 <View className="flex-1">
                     <SelectLegendList
@@ -102,6 +113,7 @@ export function PlaylistSelector() {
                     onSelectTrack={handleTrackSelect}
                     onSelectLibraryItem={handleLibraryItemSelect}
                     onSelectPlaylist={handleSearchPlaylistSelect}
+                    dropdownWidth={dropdownWidth}
                 />
                 <Button
                     icon="square.and.arrow.down"
