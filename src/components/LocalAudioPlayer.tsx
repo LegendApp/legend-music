@@ -153,6 +153,8 @@ async function loadTrackInternal(track: LocalTrack, autoPlay: boolean): Promise<
     }
 
     localPlayerState$.currentTrack.set(track);
+    localPlayerState$.currentTime.set(0);
+    localPlayerState$.duration.set(0);
     localPlayerState$.isLoading.set(true);
     localPlayerState$.error.set(null);
 

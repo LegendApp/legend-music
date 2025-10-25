@@ -1,1 +1,2 @@
 - [x] The playlist search size goes incorrect if I open the media library, it's using that window's size?
+- [x] When I play a song it should immediately reset the playback currentTime and duration
