@@ -156,6 +156,23 @@ function fileNameFromPath(path: string): string {
     return lastSlash === -1 ? path : path.slice(lastSlash + 1);
 }
 
+function joinPath(parent: string, child: string): string {
+    const trimmedChild = child.startsWith("/") ? child.replace(/^\/+/, "") : child;
+    if (parent.endsWith("/")) {
+        return `${parent}${trimmedChild}`;
+    }
+    return `${parent}/${trimmedChild}`;
+}
+
+function decodeFSComponent(name: string, context: string): string {
+    try {
+        return decodeURIComponent(name);
+    } catch (error) {
+        console.warn(`Failed to decode filesystem component ${name} in ${context}`, error);
+        return name;
+    }
+}
+
 function stripUnsynchronization(data: Uint8Array): Uint8Array {
     let extraZeros = 0;
     for (let i = 0; i < data.length - 1; i++) {
@@ -492,54 +509,79 @@ export async function createLocalTrackFromFile(filePath: string): Promise<LocalT
 // Scan directory for MP3 files
 async function scanDirectory(directoryPath: string): Promise<LocalTrack[]> {
     const tracks: LocalTrack[] = [];
+    const visited = new Set<string>();
+    const pending: string[] = [directoryPath];
 
     try {
         perfLog("LocalMusic.scanDirectory.start", { directoryPath });
-        const directory = new Directory(directoryPath);
+        while (pending.length > 0) {
+            const currentPath = pending.pop();
+            if (!currentPath || visited.has(currentPath)) {
+                continue;
+            }
 
-        if (!directory.exists) {
-            console.warn(`Directory does not exist: ${directoryPath}`);
-            return tracks;
-        }
+            visited.add(currentPath);
 
-        const items = perfTime("LocalMusic.Directory.list", () => directory.list());
+            const directory = new Directory(currentPath);
 
-        for (const item of items) {
-            perfCount("LocalMusic.scanDirectory.item");
-            if (item instanceof File && item.name.toLowerCase().endsWith(".mp3")) {
-                // Decode the filename for the file path
-                let decodedFileName = item.name;
-                try {
-                    decodedFileName = decodeURIComponent(item.name);
-                } catch (error) {
-                    console.warn(`Failed to decode filename: ${item.name}`, error);
+            if (!directory.exists) {
+                console.warn(`Directory does not exist: ${currentPath}`);
+                continue;
+            }
+
+            let items: (Directory | File)[] = [];
+
+            try {
+                items = perfTime("LocalMusic.Directory.list", () => directory.list());
+            } catch (error) {
+                console.error(`Failed to list directory ${currentPath}:`, error);
+                continue;
+            }
+
+            for (const item of items) {
+                perfCount("LocalMusic.scanDirectory.item");
+
+                if (item instanceof File) {
+                    const decodedFileName = decodeFSComponent(item.name, currentPath);
+                    if (!decodedFileName.toLowerCase().endsWith(".mp3")) {
+                        continue;
+                    }
+
+                    const filePath = joinPath(currentPath, decodedFileName);
+
+                    try {
+                        const id3Delta = perfDelta("LocalMusic.scanDirectory.id3Loop");
+                        perfLog("LocalMusic.scanDirectory.processFile", {
+                            filePath,
+                            id3Delta,
+                        });
+                        // Extract metadata from ID3 tags with filename fallback
+                        const metadata = await extractId3Metadata(filePath, item.name);
+
+                        const track: LocalTrack = {
+                            id: filePath,
+                            title: metadata.title,
+                            artist: metadata.artist,
+                            album: metadata.album,
+                            duration: metadata.duration || "0:00",
+                            filePath,
+                            fileName: item.name,
+                        };
+
+                        tracks.push(track);
+                    } catch (error) {
+                        console.error(`Failed to process MP3 file ${item.name}:`, error);
+                        // Continue with other files
+                    }
+                    continue;
                 }
 
-                const filePath = `${directoryPath}/${decodedFileName}`;
-
-                try {
-                    const id3Delta = perfDelta("LocalMusic.scanDirectory.id3Loop");
-                    perfLog("LocalMusic.scanDirectory.processFile", {
-                        filePath,
-                        id3Delta,
-                    });
-                    // Extract metadata from ID3 tags with filename fallback
-                    const metadata = await extractId3Metadata(filePath, item.name);
-
-                    const track: LocalTrack = {
-                        id: filePath,
-                        title: metadata.title,
-                        artist: metadata.artist,
-                        album: metadata.album,
-                        duration: metadata.duration || "0:00",
-                        filePath,
-                        fileName: item.name,
-                    };
-
-                    tracks.push(track);
-                } catch (error) {
-                    console.error(`Failed to process MP3 file ${item.name}:`, error);
-                    // Continue with other files
+                if (item instanceof Directory) {
+                    const decodedDirectoryName = decodeFSComponent(item.name, currentPath);
+                    const childPath = joinPath(currentPath, decodedDirectoryName);
+                    if (!visited.has(childPath)) {
+                        pending.push(childPath);
+                    }
                 }
             }
         }
