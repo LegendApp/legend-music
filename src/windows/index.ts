@@ -1,11 +1,8 @@
-import { MediaLibraryWindow } from "@/media-library/MediaLibraryWindow";
-import { SettingsContainer } from "@/settings/SettingsContainer";
-
 import { createWindowsNavigator, WindowStyleMask, type WindowsConfig } from "./api";
 
 const windowsConfig = {
     SettingsWindow: {
-        component: SettingsContainer,
+        loadComponent: () => import("@/settings/SettingsContainer"),
         identifier: "settings",
         options: {
             title: "Settings",
@@ -17,7 +14,7 @@ const windowsConfig = {
         },
     },
     MediaLibraryWindow: {
-        component: MediaLibraryWindow,
+        loadComponent: () => import("@/media-library/MediaLibraryWindow"),
         identifier: "media-library",
         options: {
             title: "Media Library",

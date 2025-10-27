@@ -29,9 +29,9 @@ Reduce perceived startup time by warm-loading cached playlist and library data w
 - Reuse the debounced idle writer utility for other heavy observables (e.g., library filters, hotkey bindings) once the pattern is proven, so we keep IO off the hot path consistently.
 
 ## Steps
-- [ ] Cache the playlist view model with msgpack and synchronous hydration on launch.
-- [ ] Wire playlist state changes through a debounced idle writer that keeps the cached snapshot current without blocking foreground work.
-- [ ] Persist a secondary msgpack snapshot for the library tree and hydrate it post-first-render.
-- [ ] Defer full filesystem sync until caches load and add UX + telemetry to monitor the async work.
-- [ ] Convert window registrations to lazy imports and prefetch their bundles via `requestIdleCallback`.
-- [ ] Roll out the idle writer helper to other heavyweight observables (library filters, hotkeys) once validated.
+- [x] Cache the playlist view model with msgpack and synchronous hydration on launch.
+- [x] Wire playlist state changes through a debounced idle writer that keeps the cached snapshot current without blocking foreground work.
+- [x] Persist a secondary msgpack snapshot for the library tree and hydrate it post-first-render.
+- [x] Defer full filesystem sync until caches load and add UX + telemetry to monitor the async work.
+- [x] Convert window registrations to lazy imports and prefetch their bundles via `requestIdleCallback`.
+- [x] Roll out the idle writer helper to other heavyweight observables (library filters, hotkeys) once validated.

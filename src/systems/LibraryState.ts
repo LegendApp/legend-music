@@ -1,7 +1,10 @@
 import { observable } from "@legendapp/state";
+import type { LibrarySnapshot } from "@/systems/LibraryCache";
+import { getLibrarySnapshot, hasCachedLibraryData, persistLibrarySnapshot } from "@/systems/LibraryCache";
 import { type LocalTrack, localMusicSettings$, localMusicState$ } from "@/systems/LocalMusicState";
 import { createJSONManager } from "@/utils/JSONManager";
 import { perfCount, perfLog, perfTime } from "@/utils/perfLogger";
+import { createIdleTask, runAfterInteractions } from "@/utils/runAfterInteractions";
 
 export interface LibraryItem {
     id: string;
@@ -43,6 +46,36 @@ export const library$ = observable({
     isScanning: false,
     lastScanTime: null as Date | null,
 });
+
+type LibrarySnapshotPayload = Omit<LibrarySnapshot, "version" | "updatedAt">;
+
+const collectLibrarySnapshot = (): LibrarySnapshotPayload => {
+    const lastScan = library$.lastScanTime.peek();
+
+    return {
+        artists: library$.artists.peek(),
+        albums: library$.albums.peek(),
+        playlists: library$.playlists.peek(),
+        tracks: library$.tracks.peek(),
+        isScanning: library$.isScanning.peek(),
+        lastScanTime: lastScan instanceof Date ? lastScan.getTime() : null,
+    };
+};
+
+let lastLibrarySnapshotKey: string | null = null;
+
+const scheduleLibrarySnapshotPersist = () => {
+    runAfterInteractions(() => {
+        const snapshot = collectLibrarySnapshot();
+        const snapshotKey = JSON.stringify(snapshot);
+        if (snapshotKey === lastLibrarySnapshotKey) {
+            return;
+        }
+
+        persistLibrarySnapshot(snapshot);
+        lastLibrarySnapshotKey = snapshotKey;
+    });
+};
 
 function normalizeTracks(localTracks: LocalTrack[]): LibraryTrack[] {
     perfCount("LibraryState.normalizeTracks");
@@ -131,18 +164,82 @@ function syncLibraryFromLocalState(): void {
     library$.artists.set(buildArtistItems(normalizedTracks));
     library$.albums.set(buildAlbumItems(normalizedTracks));
     perfLog("LibraryState.sync.end", { trackCount: normalizedTracks.length });
+    scheduleLibrarySnapshotPersist();
 }
 
 syncLibraryFromLocalState();
 library$.isScanning.set(localMusicState$.isScanning.get());
 const initialLastScan = localMusicSettings$.lastScanTime.get();
 library$.lastScanTime.set(initialLastScan ? new Date(initialLastScan) : null);
+lastLibrarySnapshotKey = JSON.stringify(collectLibrarySnapshot());
 
 localMusicState$.tracks.onChange(syncLibraryFromLocalState);
 localMusicState$.isScanning.onChange(({ value }) => {
     library$.isScanning.set(value);
+    scheduleLibrarySnapshotPersist();
 });
 
 localMusicSettings$.lastScanTime.onChange(({ value }) => {
     library$.lastScanTime.set(value ? new Date(value) : null);
+    scheduleLibrarySnapshotPersist();
 });
+
+library$.artists.onChange(() => {
+    scheduleLibrarySnapshotPersist();
+});
+
+library$.albums.onChange(() => {
+    scheduleLibrarySnapshotPersist();
+});
+
+library$.playlists.onChange(() => {
+    scheduleLibrarySnapshotPersist();
+});
+
+library$.tracks.onChange(() => {
+    scheduleLibrarySnapshotPersist();
+});
+
+library$.isScanning.onChange(() => {
+    scheduleLibrarySnapshotPersist();
+});
+
+library$.lastScanTime.onChange(() => {
+    scheduleLibrarySnapshotPersist();
+});
+
+export let libraryHydratedFromCache = false;
+
+export const isLibraryCacheAvailable = (): boolean => hasCachedLibraryData();
+
+export const hydrateLibraryFromCache = (): boolean => {
+    const snapshot = getLibrarySnapshot();
+    const hasData =
+        snapshot.artists.length > 0 ||
+        snapshot.albums.length > 0 ||
+        snapshot.playlists.length > 0 ||
+        snapshot.tracks.length > 0;
+
+    if (!hasData) {
+        return false;
+    }
+
+    library$.artists.set(snapshot.artists);
+    library$.albums.set(snapshot.albums);
+    library$.playlists.set(snapshot.playlists);
+    library$.tracks.set(snapshot.tracks);
+    library$.isScanning.set(snapshot.isScanning);
+    library$.lastScanTime.set(snapshot.lastScanTime ? new Date(snapshot.lastScanTime) : null);
+
+    lastLibrarySnapshotKey = JSON.stringify({
+        artists: snapshot.artists,
+        albums: snapshot.albums,
+        playlists: snapshot.playlists,
+        tracks: snapshot.tracks,
+        isScanning: snapshot.isScanning,
+        lastScanTime: snapshot.lastScanTime,
+    });
+
+    libraryHydratedFromCache = true;
+    return true;
+};

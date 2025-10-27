@@ -4,10 +4,13 @@ import * as ID3 from "id3js";
 import type { JsMediaTagsSuccess } from "jsmediatags/build2/jsmediatags";
 import jsmediatags from "jsmediatags/build2/jsmediatags";
 import AudioPlayer from "@/native-modules/AudioPlayer";
+import { hasCachedLibraryData } from "@/systems/LibraryCache";
+import { hasCachedPlaylistData } from "@/systems/PlaylistCache";
 import { stateSaved$ } from "@/systems/State";
 import { ensureCacheDirectory, getCacheDirectory } from "@/utils/cacheDirectories";
 import { createJSONManager } from "@/utils/JSONManager";
 import { perfCount, perfDelta, perfLog, perfTime } from "@/utils/perfLogger";
+import { runAfterInteractions } from "@/utils/runAfterInteractions";
 
 export interface LocalTrack {
     id: string;
@@ -725,6 +728,8 @@ stateSaved$.playlistType.onChange(({ value }) => {
 export function initializeLocalMusic(): void {
     const settings = localMusicSettings$.get();
 
+    console.log("initializeLocalMusic", settings);
+
     // Restore isLocalFilesSelected state based on saved playlist type
     const savedPlaylistType = stateSaved$.playlistType.get();
     if (savedPlaylistType === "file") {
@@ -741,9 +746,25 @@ export function initializeLocalMusic(): void {
     });
 
     if (settings.autoScanOnStart) {
-        console.log("Auto-scanning local music on startup...");
-        scanLocalMusic().catch((error) => {
-            console.error("Failed to auto-scan local music:", error);
-        });
+        const playlistCacheReady = hasCachedPlaylistData();
+        const libraryCacheReady = hasCachedLibraryData();
+        const deferInitialScan = playlistCacheReady || libraryCacheReady;
+
+        perfLog("LocalMusic.autoScan.policy", { deferInitialScan, playlistCacheReady, libraryCacheReady });
+
+        if (deferInitialScan) {
+            console.log("Deferring auto-scan of local music until idle (cache available)");
+            runAfterInteractions(() => {
+                console.log("Auto-scanning local music during idle...");
+                scanLocalMusic().catch((error) => {
+                    console.error("Failed to auto-scan local music:", error);
+                });
+            });
+        } else {
+            console.log("Auto-scanning local music on startup...");
+            scanLocalMusic().catch((error) => {
+                console.error("Failed to auto-scan local music:", error);
+            });
+        }
     }
 }

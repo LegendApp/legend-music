@@ -4,8 +4,11 @@ import { View } from "react-native";
 import { type NowPlayingInfoPayload, useAudioPlayer } from "@/native-modules/AudioPlayer";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import { ensureLocalTrackThumbnail } from "@/systems/LocalMusicState";
+import type { PlaylistSnapshot, SerializedQueuedTrack } from "@/systems/PlaylistCache";
+import { getPlaylistCacheSnapshot, persistPlaylistSnapshot } from "@/systems/PlaylistCache";
 import { clearQueueM3U, loadQueueFromM3U, saveQueueToM3U } from "@/utils/m3uManager";
 import { perfCount, perfDelta, perfLog } from "@/utils/perfLogger";
+import { runAfterInteractions } from "@/utils/runAfterInteractions";
 
 export interface LocalPlayerState {
     isPlaying: boolean;
@@ -42,8 +45,95 @@ export const queue$ = observable<PlaybackQueueState>({
     tracks: [],
 });
 
+const deserializeQueuedTrack = (track: SerializedQueuedTrack): QueuedTrack => ({
+    ...track,
+});
+
+const snapshotFromCache = getPlaylistCacheSnapshot();
+let queueHydratedFromSnapshot = false;
+
+if (snapshotFromCache.queue.length > 0) {
+    const hydratedTracks = snapshotFromCache.queue.map(deserializeQueuedTrack);
+    queue$.tracks.set(hydratedTracks);
+    perfLog("Queue.hydrateFromPlaylistCache", { tracks: hydratedTracks.length });
+
+    const cachedIndex =
+        snapshotFromCache.currentQueueEntryId != null
+            ? hydratedTracks.findIndex((track) => track.queueEntryId === snapshotFromCache.currentQueueEntryId)
+            : snapshotFromCache.currentIndex;
+
+    const resolvedIndex =
+        cachedIndex != null && cachedIndex >= 0 && cachedIndex < hydratedTracks.length ? cachedIndex : -1;
+
+    if (resolvedIndex >= 0) {
+        const currentTrack = hydratedTracks[resolvedIndex];
+        localPlayerState$.currentTrack.set(currentTrack);
+        localPlayerState$.currentIndex.set(resolvedIndex);
+    } else {
+        localPlayerState$.currentTrack.set(null);
+        localPlayerState$.currentIndex.set(-1);
+    }
+
+    localPlayerState$.isPlaying.set(snapshotFromCache.isPlaying && resolvedIndex >= 0);
+    localPlayerState$.isLoading.set(false);
+    queueHydratedFromSnapshot = true;
+}
+
+const serializeQueuedTrack = (track: QueuedTrack): SerializedQueuedTrack => ({
+    id: track.id,
+    title: track.title,
+    artist: track.artist,
+    album: track.album,
+    duration: track.duration,
+    filePath: track.filePath,
+    fileName: track.fileName,
+    queueEntryId: track.queueEntryId,
+    thumbnail: track.thumbnail,
+});
+
+type PlaylistSnapshotPayload = Omit<PlaylistSnapshot, "version" | "updatedAt">;
+
+const collectPlaylistSnapshot = (): PlaylistSnapshotPayload => {
+    const queueTracks = queue$.tracks.peek().map(serializeQueuedTrack);
+    const currentTrack = localPlayerState$.currentTrack.peek();
+    const currentIndexFromState = localPlayerState$.currentIndex.peek();
+
+    let currentQueueEntryId: string | null = null;
+    if (currentTrack && typeof (currentTrack as Partial<QueuedTrack>).queueEntryId === "string") {
+        currentQueueEntryId = (currentTrack as QueuedTrack).queueEntryId;
+    }
+
+    let resolvedIndex = queueTracks.findIndex((track) => track.queueEntryId === currentQueueEntryId);
+    if (resolvedIndex === -1 && currentIndexFromState >= 0 && currentIndexFromState < queueTracks.length) {
+        resolvedIndex = currentIndexFromState;
+        currentQueueEntryId = queueTracks[currentIndexFromState]?.queueEntryId ?? currentQueueEntryId;
+    }
+
+    return {
+        queue: queueTracks,
+        currentQueueEntryId,
+        currentIndex: resolvedIndex,
+        isPlaying: localPlayerState$.isPlaying.peek(),
+    };
+};
+
+let lastPersistedSnapshotKey: string | null = null;
+
+const schedulePlaylistSnapshotPersist = () => {
+    runAfterInteractions(() => {
+        const snapshot = collectPlaylistSnapshot();
+        const snapshotKey = JSON.stringify(snapshot);
+        if (snapshotKey === lastPersistedSnapshotKey) {
+            return;
+        }
+
+        persistPlaylistSnapshot(snapshot);
+        lastPersistedSnapshotKey = snapshotKey;
+    });
+};
+
 // Flag to track if queue has been loaded from cache
-let queueInitialized = false;
+let queueInitialized = queueHydratedFromSnapshot;
 
 interface QueueUpdateOptions {
     playImmediately?: boolean;
@@ -100,12 +190,25 @@ function getQueueSnapshot(): QueuedTrack[] {
 
 function setQueueTracks(tracks: QueuedTrack[]): void {
     queue$.tracks.set(tracks);
+    schedulePlaylistSnapshotPersist();
 
     // Save to M3U file when queue changes (but not during initial load)
     if (queueInitialized) {
         saveQueueToM3U(tracks);
     }
 }
+
+localPlayerState$.currentIndex.onChange(() => {
+    schedulePlaylistSnapshotPersist();
+});
+
+localPlayerState$.currentTrack.onChange(() => {
+    schedulePlaylistSnapshotPersist();
+});
+
+localPlayerState$.isPlaying.onChange(() => {
+    schedulePlaylistSnapshotPersist();
+});
 
 function resetPlayerForEmptyQueue(): void {
     localPlayerState$.currentTrack.set(null);
@@ -311,11 +414,7 @@ function queueInsertAt(position: number, input: QueueInput, options: QueueUpdate
 
     const boundedPosition = Math.max(0, Math.min(position, existing.length));
     const queuedAdditions = additions.map(createQueuedTrack);
-    const nextQueue = [
-        ...existing.slice(0, boundedPosition),
-        ...queuedAdditions,
-        ...existing.slice(boundedPosition),
-    ];
+    const nextQueue = [...existing.slice(0, boundedPosition), ...queuedAdditions, ...existing.slice(boundedPosition)];
 
     perfLog("Queue.insertAt", { additions: additions.length, position: boundedPosition });
     setQueueTracks(nextQueue);
@@ -460,6 +559,11 @@ function queueClear(): void {
 
 async function initializeQueueFromCache(): Promise<void> {
     if (queueInitialized) {
+        return;
+    }
+
+    if (queueHydratedFromSnapshot) {
+        queueInitialized = true;
         return;
     }
 

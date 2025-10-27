@@ -15,9 +15,20 @@ export function createJSONManager<T extends object>(params: {
     initialValue: T;
     saveDefaultToFile?: boolean;
     transform?: SyncTransform<any, any>;
-    format: "json" | "msgpack";
+    format?: "json" | "msgpack";
+    preload?: boolean | string[];
+    saveTimeout?: number;
 }): Observable<T> {
-    const { basePath, filename, format, initialValue, saveDefaultToFile, transform } = params;
+    const {
+        basePath,
+        filename,
+        format = "json",
+        preload = [filename],
+        initialValue,
+        saveDefaultToFile,
+        saveTimeout = 300,
+        transform,
+    } = params;
     // Create an observable with the initial value and make sure it has the correct type
     const data$ = observable<Record<string, any>>(
         synced({
@@ -26,9 +37,9 @@ export function createJSONManager<T extends object>(params: {
                 name: filename,
                 plugin: observablePersistExpoFS({
                     basePath,
-                    preload: [filename],
-                    saveTimeout: 300,
-                    format: format || "json",
+                    preload: preload === false ? undefined : Array.isArray(preload) ? preload : [filename],
+                    saveTimeout,
+                    format,
                 }),
                 transform,
             },
