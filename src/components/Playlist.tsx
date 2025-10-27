@@ -46,6 +46,11 @@ interface DropFeedback {
     message: string;
 }
 
+type LegendListHandle = ElementRef<typeof LegendList> & {
+    scrollIndexIntoView?: (params: { index: number; animated?: boolean }) => void;
+    scrollToIndex?: (params: { index: number; animated?: boolean }) => void;
+};
+
 export function Playlist() {
     perfCount("Playlist.render");
     const localMusicState = use$(localMusicState$);
@@ -60,6 +65,7 @@ export function Playlist() {
     const skipClickRef = useRef(false);
     const skipBackgroundClearRef = useRef(false);
     const activeNativePlaylistDragRef = useRef<string | null>(null);
+    const listRef = useRef<LegendListHandle>(null);
     const dropAreaRef = useRef<ElementRef<typeof DragDropView>>(null);
     const dropAreaWindowRectRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
     const lastDropIndexRef = useRef<number>(queueLength);
@@ -253,6 +259,15 @@ export function Playlist() {
         const nextIndex = typeof currentTrackIndex === "number" ? currentTrackIndex : -1;
         if (nextIndex >= 0 && nextIndex !== previousPlayedIndexRef.current) {
             clearSelection();
+            requestAnimationFrame(() => {
+                const list = listRef.current;
+
+                if (list?.scrollIndexIntoView) {
+                    list.scrollIndexIntoView({ index: nextIndex, animated: true });
+                } else if (list?.scrollToIndex) {
+                    list.scrollToIndex({ index: nextIndex, animated: true });
+                }
+            });
         }
         previousPlayedIndexRef.current = nextIndex;
     }, [clearSelection, currentTrackIndex]);
@@ -706,6 +721,7 @@ export function Playlist() {
                         </View>
                     )}
                     <LegendList
+                        ref={listRef}
                         data={playlist}
                         keyExtractor={(item, index) => `queue-${item.queueEntryId ?? item.id ?? index}`}
                         contentContainerStyle={styles.container}

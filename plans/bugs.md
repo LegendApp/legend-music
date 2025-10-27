@@ -1,3 +1,3 @@
 - [x] Hotkeys are applying to all windows. For example pressing Cmd + A selects all in both the Playlist and MediaLibrary. I think we need to track which window is focused and use that for checking hotkeys.
 - [x] I should be able to double click an item in the left column of the MediaLibrary to add all of its tracks to the Playlist.
-- [] When the currently playing song changes, if it is not in view then the scroller should scroll it into view.
+- [x] When the currently playing song changes, if it is not in view then the scroller should scroll it into view.
