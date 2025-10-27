@@ -39,8 +39,7 @@ class ObservablePersistExpoFS implements ObservablePersistPlugin {
     constructor(configuration: ExpoFSPersistPluginOptions) {
         this.configuration = configuration;
         this.directory = getCacheDirectory("data");
-        this.extension = configuration.format === "json" ? "json" : configuration.format === "m3u" ? "m3u" : "lgh";
-        console.log("directory", this.directory);
+        this.extension = configuration.format === "json" ? "json" : configuration.format === "m3u" ? "m3u" : "lgm";
     }
 
     public initialize(_configOptions: ObservablePersistPluginOptions) {

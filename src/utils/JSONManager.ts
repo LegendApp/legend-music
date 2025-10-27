@@ -15,9 +15,9 @@ export function createJSONManager<T extends object>(params: {
     initialValue: T;
     saveDefaultToFile?: boolean;
     transform?: SyncTransform<any, any>;
-    format?: "json" | "msgpack";
+    format: "json" | "msgpack";
 }): Observable<T> {
-    const { basePath, filename, initialValue, saveDefaultToFile, transform } = params;
+    const { basePath, filename, format, initialValue, saveDefaultToFile, transform } = params;
     // Create an observable with the initial value and make sure it has the correct type
     const data$ = observable<Record<string, any>>(
         synced({
@@ -28,7 +28,7 @@ export function createJSONManager<T extends object>(params: {
                     basePath,
                     preload: [filename],
                     saveTimeout: 300,
-                    format: "json",
+                    format: format || "json",
                 }),
                 transform,
             },
