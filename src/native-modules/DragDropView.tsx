@@ -5,6 +5,7 @@ import type { NativeMouseEvent } from "react-native-macos";
 
 interface DragDropEvent {
     files: string[];
+    directories?: string[];
 }
 
 export interface TrackDragEnterEvent {

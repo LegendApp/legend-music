@@ -50,6 +50,6 @@ Resolve the open bugs from `plans/bugs.md` by tightening metadata hydration, rec
 ## Steps
 - [x] Shareable metadata loader for arbitrary file paths and hook it into file drops with queue updates.
 - [x] Make local library scanning recursive and cover it with tests.
-- [ ] Allow folder drops to register new library paths and trigger re-scans.
+- [x] Allow folder drops to register new library paths and trigger re-scans.
 - [ ] Convert queue saving into an automatic cache write and rename the control to “Save Playlist”.
 - [ ] Fix playlist row hit targets so edge clicks trigger selection/playback.

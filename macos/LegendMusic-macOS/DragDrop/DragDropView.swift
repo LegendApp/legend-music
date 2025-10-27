@@ -35,6 +35,25 @@ class DragDropView: NSView {
         return true
     }
 
+    private func extractFilesAndDirectories(from urls: [URL]) -> (files: [URL], directories: [URL]) {
+        var audioFiles: [URL] = []
+        var directoryUrls: [URL] = []
+
+        for url in urls {
+            if let values = try? url.resourceValues(forKeys: [.isDirectoryKey]), values.isDirectory == true {
+                directoryUrls.append(url)
+                continue
+            }
+
+            let fileExtension = url.pathExtension.lowercased()
+            if allowedFileTypes.contains(fileExtension) {
+                audioFiles.append(url)
+            }
+        }
+
+        return (audioFiles, directoryUrls)
+    }
+
     private func clampedLocation(from sender: NSDraggingInfo) -> CGPoint {
         let locationInView = convert(sender.draggingLocation, from: nil)
         let clampedX = max(0, min(locationInView.x, bounds.width))
@@ -79,14 +98,10 @@ class DragDropView: NSView {
             return []
         }
 
-        // Filter for allowed audio file types
-        let audioFiles = fileURLs.filter { url in
-            let fileExtension = url.pathExtension.lowercased()
-            return allowedFileTypes.contains(fileExtension)
-        }
+        let (audioFiles, directoryUrls) = extractFilesAndDirectories(from: fileURLs)
 
-        // Only allow drop if we have valid audio files
-        if audioFiles.isEmpty {
+        // Only allow drop if we have valid audio files or directories
+        if audioFiles.isEmpty && directoryUrls.isEmpty {
             return []
         }
 
@@ -94,7 +109,10 @@ class DragDropView: NSView {
         currentDragType = .files
 
         // Send drag enter event
-        onDragEnter?([:])
+        onDragEnter?([
+            "files": audioFiles.map { $0.path },
+            "directories": directoryUrls.map { $0.path },
+        ])
 
         return .copy
     }
@@ -156,13 +174,9 @@ class DragDropView: NSView {
             return false
         }
 
-        // Filter for allowed audio file types
-        let audioFiles = fileURLs.filter { url in
-            let fileExtension = url.pathExtension.lowercased()
-            return allowedFileTypes.contains(fileExtension)
-        }
+        let (audioFiles, directoryUrls) = extractFilesAndDirectories(from: fileURLs)
 
-        if audioFiles.isEmpty {
+        if audioFiles.isEmpty && directoryUrls.isEmpty {
             return false
         }
 
@@ -170,10 +184,12 @@ class DragDropView: NSView {
 
         // Convert URLs to file paths
         let filePaths = audioFiles.map { $0.path }
+        let directoryPaths = directoryUrls.map { $0.path }
 
         // Send drop event with file paths
         onDrop?([
-            "files": filePaths
+            "files": filePaths,
+            "directories": directoryPaths,
         ])
 
         currentDragType = nil

@@ -14,7 +14,13 @@ import {
 } from "@/native-modules/DragDropView";
 import { TrackDragSource } from "@/native-modules/TrackDragSource";
 import type { LocalTrack } from "@/systems/LocalMusicState";
-import { createLocalTrackFromFile, ensureLocalTrackThumbnail, localMusicState$ } from "@/systems/LocalMusicState";
+import {
+    createLocalTrackFromFile,
+    ensureLocalTrackThumbnail,
+    localMusicSettings$,
+    localMusicState$,
+    scanLocalMusic,
+} from "@/systems/LocalMusicState";
 import { settings$ } from "@/systems/Settings";
 import { cn } from "@/utils/cn";
 import { perfCount, perfLog } from "@/utils/perfLogger";
@@ -478,6 +484,66 @@ export function Playlist() {
         clearSelection();
     };
 
+    const handleDirectoryDrop = useCallback(
+        async (directories: string[]) => {
+            perfLog("Playlist.handleDirectoryDrop", { directoryCount: directories.length });
+
+            const normalized = Array.from(
+                new Set(
+                    directories
+                        .map(normalizeDroppedPath)
+                        .filter((path): path is string => typeof path === "string" && path.length > 0),
+                ),
+            );
+
+            if (normalized.length === 0) {
+                showDropFeedback({
+                    type: "warning",
+                    message: "No valid folders to add to the library.",
+                });
+                return;
+            }
+
+            let addedPaths: string[] = [];
+            localMusicSettings$.libraryPaths.set((paths) => {
+                const existing = new Set(paths.map(normalizeDroppedPath));
+                const additions: string[] = [];
+
+                for (const path of normalized) {
+                    if (!existing.has(path)) {
+                        existing.add(path);
+                        additions.push(path);
+                    }
+                }
+
+                if (additions.length === 0) {
+                    return paths;
+                }
+
+                addedPaths = additions;
+                return [...paths, ...additions];
+            });
+
+            if (addedPaths.length === 0) {
+                showDropFeedback({
+                    type: "warning",
+                    message: "All dropped folders are already in your library.",
+                });
+                return;
+            }
+
+            showDropFeedback({
+                type: "success",
+                message: `Added ${formatFolderCount(addedPaths.length)} to the library.`,
+            });
+
+            scanLocalMusic().catch((error) => {
+                console.error("Failed to re-scan library after adding folders:", error);
+            });
+        },
+        [showDropFeedback],
+    );
+
     const handleFileDrop = useCallback(
         async (files: string[]) => {
             perfLog("Playlist.handleFileDrop", { fileCount: files.length });
@@ -545,14 +611,17 @@ export function Playlist() {
     }, []);
 
     const handleDrop = useCallback(
-        (event: { nativeEvent: { files: string[] } }) => {
+        (event: { nativeEvent: { files: string[]; directories?: string[] } }) => {
             setIsDragOver(false);
-            const files = event.nativeEvent.files;
+            const { files = [], directories = [] } = event.nativeEvent;
+            if (directories.length > 0) {
+                void handleDirectoryDrop(directories);
+            }
             if (files.length > 0) {
                 handleFileDrop(files);
             }
         },
-        [handleFileDrop],
+        [handleDirectoryDrop, handleFileDrop],
     );
 
     // Initialize selected index when playlist changes
@@ -728,8 +797,41 @@ function parseDropZonePosition(id: string | null): number | null {
     return Number.isFinite(value) ? value : null;
 }
 
+function normalizeDroppedPath(path: string): string {
+    if (!path) {
+        return "";
+    }
+
+    let normalized = path;
+
+    if (normalized.startsWith("file://")) {
+        try {
+            const url = new URL(normalized);
+            normalized = decodeURI(url.pathname);
+        } catch (error) {
+            console.warn("Failed to parse dropped path URL:", normalized, error);
+            normalized = normalized.replace(/^file:\/\//, "");
+        }
+    }
+
+    if (normalized.length === 0) {
+        return "";
+    }
+
+    const trimmed = normalized.replace(/\/+$/, "");
+    if (trimmed.length === 0) {
+        return "/";
+    }
+
+    return trimmed.startsWith("/") || /^[A-Za-z]:/.test(trimmed) ? trimmed : `/${trimmed}`;
+}
+
 function formatTrackCount(count: number): string {
     return `${count} track${count === 1 ? "" : "s"}`;
+}
+
+function formatFolderCount(count: number): string {
+    return `${count} folder${count === 1 ? "" : "s"}`;
 }
 
 function convertNativeTracksToLocal(tracks: NativeDragTrack[] = []): LocalTrack[] {
