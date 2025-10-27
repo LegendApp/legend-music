@@ -88,7 +88,12 @@ export const DroppableZone = ({
     const renderedChildren = typeof children === "function" ? children(isActive) : children;
 
     return (
-        <View ref={viewRef} onLayout={onLayout} className={cn(className, isActive && activeClassName)}>
+        <View
+            ref={viewRef}
+            pointerEvents="none"
+            onLayout={onLayout}
+            className={cn(className, isActive && activeClassName)}
+        >
             {renderedChildren}
         </View>
     );

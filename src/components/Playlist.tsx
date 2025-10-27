@@ -891,7 +891,11 @@ function PlaylistDropZone({ position, allowDrop, onDrop }: PlaylistDropZoneProps
             onDrop={(item) => onDrop(item as DraggedItem<DragData>, position)}
         >
             {(isActive) => (
-                <View className={"h-[3px] -mt-[3px] rounded-full bg-blue-500"} style={{ opacity: isActive ? 1 : 0 }} />
+                <View
+                    pointerEvents="none"
+                    className={"h-[3px] -mt-[3px] rounded-full bg-blue-500"}
+                    style={{ opacity: isActive ? 1 : 0 }}
+                />
             )}
         </DroppableZone>
     );
