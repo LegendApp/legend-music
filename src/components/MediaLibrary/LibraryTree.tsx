@@ -10,6 +10,7 @@ import { useListItemStyles } from "@/hooks/useListItemStyles";
 import { type ContextMenuItem, showContextMenu } from "@/native-modules/ContextMenu";
 import type { LibraryItem, LibraryTrack } from "@/systems/LibraryState";
 import { library$, libraryUI$ } from "@/systems/LibraryState";
+import { getQueueAction } from "@/utils/queueActions";
 import { cn } from "@/utils/cn";
 import { perfCount } from "@/utils/perfLogger";
 import { getTracksForLibraryItem } from "@/utils/trackResolution";
@@ -87,6 +88,26 @@ export function LibraryTree({ searchQuery }: LibraryTreeProps) {
 
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
+    const handleItemDoubleClick = useCallback(
+        (item: LibraryItem, event?: NativeMouseEvent) => {
+            const tracksForItem = getTracksForItem(item);
+            if (tracksForItem.length === 0) {
+                return;
+            }
+
+            const action = getQueueAction({ event, fallbackAction: "enqueue" });
+
+            if (action === "play-now") {
+                localAudioControls.queue.insertNext(tracksForItem, { playImmediately: true });
+            } else if (action === "play-next") {
+                localAudioControls.queue.insertNext(tracksForItem);
+            } else {
+                localAudioControls.queue.append(tracksForItem);
+            }
+        },
+        [getTracksForItem],
+    );
+
     const computeCollectionItems = useCallback(
         (collection: "artists" | "albums" | "playlists") => {
             let items: LibraryItem[];
@@ -150,6 +171,7 @@ export function LibraryTree({ searchQuery }: LibraryTreeProps) {
                         listItemStyles={listItemStyles}
                         onSelect={selectItem}
                         onContextMenu={handleItemContextMenu}
+                        onDoubleClick={handleItemDoubleClick}
                     />
                 )}
                 style={{ flex: 1 }}
@@ -171,9 +193,10 @@ interface LibraryTreeRowProps {
     listItemStyles: ReturnType<typeof useListItemStyles>;
     onSelect: (item: LibraryItem) => void;
     onContextMenu: (item: LibraryItem, event: NativeMouseEvent) => void;
+    onDoubleClick: (item: LibraryItem, event: NativeMouseEvent) => void;
 }
 
-function LibraryTreeRow({ item, listItemStyles, onSelect, onContextMenu }: LibraryTreeRowProps) {
+function LibraryTreeRow({ item, listItemStyles, onSelect, onContextMenu, onDoubleClick }: LibraryTreeRowProps) {
     const selectedItem = use$(libraryUI$.selectedItem);
     const isSelected = selectedItem?.id === item.id;
 
@@ -183,6 +206,7 @@ function LibraryTreeRow({ item, listItemStyles, onSelect, onContextMenu }: Libra
             onMouseDown={(event) => {
                 void onContextMenu(item, event);
             }}
+            onDoubleClick={(event) => onDoubleClick(item, event)}
             className={listItemStyles.getRowClassName({
                 variant: "compact",
                 isSelected,
