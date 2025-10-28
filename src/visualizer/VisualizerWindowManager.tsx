@@ -28,9 +28,15 @@ export const VisualizerWindowManager = () => {
         visualizerWindowState$.isOpen.set(!current);
     }, []);
 
+    // useEffect(() => {
+    //     visualizerWindowState$.isOpen.set(true);
+    // }, []);
+
     useOnHotkeys(
         {
             ToggleVisualizer: toggleVisualizer,
+            ToggleVisualizerZ: toggleVisualizer,
+            ToggleVisualizerI: toggleVisualizer,
         },
         { global: true },
     );
@@ -48,6 +54,7 @@ export const VisualizerWindowManager = () => {
     }, [windowManager]);
 
     useEffect(() => {
+        console.log("vis window manager open", isOpen);
         if (isOpen) {
             (async () => {
                 const { window } = visualizerPreferences$.get();
@@ -77,11 +84,11 @@ export const VisualizerWindowManager = () => {
         }
     }, [isOpen]);
 
-    useEffect(() => {
-        if (!isPlaying && autoClose && visualizerWindowState$.isOpen.get()) {
-            visualizerWindowState$.isOpen.set(false);
-        }
-    }, [autoClose, isPlaying]);
+    // useEffect(() => {
+    //     if (!isPlaying && autoClose && visualizerWindowState$.isOpen.get()) {
+    //         visualizerWindowState$.isOpen.set(false);
+    //     }
+    // }, [autoClose, isPlaying]);
 
     return null;
 };

@@ -8,6 +8,8 @@ const DEFAULT_HOTKEYS = {
     Search: KeyCodes.KEY_J,
     ToggleLibrary: KeyCodes.KEY_L,
     ToggleVisualizer: KeyCodes.KEY_V,
+    ToggleVisualizerZ: KeyCodes.KEY_Z,
+    ToggleVisualizerI: KeyCodes.KEY_I,
     PlayPause: KeyCodes.KEY_MEDIA_PLAY_PAUSE,
     PlayPauseSpace: KeyCodes.KEY_SPACE,
     NextTrack: KeyCodes.KEY_MEDIA_NEXT,
@@ -30,6 +32,12 @@ export const HotkeyMetadata: Record<HotkeyName, { description: string; repeat?: 
     },
     ToggleVisualizer: {
         description: "Toggle visualizer window",
+    },
+    ToggleVisualizerZ: {
+        description: "Toggle visualizer window (debug: Z key)",
+    },
+    ToggleVisualizerI: {
+        description: "Toggle visualizer window (debug: I key)",
     },
     PlayPause: {
         description: "Toggle playback",

@@ -100,6 +100,8 @@ export default function VisualizerWindow() {
     const throttleMs = use$(visualizerPreferences$.visualizer.throttleMs);
     const autoClose = use$(visualizerPreferences$.window.autoClose);
 
+    console.log("vis window");
+
     const trackSubtitle = useMemo(() => {
         if (!track) {
             return "";

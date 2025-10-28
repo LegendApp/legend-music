@@ -1,15 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import type { LayoutChangeEvent, StyleProp, ViewStyle } from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import type { StyleProp, ViewStyle } from "react-native";
 import { View } from "react-native";
-import {
-    Canvas,
-    PaintStyle,
-    Skia,
-    TileMode,
-    useDrawCallback,
-    useValue,
-    vec,
-} from "@shopify/react-native-skia";
+import { Canvas, Group, LinearGradient, Path, Rect, Skia, vec } from "@shopify/react-native-skia";
 
 import { useAudioPlayer, type VisualizerConfig } from "@/native-modules/AudioPlayer";
 
@@ -51,41 +43,17 @@ export function VisualizerCanvas({
     mode = "spectrum",
     style,
 }: VisualizerCanvasProps) {
-    const audioPlayer = useMemo(() => useAudioPlayer(), []);
-    const binsValue = useValue<Float32Array>(new Float32Array(binCount));
-    const amplitudeValue = useValue(0);
-
-    const barPaintRef = useRef<ReturnType<typeof Skia.Paint>>();
-    if (!barPaintRef.current) {
-        const paint = Skia.Paint();
-        paint.setStyle(PaintStyle.Fill);
-        paint.setAntiAlias(true);
-        barPaintRef.current = paint;
-    }
-
-    const linePaintRef = useRef<ReturnType<typeof Skia.Paint>>();
-    if (!linePaintRef.current) {
-        const paint = Skia.Paint();
-        paint.setStyle(PaintStyle.Stroke);
-        paint.setStrokeWidth(2);
-        paint.setAntiAlias(true);
-        linePaintRef.current = paint;
-    }
-
-    const backgroundPaintRef = useRef<ReturnType<typeof Skia.Paint>>();
-    if (!backgroundPaintRef.current) {
-        const paint = Skia.Paint();
-        paint.setStyle(PaintStyle.Fill);
-        paint.setColor(Skia.Color("#020617"));
-        backgroundPaintRef.current = paint;
-    }
-
-    const gradientRef = useRef<ReturnType<typeof Skia.Shader.MakeLinearGradient> | null>(null);
-    const gradientSizeRef = useRef<{ width: number; height: number }>({ width: 0, height: 0 });
+    const audioPlayer = useAudioPlayer();
+    const [bins, setBins] = useState<number[]>(() => new Array(binCount).fill(0));
+    const [amplitude, setAmplitude] = useState(0);
+    const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+    const binsRef = useRef<Float32Array>(new Float32Array(binCount));
+    const amplitudeRef = useRef(0);
 
     useEffect(() => {
-        binsValue.current = new Float32Array(binCount);
-    }, [binCount, binsValue]);
+        binsRef.current = new Float32Array(binCount);
+        setBins(new Array(binCount).fill(0));
+    }, [binCount]);
 
     useEffect(() => {
         let mounted = true;
@@ -107,19 +75,24 @@ export function VisualizerCanvas({
                 return;
             }
 
-            const { bins } = frame;
-            const targetLength = bins.length;
+            const { bins: frameBins } = frame;
+            const targetLength = frameBins.length;
             if (targetLength === 0) {
                 return;
             }
 
-            const reusable = binsValue.current.length === targetLength ? binsValue.current : new Float32Array(targetLength);
+            const reusable =
+                binsRef.current.length === targetLength ? binsRef.current : new Float32Array(targetLength);
             for (let index = 0; index < targetLength; index += 1) {
-                reusable[index] = bins[index];
+                reusable[index] = frameBins[index];
             }
 
-            binsValue.current = reusable;
-            amplitudeValue.current = frame.rms;
+            binsRef.current = reusable;
+            amplitudeRef.current = frame.rms;
+
+            // Convert to regular array for React state
+            setBins(Array.from(reusable));
+            setAmplitude(frame.rms);
         });
 
         return () => {
@@ -129,98 +102,104 @@ export function VisualizerCanvas({
                 // Ignore disable errors during teardown
             });
         };
-    }, [audioPlayer, amplitudeValue, binCount, fftSize, smoothing, throttleMs, binsValue]);
+    }, [audioPlayer, binCount, fftSize, smoothing, throttleMs]);
 
-    const onLayout = useCallback((event: LayoutChangeEvent) => {
-        const { width, height } = event.nativeEvent.layout;
-        if (width !== gradientSizeRef.current.width || height !== gradientSizeRef.current.height) {
-            gradientRef.current = null;
+    const { width, height } = canvasSize;
+
+    // Create gradient
+    const gradient = useMemo(() => {
+        if (width === 0 || height === 0) {
+            return null;
         }
-    }, []);
+        return (
+            <LinearGradient
+                start={vec(0, height)}
+                end={vec(width, 0)}
+                colors={gradientColors}
+            />
+        );
+    }, [width, height]);
 
-    const draw = useDrawCallback(
-        (canvas, info) => {
-            const { width, height } = info;
-            if (width <= 0 || height <= 0) {
-                return;
-            }
+    // Render bars for spectrum mode
+    const renderSpectrum = useMemo(() => {
+        if (bins.length === 0 || width === 0 || height === 0) {
+            return null;
+        }
 
-            const bins = binsValue.current;
-            const count = bins.length;
+        const count = bins.length;
+        const columnWidth = width / count;
+        const barWidth = columnWidth * 0.72;
+        const offset = (columnWidth - barWidth) / 2;
 
-            const backgroundPaint = backgroundPaintRef.current;
-            const barPaint = barPaintRef.current;
-            const linePaint = linePaintRef.current;
-            if (!backgroundPaint || !barPaint || !linePaint) {
-                return;
-            }
+        return bins.map((magnitude, index) => {
+            const clampedMagnitude = clamp01(magnitude);
+            const barHeight = Math.max(height * 0.02, clampedMagnitude * height);
+            const x = index * columnWidth + offset;
+            const y = height - barHeight;
 
-            if (!gradientRef.current || gradientSizeRef.current.width !== width || gradientSizeRef.current.height !== height) {
-                gradientRef.current = Skia.Shader.MakeLinearGradient(
-                    vec(0, height),
-                    vec(width, 0),
-                    gradientColors.map((color) => Skia.Color(color)),
-                    null,
-                    TileMode.Clamp,
-                );
-                gradientSizeRef.current = { width, height };
-            }
+            return (
+                <Rect
+                    key={index}
+                    x={x}
+                    y={y}
+                    width={barWidth}
+                    height={barHeight}
+                >
+                    {gradient}
+                </Rect>
+            );
+        });
+    }, [bins, width, height, gradient]);
 
-            const gradient = gradientRef.current;
-            if (gradient) {
-                barPaint.setShader(gradient);
-                linePaint.setShader(gradient);
-            }
+    // Render waveform
+    const waveformPath = useMemo(() => {
+        if (bins.length === 0 || width === 0 || height === 0) {
+            return null;
+        }
 
-            const amplitude = clamp01(amplitudeValue.current);
-            backgroundPaint.setAlphaf(0.3 + amplitude * 0.2);
-            canvas.drawRect(Skia.XYWHRect(0, 0, width, height), backgroundPaint);
+        const count = bins.length;
+        const path = Skia.Path.Make();
 
-            if (count === 0) {
-                return;
-            }
+        for (let index = 0; index < count; index += 1) {
+            const ratio = count > 1 ? index / (count - 1) : 0;
+            const x = ratio * width;
+            const y = height - clamp01(bins[index]) * height;
 
-            if (mode === "waveform") {
-                const strokeBaseline = height * 0.5;
-                let previousX = 0;
-                let previousY = strokeBaseline;
-                for (let index = 0; index < count; index += 1) {
-                    const ratio = count > 1 ? index / (count - 1) : 0;
-                    const x = ratio * width;
-                    const y = height - clamp01(bins[index]) * height;
-
-                    if (index === 0) {
-                        previousX = x;
-                        previousY = y;
-                        continue;
-                    }
-
-                    canvas.drawLine(previousX, previousY, x, y, linePaint);
-                    previousX = x;
-                    previousY = y;
-                }
+            if (index === 0) {
+                path.moveTo(x, y);
             } else {
-                const columnWidth = width / count;
-                const barWidth = columnWidth * 0.72;
-                const offset = (columnWidth - barWidth) / 2;
-
-                for (let index = 0; index < count; index += 1) {
-                    const magnitude = clamp01(bins[index]);
-                    const barHeight = Math.max(height * 0.02, magnitude * height);
-                    const x = index * columnWidth + offset;
-                    canvas.drawRect(
-                        Skia.XYWHRect(x, height - barHeight, barWidth, barHeight),
-                        barPaint,
-                    );
-                }
+                path.lineTo(x, y);
             }
-        },
-        [mode],
-    );
+        }
+
+        return path;
+    }, [bins, width, height]);
+
+    const backgroundAlpha = 0.3 + clamp01(amplitude) * 0.2;
 
     return (
-        <View style={style} onLayout={onLayout}>
-            <Canvas style={{ flex: 1 }} onDraw={draw} />
+        <View
+            style={style}
+            onLayout={(event) => {
+                const { width: w, height: h } = event.nativeEvent.layout;
+                setCanvasSize({ width: w, height: h });
+            }}
+        >
+            <Canvas style={{ flex: 1 }}>
+                {/* Background */}
+                <Rect x={0} y={0} width={width} height={height} color="#020617" opacity={backgroundAlpha} />
+
+                {/* Visualizer content */}
+                <Group>
+                    {mode === "waveform" && waveformPath ? (
+                        <Path path={waveformPath} style="stroke" strokeWidth={2}>
+                            {gradient}
+                        </Path>
+                    ) : (
+                        renderSpectrum
+                    )}
+                </Group>
+            </Canvas>
         </View>
     );
 }

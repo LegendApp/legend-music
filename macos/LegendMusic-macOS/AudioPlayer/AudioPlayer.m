@@ -348,6 +348,12 @@ RCT_EXPORT_MODULE();
         return;
     }
 
+    // Only install tap if player item is ready to play
+    if (self.playerItem.status != AVPlayerItemStatusReadyToPlay) {
+        RCTLogInfo(@"Visualizer: Player item not ready, skipping tap installation");
+        return;
+    }
+
     AVAsset *asset = self.playerItem.asset;
     if (!asset) {
         return;
@@ -401,15 +407,58 @@ RCT_EXPORT_MODULE();
     self.visualizerTapContext = context;
     self.visualizerTap = tap;
     self.visualizerAudioMix = audioMix;
-    self.playerItem.audioMix = audioMix;
+
+    // Check if we're actively playing (not just paused mid-track)
+    BOOL wasPlaying = (self.player.rate > 0) && self.isPlaying;
+    CMTime currentTime = kCMTimeInvalid;
+
+    if (wasPlaying) {
+        currentTime = self.player.currentTime;
+        [self.player pause];
+        // Apply audioMix changes
+        self.playerItem.audioMix = audioMix;
+        // Resume playback after applying changes
+        if (CMTIME_IS_VALID(currentTime)) {
+            [self.player seekToTime:currentTime toleranceBefore:kCMTimeZero toleranceAfter:kCMTimeZero completionHandler:^(BOOL finished) {
+                [self.player play];
+            }];
+        } else {
+            [self.player play];
+        }
+    } else {
+        // Player is not actively playing, safe to apply audioMix directly
+        self.playerItem.audioMix = audioMix;
+    }
+
     self.visualizerActive = self.visualizerEnabled && self.isPlaying;
     [self resetVisualizerProcessingState];
 }
 
 - (void)removeVisualizerTap
 {
-    if (self.playerItem) {
-        self.playerItem.audioMix = nil;
+    BOOL wasPlaying = (self.player.rate > 0) && self.isPlaying;
+    CMTime currentTime = kCMTimeInvalid;
+
+    if (wasPlaying) {
+        currentTime = self.player.currentTime;
+        [self.player pause];
+        // Remove audioMix
+        if (self.playerItem) {
+            self.playerItem.audioMix = nil;
+        }
+        // Resume playback after removal
+        if (CMTIME_IS_VALID(currentTime)) {
+            [self.player seekToTime:currentTime toleranceBefore:kCMTimeZero toleranceAfter:kCMTimeZero completionHandler:^(BOOL finished) {
+                [self.player play];
+            }];
+        } else {
+            [self.player play];
+        }
+    } else {
+        // Player is not actively playing, safe to remove audioMix directly
+        if (self.playerItem) {
+            self.playerItem.audioMix = nil;
+        }
     }
 
     if (self.visualizerTap) {
@@ -1114,7 +1163,9 @@ RCT_EXPORT_METHOD(clearNowPlayingInfo)
             }
             self.currentTime = 0;
 
-            if (self.visualizerEnabled) {
+            // Install visualizer tap now that item is ready (but not playing yet)
+            // This is the safest time to attach the audioMix
+            if (self.visualizerEnabled && !self.visualizerTap) {
                 [self installVisualizerTapIfNeeded];
             }
 
@@ -1177,13 +1228,28 @@ RCT_EXPORT_METHOD(play:(RCTPromiseResolveBlock)resolve
         // Ensure remote command handlers stay connected when starting playback
         [self setupRemoteCommands];
 
-        if (self.visualizerEnabled) {
-            [self installVisualizerTapIfNeeded];
-        }
-
+        // Start playback first so we do not block waiting on the visualizer tap
         [self.player play];
         self.isPlaying = YES;
         self.visualizerActive = self.visualizerEnabled;
+
+        // Install the visualizer tap after playback has started to avoid stalling the player
+        if (self.visualizerEnabled && !self.visualizerTap) {
+            __weak typeof(self) weakSelf = self;
+            dispatch_async(dispatch_get_main_queue(), ^{
+                __strong typeof(weakSelf) strongSelf = weakSelf;
+                if (!strongSelf) {
+                    return;
+                }
+
+                [strongSelf installVisualizerTapIfNeeded];
+
+                // If installing the tap paused the player, resume playback.
+                if (strongSelf.isPlaying && strongSelf.player && strongSelf.player.rate == 0.0f) {
+                    [strongSelf.player play];
+                }
+            });
+        }
 
         if (self.hasListeners) {
             [self addTimeObserver];

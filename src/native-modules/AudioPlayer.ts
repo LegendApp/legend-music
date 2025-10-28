@@ -66,31 +66,31 @@ type AudioPlayerType = {
 
 const audioPlayerEmitter = new NativeEventEmitter(AudioPlayer);
 
-export const useAudioPlayer = (): AudioPlayerType & {
+const audioPlayerApi: AudioPlayerType & {
     addListener: <T extends keyof AudioPlayerEvents>(
         eventType: T,
         listener: AudioPlayerEvents[T],
     ) => { remove: () => void };
-} => {
-    return {
-        loadTrack: (filePath: string) => AudioPlayer.loadTrack(filePath),
-        play: () => AudioPlayer.play(),
-        pause: () => AudioPlayer.pause(),
-        stop: () => AudioPlayer.stop(),
-        seek: (seconds: number) => AudioPlayer.seek(seconds),
-        setVolume: (volume: number) => AudioPlayer.setVolume(volume),
-        getCurrentState: () => AudioPlayer.getCurrentState(),
-        getTrackInfo: (filePath: string) => AudioPlayer.getTrackInfo(filePath),
-        updateNowPlayingInfo: (payload: NowPlayingInfoPayload) => AudioPlayer.updateNowPlayingInfo(payload),
-        clearNowPlayingInfo: () => AudioPlayer.clearNowPlayingInfo(),
-        configureVisualizer: (config: VisualizerConfig) => AudioPlayer.configureVisualizer(config),
-        addListener: <T extends keyof AudioPlayerEvents>(eventType: T, listener: AudioPlayerEvents[T]) => {
-            const subscription = audioPlayerEmitter.addListener(eventType, listener);
-            return {
-                remove: () => subscription.remove(),
-            };
-        },
-    };
+} = {
+    loadTrack: (filePath: string) => AudioPlayer.loadTrack(filePath),
+    play: () => AudioPlayer.play(),
+    pause: () => AudioPlayer.pause(),
+    stop: () => AudioPlayer.stop(),
+    seek: (seconds: number) => AudioPlayer.seek(seconds),
+    setVolume: (volume: number) => AudioPlayer.setVolume(volume),
+    getCurrentState: () => AudioPlayer.getCurrentState(),
+    getTrackInfo: (filePath: string) => AudioPlayer.getTrackInfo(filePath),
+    updateNowPlayingInfo: (payload: NowPlayingInfoPayload) => AudioPlayer.updateNowPlayingInfo(payload),
+    clearNowPlayingInfo: () => AudioPlayer.clearNowPlayingInfo(),
+    configureVisualizer: (config: VisualizerConfig) => AudioPlayer.configureVisualizer(config),
+    addListener: <T extends keyof AudioPlayerEvents>(eventType: T, listener: AudioPlayerEvents[T]) => {
+        const subscription = audioPlayerEmitter.addListener(eventType, listener);
+        return {
+            remove: () => subscription.remove(),
+        };
+    },
 };
+
+export const useAudioPlayer = (): typeof audioPlayerApi => audioPlayerApi;
 
 export default AudioPlayer as AudioPlayerType;
