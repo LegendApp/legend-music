@@ -5,8 +5,8 @@ import { StyleSheet, View } from "react-native";
 import { DragDropProvider } from "@/components/dnd";
 import { MediaLibraryView } from "@/components/MediaLibrary";
 import { TooltipProvider } from "@/components/TooltipProvider";
-import { ThemeProvider } from "@/theme/ThemeProvider";
 import { HiddenTextInput } from "@/systems/keyboard/HookKeyboard";
+import { ThemeProvider } from "@/theme/ThemeProvider";
 import { WindowProvider } from "@/windows";
 
 const MEDIA_LIBRARY_WINDOW_ID = "media-library";
