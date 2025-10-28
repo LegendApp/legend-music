@@ -33,5 +33,5 @@ Deliver a live music visualizer by streaming real-time spectrum data from the ma
 
 ## Steps
 - [x] Emit real-time visualizer frames from the native audio module.
-- [ ] Render the frames with a Skia visualizer component.
+- [x] Render the frames with a Skia visualizer component.
 - [ ] Launch and control a dedicated visualizer window with a `v` hotkey.

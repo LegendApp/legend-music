@@ -19,6 +19,7 @@
         "@legendapp/list": "^2.0.14",
         "@legendapp/motion": "^2.4.0",
         "@legendapp/state": "^3.0.0-beta.30",
+        "@shopify/react-native-skia": "^1.3.5",
         "clsx": "^2.1.1",
         "expo": "~53.0.9",
         "id3js": "^2.1.1",
