@@ -18,6 +18,12 @@ export const withWindowProvider = <P extends Record<string, unknown>>(
     WrappedComponent: ComponentType<P>,
     id: string,
 ) => {
+    if (typeof WrappedComponent !== "function") {
+        throw new Error(
+            `withWindowProvider: WrappedComponent must be a function, got ${typeof WrappedComponent}`
+        );
+    }
+
     const WithWindowProvider = (props: P) => (
         <WindowProvider id={id}>
             <WrappedComponent {...props} />

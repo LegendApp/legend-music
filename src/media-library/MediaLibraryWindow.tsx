@@ -11,7 +11,7 @@ import { WindowProvider } from "@/windows";
 
 const MEDIA_LIBRARY_WINDOW_ID = "media-library";
 
-export function MediaLibraryWindow() {
+export default function MediaLibraryWindow() {
     return (
         <WindowProvider id={MEDIA_LIBRARY_WINDOW_ID}>
             <VibrancyView blendingMode="behindWindow" material="sidebar" style={styles.vibrancy}>
