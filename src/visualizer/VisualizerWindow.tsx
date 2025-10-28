@@ -2,9 +2,8 @@ import { use$ } from "@legendapp/state/react";
 import { useCallback, useMemo } from "react";
 import type { LayoutChangeEvent } from "react-native";
 import { Pressable, Text, View } from "react-native";
-
-import { VisualizerCanvas, type VisualizerMode } from "@/components/Visualizer/VisualizerCanvas";
 import { localPlayerState$ } from "@/components/LocalAudioPlayer";
+import { VisualizerCanvas, type VisualizerMode } from "@/components/Visualizer/VisualizerCanvas";
 import { cn } from "@/utils/cn";
 import { visualizerPreferences$ } from "@/visualizer/preferences";
 
@@ -46,7 +45,7 @@ const formatArtist = (artist?: string | null) => {
 const computeFftSize = (binCount: number) => {
     const minimum = Math.max(256, binCount * 16);
     const power = Math.ceil(Math.log2(minimum));
-    return Math.pow(2, power);
+    return 2 ** power;
 };
 
 type ToggleButtonProps = {
@@ -80,13 +79,9 @@ const ModeSwitch = ({ value, onChange }: ModeSwitchProps) => (
             <Pressable
                 key={mode}
                 onPress={() => onChange(mode)}
-                className={cn(
-                    "px-3 py-2 flex-1 items-center",
-                    value === mode ? "bg-white/20" : "bg-white/5",
-                )}
+                className={cn("px-3 py-2 flex-1 items-center", value === mode ? "bg-white/20" : "bg-white/5")}
             >
-                <Text className={cn("text-sm font-medium", value === mode ? "text-white" : "text-white/70")}
-                    >
+                <Text className={cn("text-sm font-medium", value === mode ? "text-white" : "text-white/70")}>
                     {mode === "spectrum" ? "Spectrum" : "Waveform"}
                 </Text>
             </Pressable>
@@ -94,7 +89,7 @@ const ModeSwitch = ({ value, onChange }: ModeSwitchProps) => (
     </View>
 );
 
-export function VisualizerWindow() {
+export default function VisualizerWindow() {
     const track = use$(localPlayerState$.currentTrack);
     const isPlaying = use$(localPlayerState$.isPlaying);
 
@@ -114,12 +109,9 @@ export function VisualizerWindow() {
         return `${artist}${album}`.trim();
     }, [track]);
 
-    const handleModeChange = useCallback(
-        (nextMode: VisualizerMode) => {
-            visualizerPreferences$.visualizer.mode.set(nextMode);
-        },
-        [],
-    );
+    const handleModeChange = useCallback((nextMode: VisualizerMode) => {
+        visualizerPreferences$.visualizer.mode.set(nextMode);
+    }, []);
 
     const handleCycleBinCount = useCallback(() => {
         const next = nextBinCount(binCount);
@@ -198,5 +190,3 @@ export function VisualizerWindow() {
         </View>
     );
 }
-
-export default VisualizerWindow;

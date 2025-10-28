@@ -101,17 +101,32 @@ export function createWindowsNavigator<TConfig extends WindowsConfig>(config: TC
             }
 
             if (!componentPromise) {
-                componentPromise = Promise.resolve(entry.loadComponent!()).then((loaded) => {
-                    const resolved =
-                        typeof loaded === "function"
-                            ? (loaded as ComponentType<any>)
-                            : loaded && typeof loaded === "object" && "default" in loaded
-                              ? ((loaded as { default: ComponentType<any> }).default as ComponentType<any>)
-                              : (loaded as ComponentType<any>);
+                componentPromise = (async () => {
+                    const loaded = await entry.loadComponent!();
+
+                    let resolved: ComponentType<any>;
+
+                    if (typeof loaded === "function") {
+                        resolved = loaded as ComponentType<any>;
+                    } else if (loaded && typeof loaded === "object") {
+                        if ("default" in loaded && typeof (loaded as any).default === "function") {
+                            resolved = (loaded as any).default as ComponentType<any>;
+                        } else {
+                            throw new Error(
+                                `Window '${moduleName}': loaded module is not a valid component. ` +
+                                `Expected a function or object with default export, got: ${typeof loaded}`
+                            );
+                        }
+                    } else {
+                        throw new Error(
+                            `Window '${moduleName}': loaded module is not a valid component. ` +
+                            `Got: ${typeof loaded}`
+                        );
+                    }
 
                     cachedComponent = withWindowProvider(resolved, identifier);
                     return cachedComponent;
-                });
+                })();
             }
 
             const component = await componentPromise;
@@ -123,14 +138,16 @@ export function createWindowsNavigator<TConfig extends WindowsConfig>(config: TC
 
         AppRegistry.registerComponent(moduleName, () => {
             const LazyWindow = (props: any) => {
-                const [Component, setComponent] = useState<ComponentType<any> | null>(cachedComponent);
+                const [componentWrapper, setComponentWrapper] = useState<{ component: ComponentType<any> } | null>(
+                    cachedComponent ? { component: cachedComponent } : null
+                );
 
                 useEffect(() => {
                     let mounted = true;
-                    if (!Component) {
+                    if (!componentWrapper) {
                         resolveComponent().then((resolved) => {
                             if (mounted) {
-                                setComponent(() => resolved);
+                                setComponentWrapper({ component: resolved });
                             }
                         });
                     }
@@ -138,12 +155,13 @@ export function createWindowsNavigator<TConfig extends WindowsConfig>(config: TC
                     return () => {
                         mounted = false;
                     };
-                }, [Component]);
+                }, [componentWrapper]);
 
-                if (!Component) {
+                if (!componentWrapper) {
                     return null;
                 }
 
+                const Component = componentWrapper.component;
                 return <Component {...props} />;
             };
 

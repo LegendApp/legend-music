@@ -22,7 +22,7 @@ const SETTING_PAGES: { id: SettingsPage; name: string }[] = [
     { id: "open-source", name: "Open Source" },
 ];
 
-export const SettingsContainer = () => {
+export default function SettingsContainer() {
     const showSettingsPage = use$(state$.showSettingsPage);
     const selectedItem$ = useObservable<SettingsPage>(showSettingsPage || "general");
     const selectedItem = use$(selectedItem$);
@@ -56,7 +56,7 @@ export const SettingsContainer = () => {
             </ThemeProvider>
         </VibrancyView>
     );
-};
+}
 
 const styles = StyleSheet.create({
     vibrancy: {

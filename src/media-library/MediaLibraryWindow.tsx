@@ -7,7 +7,7 @@ import { MediaLibraryView } from "@/components/MediaLibrary";
 import { TooltipProvider } from "@/components/TooltipProvider";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 
-export function MediaLibraryWindow() {
+export default function MediaLibraryWindow() {
     return (
         <VibrancyView blendingMode="behindWindow" material="sidebar" style={styles.vibrancy}>
             <ThemeProvider>
