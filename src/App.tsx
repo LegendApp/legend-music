@@ -18,6 +18,7 @@ import { perfLog } from "@/utils/perfLogger";
 import { runAfterInteractions } from "@/utils/runAfterInteractions";
 import { WindowsNavigator } from "@/windows";
 import { WindowProvider } from "@/windows/WindowProvider";
+import { VisualizerWindowManager } from "@/visualizer/VisualizerWindowManager";
 import { ThemeProvider } from "./theme/ThemeProvider";
 
 LogBox.ignoreLogs(["Open debugger", "unknown error"]);
@@ -48,6 +49,9 @@ function App(): React.JSX.Element | null {
             void WindowsNavigator.prefetch("MediaLibraryWindow").catch((error) => {
                 console.warn("Failed to prefetch media library window:", error);
             });
+            void WindowsNavigator.prefetch("VisualizerWindow").catch((error) => {
+                console.warn("Failed to prefetch visualizer window:", error);
+            });
         });
 
         return () => {
@@ -75,6 +79,7 @@ function App(): React.JSX.Element | null {
                 <TitleBar />
                 <MediaLibraryWindowManager />
                 <SettingsWindowManager />
+                <VisualizerWindowManager />
             </ThemeProvider>
         </WindowProvider>
     );

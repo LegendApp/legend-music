@@ -25,6 +25,24 @@ const windowsConfig = {
             },
         },
     },
+    VisualizerWindow: {
+        loadComponent: () => import("@/visualizer/VisualizerWindow"),
+        identifier: "visualizer",
+        options: {
+            title: "Visualizer",
+            windowStyle: {
+                width: 780,
+                height: 420,
+                mask: [
+                    WindowStyleMask.Titled,
+                    WindowStyleMask.Closable,
+                    WindowStyleMask.Resizable,
+                    WindowStyleMask.FullSizeContentView,
+                ],
+                titlebarAppearsTransparent: true,
+            },
+        },
+    },
 } satisfies WindowsConfig;
 
 export const WindowsNavigator = createWindowsNavigator(windowsConfig);

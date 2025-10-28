@@ -1,5 +1,11 @@
 This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
+## Visualizer Window
+
+- Press `V` to open or hide the Skia-powered visualizer window.
+- The window mirrors the current track metadata, offers spectrum and waveform modes, and remembers your size and smoothing settings between sessions.
+- Enable or disable the auto-close toggle inside the window to keep the visualizer running when playback stops.
+
 # Getting Started
 
 > **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
