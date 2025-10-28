@@ -2,6 +2,7 @@
 #import <Accelerate/Accelerate.h>
 #import <React/RCTLog.h>
 #import <AppKit/AppKit.h>
+#import <MediaToolbox/MediaToolbox.h>
 #import <math.h>
 
 typedef struct {
@@ -412,7 +413,6 @@ RCT_EXPORT_MODULE();
     }
 
     if (self.visualizerTap) {
-        MTAudioProcessingTapInvalidate(self.visualizerTap);
         CFRelease(self.visualizerTap);
         self.visualizerTap = NULL;
     }
