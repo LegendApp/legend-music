@@ -32,6 +32,6 @@ Deliver a live music visualizer by streaming real-time spectrum data from the ma
 - Consider capturing frame timing metrics to guard against regressions as visuals grow more complex.
 
 ## Steps
-- [ ] Emit real-time visualizer frames from the native audio module.
+- [x] Emit real-time visualizer frames from the native audio module.
 - [ ] Render the frames with a Skia visualizer component.
 - [ ] Launch and control a dedicated visualizer window with a `v` hotkey.

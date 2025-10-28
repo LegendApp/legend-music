@@ -26,6 +26,20 @@ export interface NowPlayingInfoPayload {
     isPlaying?: boolean;
 }
 
+export interface VisualizerConfig {
+    enabled: boolean;
+    fftSize?: number;
+    binCount?: number;
+    smoothing?: number;
+    throttleMs?: number;
+}
+
+export interface VisualizerFrame {
+    rms: number;
+    bins: number[];
+    timestamp: number;
+}
+
 export interface AudioPlayerEvents {
     onLoadSuccess: (data: { duration: number }) => void;
     onLoadError: (data: { error: string }) => void;
@@ -33,6 +47,7 @@ export interface AudioPlayerEvents {
     onProgress: (data: { currentTime: number; duration: number }) => void;
     onCompletion: () => void;
     onRemoteCommand: (data: { command: RemoteCommand }) => void;
+    onVisualizerFrame: (data: VisualizerFrame) => void;
 }
 
 type AudioPlayerType = {
@@ -46,6 +61,7 @@ type AudioPlayerType = {
     getTrackInfo: (filePath: string) => Promise<{ durationSeconds: number; sampleRate: number; frameCount: number }>;
     updateNowPlayingInfo: (payload: NowPlayingInfoPayload) => void;
     clearNowPlayingInfo: () => void;
+    configureVisualizer: (config: VisualizerConfig) => Promise<{ success: boolean }>;
 };
 
 const audioPlayerEmitter = new NativeEventEmitter(AudioPlayer);
@@ -67,6 +83,7 @@ export const useAudioPlayer = (): AudioPlayerType & {
         getTrackInfo: (filePath: string) => AudioPlayer.getTrackInfo(filePath),
         updateNowPlayingInfo: (payload: NowPlayingInfoPayload) => AudioPlayer.updateNowPlayingInfo(payload),
         clearNowPlayingInfo: () => AudioPlayer.clearNowPlayingInfo(),
+        configureVisualizer: (config: VisualizerConfig) => AudioPlayer.configureVisualizer(config),
         addListener: <T extends keyof AudioPlayerEvents>(eventType: T, listener: AudioPlayerEvents[T]) => {
             const subscription = audioPlayerEmitter.addListener(eventType, listener);
             return {
