@@ -65,12 +65,14 @@ const onKeyDown = (e: KeyboardEvent) => {
 
     batch(() => {
         // Add the pressed key
-        const isAlreadyPressed = keysPressed$[keyCode].get();
-        keysPressed$[keyCode].set(true);
+        const keyStr = keyCode.toString();
+        const isAlreadyPressed = keysPressed$[keyStr].get();
+        keysPressed$[keyStr].set(true);
 
         // Handle modifiers
         for (const mod of MODIFIERS) {
-            keysPressed$[mod].set(!!(modifiers & mod));
+            const modStr = mod.toString();
+            keysPressed$[modStr].set(!!(modifiers & mod));
         }
 
         if (isAlreadyPressed) {
@@ -88,11 +90,13 @@ const onKeyUp = (e: KeyboardEvent) => {
 
     batch(() => {
         // Remove the released key
-        keysPressed$[keyCode].delete();
+        const keyStr = keyCode.toString();
+        keysPressed$[keyStr].delete();
 
         // Handle modifiers
         for (const mod of MODIFIERS) {
-            keysPressed$[mod].set(!!(modifiers & mod));
+            const modStr = mod.toString();
+            keysPressed$[modStr].set(!!(modifiers & mod));
         }
     });
 
@@ -143,7 +147,7 @@ export type HotkeyScopeOptions = {
 export function onHotkeys(hotkeyCallbacks: HotkeyCallbacks, options: HotkeyScopeOptions = {}) {
     const hotkeyMap = new Map<string[], () => void>();
     const repeatActions = new Set<string[]>();
-    const targetWindowId = options.global ? undefined : options.windowId ?? "main";
+    const targetWindowId = options.global ? undefined : (options.windowId ?? "main");
 
     // Process each combination and its callback
     for (const name of Object.keys(hotkeyCallbacks) as HotkeyBindingName[]) {
@@ -204,6 +208,7 @@ export function onHotkeys(hotkeyCallbacks: HotkeyCallbacks, options: HotkeyScope
         for (const [keys, callback] of hotkeyMap) {
             // If every key in the hotkey is pressed, call the callback
             const allKeysPressed = keys.every((key) => keysPressed$[key].get());
+            console.log("checkHotkeys", keys, allKeysPressed);
             if (allKeysPressed) {
                 callback();
             }
