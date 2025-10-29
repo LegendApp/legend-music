@@ -84,23 +84,25 @@ export function ShaderSurface({ definition, style }: ShaderSurfaceProps) {
     const extendUniformsRef = useRef<typeof extendUniforms>(extendUniforms);
     extendUniformsRef.current = extendUniforms;
 
+    const binsBufferRef = useRef<Float32Array>(createEmptyBins(maxUniformBins));
+
     const baseUniformRef = useRef<BaseUniformState>({
         resolution: [0, 0],
         time: 0,
         amplitude: 0,
         binCount: resolvedBinCount,
-        bins: createEmptyBins(maxUniformBins),
+        bins: binsBufferRef.current,
     });
     const smoothedAmplitudeRef = useRef(0);
 
-    const buildUniforms = useCallback((base: BaseUniformState): Uniforms => {
-        const result: Uniforms = {
-            u_resolution: [...base.resolution] as [number, number],
-            u_time: base.time,
-            u_amplitude: base.amplitude,
-            u_binCount: base.binCount,
-            u_bins: Array.from(base.bins),
-        };
+const buildUniforms = useCallback((base: BaseUniformState): Uniforms => {
+    const result: Uniforms = {
+        u_resolution: [...base.resolution] as [number, number],
+        u_time: base.time,
+        u_amplitude: base.amplitude,
+        u_binCount: base.binCount,
+        u_bins: Array.from(base.bins),
+    };
 
         const extend = extendUniformsRef.current;
         if (extend) {
@@ -131,9 +133,15 @@ export function ShaderSurface({ definition, style }: ShaderSurfaceProps) {
     );
 
     useEffect(() => {
+        if (binsBufferRef.current.length !== maxUniformBins) {
+            binsBufferRef.current = createEmptyBins(maxUniformBins);
+        }
+
+        binsBufferRef.current.fill(0);
+
         applyUniforms((base) => {
             base.binCount = resolvedBinCount;
-            base.bins = createEmptyBins(maxUniformBins);
+            base.bins = binsBufferRef.current;
             base.amplitude = 0;
         });
     }, [resolvedBinCount, maxUniformBins, applyUniforms]);
@@ -209,7 +217,7 @@ export function ShaderSurface({ definition, style }: ShaderSurfaceProps) {
             const incomingBins = frame.bins ?? [];
             const sourceCount = incomingBins.length;
             const targetCount = resolvedBinCount;
-            const buffer = createEmptyBins(maxUniformBins);
+            const bins = binsBufferRef.current;
 
             if (sourceCount > 0) {
                 const sourceRange = Math.max(sourceCount - 1, 1);
@@ -221,12 +229,20 @@ export function ShaderSurface({ definition, style }: ShaderSurfaceProps) {
                     const mix = mapped - leftIndex;
                     const leftValue = incomingBins[leftIndex] ?? 0;
                     const rightValue = incomingBins[rightIndex] ?? 0;
-                    buffer[i] = leftValue + (rightValue - leftValue) * mix;
+                    bins[i] = leftValue + (rightValue - leftValue) * mix;
+                }
+            } else {
+                for (let i = 0; i < targetCount; i += 1) {
+                    bins[i] = 0;
                 }
             }
 
+            for (let i = targetCount; i < maxUniformBins; i += 1) {
+                bins[i] = 0;
+            }
+
             applyUniforms((base) => {
-                base.bins = buffer;
+                base.bins = bins;
                 base.binCount = targetCount;
                 const rawAmplitude = frame.rms ?? 0;
                 const current = smoothedAmplitudeRef.current;
