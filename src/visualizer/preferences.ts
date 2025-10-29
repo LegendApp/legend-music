@@ -1,4 +1,3 @@
-import type { VisualizerMode } from "@/components/Visualizer/VisualizerCanvas";
 import { createJSONManager } from "@/utils/JSONManager";
 
 export interface VisualizerPreferences {
@@ -8,11 +7,7 @@ export interface VisualizerPreferences {
         autoClose: boolean;
     };
     visualizer: {
-        mode: VisualizerMode;
-        binCount: number;
-        smoothing: number;
-        fftSize: number;
-        throttleMs: number;
+        selectedPresetId: string;
     };
 }
 
@@ -26,11 +21,7 @@ export const visualizerPreferences$ = createJSONManager<VisualizerPreferences>({
             autoClose: true,
         },
         visualizer: {
-            mode: "spectrum",
-            binCount: 64,
-            smoothing: 0.6,
-            fftSize: 1024,
-            throttleMs: 33,
+            selectedPresetId: "classic",
         },
     },
     saveDefaultToFile: true,
