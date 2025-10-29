@@ -105,8 +105,8 @@ const CLASSIC_DEFINITION: ShaderDefinition = {
     },
 };
 
-const ClassicVisualizer = ({ style }: VisualizerComponentProps) => (
-    <ShaderSurface definition={CLASSIC_DEFINITION} style={style} />
+const ClassicVisualizer = ({ style, binCountOverride }: VisualizerComponentProps) => (
+    <ShaderSurface definition={CLASSIC_DEFINITION} style={style} binCountOverride={binCountOverride} />
 );
 
 export const classicPreset: VisualizerPresetDefinition = {

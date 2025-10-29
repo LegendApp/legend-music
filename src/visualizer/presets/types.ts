@@ -3,6 +3,7 @@ import type { StyleProp, ViewStyle } from "react-native";
 
 export interface VisualizerComponentProps {
     style?: StyleProp<ViewStyle>;
+    binCountOverride?: number;
 }
 
 export interface VisualizerPresetDefinition {

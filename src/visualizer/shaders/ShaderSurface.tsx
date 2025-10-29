@@ -12,7 +12,10 @@ const DEFAULT_BIN_COUNT = 96;
 const DEFAULT_SMOOTHING = 0.6;
 const DEFAULT_THROTTLE_MS = 16;
 const DEFAULT_BACKGROUND = "#020617";
-const AMPLITUDE_SMOOTHING = 0.18;
+const BIN_ATTACK = 0.55;
+const BIN_RELEASE = 0.18;
+const AMPLITUDE_ATTACK = 0.45;
+const AMPLITUDE_RELEASE = 0.18;
 
 const computeFftSize = (binCount: number) => {
     const minimum = Math.max(256, binCount * 16);
@@ -55,15 +58,20 @@ export interface ShaderDefinition {
 interface ShaderSurfaceProps {
     definition: ShaderDefinition;
     style?: StyleProp<ViewStyle>;
+    binCountOverride?: number;
 }
 
-export function ShaderSurface({ definition, style }: ShaderSurfaceProps) {
+export function ShaderSurface({ definition, style, binCountOverride }: ShaderSurfaceProps) {
     const { shader, audioConfig, extendUniforms, backgroundColor = DEFAULT_BACKGROUND } = definition;
 
     const audioPlayer = useAudioPlayer();
 
-    const maxUniformBins = UNIFORM_BIN_COUNT;
-    const resolvedBinCount = clampBinCount(audioConfig?.binCount ?? DEFAULT_BIN_COUNT, maxUniformBins);
+    const maxUniformBins = definition.maxUniformBins
+        ? clampBinCount(definition.maxUniformBins, UNIFORM_BIN_COUNT)
+        : UNIFORM_BIN_COUNT;
+    const configuredBinCount = clampBinCount(audioConfig?.binCount ?? DEFAULT_BIN_COUNT, maxUniformBins);
+    const overrideBinCount = binCountOverride != null ? clampBinCount(binCountOverride, maxUniformBins) : null;
+    const resolvedBinCount = overrideBinCount ?? configuredBinCount;
     const resolvedFftSize = audioConfig?.fftSize ?? computeFftSize(resolvedBinCount);
     const resolvedSmoothing = audioConfig?.smoothing ?? DEFAULT_SMOOTHING;
     const resolvedThrottleMs = audioConfig?.throttleMs ?? DEFAULT_THROTTLE_MS;
@@ -85,6 +93,7 @@ export function ShaderSurface({ definition, style }: ShaderSurfaceProps) {
     extendUniformsRef.current = extendUniforms;
 
     const binsBufferRef = useRef<Float32Array>(createEmptyBins(maxUniformBins));
+    const smoothedBinsRef = useRef<Float32Array>(createEmptyBins(maxUniformBins));
 
     const baseUniformRef = useRef<BaseUniformState>({
         resolution: [0, 0],
@@ -136,8 +145,12 @@ const buildUniforms = useCallback((base: BaseUniformState): Uniforms => {
         if (binsBufferRef.current.length !== maxUniformBins) {
             binsBufferRef.current = createEmptyBins(maxUniformBins);
         }
+        if (smoothedBinsRef.current.length !== maxUniformBins) {
+            smoothedBinsRef.current = createEmptyBins(maxUniformBins);
+        }
 
         binsBufferRef.current.fill(0);
+        smoothedBinsRef.current.fill(0);
 
         applyUniforms((base) => {
             base.binCount = resolvedBinCount;
@@ -229,15 +242,23 @@ const buildUniforms = useCallback((base: BaseUniformState): Uniforms => {
                     const mix = mapped - leftIndex;
                     const leftValue = incomingBins[leftIndex] ?? 0;
                     const rightValue = incomingBins[rightIndex] ?? 0;
-                    bins[i] = leftValue + (rightValue - leftValue) * mix;
+                    const sample = leftValue + (rightValue - leftValue) * mix;
+                    const current = smoothedBinsRef.current[i] ?? 0;
+                    const delta = sample - current;
+                    const smoothing = delta > 0 ? BIN_ATTACK : BIN_RELEASE;
+                    const next = current + delta * smoothing;
+                    smoothedBinsRef.current[i] = next;
+                    bins[i] = next;
                 }
             } else {
                 for (let i = 0; i < targetCount; i += 1) {
+                    smoothedBinsRef.current[i] = 0;
                     bins[i] = 0;
                 }
             }
 
             for (let i = targetCount; i < maxUniformBins; i += 1) {
+                smoothedBinsRef.current[i] = 0;
                 bins[i] = 0;
             }
 
@@ -246,7 +267,9 @@ const buildUniforms = useCallback((base: BaseUniformState): Uniforms => {
                 base.binCount = targetCount;
                 const rawAmplitude = frame.rms ?? 0;
                 const current = smoothedAmplitudeRef.current;
-                const nextAmplitude = current + (rawAmplitude - current) * AMPLITUDE_SMOOTHING;
+                const delta = rawAmplitude - current;
+                const smoothing = delta > 0 ? AMPLITUDE_ATTACK : AMPLITUDE_RELEASE;
+                const nextAmplitude = current + delta * smoothing;
                 smoothedAmplitudeRef.current = nextAmplitude;
                 base.amplitude = nextAmplitude;
             });

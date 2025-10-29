@@ -3,7 +3,7 @@ import { useCallback, useMemo } from "react";
 import type { LayoutChangeEvent } from "react-native";
 import { Text, View } from "react-native";
 
-import { Select } from "@/components/Select";
+import { Select, type SelectOption } from "@/components/Select";
 import { localPlayerState$ } from "@/components/LocalAudioPlayer";
 import { defaultVisualizerPresetId, getVisualizerPresetById, visualizerPresets } from "@/visualizer/presets";
 import { visualizerPreferences$ } from "@/visualizer/preferences";
@@ -12,6 +12,8 @@ export default function VisualizerWindow() {
     const track = use$(localPlayerState$.currentTrack);
     const isPlaying = use$(localPlayerState$.isPlaying);
     const storedPresetId = use$(visualizerPreferences$.visualizer.selectedPresetId);
+    const storedBinCount = use$(visualizerPreferences$.visualizer.binCount);
+    const binCount = storedBinCount ?? 64;
 
     const preset = useMemo(() => {
         const fallbackId = defaultVisualizerPresetId;
@@ -40,8 +42,24 @@ export default function VisualizerWindow() {
         [],
     );
 
+    const binCountOptions = useMemo<SelectOption[]>(
+        () => [
+            { label: "32 bins", value: "32" },
+            { label: "64 bins", value: "64" },
+            { label: "128 bins", value: "128" },
+        ],
+        [],
+    );
+
     const handlePresetChange = useCallback((value: string) => {
         visualizerPreferences$.visualizer.selectedPresetId.set(value);
+    }, []);
+
+    const handleBinCountChange = useCallback((value: string) => {
+        const parsed = Number.parseInt(value, 10);
+        if (!Number.isNaN(parsed)) {
+            visualizerPreferences$.visualizer.binCount.set(parsed);
+        }
     }, []);
 
     const handleLayout = useCallback((event: LayoutChangeEvent) => {
@@ -68,21 +86,35 @@ export default function VisualizerWindow() {
                                 </Text>
                             ) : null}
                         </View>
-                        <View className="gap-2 min-w-[200px]">
-                            <Text className="text-white/70 text-xs uppercase tracking-[0.25em]">Preset</Text>
-                            <Select
-                                options={options}
-                                value={preset.id}
-                                onValueChange={handlePresetChange}
-                                triggerClassName="bg-white/10 border-white/15 h-10 px-3 rounded-xl"
-                                textClassName="text-white text-sm"
-                            />
+                        <View className="flex-row gap-4 min-w-[200px] flex-wrap justify-end">
+                            <View className="gap-2 min-w-[160px]">
+                                <Text className="text-white/70 text-xs uppercase tracking-[0.25em]">Preset</Text>
+                                <Select
+                                    options={options}
+                                    value={preset.id}
+                                    onValueChange={handlePresetChange}
+                                    triggerClassName="bg-white/10 border-white/15 h-10 px-3 rounded-xl"
+                                    textClassName="text-white text-sm"
+                                />
+                            </View>
+                            <View className="gap-2 min-w-[160px]">
+                                <Text className="text-white/70 text-xs uppercase tracking-[0.25em]">
+                                    Frequency Detail
+                                </Text>
+                                <Select
+                                    options={binCountOptions}
+                                    value={String(binCount)}
+                                    onValueChange={handleBinCountChange}
+                                    triggerClassName="bg-white/10 border-white/15 h-10 px-3 rounded-xl"
+                                    textClassName="text-white text-sm"
+                                />
+                            </View>
                         </View>
                     </View>
                 </View>
 
                 <View className="flex-1 rounded-3xl border border-white/10 bg-black/40 overflow-hidden relative">
-                    <PresetComponent style={{ flex: 1 }} />
+                    <PresetComponent style={{ flex: 1 }} binCountOverride={binCount} />
                     {!isPlaying ? (
                         <View className="absolute inset-0 items-center justify-center pointer-events-none">
                             <Text className="text-white/40 text-sm">Start playback to animate the visualizer</Text>

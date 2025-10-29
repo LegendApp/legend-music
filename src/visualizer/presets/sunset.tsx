@@ -366,8 +366,8 @@ const SUNSET_DEFINITION: ShaderDefinition = {
     },
 };
 
-const SunsetVisualizer = ({ style }: VisualizerComponentProps) => (
-    <ShaderSurface definition={SUNSET_DEFINITION} style={style} />
+const SunsetVisualizer = ({ style, binCountOverride }: VisualizerComponentProps) => (
+    <ShaderSurface definition={SUNSET_DEFINITION} style={style} binCountOverride={binCountOverride} />
 );
 
 export const sunsetPreset: VisualizerPresetDefinition = {

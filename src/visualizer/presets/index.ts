@@ -1,3 +1,4 @@
+import { barPreset } from "./bar";
 import { classicPreset } from "./classic";
 import { cubescapePreset } from "./cubescape";
 import { auroraPreset } from "./aurora";
@@ -5,6 +6,7 @@ import { sunsetPreset } from "./sunset";
 import type { VisualizerPresetDefinition } from "./types";
 
 export const visualizerPresets: VisualizerPresetDefinition[] = [
+    barPreset,
     classicPreset,
     cubescapePreset,
     auroraPreset,
@@ -19,6 +21,7 @@ export function getVisualizerPresetById(id: string): VisualizerPresetDefinition 
 }
 
 export * from "./types";
+export { barPreset } from "./bar";
 export { classicPreset } from "./classic";
 export { cubescapePreset } from "./cubescape";
 export { auroraPreset } from "./aurora";

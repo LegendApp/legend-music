@@ -413,8 +413,8 @@ const CUBESCAPE_DEFINITION: ShaderDefinition = {
     },
 };
 
-const CubescapeVisualizer = ({ style }: VisualizerComponentProps) => (
-    <ShaderSurface definition={CUBESCAPE_DEFINITION} style={style} />
+const CubescapeVisualizer = ({ style, binCountOverride }: VisualizerComponentProps) => (
+    <ShaderSurface definition={CUBESCAPE_DEFINITION} style={style} binCountOverride={binCountOverride} />
 );
 
 export const cubescapePreset: VisualizerPresetDefinition = {

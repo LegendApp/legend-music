@@ -172,8 +172,8 @@ const AURORA_DEFINITION: ShaderDefinition = {
     },
 };
 
-const AuroraVisualizer = ({ style }: VisualizerComponentProps) => (
-    <ShaderSurface definition={AURORA_DEFINITION} style={style} />
+const AuroraVisualizer = ({ style, binCountOverride }: VisualizerComponentProps) => (
+    <ShaderSurface definition={AURORA_DEFINITION} style={style} binCountOverride={binCountOverride} />
 );
 
 export const auroraPreset: VisualizerPresetDefinition = {
