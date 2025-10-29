@@ -13,10 +13,10 @@ static const NSUInteger kDefaultVisualizerFFTSize = 1024;
 static const NSUInteger kDefaultVisualizerBinCount = 64;
 static const float kDefaultVisualizerSmoothing = 0.6f;
 static const NSTimeInterval kDefaultVisualizerThrottleSeconds = 1.0 / 30.0;
-static const float kVisualizerMinDecibels = -90.0f;
-static const float kVisualizerMaxDecibels = -15.0f;
-static const float kVisualizerHighFrequencyEmphasisExponent = 0.58f;
-static const float kVisualizerResponseGamma = 0.78f;
+static const float kVisualizerMinDecibels = -75.0f;
+static const float kVisualizerMaxDecibels = -12.0f;
+static const float kVisualizerHighFrequencyEmphasisExponent = 0.45f;
+static const float kVisualizerResponseGamma = 0.85f;
 
 @interface AudioPlayer ()
 
@@ -292,6 +292,12 @@ RCT_EXPORT_MODULE();
 
     const float minIndex = 1.0f;
     float maxIndex = (float)(spectrumSize - 1);
+    if (maxIndex < minIndex) {
+        maxIndex = minIndex;
+    }
+
+    // Use only 70% of the spectrum to avoid bunching at the Nyquist end
+    maxIndex = maxIndex * 0.70f;
     if (maxIndex < minIndex) {
         maxIndex = minIndex;
     }
@@ -774,7 +780,7 @@ RCT_EXPORT_MODULE();
 
         if (bins > 0) {
             float emphasis = powf(((float)(bin + 1) / (float)bins), kVisualizerHighFrequencyEmphasisExponent);
-            float emphasisFactor = 0.35f + 0.65f * emphasis;
+            float emphasisFactor = 0.65f + 0.35f * emphasis;
             normalized = fminf(1.0f, normalized * emphasisFactor);
         }
 
