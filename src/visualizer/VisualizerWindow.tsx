@@ -44,6 +44,7 @@ export default function VisualizerWindow() {
 
     const binCountOptions = useMemo<SelectOption[]>(
         () => [
+            { label: "16 bins", value: "16" },
             { label: "32 bins", value: "32" },
             { label: "64 bins", value: "64" },
             { label: "128 bins", value: "128" },

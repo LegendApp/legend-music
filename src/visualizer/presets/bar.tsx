@@ -89,17 +89,21 @@ half4 main(float2 fragCoord) {
     float columnStart = float(binIndex) / binCountF;
     float columnEnd = float(binIndex + 1) / binCountF;
     float columnCenter = (columnStart + columnEnd) * 0.5;
+    float columnWidth = columnEnd - columnStart;
+    float localX = (uv.x - columnCenter) / columnWidth;
 
     float lane = binCount > 1 ? float(binIndex) / float(binCount - 1) : 0.0;
     float3 gradient = barPalette(lane);
     float3 accent = float3(0.988, 0.796, 0.274);
     gradient = mix(gradient, accent, smoothstep(0.65, 1.0, lane) * 0.4);
 
-    float barMask = step(uv.y, barHeight);
+    float gapSize = 0.18;
+    float halfExtent = 0.5 * (1.0 - gapSize);
+    float horizontalMask = 1.0 - step(halfExtent, abs(localX));
+    float barMask = step(uv.y, barHeight) * horizontalMask;
     float3 barColor = gradient;
 
-    float background = 0.08 + 0.06 * sin(lane * 12.0 + u_time * 0.2);
-    float3 baseColor = float3(background, background * 0.82, background * 1.05);
+    float3 baseColor = float3(0.0);
 
     float3 finalColor = mix(baseColor, barColor, barMask);
     finalColor = pow(finalColor, float3(1.15));
