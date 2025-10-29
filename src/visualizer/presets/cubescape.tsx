@@ -37,6 +37,9 @@ int clampIndex(int value) {
         return 0;
     }
     int maxIndex = u_binCount - 1;
+    if (maxIndex > 127) {
+        maxIndex = 127;
+    }
     if (value < 0) {
         return 0;
     }
@@ -51,12 +54,16 @@ float readAudioBin(int index) {
         return 0.0;
     }
     int resolvedIndex = clampIndex(index);
-    for (int i = 0; i < 128; i++) {
+    float value = 0.0;
+    for (int i = 0; i < 128; ++i) {
+        if (i >= u_binCount) {
+            break;
+        }
         if (i == resolvedIndex) {
-            return clampToUnit(u_bins[i]);
+            value = u_bins[i];
         }
     }
-    return 0.0;
+    return clampToUnit(value);
 }
 
 float sampleAudioNormalized(float normalized) {

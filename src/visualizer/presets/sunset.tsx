@@ -53,9 +53,13 @@ float readBin(int target) {
         return 0.0;
     }
 
+    int clampedTarget = clampIndex(target);
     float value = 0.0;
     for (int i = 0; i < 128; ++i) {
-        if (i == target) {
+        if (i >= u_binCount) {
+            break;
+        }
+        if (i == clampedTarget) {
             value = u_bins[i];
         }
     }
@@ -184,7 +188,14 @@ float2 trinoise(float2 uv) {
 
 float2 map(float3 p) {
     float2 n = trinoise(p.xz);
-    return float2(p.y - 2.0 * n.x, n.y);
+    float lane = clamp(0.5 + 0.02 * p.x, 0.0, 1.0);
+    float depthPhase = fract((p.z + jTime * SPEED) * 0.0015);
+    // Blend bins across screen-space width and marching depth to drive the terrain height from audio.
+    float audioLane = sampleBinNormalized(lane);
+    float audioDepth = sampleBinNormalized(depthPhase);
+    float audioScale = 1.0 + 0.7 * audioLane + 0.5 * audioDepth;
+    float terrain = 2.0 * n.x * audioScale;
+    return float2(p.y - terrain, n.y * audioScale);
 }
 
 float3 grad(float3 p) {
@@ -276,6 +287,11 @@ half4 main(float2 fragCoord) {
     float midBin = sampleBinNormalized(0.32);
     float trebleBin = sampleBinNormalized(0.68);
     float energy = clampUnit(bassBin * 0.55 + midBin * 0.3 + trebleBin * 0.15);
+
+    gAudioAmplitude = amplitude;
+    gAudioEnergy = energy;
+    gAudioBass = bassBin;
+    gAudioTreble = trebleBin;
 
     float4 accumulated = float4(0.0);
     for (int xi = 0; xi < AA; ++xi) {

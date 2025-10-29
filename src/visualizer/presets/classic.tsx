@@ -9,14 +9,35 @@ uniform float u_amplitude;
 uniform int u_binCount;
 uniform float u_bins[128];
 
+int clampIndex(int value) {
+    if (u_binCount <= 0) {
+        return 0;
+    }
+    int maxIndex = u_binCount - 1;
+    if (maxIndex > 127) {
+        maxIndex = 127;
+    }
+    if (value < 0) {
+        return 0;
+    }
+    if (value > maxIndex) {
+        return maxIndex;
+    }
+    return value;
+}
+
 float readBin(int target) {
     if (u_binCount <= 0) {
         return 0.0;
     }
 
+    int clampedTarget = clampIndex(target);
     float value = 0.0;
     for (int i = 0; i < 128; ++i) {
-        if (i == target) {
+        if (i >= u_binCount) {
+            break;
+        }
+        if (i == clampedTarget) {
             value = u_bins[i];
         }
     }
