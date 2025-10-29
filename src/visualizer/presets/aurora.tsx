@@ -1,4 +1,4 @@
-// Original shader inspired by polar aurora phenomena and audio-reactive ribbons.
+// Radial bar visualizer inspired by the linear bar preset, mapped into polar coordinates.
 
 import { type ShaderDefinition, ShaderSurface } from "@/visualizer/shaders/ShaderSurface";
 
@@ -10,6 +10,8 @@ uniform float u_time;
 uniform float u_amplitude;
 uniform int u_binCount;
 uniform float u_bins[128];
+
+const float PI = 3.14159265359;
 
 int clampIndex(int value) {
     if (u_binCount <= 0) {
@@ -43,61 +45,54 @@ float readBin(int target) {
             value = u_bins[i];
         }
     }
-    return value;
+    return clamp(value, 0.0, 1.0);
 }
 
-float sampleBinNormalized(float normalized) {
+float averageEnergy() {
     if (u_binCount <= 0) {
         return 0.0;
     }
-
-    int lastIndex = u_binCount - 1;
-    if (lastIndex < 0) {
-        lastIndex = 0;
+    int samples = u_binCount < 64 ? u_binCount : 64;
+    float sum = 0.0;
+    for (int i = 0; i < 64; ++i) {
+        if (i >= samples) {
+            break;
+        }
+        sum += clamp(readBin(i), 0.0, 1.0);
     }
-    float scaled = clamp(normalized, 0.0, 1.0) * float(lastIndex);
-    int index = int(floor(scaled));
-    int nextIndex = index + 1;
-    if (nextIndex > lastIndex) {
-        nextIndex = lastIndex;
+    if (samples <= 0) {
+        return 0.0;
     }
-
-    float mixAmount = fract(scaled);
-    float left = clamp(readBin(clampIndex(index)), 0.0, 1.0);
-    float right = clamp(readBin(clampIndex(nextIndex)), 0.0, 1.0);
-    return mix(left, right, mixAmount);
+    return sum / float(samples);
 }
 
-float sampleRangeNormalized(float start, float end) {
-    const int STEPS = 5;
-    if (STEPS <= 1) {
-        return sampleBinNormalized(start);
-    }
-    float contribution = 0.0;
-    for (int i = 0; i < STEPS; ++i) {
-        float t = float(i) / float(STEPS - 1);
-        float position = mix(start, end, t);
-        contribution += sampleBinNormalized(position);
-    }
-    return contribution / float(STEPS);
+float wrapDistance(float a, float b) {
+    float diff = abs(a - b);
+    return min(diff, 1.0 - diff);
 }
 
-float hash12(float2 p) {
-    float h = dot(p, float2(127.1, 311.7));
-    return fract(sin(h) * 43758.5453);
-}
+float3 barPalette(float t) {
+    t = clamp(t, 0.0, 1.0);
+    float3 red = float3(0.95, 0.26, 0.28);
+    float3 yellow = float3(0.98, 0.84, 0.22);
+    float3 green = float3(0.2, 0.8, 0.45);
+    float3 blue = float3(0.24, 0.56, 0.95);
+    float3 purple = float3(0.72, 0.34, 0.88);
 
-float noise(float2 p) {
-    float2 i = floor(p);
-    float2 f = fract(p);
-
-    float a = hash12(i);
-    float b = hash12(i + float2(1.0, 0.0));
-    float c = hash12(i + float2(0.0, 1.0));
-    float d = hash12(i + float2(1.0, 1.0));
-
-    float2 u = f * f * (3.0 - 2.0 * f);
-    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+    if (t < 0.25) {
+        float segmentT = t / 0.25;
+        return mix(red, yellow, segmentT);
+    }
+    if (t < 0.5) {
+        float segmentT = (t - 0.25) / 0.25;
+        return mix(yellow, green, segmentT);
+    }
+    if (t < 0.75) {
+        float segmentT = (t - 0.5) / 0.25;
+        return mix(green, blue, segmentT);
+    }
+    float segmentT = (t - 0.75) / 0.25;
+    return mix(blue, purple, segmentT);
 }
 
 half4 main(float2 fragCoord) {
@@ -105,60 +100,83 @@ half4 main(float2 fragCoord) {
         return half4(0.0, 0.0, 0.0, 1.0);
     }
 
-    float2 uv = fragCoord / u_resolution;
-    float aspect = u_resolution.x / u_resolution.y;
-    float2 centered = float2(uv.x - 0.5, uv.y - 0.5);
-    centered.x *= aspect;
+    if (u_binCount <= 0) {
+        return half4(0.0, 0.0, 0.0, 1.0);
+    }
+
+    float2 centered = (fragCoord - 0.5 * u_resolution) / u_resolution.y;
     float dist = length(centered);
     float angle = atan(centered.y, centered.x);
+    float normalizedAngle = fract(angle / (2.0 * PI) + 0.5);
 
-    float bass = sampleRangeNormalized(0.0, 0.15);
-    float mids = sampleRangeNormalized(0.2, 0.5);
-    float highs = sampleRangeNormalized(0.65, 0.95);
-    float amplitude = clamp(u_amplitude * 0.8, 0.0, 1.5);
-    float energy = clamp(bass * 0.55 + mids * 0.35 + highs * 0.1, 0.0, 1.0);
-    float balancedEnergy = mix(energy, mids, 0.35);
+    int binCount = u_binCount > 1 ? u_binCount : 1;
+    float binCountF = float(binCount);
+    float binWidth = 1.0 / binCountF;
+    int binIndex = clampIndex(int(floor(normalizedAngle * binCountF)));
 
-    float time = u_time * 0.45;
-    float ribbonPhase = angle * (3.6 + 1.4 * balancedEnergy) + time * (0.85 + 1.25 * balancedEnergy);
-    float ripplePhase = dist * (10.5 + 5.5 * balancedEnergy) - u_time * (1.4 + bass * 2.0);
+    float level = readBin(binIndex);
+    float boosted = clamp(level * (0.85 + u_amplitude * 0.5), 0.0, 1.0);
+    float flameStrength = pow(boosted, 0.9);
 
-    float ribbonWave = sin(ribbonPhase);
-    float ribbonMask = smoothstep(0.88 - balancedEnergy * 0.25, 0.18, abs(ribbonWave));
-    float ribbonEnergy = ribbonMask * (0.35 + highs * 0.8);
+    float energy = averageEnergy();
 
-    float radialOffset = 0.06 * sin(dist * 16.0 - u_time * (1.35 + bass * 1.6)) +
-        0.035 * sin(angle * 5.0 + time * 1.1);
-    float dynamicRadius = dist + radialOffset;
-    float radialGlow = exp(-dynamicRadius * dynamicRadius * (5.0 - 3.0 * (bass + amplitude)));
+    float lane = binCount > 1 ? float(binIndex) / float(binCount - 1) : 0.0;
+    float3 gradient = barPalette(lane);
+    float3 fireAccent = float3(0.992, 0.612, 0.212);
+    gradient = mix(gradient, fireAccent, smoothstep(0.45, 1.0, lane) * 0.45);
 
-    float ripple = cos(ripplePhase);
-    float rippleMask = smoothstep(-0.2, 0.7, ripple) * (0.3 + energy);
+    float pulse = clamp(energy * 1.4 + u_amplitude * 0.35, 0.0, 1.3);
+    float minInner = 0.16;
+    float innerRadius = minInner + pulse * 0.05;
+    float maxRadius = innerRadius + 0.28;
 
-    float3 base = float3(0.02, 0.05, 0.12);
-    float3 horizon = float3(0.05, 0.45, 0.78);
-    float3 aurora = float3(0.45, 0.16, 0.75);
-    float3 highlights = float3(0.98, 0.77, 0.35);
+    float temporalWarp = sin(u_time * (0.8 + energy * 1.4) + lane * 5.3);
+    float flicker = 0.035 * temporalWarp + 0.028 * sin(u_time * (1.6 + lane * 2.2));
+    float laneVariation = (0.5 + 0.5 * sin(lane * 24.0 + u_time * 1.2)) * 0.08 - 0.04;
+    float flameReach = flameStrength + flicker + laneVariation;
+    flameReach = clamp(flameReach, 0.0, 1.0);
 
-    float gradient = 0.5 + 0.5 * sin(angle * 1.2 + time * 0.4 + dist * 2.5);
-    float3 auroraColor = mix(horizon, aurora, gradient);
-    auroraColor = mix(auroraColor, highlights, pow(highs, 1.5));
+    float flameCurve = pow(clamp(dist - innerRadius, 0.0, 1.0), 0.65);
+    float curvedReach = innerRadius + (maxRadius - innerRadius) * clamp(flameReach, 0.0, 1.0);
 
-    float shimmerNoise = noise(centered * 6.5 + float2(time * 0.25, time * -0.18));
-    float shimmer = pow(clamp(shimmerNoise * 1.3 + ripple * 0.2, 0.0, 1.0), 1.4) * (0.2 + highs);
+    float radiusOuter = curvedReach;
+    float radiusInner = innerRadius;
+    float radialFill = 1.0 - smoothstep(curvedReach, curvedReach + 0.04, dist);
+    float innerMask = 1.0 - smoothstep(radiusInner - 0.01, radiusInner + 0.01, dist);
+    float coreMask = smoothstep(innerRadius, innerRadius - 0.022, dist);
 
-    float sparkNoise = noise(centered * 24.0 + float2(time * 0.1, time * -0.07));
-    float sparkle = pow(max(sparkNoise - 0.82, 0.0), 6.0) * (0.2 + highs * 1.8);
+    float binStart = float(binIndex) / binCountF;
+    float binEnd = float(binIndex + 1) / binCountF;
+    float binCenter = (binStart + binEnd) * 0.5;
+    float usableWidth = binWidth * mix(0.58, 0.9, clamp(flameStrength, 0.0, 1.0));
+    float angleDelta = wrapDistance(normalizedAngle, binCenter);
+    float angularMask = smoothstep(usableWidth * 0.5, usableWidth * 0.48, angleDelta);
 
-    float bands = clamp(ribbonEnergy + rippleMask + radialGlow, 0.0, 2.2);
-    float3 color = base + auroraColor * bands;
-    color += shimmer * mix(aurora, highlights, highs);
-    color += sparkle;
+    float flameMask = radialFill * angularMask * innerMask;
+    float embers = smoothstep(curvedReach + 0.04, curvedReach - 0.02, dist) * angularMask;
 
-    float vignette = 1.0 - smoothstep(0.35, 0.95, dist);
-    color *= vignette * (0.7 + 0.6 * (energy + amplitude));
+    float3 baseColor = float3(0.01, 0.015, 0.04);
+    float vignette = 1.0 - smoothstep(maxRadius, maxRadius + 0.25, dist);
+    baseColor *= vignette;
+
+    float laneNoise = 0.5 + 0.5 * sin(lane * 28.0 + u_time * 2.4);
+    float radialNoise = 0.5 + 0.5 * sin((dist - innerRadius) * 36.0 - u_time * 1.8);
+    float flameNoise = mix(laneNoise, radialNoise, 0.5) * (0.65 + flameStrength * 0.35);
+    flameNoise = pow(clamp(flameNoise, 0.0, 1.2), 1.45);
+    float flameFeather = mix(0.58, 0.18, clamp(flameStrength, 0.0, 1.0));
+    float noiseMask = smoothstep(flameFeather, 1.0, flameNoise + flameStrength * 0.32);
+    flameMask *= noiseMask;
+
+    float3 flameColor = mix(gradient, float3(1.0, 0.9, 0.6), clamp(flameStrength * 0.6, 0.0, 1.0));
+    float3 glowColor = mix(flameColor, float3(1.0), 0.35);
+
+    float3 color = baseColor;
+    color = mix(color, flameColor, flameMask);
+    color += glowColor * embers * 0.5;
+    float3 coreColor = float3(0.0, 0.0, 0.0);
+    color = mix(color, coreColor, coreMask);
+
     color = clamp(color, 0.0, 1.0);
-    color = pow(color, float3(0.9, 0.9, 0.9));
     return half4(color, 1.0);
 }
 `;
@@ -167,7 +185,7 @@ const AURORA_DEFINITION: ShaderDefinition = {
     shader: AURORA_SHADER,
     audioConfig: {
         binCount: 96,
-        smoothing: 0.6,
+        smoothing: 0.55,
         throttleMs: 18,
     },
 };
