@@ -9,6 +9,20 @@ uniform float u_amplitude;
 uniform int u_binCount;
 uniform float u_bins[128];
 
+float readBin(int target) {
+    if (u_binCount <= 0) {
+        return 0.0;
+    }
+
+    float value = 0.0;
+    for (int i = 0; i < 128; ++i) {
+        if (i == target) {
+            value = u_bins[i];
+        }
+    }
+    return value;
+}
+
 float sampleBin(float normalizedX) {
     if (u_binCount <= 0) {
         return 0.0;
@@ -17,10 +31,13 @@ float sampleBin(float normalizedX) {
     float scaled = normalizedX * float(u_binCount - 1);
     float clamped = clamp(scaled, 0.0, float(u_binCount - 1));
     int index = int(floor(clamped));
-    int nextIndex = min(u_binCount - 1, index + 1);
+    int nextIndex = index + 1;
+    if (nextIndex >= u_binCount) {
+        nextIndex = u_binCount - 1;
+    }
     float mixAmount = fract(clamped);
-    float current = clamp(u_bins[index], 0.0, 1.0);
-    float nextValue = clamp(u_bins[nextIndex], 0.0, 1.0);
+    float current = clamp(readBin(index), 0.0, 1.0);
+    float nextValue = clamp(readBin(nextIndex), 0.0, 1.0);
     return mix(current, nextValue, mixAmount);
 }
 
@@ -41,7 +58,7 @@ half4 main(float2 fragCoord) {
     float wave = sin(uv.x * 10.0 + u_time * 1.8) * 0.05;
     float intensity = clamp(base + glow * 0.75 + wave, 0.0, 1.0);
 
-    float background = 0.08 + clamp(u_amplitude * 1.35, 0.0, 1.0) * 0.2;
+    float background = 0.03;
 
     float3 colorA = float3(0.0549, 0.6470, 0.9137);
     float3 colorB = float3(0.6588, 0.3333, 0.9686);

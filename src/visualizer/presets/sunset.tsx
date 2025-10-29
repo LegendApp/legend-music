@@ -11,7 +11,35 @@ uniform float u_amplitude;
 uniform int u_binCount;
 uniform float u_bins[128];
 
-float saturate(float value) {
+float readBin(int target) {
+    if (u_binCount <= 0) {
+        return 0.0;
+    }
+
+    float value = 0.0;
+    for (int i = 0; i < 128; ++i) {
+        if (i == target) {
+            value = u_bins[i];
+        }
+    }
+    return value;
+}
+
+int clampIndex(int value) {
+    int maxIndex = u_binCount - 1;
+    if (maxIndex < 0) {
+        return 0;
+    }
+    if (value < 0) {
+        return 0;
+    }
+    if (value > maxIndex) {
+        return maxIndex;
+    }
+    return value;
+}
+
+float clampUnit(float value) {
     return clamp(value, 0.0, 1.0);
 }
 
@@ -19,8 +47,8 @@ float sampleBin(int index) {
     if (u_binCount <= 0) {
         return 0.0;
     }
-    int clamped = clamp(index, 0, u_binCount - 1);
-    return saturate(u_bins[clamped] * 1.4);
+    int clamped = clampIndex(index);
+    return clampUnit(readBin(clamped) * 1.4);
 }
 
 half4 main(float2 fragCoord) {
@@ -32,7 +60,7 @@ half4 main(float2 fragCoord) {
     float aspect = u_resolution.x / u_resolution.y;
     float2 centered = float2(uv.x * aspect - aspect * 0.5, uv.y - 0.4);
 
-    float amplitude = saturate(u_amplitude * 3.0);
+    float amplitude = clampUnit(u_amplitude * 3.0);
     float bass = sampleBin(0);
     float mid = sampleBin(u_binCount / 3);
 

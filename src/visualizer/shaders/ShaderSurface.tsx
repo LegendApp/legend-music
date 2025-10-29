@@ -1,15 +1,18 @@
+import { Canvas, Rect, Shader, Skia, type Uniforms } from "@shopify/react-native-skia";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LayoutChangeEvent, StyleProp, ViewStyle } from "react-native";
 import { StyleSheet, Text, View } from "react-native";
-import { Canvas, Rect, Shader, Skia, type Uniforms } from "@shopify/react-native-skia";
+import type { SharedValue } from "react-native-reanimated";
+import { useSharedValue } from "react-native-reanimated";
 
 import { useAudioPlayer, type VisualizerConfig } from "@/native-modules/AudioPlayer";
 
-const MAX_UNIFORM_BINS = 128;
+const UNIFORM_BIN_COUNT = 128;
 const DEFAULT_BIN_COUNT = 96;
 const DEFAULT_SMOOTHING = 0.6;
 const DEFAULT_THROTTLE_MS = 16;
 const DEFAULT_BACKGROUND = "#020617";
+const AMPLITUDE_SMOOTHING = 0.18;
 
 const computeFftSize = (binCount: number) => {
     const minimum = Math.max(256, binCount * 16);
@@ -55,17 +58,11 @@ interface ShaderSurfaceProps {
 }
 
 export function ShaderSurface({ definition, style }: ShaderSurfaceProps) {
-    const {
-        shader,
-        audioConfig,
-        extendUniforms,
-        maxUniformBins: maxBinsOverride,
-        backgroundColor = DEFAULT_BACKGROUND,
-    } = definition;
+    const { shader, audioConfig, extendUniforms, backgroundColor = DEFAULT_BACKGROUND } = definition;
 
     const audioPlayer = useAudioPlayer();
 
-    const maxUniformBins = Math.max(16, Math.min(maxBinsOverride ?? MAX_UNIFORM_BINS, MAX_UNIFORM_BINS));
+    const maxUniformBins = UNIFORM_BIN_COUNT;
     const resolvedBinCount = clampBinCount(audioConfig?.binCount ?? DEFAULT_BIN_COUNT, maxUniformBins);
     const resolvedFftSize = audioConfig?.fftSize ?? computeFftSize(resolvedBinCount);
     const resolvedSmoothing = audioConfig?.smoothing ?? DEFAULT_SMOOTHING;
@@ -94,42 +91,41 @@ export function ShaderSurface({ definition, style }: ShaderSurfaceProps) {
         binCount: resolvedBinCount,
         bins: createEmptyBins(maxUniformBins),
     });
+    const smoothedAmplitudeRef = useRef(0);
 
-    const buildUniforms = useCallback(
-        (base: BaseUniformState): Uniforms => {
-            const result: Uniforms = {
-                u_resolution: [...base.resolution] as [number, number],
-                u_time: base.time,
-                u_amplitude: base.amplitude,
-                u_binCount: base.binCount,
-                u_bins: base.bins,
-            };
+    const buildUniforms = useCallback((base: BaseUniformState): Uniforms => {
+        const result: Uniforms = {
+            u_resolution: [...base.resolution] as [number, number],
+            u_time: base.time,
+            u_amplitude: base.amplitude,
+            u_binCount: base.binCount,
+            u_bins: Array.from(base.bins),
+        };
 
-            const extend = extendUniformsRef.current;
-            if (extend) {
-                Object.assign(
-                    result,
-                    extend({
-                        resolution: { width: base.resolution[0], height: base.resolution[1] },
-                        time: base.time,
-                        amplitude: base.amplitude,
-                        bins: base.bins,
-                        binCount: base.binCount,
-                    }),
-                );
-            }
+        const extend = extendUniformsRef.current;
+        if (extend) {
+            Object.assign(
+                result,
+                extend({
+                    resolution: { width: base.resolution[0], height: base.resolution[1] },
+                    time: base.time,
+                    amplitude: base.amplitude,
+                    bins: base.bins,
+                    binCount: base.binCount,
+                }),
+            );
+        }
 
-            return result;
-        },
-        [],
-    );
+        return result;
+    }, []);
 
-    const [uniforms, setUniforms] = useState<Uniforms>(() => buildUniforms(baseUniformRef.current));
+    const uniformsSharedValue = useSharedValue(buildUniforms(baseUniformRef.current));
+    const uniformsValueRef = useRef<SharedValue<Uniforms>>(uniformsSharedValue);
 
     const applyUniforms = useCallback(
         (updater: (base: BaseUniformState) => void) => {
             updater(baseUniformRef.current);
-            setUniforms(buildUniforms(baseUniformRef.current));
+            uniformsValueRef.current.value = buildUniforms(baseUniformRef.current);
         },
         [buildUniforms],
     );
@@ -211,17 +207,32 @@ export function ShaderSurface({ definition, style }: ShaderSurfaceProps) {
             }
 
             const incomingBins = frame.bins ?? [];
-            const nextCount = clampBinCount(incomingBins.length || resolvedBinCount, maxUniformBins);
+            const sourceCount = incomingBins.length;
+            const targetCount = resolvedBinCount;
             const buffer = createEmptyBins(maxUniformBins);
 
-            for (let index = 0; index < nextCount && index < incomingBins.length; index += 1) {
-                buffer[index] = incomingBins[index];
+            if (sourceCount > 0) {
+                const sourceRange = Math.max(sourceCount - 1, 1);
+                for (let i = 0; i < targetCount; i += 1) {
+                    const normalized = targetCount > 1 ? i / (targetCount - 1) : 0;
+                    const mapped = normalized * sourceRange;
+                    const leftIndex = Math.floor(mapped);
+                    const rightIndex = Math.min(sourceCount - 1, leftIndex + 1);
+                    const mix = mapped - leftIndex;
+                    const leftValue = incomingBins[leftIndex] ?? 0;
+                    const rightValue = incomingBins[rightIndex] ?? 0;
+                    buffer[i] = leftValue + (rightValue - leftValue) * mix;
+                }
             }
 
             applyUniforms((base) => {
                 base.bins = buffer;
-                base.binCount = nextCount;
-                base.amplitude = frame.rms;
+                base.binCount = targetCount;
+                const rawAmplitude = frame.rms ?? 0;
+                const current = smoothedAmplitudeRef.current;
+                const nextAmplitude = current + (rawAmplitude - current) * AMPLITUDE_SMOOTHING;
+                smoothedAmplitudeRef.current = nextAmplitude;
+                base.amplitude = nextAmplitude;
             });
         });
 
@@ -261,7 +272,7 @@ export function ShaderSurface({ definition, style }: ShaderSurfaceProps) {
                 <Rect x={0} y={0} width={canvasSize.width} height={canvasSize.height} color={backgroundColor} />
                 {runtime.effect ? (
                     <Rect x={0} y={0} width={canvasSize.width} height={canvasSize.height}>
-                        <Shader source={runtime.effect} uniforms={uniforms} />
+                        <Shader source={runtime.effect} uniforms={uniformsValueRef.current} />
                     </Rect>
                 ) : null}
             </Canvas>
