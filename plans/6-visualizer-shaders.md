@@ -30,5 +30,5 @@ Evolve the macOS visualizer window into a shader-driven showcase with selectable
 ## Steps
 - [x] Replace visualizer UI with dropdown-driven preset selection.
 - [x] Build shared shader renderer infrastructure and migrate the current visualizer.
-- [ ] Implement Cubescape and Sunset shader presets.
+- [x] Implement Cubescape and Sunset shader presets.
 - [ ] Expand tests and manual validation for multi-visualizer support.
