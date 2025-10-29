@@ -13,6 +13,10 @@ static const NSUInteger kDefaultVisualizerFFTSize = 1024;
 static const NSUInteger kDefaultVisualizerBinCount = 64;
 static const float kDefaultVisualizerSmoothing = 0.6f;
 static const NSTimeInterval kDefaultVisualizerThrottleSeconds = 1.0 / 30.0;
+static const float kVisualizerMinDecibels = -90.0f;
+static const float kVisualizerMaxDecibels = -15.0f;
+static const float kVisualizerHighFrequencyEmphasisExponent = 0.58f;
+static const float kVisualizerResponseGamma = 0.78f;
 
 @interface AudioPlayer ()
 
@@ -38,6 +42,8 @@ static const NSTimeInterval kDefaultVisualizerThrottleSeconds = 1.0 / 30.0;
 @property (nonatomic, strong) NSMutableData *visualizerFrameBuffer;
 @property (nonatomic, strong) NSMutableData *visualizerAccumulator;
 @property (nonatomic, strong) NSMutableData *visualizerScratchMono;
+@property (nonatomic, strong) NSMutableData *visualizerBinStartIndices;
+@property (nonatomic, strong) NSMutableData *visualizerBinEndIndices;
 @property (nonatomic, assign) NSUInteger visualizerCPUOverrunFrames;
 
 - (void)configureVisualizerDefaults;
@@ -48,6 +54,7 @@ static const NSTimeInterval kDefaultVisualizerThrottleSeconds = 1.0 / 30.0;
 - (void)enqueueVisualizerSamples:(const float *)samples frameCount:(NSUInteger)frameCount;
 - (void)processVisualizerFrameWithSamples:(const float *)samples;
 - (void)rebuildVisualizerFFTResources;
+- (void)recalculateVisualizerBinMappingWithSpectrumSize:(NSUInteger)spectrumSize;
 - (NSUInteger)validatedFFTSizeFromRequested:(NSUInteger)requested;
 - (void)sendVisualizerEventWithRMS:(float)rms bins:(const float *)bins count:(NSUInteger)count;
 
@@ -254,6 +261,84 @@ RCT_EXPORT_MODULE();
     } else {
         [self.visualizerAccumulator setLength:0];
     }
+
+    [self recalculateVisualizerBinMappingWithSpectrumSize:spectrumSize];
+}
+
+- (void)recalculateVisualizerBinMappingWithSpectrumSize:(NSUInteger)spectrumSize
+{
+    if (self.visualizerBinCount == 0 || spectrumSize <= 1) {
+        self.visualizerBinStartIndices = nil;
+        self.visualizerBinEndIndices = nil;
+        return;
+    }
+
+    if (!self.visualizerBinStartIndices) {
+        self.visualizerBinStartIndices = [NSMutableData data];
+    }
+    if (!self.visualizerBinEndIndices) {
+        self.visualizerBinEndIndices = [NSMutableData data];
+    }
+
+    [self.visualizerBinStartIndices setLength:(NSUInteger)(self.visualizerBinCount * sizeof(NSUInteger))];
+    [self.visualizerBinEndIndices setLength:(NSUInteger)(self.visualizerBinCount * sizeof(NSUInteger))];
+
+    NSUInteger *starts = (NSUInteger *)self.visualizerBinStartIndices.mutableBytes;
+    NSUInteger *ends = (NSUInteger *)self.visualizerBinEndIndices.mutableBytes;
+
+    if (!starts || !ends) {
+        return;
+    }
+
+    const float minIndex = 1.0f;
+    float maxIndex = (float)(spectrumSize - 1);
+    if (maxIndex < minIndex) {
+        maxIndex = minIndex;
+    }
+
+    float logMin = logf(minIndex);
+    float logMax = logf(maxIndex);
+    if (!isfinite(logMin) || !isfinite(logMax) || logMax <= logMin) {
+        logMin = 0.0f;
+        logMax = logf(MAX(2.0f, maxIndex));
+    }
+
+    const float logRange = logMax - logMin;
+    NSUInteger previousEnd = 1;
+    for (NSUInteger bin = 0; bin < self.visualizerBinCount; bin++) {
+        float t0 = (float)bin / (float)self.visualizerBinCount;
+        float t1 = (float)(bin + 1) / (float)self.visualizerBinCount;
+
+        float mappedStart = expf(logMin + t0 * logRange);
+        float mappedEnd = expf(logMin + t1 * logRange);
+
+        NSUInteger startIndex = (NSUInteger)floorf(mappedStart);
+        NSUInteger endIndex = (NSUInteger)ceilf(mappedEnd);
+
+        if (bin == 0) {
+            startIndex = 1;
+        }
+
+        if (startIndex < previousEnd) {
+            startIndex = previousEnd;
+        }
+
+        if (startIndex >= spectrumSize) {
+            startIndex = spectrumSize - 1;
+        }
+
+        if (endIndex <= startIndex) {
+            endIndex = startIndex + 1;
+        }
+
+        if (endIndex > spectrumSize) {
+            endIndex = spectrumSize;
+        }
+
+        starts[bin] = startIndex;
+        ends[bin] = endIndex;
+        previousEnd = endIndex;
+    }
 }
 
 - (void)configureVisualizerDefaults
@@ -270,6 +355,8 @@ RCT_EXPORT_MODULE();
     self.visualizerSmoothingFactor = kDefaultVisualizerSmoothing;
     self.visualizerAccumulator = [NSMutableData data];
     self.visualizerCPUOverrunFrames = 0;
+    self.visualizerBinStartIndices = nil;
+    self.visualizerBinEndIndices = nil;
     [self rebuildVisualizerFFTResources];
 }
 
@@ -648,25 +735,53 @@ RCT_EXPORT_MODULE();
     }
 
     NSUInteger spectrumSize = fftSize / 2;
-    NSUInteger samplesPerBin = MAX(1u, spectrumSize / bins);
     float smoothing = fminf(fmaxf(self.visualizerSmoothingFactor, 0.0f), 0.99f);
 
+    if (self.visualizerBinStartIndices.length < bins * sizeof(NSUInteger) ||
+        self.visualizerBinEndIndices.length < bins * sizeof(NSUInteger)) {
+        [self recalculateVisualizerBinMappingWithSpectrumSize:spectrumSize];
+    }
+
+    const NSUInteger *binStarts = (const NSUInteger *)self.visualizerBinStartIndices.bytes;
+    const NSUInteger *binEnds = (const NSUInteger *)self.visualizerBinEndIndices.bytes;
+
+    const float decibelRange = kVisualizerMaxDecibels - kVisualizerMinDecibels;
+
     for (NSUInteger bin = 0; bin < bins; bin++) {
-        NSUInteger start = bin * samplesPerBin;
-        NSUInteger end = MIN(start + samplesPerBin, spectrumSize);
-        if (end <= start) {
-            end = start + 1;
+        NSUInteger start = binStarts ? binStarts[bin] : bin;
+        NSUInteger end = binEnds ? binEnds[bin] : (start + 1);
+
+        if (start >= spectrumSize) {
+            start = spectrumSize > 0 ? spectrumSize - 1 : 0;
         }
 
+        if (end <= start) {
+            end = MIN(start + 1, spectrumSize);
+        }
+
+        NSUInteger windowLength = end > start ? (end - start) : 1;
+
         float sum = 0;
-        vDSP_sve(magnitudes + start, 1, &sum, end - start);
-        float average = sum / (float)(end - start);
-        float amplitude = 10.0f * log10f(average + 1.0e-7f);
-        amplitude = fmaxf(amplitude, -80.0f);
-        amplitude = (amplitude + 80.0f) / 80.0f; // Normalize 0..1 range
+        vDSP_sve(magnitudes + start, 1, &sum, windowLength);
+        float average = sum / (float)windowLength;
+
+        float decibels = 20.0f * log10f(average + 1.0e-7f);
+        float normalized = 0.0f;
+        if (decibelRange > 0.0f) {
+            normalized = (decibels - kVisualizerMinDecibels) / decibelRange;
+        }
+        normalized = fmaxf(0.0f, fminf(normalized, 1.0f));
+
+        if (bins > 0) {
+            float emphasis = powf(((float)(bin + 1) / (float)bins), kVisualizerHighFrequencyEmphasisExponent);
+            float emphasisFactor = 0.35f + 0.65f * emphasis;
+            normalized = fminf(1.0f, normalized * emphasisFactor);
+        }
+
+        normalized = powf(normalized, kVisualizerResponseGamma);
 
         float previous = smoothed[bin];
-        smoothed[bin] = smoothing * previous + (1.0f - smoothing) * amplitude;
+        smoothed[bin] = smoothing * previous + (1.0f - smoothing) * normalized;
     }
 
     NSTimeInterval processDuration = CFAbsoluteTimeGetCurrent() - processStart;
@@ -684,6 +799,7 @@ RCT_EXPORT_MODULE();
             self.visualizerBinCount = newBinCount;
             self.visualizerSmoothedBins.length = newBinCount * sizeof(float);
             memset(self.visualizerSmoothedBins.mutableBytes, 0, self.visualizerSmoothedBins.length);
+            [self recalculateVisualizerBinMappingWithSpectrumSize:spectrumSize];
         }
         if (self.visualizerAccumulator) {
             [self.visualizerAccumulator setLength:0];
