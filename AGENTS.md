@@ -13,6 +13,7 @@
 - `bun run test` runs Jest with the React Native preset.
 - `bun run lint` checks formatting and linting with Biome; `bun run lint:fix` applies safe autofixes.
 - `bun run build` executes `scripts/build.ts`, which wraps `xcodebuild` to produce a Release `.app`. Ensure Xcode CLI tools and CocoaPods are installed before running.
+- Do not try to build the app yourself, it will not work.
 
 ## Coding Style & Naming Conventions
 - Biome enforces 4-space indentation, double quotes, LF endings, and a 120-character max line (`biome.json`). Run lint before committing.

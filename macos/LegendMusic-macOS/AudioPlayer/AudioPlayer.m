@@ -6,7 +6,9 @@
 #import <math.h>
 #import <stdatomic.h>
 #import <os/log.h>
+#import <os/object.h>
 #import <os/signpost.h>
+#import <string.h>
 
 #import "AudioPlayer+JSI.h"
 
@@ -221,7 +223,7 @@ static inline NSUInteger VisualizerFindThrottleLevel(NSTimeInterval interval)
 @property (nonatomic, strong) NSMutableData *visualizerBridgePacket;
 @property (nonatomic, assign) NSUInteger visualizerCPUOverrunFrames;
 @property (nonatomic, assign) NSUInteger visualizerCPUBudgetRecoveryFrames;
-@property (nonatomic, assign) os_log_t visualizerSignpostLog;
+@property (nonatomic, strong) os_log_t visualizerSignpostLog;
 
 - (void)configureVisualizerDefaults;
 - (void)installVisualizerTapIfNeeded;
@@ -352,9 +354,9 @@ RCT_EXPORT_MODULE();
         atomic_flag_clear(&_visualizerDrainScheduled);
         VisualizerRingBufferInitialize(&_visualizerRingBuffer);
         if (@available(macOS 10.14, *)) {
-            _visualizerSignpostLog = os_log_create("com.legendmusic.audio", "visualizer");
+            self.visualizerSignpostLog = os_log_create("com.legendmusic.audio", "visualizer");
         } else {
-            _visualizerSignpostLog = OS_LOG_DISABLED;
+            self.visualizerSignpostLog = OS_LOG_DISABLED;
         }
         [self setupPlayer];
         _isPlaying = NO;
@@ -932,7 +934,7 @@ RCT_EXPORT_MODULE();
     if (!atomic_flag_test_and_set_explicit(&_visualizerDrainScheduled, memory_order_acq_rel)) {
         dispatch_async(self.visualizerQueue, ^{
             [self drainVisualizerRingBuffer];
-            atomic_flag_clear_explicit(&_visualizerDrainScheduled, memory_order_release);
+            atomic_flag_clear_explicit(&self->_visualizerDrainScheduled, memory_order_release);
         });
     }
 }
@@ -990,7 +992,7 @@ RCT_EXPORT_MODULE();
     NSTimeInterval processStart = CFAbsoluteTimeGetCurrent();
     NSTimeInterval processDuration = 0;
     NSUInteger bins = 0;
-    OSSignpostID frameSignpost = OS_SIGNPOST_ID_NULL;
+    os_signpost_id_t frameSignpost = OS_SIGNPOST_ID_NULL;
 
     if (@available(macOS 10.14, *)) {
         if (self.visualizerSignpostLog && self.visualizerSignpostLog != OS_LOG_DISABLED) {
@@ -1099,9 +1101,13 @@ RCT_EXPORT_MODULE();
         processDuration = CFAbsoluteTimeGetCurrent() - processStart;
         goto cleanup;
     }
-    prefix[0] = 0.0f;
     if (spectrumSize > 0) {
-        vDSP_vrsum(magnitudes, 1, prefix + 1, 1, spectrumSize);
+        prefix[0] = 0.0f;
+        for (NSUInteger index = 0; index < spectrumSize; index++) {
+            prefix[index + 1] = prefix[index] + magnitudes[index];
+        }
+    } else {
+        memset(prefix, 0, (spectrumSize + 1) * sizeof(float));
     }
 
     for (NSUInteger bin = 0; bin < bins; bin++) {
@@ -1133,7 +1139,7 @@ RCT_EXPORT_MODULE();
     vDSP_vsadd(binScratch, 1, &epsilon, binScratch, 1, bins);
 
     float zeroReference = 1.0f;
-    vDSP_vdbcon(binScratch, 1, binScratch, 1, bins, &zeroReference);
+    vDSP_vdbcon(binScratch, 1, &zeroReference, binScratch, 1, bins, 0);
 
     float offset = -kVisualizerMinDecibels;
     vDSP_vsadd(binScratch, 1, &offset, binScratch, 1, bins);
@@ -1160,7 +1166,7 @@ RCT_EXPORT_MODULE();
 
     float oneMinusSmoothing = 1.0f - smoothing;
     vDSP_vsmul(smoothed, 1, &smoothing, smoothed, 1, bins);
-    vDSP_vsmsa(binScratch, 1, &oneMinusSmoothing, smoothed, 1, smoothed, 1, bins);
+    vDSP_vsmsa(binScratch, 1, &oneMinusSmoothing, smoothed, smoothed, 1, bins);
 
     if (@available(macOS 10.14, *)) {
         if (frameSignpost != OS_SIGNPOST_ID_NULL && self.visualizerSignpostLog && self.visualizerSignpostLog != OS_LOG_DISABLED) {
@@ -1415,10 +1421,7 @@ cleanup:
         self.visualizerFFTSetup = NULL;
     }
     if (@available(macOS 10.14, *)) {
-        if (self.visualizerSignpostLog && self.visualizerSignpostLog != OS_LOG_DISABLED) {
-            os_log_release(self.visualizerSignpostLog);
-            self.visualizerSignpostLog = OS_LOG_DISABLED;
-        }
+        self.visualizerSignpostLog = OS_LOG_DISABLED;
     }
 }
 

@@ -10,6 +10,8 @@
 #include <mutex>
 #include <unordered_map>
 #include <vector>
+#include <cstdint>
+#include <utility>
 #include <cstring>
 
 using namespace facebook;
@@ -44,8 +46,8 @@ struct VisualizerJSIState {
     bool installed = false;
 };
 
-std::unordered_map<AudioPlayer *, std::shared_ptr<VisualizerJSIState>> &stateMap() {
-    static auto *map = new std::unordered_map<AudioPlayer *, std::shared_ptr<VisualizerJSIState>>();
+std::unordered_map<uintptr_t, std::shared_ptr<VisualizerJSIState>> &stateMap() {
+    static auto *map = new std::unordered_map<uintptr_t, std::shared_ptr<VisualizerJSIState>>();
     return *map;
 }
 
@@ -61,13 +63,14 @@ std::shared_ptr<VisualizerJSIState> ensureState(AudioPlayer *player) {
 
     std::lock_guard<std::mutex> guard(stateMapMutex());
     auto &map = stateMap();
-    auto iterator = map.find(player);
+    auto key = reinterpret_cast<uintptr_t>((__bridge void *)player);
+    auto iterator = map.find(key);
     if (iterator != map.end()) {
         return iterator->second;
     }
 
     auto state = std::make_shared<VisualizerJSIState>();
-    map[player] = state;
+    map[key] = state;
     return state;
 }
 
@@ -76,7 +79,8 @@ void removeState(AudioPlayer *player) {
         return;
     }
     std::lock_guard<std::mutex> guard(stateMapMutex());
-    stateMap().erase(player);
+    auto key = reinterpret_cast<uintptr_t>((__bridge void *)player);
+    stateMap().erase(key);
 }
 
 std::shared_ptr<VisualizerMutableBuffer> ensureBuffer(
@@ -142,17 +146,15 @@ bool installBindingsOnRuntime(
                 return Value::undefined();
             }
 
-            auto arrayBuffer = runtimeRef.createArrayBuffer(lockedState->buffer);
             auto float32Constructor = runtimeRef.global().getPropertyAsFunction(runtimeRef, "Float32Array");
 
-            Value constructorArguments[] = {
-                Value(runtimeRef, arrayBuffer),
+            ArrayBuffer arrayBuffer(runtimeRef, lockedState->buffer);
+            auto typedArrayValue = float32Constructor.callAsConstructor(
+                runtimeRef,
+                Value(runtimeRef, std::move(arrayBuffer)),
                 Value(0),
-                Value(static_cast<double>(lockedState->binCount)),
-            };
-
-            auto typedArray =
-                float32Constructor.callAsConstructor(runtimeRef, constructorArguments, std::size(constructorArguments));
+                Value(static_cast<double>(lockedState->binCount)));
+            jsi::Object typedArray = typedArrayValue.getObject(runtimeRef);
 
             jsi::Object result(runtimeRef);
             result.setProperty(runtimeRef, "bins", std::move(typedArray));
@@ -197,11 +199,12 @@ void AudioPlayerScheduleVisualizerJSIInstallation(
         return;
     }
 
-    executor([state, resolveCopy = [resolve copy]](Runtime &runtime) mutable {
+    RCTPromiseResolveBlock resolveBlock = resolve ? [resolve copy] : nil;
+    executor([state, resolveBlock](Runtime &runtime) mutable {
         bool installed = installBindingsOnRuntime(runtime, state);
-        if (resolveCopy) {
+        if (resolveBlock) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                resolveCopy(@{ @"installed": installed ? @YES : @NO });
+                resolveBlock(@{ @"installed": installed ? @YES : @NO });
             });
         }
     });
