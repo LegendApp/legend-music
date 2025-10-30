@@ -76,6 +76,14 @@ export interface VisualizerFrame {
      * Legacy fallback array of normalized bin magnitudes. Only populated for older native builds.
      */
     bins?: number[];
+    /**
+     * Total native processing time for this frame in milliseconds.
+     */
+    processDurationMs?: number;
+    /**
+     * Active native throttle interval in milliseconds.
+     */
+    throttleMs?: number;
 }
 
 export interface AudioPlayerEvents {

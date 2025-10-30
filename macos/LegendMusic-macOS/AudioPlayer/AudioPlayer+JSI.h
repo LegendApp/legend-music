@@ -17,7 +17,9 @@ void AudioPlayerUpdateVisualizerJSIState(
     const float *_Nonnull bins,
     NSUInteger count,
     float rms,
-    NSTimeInterval timestamp);
+    NSTimeInterval timestamp,
+    NSTimeInterval processDuration,
+    NSTimeInterval throttleInterval);
 
 void AudioPlayerResetVisualizerJSIState(AudioPlayer *_Nullable player);
 

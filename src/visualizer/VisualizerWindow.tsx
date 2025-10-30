@@ -1,12 +1,13 @@
 import { use$ } from "@legendapp/state/react";
 import { useCallback, useMemo } from "react";
 import type { LayoutChangeEvent } from "react-native";
-import { Text, View } from "react-native";
+import { Switch, Text, View } from "react-native";
 
-import { Select, type SelectOption } from "@/components/Select";
 import { localPlayerState$ } from "@/components/LocalAudioPlayer";
-import { defaultVisualizerPresetId, getVisualizerPresetById, visualizerPresets } from "@/visualizer/presets";
+import { Select, type SelectOption } from "@/components/Select";
+import { visualizerDiagnostics$ } from "@/visualizer/diagnostics";
 import { visualizerPreferences$ } from "@/visualizer/preferences";
+import { defaultVisualizerPresetId, getVisualizerPresetById, visualizerPresets } from "@/visualizer/presets";
 
 export default function VisualizerWindow() {
     const track = use$(localPlayerState$.currentTrack);
@@ -14,6 +15,11 @@ export default function VisualizerWindow() {
     const storedPresetId = use$(visualizerPreferences$.visualizer.selectedPresetId);
     const storedBinCount = use$(visualizerPreferences$.visualizer.binCount);
     const binCount = storedBinCount ?? 64;
+    const debugOverlayEnabled = use$(visualizerPreferences$.visualizer.debugOverlay);
+    const showDebugOverlay = debugOverlayEnabled ?? false;
+    const diagnostics = use$(visualizerDiagnostics$);
+
+    const formatMetric = (value: number, digits: number) => (value > 0 ? value.toFixed(digits) : "--");
 
     const preset = useMemo(() => {
         const fallbackId = defaultVisualizerPresetId;
@@ -61,6 +67,10 @@ export default function VisualizerWindow() {
         if (!Number.isNaN(parsed)) {
             visualizerPreferences$.visualizer.binCount.set(parsed);
         }
+    }, []);
+
+    const handleDebugToggle = useCallback((value: boolean) => {
+        visualizerPreferences$.visualizer.debugOverlay.set(value);
     }, []);
 
     const handleLayout = useCallback((event: LayoutChangeEvent) => {
@@ -118,11 +128,41 @@ export default function VisualizerWindow() {
                                         textClassName="text-white text-sm"
                                     />
                                 </View>
+                                <View className="gap-2 min-w-[160px]">
+                                    <Text className="text-white text-xs uppercase tracking-[0.25em]">
+                                        Debug Overlay
+                                    </Text>
+                                    <View className="bg-black/60 border border-white/25 h-10 px-3 rounded-xl flex-row items-center justify-between">
+                                        <Text className="text-white text-sm">
+                                            {showDebugOverlay ? "Enabled" : "Disabled"}
+                                        </Text>
+                                        <Switch
+                                            value={showDebugOverlay}
+                                            onValueChange={handleDebugToggle}
+                                            trackColor={{ false: "#1e293b", true: "#22c55e" }}
+                                            thumbColor="#f8fafc"
+                                        />
+                                    </View>
+                                </View>
                             </View>
                         </View>
                     </View>
                 </View>
             </View>
+            {showDebugOverlay ? (
+                <View className="absolute top-6 left-6 bg-black/60 border border-white/10 rounded-xl px-4 py-3 gap-1 pointer-events-none">
+                    <Text className="text-white/60 text-[11px] uppercase tracking-[0.25em]">Diagnostics</Text>
+                    <Text className="text-white text-sm">
+                        FPS {formatMetric(diagnostics.fps, 1)} • Interval {formatMetric(diagnostics.frameIntervalMs, 2)}{" "}
+                        ms
+                    </Text>
+                    <Text className="text-white/80 text-sm">
+                        Tap {formatMetric(diagnostics.tapDurationMs, 2)} ms • Throttle{" "}
+                        {formatMetric(diagnostics.throttleMs, 1)} ms
+                    </Text>
+                    <Text className="text-white/60 text-xs">Bins {diagnostics.binCount}</Text>
+                </View>
+            ) : null}
         </View>
     );
 }

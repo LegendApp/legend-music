@@ -7,6 +7,7 @@ import { useSharedValue } from "react-native-reanimated";
 
 import { useAudioPlayer, type VisualizerConfig } from "@/native-modules/AudioPlayer";
 
+import { visualizerDiagnostics$ } from "../diagnostics";
 import { decodeVisualizerBins } from "./decodeVisualizerPayload";
 
 const UNIFORM_BIN_COUNT = 128;
@@ -100,7 +101,9 @@ export function ShaderSurface({ definition, style, binCountOverride }: ShaderSur
         bins: binsBufferRef.current,
     });
     const startTimestampRef = useRef<number | null>(null);
-    const fallbackStartMsRef = useRef<number | null>(null);
+    const fallbackStartSecondsRef = useRef<number | null>(null);
+    const lastFrameSecondsRef = useRef<number | null>(null);
+    const fpsEstimateRef = useRef(0);
 
     const buildUniforms = useCallback((base: BaseUniformState): Uniforms => {
         const result: Uniforms = {
@@ -219,6 +222,8 @@ export function ShaderSurface({ definition, style, binCountOverride }: ShaderSur
             let incomingBins: Float32Array | null = null;
             let sourceCount = 0;
             let frameTimestamp = typeof frame.timestamp === "number" ? frame.timestamp : null;
+            let processDurationMs = typeof frame.processDurationMs === "number" ? frame.processDurationMs : 0;
+            let throttleMs = typeof frame.throttleMs === "number" ? frame.throttleMs : 0;
 
             const legendModule = (
                 globalThis as {
@@ -249,6 +254,12 @@ export function ShaderSurface({ definition, style, binCountOverride }: ShaderSur
                         }
                         if (typeof typedFrame.timestamp === "number") {
                             frameTimestamp = typedFrame.timestamp;
+                        }
+                        if (typeof typedFrame.processDurationMs === "number") {
+                            processDurationMs = typedFrame.processDurationMs;
+                        }
+                        if (typeof typedFrame.throttleMs === "number") {
+                            throttleMs = typedFrame.throttleMs;
                         }
                     }
                 } catch (_error) {
@@ -290,25 +301,45 @@ export function ShaderSurface({ definition, style, binCountOverride }: ShaderSur
 
             bins.fill(0, targetCount, maxUniformBins);
 
+            const eventSeconds = frameTimestamp ?? Date.now() / 1000;
             let uniformTime = baseUniformRef.current.time;
             if (frameTimestamp != null) {
                 if (startTimestampRef.current == null) {
                     startTimestampRef.current = frameTimestamp;
                 }
                 uniformTime = frameTimestamp - startTimestampRef.current!;
-                fallbackStartMsRef.current = null;
+                fallbackStartSecondsRef.current = null;
             } else {
-                if (fallbackStartMsRef.current == null) {
-                    fallbackStartMsRef.current = Date.now();
+                if (fallbackStartSecondsRef.current == null) {
+                    fallbackStartSecondsRef.current = eventSeconds;
                 }
-                uniformTime = (Date.now() - fallbackStartMsRef.current) / 1000;
+                uniformTime = eventSeconds - fallbackStartSecondsRef.current!;
             }
+
+            let frameIntervalMs = 0;
+            if (lastFrameSecondsRef.current != null) {
+                const deltaSeconds = Math.max(eventSeconds - lastFrameSecondsRef.current!, 1.0e-4);
+                frameIntervalMs = deltaSeconds * 1000.0;
+                const instantFps = 1.0 / deltaSeconds;
+                fpsEstimateRef.current =
+                    fpsEstimateRef.current > 0 ? fpsEstimateRef.current * 0.85 + instantFps * 0.15 : instantFps;
+            }
+            lastFrameSecondsRef.current = eventSeconds;
 
             applyUniforms((base) => {
                 base.bins = bins;
                 base.binCount = targetCount;
                 base.amplitude = amplitude;
                 base.time = uniformTime;
+            });
+
+            visualizerDiagnostics$.set({
+                fps: Number.isFinite(fpsEstimateRef.current) ? fpsEstimateRef.current : 0,
+                frameIntervalMs,
+                tapDurationMs: processDurationMs,
+                throttleMs,
+                binCount: targetCount,
+                updatedAt: Date.now(),
             });
         });
 

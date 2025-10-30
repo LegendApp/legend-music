@@ -39,6 +39,8 @@ struct VisualizerJSIState {
     size_t binCount = 0;
     float rms = 0;
     double timestamp = 0;
+    double processDurationMs = 0;
+    double throttleMs = 0;
     bool installed = false;
 };
 
@@ -159,6 +161,8 @@ bool installBindingsOnRuntime(
             result.setProperty(runtimeRef, "timestamp", lockedState->timestamp);
             result.setProperty(runtimeRef, "stride", static_cast<double>(lockedState->stride));
             result.setProperty(runtimeRef, "format", "f32-le");
+            result.setProperty(runtimeRef, "processDurationMs", lockedState->processDurationMs);
+            result.setProperty(runtimeRef, "throttleMs", lockedState->throttleMs);
 
             return result;
         });
@@ -208,7 +212,9 @@ void AudioPlayerUpdateVisualizerJSIState(
     const float *bins,
     NSUInteger count,
     float rms,
-    NSTimeInterval timestamp) {
+    NSTimeInterval timestamp,
+    NSTimeInterval processDuration,
+    NSTimeInterval throttleInterval) {
     if (!player || !bins || count == 0) {
         return;
     }
@@ -234,6 +240,8 @@ void AudioPlayerUpdateVisualizerJSIState(
     state->rms = rms;
     state->timestamp = timestamp;
     state->stride = sizeof(float);
+    state->processDurationMs = processDuration * 1000.0;
+    state->throttleMs = throttleInterval * 1000.0;
 }
 
 void AudioPlayerResetVisualizerJSIState(AudioPlayer *player) {
@@ -250,5 +258,7 @@ void AudioPlayerResetVisualizerJSIState(AudioPlayer *player) {
     state->binCount = 0;
     state->rms = 0;
     state->timestamp = 0;
+    state->processDurationMs = 0;
+    state->throttleMs = 0;
     state->installed = false;
 }

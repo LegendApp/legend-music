@@ -9,6 +9,7 @@ export interface VisualizerPreferences {
     visualizer: {
         selectedPresetId: string;
         binCount: number;
+        debugOverlay: boolean;
     };
 }
 
@@ -24,6 +25,7 @@ export const visualizerPreferences$ = createJSONManager<VisualizerPreferences>({
         visualizer: {
             selectedPresetId: "classic",
             binCount: 64,
+            debugOverlay: false,
         },
     },
     saveDefaultToFile: true,
