@@ -193,6 +193,11 @@ static const float kVisualizerResponseGamma = 0.85f;
 @property (nonatomic, strong) NSMutableData *visualizerScratchMono;
 @property (nonatomic, strong) NSMutableData *visualizerBinStartIndices;
 @property (nonatomic, strong) NSMutableData *visualizerBinEndIndices;
+@property (nonatomic, strong) NSMutableData *visualizerBinWindowScale;
+@property (nonatomic, strong) NSMutableData *visualizerBinEmphasisFactors;
+@property (nonatomic, strong) NSMutableData *visualizerGammaVector;
+@property (nonatomic, strong) NSMutableData *visualizerBinScratch;
+@property (nonatomic, strong) NSMutableData *visualizerPrefixSums;
 @property (nonatomic, assign) NSUInteger visualizerCPUOverrunFrames;
 
 - (void)configureVisualizerDefaults;
@@ -420,6 +425,25 @@ RCT_EXPORT_MODULE();
     }
     VisualizerRingBufferReset(&_visualizerRingBuffer);
 
+    NSUInteger prefixLength = spectrumSize + 1;
+    if (prefixLength == 0) {
+        prefixLength = 1;
+    }
+    self.visualizerPrefixSums = [NSMutableData dataWithLength:prefixLength * sizeof(float)];
+
+    if (self.visualizerBinCount > 0) {
+        NSUInteger binBytes = self.visualizerBinCount * sizeof(float);
+        self.visualizerBinScratch = [NSMutableData dataWithLength:binBytes];
+        self.visualizerBinWindowScale = [NSMutableData dataWithLength:binBytes];
+        self.visualizerBinEmphasisFactors = [NSMutableData dataWithLength:binBytes];
+        self.visualizerGammaVector = [NSMutableData dataWithLength:binBytes];
+    } else {
+        self.visualizerBinScratch = nil;
+        self.visualizerBinWindowScale = nil;
+        self.visualizerBinEmphasisFactors = nil;
+        self.visualizerGammaVector = nil;
+    }
+
     [self recalculateVisualizerBinMappingWithSpectrumSize:spectrumSize];
 }
 
@@ -437,14 +461,33 @@ RCT_EXPORT_MODULE();
     if (!self.visualizerBinEndIndices) {
         self.visualizerBinEndIndices = [NSMutableData data];
     }
+    if (!self.visualizerBinWindowScale) {
+        self.visualizerBinWindowScale = [NSMutableData data];
+    }
+    if (!self.visualizerBinEmphasisFactors) {
+        self.visualizerBinEmphasisFactors = [NSMutableData data];
+    }
+    if (!self.visualizerGammaVector) {
+        self.visualizerGammaVector = [NSMutableData data];
+    }
+    if (!self.visualizerBinScratch) {
+        self.visualizerBinScratch = [NSMutableData data];
+    }
 
     [self.visualizerBinStartIndices setLength:(NSUInteger)(self.visualizerBinCount * sizeof(NSUInteger))];
     [self.visualizerBinEndIndices setLength:(NSUInteger)(self.visualizerBinCount * sizeof(NSUInteger))];
+    [self.visualizerBinWindowScale setLength:(NSUInteger)(self.visualizerBinCount * sizeof(float))];
+    [self.visualizerBinEmphasisFactors setLength:(NSUInteger)(self.visualizerBinCount * sizeof(float))];
+    [self.visualizerGammaVector setLength:(NSUInteger)(self.visualizerBinCount * sizeof(float))];
+    [self.visualizerBinScratch setLength:(NSUInteger)(self.visualizerBinCount * sizeof(float))];
 
     NSUInteger *starts = (NSUInteger *)self.visualizerBinStartIndices.mutableBytes;
     NSUInteger *ends = (NSUInteger *)self.visualizerBinEndIndices.mutableBytes;
+    float *windowScales = (float *)self.visualizerBinWindowScale.mutableBytes;
+    float *emphasisFactors = (float *)self.visualizerBinEmphasisFactors.mutableBytes;
+    float *gammaVector = (float *)self.visualizerGammaVector.mutableBytes;
 
-    if (!starts || !ends) {
+    if (!starts || !ends || !windowScales || !emphasisFactors || !gammaVector) {
         return;
     }
 
@@ -502,6 +545,20 @@ RCT_EXPORT_MODULE();
         starts[bin] = startIndex;
         ends[bin] = endIndex;
         previousEnd = endIndex;
+
+        if (windowScales) {
+            float windowLength = (float)MAX(1, (long)(endIndex - startIndex));
+            windowScales[bin] = windowLength > 0.0f ? (1.0f / windowLength) : 1.0f;
+        }
+
+        if (emphasisFactors) {
+            float emphasis = powf(((float)(bin + 1) / (float)self.visualizerBinCount), kVisualizerHighFrequencyEmphasisExponent);
+            emphasisFactors[bin] = fminf(1.0f, 0.65f + 0.35f * emphasis);
+        }
+
+        if (gammaVector) {
+            gammaVector[bin] = kVisualizerResponseGamma;
+        }
     }
 }
 
@@ -944,8 +1001,31 @@ RCT_EXPORT_MODULE();
 
     const NSUInteger *binStarts = (const NSUInteger *)self.visualizerBinStartIndices.bytes;
     const NSUInteger *binEnds = (const NSUInteger *)self.visualizerBinEndIndices.bytes;
+    float *windowScales = (float *)self.visualizerBinWindowScale.mutableBytes;
+    float *emphasisFactors = (float *)self.visualizerBinEmphasisFactors.mutableBytes;
+    float *gammaVector = (float *)self.visualizerGammaVector.mutableBytes;
+    if (!self.visualizerBinScratch) {
+        self.visualizerBinScratch = [NSMutableData dataWithLength:bins * sizeof(float)];
+    } else if (self.visualizerBinScratch.length < bins * sizeof(float)) {
+        [self.visualizerBinScratch setLength:bins * sizeof(float)];
+    }
+    float *binScratch = (float *)self.visualizerBinScratch.mutableBytes;
 
-    const float decibelRange = kVisualizerMaxDecibels - kVisualizerMinDecibels;
+    if (!binScratch) {
+        return;
+    }
+
+    if (!self.visualizerPrefixSums || self.visualizerPrefixSums.length < (spectrumSize + 1) * sizeof(float)) {
+        self.visualizerPrefixSums = [NSMutableData dataWithLength:(spectrumSize + 1) * sizeof(float)];
+    }
+    float *prefix = (float *)self.visualizerPrefixSums.mutableBytes;
+    if (!prefix) {
+        return;
+    }
+    prefix[0] = 0.0f;
+    if (spectrumSize > 0) {
+        vDSP_vrsum(magnitudes, 1, prefix + 1, 1, spectrumSize);
+    }
 
     for (NSUInteger bin = 0; bin < bins; bin++) {
         NSUInteger start = binStarts ? binStarts[bin] : bin;
@@ -954,35 +1034,56 @@ RCT_EXPORT_MODULE();
         if (start >= spectrumSize) {
             start = spectrumSize > 0 ? spectrumSize - 1 : 0;
         }
-
         if (end <= start) {
             end = MIN(start + 1, spectrumSize);
         }
-
-        NSUInteger windowLength = end > start ? (end - start) : 1;
-
-        float sum = 0;
-        vDSP_sve(magnitudes + start, 1, &sum, windowLength);
-        float average = sum / (float)windowLength;
-
-        float decibels = 20.0f * log10f(average + 1.0e-7f);
-        float normalized = 0.0f;
-        if (decibelRange > 0.0f) {
-            normalized = (decibels - kVisualizerMinDecibels) / decibelRange;
-        }
-        normalized = fmaxf(0.0f, fminf(normalized, 1.0f));
-
-        if (bins > 0) {
-            float emphasis = powf(((float)(bin + 1) / (float)bins), kVisualizerHighFrequencyEmphasisExponent);
-            float emphasisFactor = 0.65f + 0.35f * emphasis;
-            normalized = fminf(1.0f, normalized * emphasisFactor);
+        if (end > spectrumSize) {
+            end = spectrumSize;
         }
 
-        normalized = powf(normalized, kVisualizerResponseGamma);
-
-        float previous = smoothed[bin];
-        smoothed[bin] = smoothing * previous + (1.0f - smoothing) * normalized;
+        float sum = prefix[end] - prefix[start];
+        float scale = 1.0f;
+        if (windowScales) {
+            scale = windowScales[bin];
+        } else {
+            NSUInteger windowLength = end > start ? (end - start) : 1;
+            scale = windowLength > 0 ? (1.0f / (float)windowLength) : 1.0f;
+        }
+        binScratch[bin] = sum * scale;
     }
+
+    const float epsilon = 1.0e-7f;
+    vDSP_vsadd(binScratch, 1, &epsilon, binScratch, 1, bins);
+
+    float zeroReference = 1.0f;
+    vDSP_vdbcon(binScratch, 1, binScratch, 1, bins, &zeroReference);
+
+    float offset = -kVisualizerMinDecibels;
+    vDSP_vsadd(binScratch, 1, &offset, binScratch, 1, bins);
+    float invRange = kVisualizerMaxDecibels - kVisualizerMinDecibels;
+    if (invRange <= 0.0f) {
+        invRange = 1.0f;
+    }
+    float invRangeScalar = 1.0f / invRange;
+    vDSP_vsmul(binScratch, 1, &invRangeScalar, binScratch, 1, bins);
+
+    float lower = 0.0f;
+    float upper = 1.0f;
+    vDSP_vclip(binScratch, 1, &lower, &upper, binScratch, 1, bins);
+
+    if (emphasisFactors) {
+        vDSP_vmul(binScratch, 1, emphasisFactors, 1, binScratch, 1, bins);
+        vDSP_vclip(binScratch, 1, &lower, &upper, binScratch, 1, bins);
+    }
+
+    if (gammaVector) {
+        int count = (int)bins;
+        vvpowf(binScratch, binScratch, gammaVector, &count);
+    }
+
+    float oneMinusSmoothing = 1.0f - smoothing;
+    vDSP_vsmul(smoothed, 1, &smoothing, smoothed, 1, bins);
+    vDSP_vsmsa(binScratch, 1, &oneMinusSmoothing, smoothed, 1, smoothed, 1, bins);
 
     NSTimeInterval processDuration = CFAbsoluteTimeGetCurrent() - processStart;
     const NSTimeInterval cpuBudget = 0.004; // ~4ms budget
