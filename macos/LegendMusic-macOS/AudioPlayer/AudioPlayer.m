@@ -162,11 +162,26 @@ static inline void VisualizerRingBufferConsume(VisualizerRingBuffer *ring, size_
 static const NSUInteger kDefaultVisualizerFFTSize = 1024;
 static const NSUInteger kDefaultVisualizerBinCount = 64;
 static const float kDefaultVisualizerSmoothing = 0.6f;
-static const NSTimeInterval kDefaultVisualizerThrottleSeconds = 1.0 / 30.0;
+static const NSTimeInterval kDefaultVisualizerThrottleSeconds = 1.0 / 60.0;
 static const float kVisualizerMinDecibels = -75.0f;
 static const float kVisualizerMaxDecibels = -12.0f;
 static const float kVisualizerHighFrequencyEmphasisExponent = 0.45f;
 static const float kVisualizerResponseGamma = 0.85f;
+static const NSTimeInterval kVisualizerThrottleLevels[] = { 1.0 / 60.0, 0.024, 1.0 / 30.0, 0.050 };
+static const NSUInteger kVisualizerThrottleLevelCount = sizeof(kVisualizerThrottleLevels) / sizeof(NSTimeInterval);
+
+static inline NSUInteger VisualizerFindThrottleLevel(NSTimeInterval interval)
+{
+    if (interval <= 0.0) {
+        return 0;
+    }
+    for (NSUInteger index = 0; index < kVisualizerThrottleLevelCount; index++) {
+        if (interval <= kVisualizerThrottleLevels[index] + 1.0e-6) {
+            return index;
+        }
+    }
+    return kVisualizerThrottleLevelCount > 0 ? (kVisualizerThrottleLevelCount - 1) : 0;
+}
 
 @interface AudioPlayer ()
 
@@ -178,6 +193,7 @@ static const float kVisualizerResponseGamma = 0.85f;
 @property (nonatomic, strong) AVAudioMix *visualizerAudioMix;
 @property (nonatomic, assign) NSTimeInterval visualizerLastEmitTime;
 @property (nonatomic, assign) NSTimeInterval visualizerThrottleInterval;
+@property (nonatomic, assign) NSUInteger visualizerThrottleLevelIndex;
 @property (nonatomic, assign) NSUInteger visualizerFFTSize;
 @property (nonatomic, assign) NSUInteger visualizerHopSize;
 @property (nonatomic, assign) NSUInteger visualizerBinCount;
@@ -199,6 +215,7 @@ static const float kVisualizerResponseGamma = 0.85f;
 @property (nonatomic, strong) NSMutableData *visualizerBinScratch;
 @property (nonatomic, strong) NSMutableData *visualizerPrefixSums;
 @property (nonatomic, assign) NSUInteger visualizerCPUOverrunFrames;
+@property (nonatomic, assign) NSUInteger visualizerCPUBudgetRecoveryFrames;
 
 - (void)configureVisualizerDefaults;
 - (void)installVisualizerTapIfNeeded;
@@ -571,10 +588,12 @@ RCT_EXPORT_MODULE();
     self.visualizerAudioMix = nil;
     self.visualizerLastEmitTime = 0;
     self.visualizerThrottleInterval = kDefaultVisualizerThrottleSeconds;
+    self.visualizerThrottleLevelIndex = 0;
     self.visualizerFFTSize = kDefaultVisualizerFFTSize;
     self.visualizerBinCount = kDefaultVisualizerBinCount;
     self.visualizerSmoothingFactor = kDefaultVisualizerSmoothing;
     self.visualizerCPUOverrunFrames = 0;
+    self.visualizerCPUBudgetRecoveryFrames = 0;
     self.visualizerBinStartIndices = nil;
     self.visualizerBinEndIndices = nil;
     VisualizerRingBufferReset(&_visualizerRingBuffer);
@@ -589,6 +608,7 @@ RCT_EXPORT_MODULE();
         memset(self.visualizerSmoothedBins.mutableBytes, 0, self.visualizerSmoothedBins.length);
     }
     self.visualizerCPUOverrunFrames = 0;
+    self.visualizerCPUBudgetRecoveryFrames = 0;
     atomic_flag_clear_explicit(&_visualizerDrainScheduled, memory_order_release);
 }
 
@@ -1087,14 +1107,39 @@ RCT_EXPORT_MODULE();
 
     NSTimeInterval processDuration = CFAbsoluteTimeGetCurrent() - processStart;
     const NSTimeInterval cpuBudget = 0.004; // ~4ms budget
+    const NSTimeInterval recoveryThreshold = cpuBudget * 0.65;
     if (processDuration > cpuBudget) {
         self.visualizerCPUOverrunFrames += 1;
+        self.visualizerCPUBudgetRecoveryFrames = 0;
     } else {
         self.visualizerCPUOverrunFrames = 0;
+        if (processDuration < recoveryThreshold && self.visualizerThrottleLevelIndex > 0) {
+            self.visualizerCPUBudgetRecoveryFrames += 1;
+        } else {
+            self.visualizerCPUBudgetRecoveryFrames = 0;
+        }
     }
 
     if (self.visualizerCPUOverrunFrames >= 3) {
         self.visualizerCPUOverrunFrames = 0;
+        self.visualizerCPUBudgetRecoveryFrames = 0;
+        if (self.visualizerThrottleLevelIndex == 0 && self.visualizerThrottleInterval <= 0.0) {
+            self.visualizerThrottleInterval = kVisualizerThrottleLevels[0];
+            VisualizerRingBufferReset(&_visualizerRingBuffer);
+            RCTLogWarn(@"Visualizer processing taking %.2f ms, enabling 16 ms throttle",
+                       processDuration * 1000.0);
+            return;
+        }
+        if (self.visualizerThrottleLevelIndex + 1 < kVisualizerThrottleLevelCount) {
+            self.visualizerThrottleLevelIndex += 1;
+            self.visualizerThrottleInterval = kVisualizerThrottleLevels[self.visualizerThrottleLevelIndex];
+            VisualizerRingBufferReset(&_visualizerRingBuffer);
+            RCTLogWarn(@"Visualizer processing taking %.2f ms, increasing throttle to %.0f ms",
+                       processDuration * 1000.0,
+                       self.visualizerThrottleInterval * 1000.0);
+            return;
+        }
+
         NSUInteger newBinCount = MAX(16u, self.visualizerBinCount / 2);
         if (newBinCount < self.visualizerBinCount) {
             self.visualizerBinCount = newBinCount;
@@ -1102,13 +1147,21 @@ RCT_EXPORT_MODULE();
             memset(self.visualizerSmoothedBins.mutableBytes, 0, self.visualizerSmoothedBins.length);
             [self recalculateVisualizerBinMappingWithSpectrumSize:spectrumSize];
         }
+
         VisualizerRingBufferReset(&_visualizerRingBuffer);
-        self.visualizerThrottleInterval = MAX(self.visualizerThrottleInterval, 0.05);
-        RCTLogWarn(@"Visualizer processing taking %.2f ms, reducing resolution to %lu bins and throttle %.0f ms",
+        RCTLogWarn(@"Visualizer processing taking %.2f ms, reducing resolution to %lu bins (throttle %.0f ms)",
                    processDuration * 1000.0,
                    (unsigned long)self.visualizerBinCount,
                    self.visualizerThrottleInterval * 1000.0);
         return;
+    }
+
+    if (self.visualizerThrottleLevelIndex > 0 &&
+        self.visualizerCPUBudgetRecoveryFrames >= 120) {
+        self.visualizerThrottleLevelIndex -= 1;
+        self.visualizerThrottleInterval = kVisualizerThrottleLevels[self.visualizerThrottleLevelIndex];
+        self.visualizerCPUBudgetRecoveryFrames = 0;
+        RCTLogInfo(@"Visualizer recovered to %.0f ms throttle", self.visualizerThrottleInterval * 1000.0);
     }
 
     self.visualizerLastEmitTime = now;
@@ -1427,9 +1480,14 @@ RCT_EXPORT_METHOD(configureVisualizer:(NSDictionary *)config
             double throttleMs = [throttleMsValue doubleValue];
             if (throttleMs <= 0) {
                 self.visualizerThrottleInterval = 0;
+                self.visualizerThrottleLevelIndex = 0;
             } else {
-                self.visualizerThrottleInterval = throttleMs / 1000.0;
+                NSTimeInterval interval = throttleMs / 1000.0;
+                self.visualizerThrottleInterval = interval;
+                self.visualizerThrottleLevelIndex = VisualizerFindThrottleLevel(interval);
             }
+            self.visualizerCPUOverrunFrames = 0;
+            self.visualizerCPUBudgetRecoveryFrames = 0;
         }
 
         self.visualizerEnabled = enabled;
