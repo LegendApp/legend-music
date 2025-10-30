@@ -30,6 +30,26 @@ int clampIndex(int value) {
     return value;
 }
 
+int wrapIndex(int value) {
+    if (u_binCount <= 0) {
+        return 0;
+    }
+    int maxIndex = u_binCount - 1;
+    if (maxIndex > 127) {
+        maxIndex = 127;
+    }
+    int size = maxIndex + 1;
+    if (size <= 0) {
+        return 0;
+    }
+    int quotient = value / size;
+    int wrapped = value - quotient * size;
+    if (wrapped < 0) {
+        wrapped += size;
+    }
+    return wrapped;
+}
+
 float readBin(int target) {
     if (u_binCount <= 0) {
         return 0.0;
@@ -66,11 +86,6 @@ float averageEnergy() {
     return sum / float(samples);
 }
 
-float wrapDistance(float a, float b) {
-    float diff = abs(a - b);
-    return min(diff, 1.0 - diff);
-}
-
 float3 barPalette(float t) {
     t = clamp(t, 0.0, 1.0);
     float3 red = float3(0.95, 0.26, 0.28);
@@ -95,6 +110,45 @@ float3 barPalette(float t) {
     return mix(blue, purple, segmentT);
 }
 
+float3 ringPalette(float t) {
+    float angle = t * (2.0 * PI);
+    float3 color = float3(
+        0.62 + 0.38 * sin(angle + 0.0),
+        0.48 + 0.42 * sin(angle + 2.1),
+        0.35 + 0.5 * sin(angle + 4.2)
+    );
+    return clamp(color, 0.0, 1.0);
+}
+
+float hash12(float2 p) {
+    float h = dot(p, float2(127.1, 311.7));
+    return fract(sin(h) * 43758.5453);
+}
+
+float noise(float2 p) {
+    float2 i = floor(p);
+    float2 f = fract(p);
+
+    float a = hash12(i);
+    float b = hash12(i + float2(1.0, 0.0));
+    float c = hash12(i + float2(0.0, 1.0));
+    float d = hash12(i + float2(1.0, 1.0));
+
+    float2 u = f * f * (3.0 - 2.0 * f);
+    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+
+float fbm(float2 p) {
+    float value = 0.0;
+    float amplitude = 0.5;
+    for (int i = 0; i < 5; ++i) {
+        value += amplitude * noise(p);
+        p *= 2.05;
+        amplitude *= 0.5;
+    }
+    return value;
+}
+
 half4 main(float2 fragCoord) {
     if (u_resolution.x <= 0.0 || u_resolution.y <= 0.0) {
         return half4(0.0, 0.0, 0.0, 1.0);
@@ -111,70 +165,82 @@ half4 main(float2 fragCoord) {
 
     int binCount = u_binCount > 1 ? u_binCount : 1;
     float binCountF = float(binCount);
-    float binWidth = 1.0 / binCountF;
-    int binIndex = clampIndex(int(floor(normalizedAngle * binCountF)));
+    float binCoordinate = normalizedAngle * binCountF;
+    float binMix = fract(binCoordinate);
+    int index0 = wrapIndex(int(floor(binCoordinate)));
+    int index1 = wrapIndex(index0 + 1);
+    int indexNeg1 = wrapIndex(index0 - 1);
+    int index2 = wrapIndex(index0 + 2);
+    int indexNeg2 = wrapIndex(index0 - 2);
 
-    float level = readBin(binIndex);
-    float boosted = clamp(level * (0.85 + u_amplitude * 0.5), 0.0, 1.0);
+    float weightNeg2 = (1.0 - binMix) * (1.0 - binMix) * 0.05;
+    float weightNeg1 = (1.0 - binMix) * 0.3;
+    float weight0 = 0.35;
+    float weight1 = binMix * 0.3;
+    float weight2 = binMix * binMix * 0.05;
+
+    float sumWeights = weightNeg2 + weightNeg1 + weight0 + weight1 + weight2;
+    if (sumWeights <= 0.0) {
+        sumWeights = 1.0;
+    }
+
+    float audioLevel = (
+        readBin(indexNeg2) * weightNeg2 +
+        readBin(indexNeg1) * weightNeg1 +
+        readBin(index0) * weight0 +
+        readBin(index1) * weight1 +
+        readBin(index2) * weight2
+    ) / sumWeights;
+    audioLevel = clamp(audioLevel, 0.0, 1.0);
+    float boosted = clamp(audioLevel * (0.95 + u_amplitude * 0.55), 0.0, 1.15);
     float flameStrength = pow(boosted, 0.9);
 
     float energy = averageEnergy();
+    float amplitude = clamp(u_amplitude * 0.65 + energy * 0.6, 0.0, 1.6);
 
-    float lane = binCount > 1 ? float(binIndex) / float(binCount - 1) : 0.0;
-    float3 gradient = barPalette(lane);
-    float3 fireAccent = float3(0.992, 0.612, 0.212);
-    gradient = mix(gradient, fireAccent, smoothstep(0.45, 1.0, lane) * 0.45);
+    float lane = normalizedAngle;
+    float3 gradient = ringPalette(lane);
+    float accentWave = 0.5 + 0.5 * sin((lane + audioLevel * 0.15) * (2.0 * PI));
+    float3 fireAccent = float3(0.98, 0.74, 0.32);
+    gradient = mix(gradient, fireAccent, pow(accentWave, 2.0) * 0.35);
 
-    float pulse = clamp(energy * 1.4 + u_amplitude * 0.35, 0.0, 1.3);
-    float minInner = 0.16;
-    float innerRadius = minInner + pulse * 0.05;
-    float maxRadius = innerRadius + 0.28;
+    float baseRadius = 0.24 + amplitude * 0.08;
+    float outerRadius = baseRadius + 0.28 + flameStrength * 0.15;
 
-    float temporalWarp = sin(u_time * (0.8 + energy * 1.4) + lane * 5.3);
-    float flicker = 0.035 * temporalWarp + 0.028 * sin(u_time * (1.6 + lane * 2.2));
-    float laneVariation = (0.5 + 0.5 * sin(lane * 24.0 + u_time * 1.2)) * 0.08 - 0.04;
-    float flameReach = flameStrength + flicker + laneVariation;
-    flameReach = clamp(flameReach, 0.0, 1.0);
+    float radial = dist - baseRadius;
+    float radialAbs = abs(radial);
 
-    float flameCurve = pow(clamp(dist - innerRadius, 0.0, 1.0), 0.65);
-    float curvedReach = innerRadius + (maxRadius - innerRadius) * clamp(flameReach, 0.0, 1.0);
+    float2 flowUV = float2(normalizedAngle * 8.0, u_time * 0.55 + amplitude * 0.1);
+    float flowNoise = fbm(flowUV);
+    float detailNoise = fbm(float2(normalizedAngle * 28.0, radial * 18.0 - u_time * 1.35));
+    float swirlNoise = fbm(centered * 3.1 + float2(0.0, u_time * 0.35));
+    float combinedNoise = clamp(flowNoise * 0.6 + detailNoise * 0.5 + swirlNoise * 0.25, 0.0, 1.4);
+    combinedNoise = clamp(combinedNoise, 0.0, 1.0);
 
-    float radiusOuter = curvedReach;
-    float radiusInner = innerRadius;
-    float radialFill = 1.0 - smoothstep(curvedReach, curvedReach + 0.04, dist);
-    float innerMask = 1.0 - smoothstep(radiusInner - 0.01, radiusInner + 0.01, dist);
-    float coreMask = smoothstep(innerRadius, innerRadius - 0.022, dist);
+    float flameThickness = 0.045 + amplitude * 0.09 + flameStrength * 0.24;
+    float dynamicThickness = flameThickness * (0.8 + combinedNoise * 0.7);
+    float flameMask = clamp(1.0 - radialAbs / max(dynamicThickness, 0.0005), 0.0, 1.0);
+    flameMask = pow(flameMask, 1.55);
 
-    float binStart = float(binIndex) / binCountF;
-    float binEnd = float(binIndex + 1) / binCountF;
-    float binCenter = (binStart + binEnd) * 0.5;
-    float usableWidth = binWidth * mix(0.58, 0.9, clamp(flameStrength, 0.0, 1.0));
-    float angleDelta = wrapDistance(normalizedAngle, binCenter);
-    float angularMask = smoothstep(usableWidth * 0.5, usableWidth * 0.48, angleDelta);
+    float baseRing = smoothstep(dynamicThickness * 0.85, dynamicThickness * 0.18, radialAbs);
+    float outerGlow = 0.02;
+    float coreShadowMask = smoothstep(baseRadius - 0.02, baseRadius - 0.06, dist);
 
-    float flameMask = radialFill * angularMask * innerMask;
-    float embers = smoothstep(curvedReach + 0.04, curvedReach - 0.02, dist) * angularMask;
-
-    float3 baseColor = float3(0.01, 0.015, 0.04);
-    float vignette = 1.0 - smoothstep(maxRadius, maxRadius + 0.25, dist);
-    baseColor *= vignette;
-
-    float laneNoise = 0.5 + 0.5 * sin(lane * 28.0 + u_time * 2.4);
-    float radialNoise = 0.5 + 0.5 * sin((dist - innerRadius) * 36.0 - u_time * 1.8);
-    float flameNoise = mix(laneNoise, radialNoise, 0.5) * (0.65 + flameStrength * 0.35);
-    flameNoise = pow(clamp(flameNoise, 0.0, 1.2), 1.45);
-    float flameFeather = mix(0.58, 0.18, clamp(flameStrength, 0.0, 1.0));
-    float noiseMask = smoothstep(flameFeather, 1.0, flameNoise + flameStrength * 0.32);
-    flameMask *= noiseMask;
-
-    float3 flameColor = mix(gradient, float3(1.0, 0.9, 0.6), clamp(flameStrength * 0.6, 0.0, 1.0));
-    float3 glowColor = mix(flameColor, float3(1.0), 0.35);
+    float3 baseColor = float3(0.01, 0.01, 0.03);
+    float3 emberColor = mix(gradient, float3(1.0, 0.46, 0.12), combinedNoise * 0.4 + flameMask * 0.4);
+    float3 hotColor = float3(1.0, 0.94, 0.78);
 
     float3 color = baseColor;
-    color = mix(color, flameColor, flameMask);
-    color += glowColor * embers * 0.5;
-    float3 coreColor = float3(0.0, 0.0, 0.0);
-    color = mix(color, coreColor, coreMask);
+    color = mix(color, emberColor, clamp(baseRing + flameMask, 0.0, 1.0));
+    color += hotColor * pow(flameMask, 2.2) * 0.7;
+    color += emberColor * outerGlow;
+
+    float sparkNoise = fbm(float2(normalizedAngle * 54.0, u_time * 3.2 - radial * 26.0));
+    float sparks = pow(max(sparkNoise - 0.62, 0.0), 4.2) * clamp(audioLevel * 1.3 + amplitude * 0.35, 0.0, 1.0);
+    color += sparks * float3(1.0, 0.88, 0.64);
+
+    float3 shadowColor = float3(0.02, 0.02, 0.05);
+    color = mix(color, shadowColor, coreShadowMask * (1.0 - flameMask));
 
     color = clamp(color, 0.0, 1.0);
     return half4(color, 1.0);
