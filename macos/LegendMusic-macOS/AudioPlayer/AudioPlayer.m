@@ -4,10 +4,160 @@
 #import <AppKit/AppKit.h>
 #import <MediaToolbox/MediaToolbox.h>
 #import <math.h>
+#import <stdatomic.h>
 
 typedef struct {
     __unsafe_unretained AudioPlayer *audioPlayer;
 } VisualizerTapContext;
+
+typedef struct {
+    float *data;
+    size_t capacity;
+    atomic_uint_fast64_t writeOffset;
+    atomic_uint_fast64_t readOffset;
+} VisualizerRingBuffer;
+
+static inline void VisualizerRingBufferInitialize(VisualizerRingBuffer *ring)
+{
+    ring->data = NULL;
+    ring->capacity = 0;
+    atomic_store_explicit(&ring->writeOffset, 0, memory_order_relaxed);
+    atomic_store_explicit(&ring->readOffset, 0, memory_order_relaxed);
+}
+
+static inline void VisualizerRingBufferReset(VisualizerRingBuffer *ring)
+{
+    if (!ring) {
+        return;
+    }
+    atomic_store_explicit(&ring->writeOffset, 0, memory_order_release);
+    atomic_store_explicit(&ring->readOffset, 0, memory_order_release);
+}
+
+static inline void VisualizerRingBufferDeallocate(VisualizerRingBuffer *ring)
+{
+    if (!ring) {
+        return;
+    }
+    if (ring->data) {
+        free(ring->data);
+        ring->data = NULL;
+    }
+    ring->capacity = 0;
+    VisualizerRingBufferReset(ring);
+}
+
+static inline BOOL VisualizerRingBufferEnsureCapacity(VisualizerRingBuffer *ring, size_t capacity)
+{
+    if (!ring) {
+        return NO;
+    }
+    if (capacity == 0) {
+        capacity = 1;
+    }
+    if (ring->capacity >= capacity) {
+        return YES;
+    }
+
+    float *newData = calloc(capacity, sizeof(float));
+    if (!newData) {
+        return NO;
+    }
+
+    if (ring->data) {
+        free(ring->data);
+    }
+
+    ring->data = newData;
+    ring->capacity = capacity;
+    VisualizerRingBufferReset(ring);
+    return YES;
+}
+
+static inline size_t VisualizerRingBufferReadable(const VisualizerRingBuffer *ring)
+{
+    if (!ring || ring->capacity == 0) {
+        return 0;
+    }
+    uint64_t writeOffset = atomic_load_explicit(&ring->writeOffset, memory_order_acquire);
+    uint64_t readOffset = atomic_load_explicit(&ring->readOffset, memory_order_acquire);
+    if (writeOffset <= readOffset) {
+        return 0;
+    }
+    return (size_t)(writeOffset - readOffset);
+}
+
+static inline size_t VisualizerRingBufferWritable(const VisualizerRingBuffer *ring)
+{
+    if (!ring || ring->capacity == 0) {
+        return 0;
+    }
+    size_t readable = VisualizerRingBufferReadable(ring);
+    if (readable >= ring->capacity) {
+        return 0;
+    }
+    return ring->capacity - readable;
+}
+
+static inline size_t VisualizerRingBufferWrite(VisualizerRingBuffer *ring, const float *samples, size_t count)
+{
+    if (!ring || !ring->data || ring->capacity == 0 || !samples || count == 0) {
+        return 0;
+    }
+
+    if (count > ring->capacity) {
+        samples = samples + (count - ring->capacity);
+        count = ring->capacity;
+    }
+
+    size_t writable = VisualizerRingBufferWritable(ring);
+    if (count > writable) {
+        size_t drop = count - writable;
+        atomic_fetch_add_explicit(&ring->readOffset, drop, memory_order_release);
+    }
+
+    uint64_t writeOffset = atomic_load_explicit(&ring->writeOffset, memory_order_acquire);
+    size_t startIndex = (size_t)(writeOffset % ring->capacity);
+    size_t firstChunk = MIN(count, ring->capacity - startIndex);
+    memcpy(ring->data + startIndex, samples, firstChunk * sizeof(float));
+    size_t remaining = count - firstChunk;
+    if (remaining > 0) {
+        memcpy(ring->data, samples + firstChunk, remaining * sizeof(float));
+    }
+
+    atomic_fetch_add_explicit(&ring->writeOffset, count, memory_order_release);
+    return count;
+}
+
+static inline BOOL VisualizerRingBufferCopy(const VisualizerRingBuffer *ring, float *destination, size_t count)
+{
+    if (!ring || !ring->data || ring->capacity == 0 || !destination || count == 0) {
+        return NO;
+    }
+
+    size_t readable = VisualizerRingBufferReadable(ring);
+    if (readable < count) {
+        return NO;
+    }
+
+    uint64_t readOffset = atomic_load_explicit(&ring->readOffset, memory_order_acquire);
+    size_t startIndex = (size_t)(readOffset % ring->capacity);
+    size_t firstChunk = MIN(count, ring->capacity - startIndex);
+    memcpy(destination, ring->data + startIndex, firstChunk * sizeof(float));
+    size_t remaining = count - firstChunk;
+    if (remaining > 0) {
+        memcpy(destination + firstChunk, ring->data, remaining * sizeof(float));
+    }
+    return YES;
+}
+
+static inline void VisualizerRingBufferConsume(VisualizerRingBuffer *ring, size_t count)
+{
+    if (!ring || count == 0) {
+        return;
+    }
+    atomic_fetch_add_explicit(&ring->readOffset, count, memory_order_release);
+}
 
 static const NSUInteger kDefaultVisualizerFFTSize = 1024;
 static const NSUInteger kDefaultVisualizerBinCount = 64;
@@ -40,7 +190,6 @@ static const float kVisualizerResponseGamma = 0.85f;
 @property (nonatomic, strong) NSMutableData *visualizerMagnitudes;
 @property (nonatomic, strong) NSMutableData *visualizerSmoothedBins;
 @property (nonatomic, strong) NSMutableData *visualizerFrameBuffer;
-@property (nonatomic, strong) NSMutableData *visualizerAccumulator;
 @property (nonatomic, strong) NSMutableData *visualizerScratchMono;
 @property (nonatomic, strong) NSMutableData *visualizerBinStartIndices;
 @property (nonatomic, strong) NSMutableData *visualizerBinEndIndices;
@@ -51,7 +200,8 @@ static const float kVisualizerResponseGamma = 0.85f;
 - (void)removeVisualizerTap;
 - (void)resetVisualizerProcessingState;
 - (void)handleVisualizerBuffer:(AudioBufferList *)bufferList frameCount:(UInt32)frameCount;
-- (void)enqueueVisualizerSamples:(const float *)samples frameCount:(NSUInteger)frameCount;
+- (void)scheduleVisualizerDrain;
+- (void)drainVisualizerRingBuffer;
 - (void)processVisualizerFrameWithSamples:(const float *)samples;
 - (void)rebuildVisualizerFFTResources;
 - (void)recalculateVisualizerBinMappingWithSpectrumSize:(NSUInteger)spectrumSize;
@@ -138,7 +288,10 @@ static void VisualizerTapProcess(MTAudioProcessingTapRef tap,
     [audioPlayer handleVisualizerBuffer:bufferListInOut frameCount:(UInt32)retrievedFrames];
 }
 
-@implementation AudioPlayer
+@implementation AudioPlayer {
+    atomic_flag _visualizerDrainScheduled;
+    VisualizerRingBuffer _visualizerRingBuffer;
+}
 
 RCT_EXPORT_MODULE();
 
@@ -164,6 +317,8 @@ RCT_EXPORT_MODULE();
 {
     self = [super init];
     if (self) {
+        atomic_flag_clear(&_visualizerDrainScheduled);
+        VisualizerRingBufferInitialize(&_visualizerRingBuffer);
         [self setupPlayer];
         _isPlaying = NO;
         _duration = 0;
@@ -256,11 +411,14 @@ RCT_EXPORT_MODULE();
     self.visualizerSmoothedBins = [NSMutableData dataWithLength:self.visualizerBinCount * sizeof(float)];
     memset(self.visualizerSmoothedBins.mutableBytes, 0, self.visualizerSmoothedBins.length);
 
-    if (!self.visualizerAccumulator) {
-        self.visualizerAccumulator = [NSMutableData data];
-    } else {
-        [self.visualizerAccumulator setLength:0];
+    size_t ringCapacity = (size_t)(fftSize * 4);
+    if (ringCapacity < (size_t)(fftSize + self.visualizerHopSize * 2)) {
+        ringCapacity = (size_t)(fftSize + self.visualizerHopSize * 2);
     }
+    if (!VisualizerRingBufferEnsureCapacity(&_visualizerRingBuffer, ringCapacity)) {
+        RCTLogError(@"Visualizer: Failed to allocate ring buffer of size %zu", ringCapacity);
+    }
+    VisualizerRingBufferReset(&_visualizerRingBuffer);
 
     [self recalculateVisualizerBinMappingWithSpectrumSize:spectrumSize];
 }
@@ -359,23 +517,22 @@ RCT_EXPORT_MODULE();
     self.visualizerFFTSize = kDefaultVisualizerFFTSize;
     self.visualizerBinCount = kDefaultVisualizerBinCount;
     self.visualizerSmoothingFactor = kDefaultVisualizerSmoothing;
-    self.visualizerAccumulator = [NSMutableData data];
     self.visualizerCPUOverrunFrames = 0;
     self.visualizerBinStartIndices = nil;
     self.visualizerBinEndIndices = nil;
+    VisualizerRingBufferReset(&_visualizerRingBuffer);
     [self rebuildVisualizerFFTResources];
 }
 
 - (void)resetVisualizerProcessingState
 {
     self.visualizerLastEmitTime = 0;
-    if (self.visualizerAccumulator) {
-        [self.visualizerAccumulator setLength:0];
-    }
+    VisualizerRingBufferReset(&_visualizerRingBuffer);
     if (self.visualizerSmoothedBins.length > 0) {
         memset(self.visualizerSmoothedBins.mutableBytes, 0, self.visualizerSmoothedBins.length);
     }
     self.visualizerCPUOverrunFrames = 0;
+    atomic_flag_clear_explicit(&_visualizerDrainScheduled, memory_order_release);
 }
 
 #pragma mark - Remote Commands & Now Playing
@@ -584,8 +741,9 @@ RCT_EXPORT_MODULE();
         return;
     }
 
-    if (self.visualizerScratchMono.length < frameCount * sizeof(float)) {
-        self.visualizerScratchMono.length = frameCount * sizeof(float);
+    size_t requiredScratchSize = (size_t)frameCount * sizeof(float);
+    if (self.visualizerScratchMono.length < requiredScratchSize) {
+        self.visualizerScratchMono.length = requiredScratchSize;
     }
 
     float *monoPtr = (float *)self.visualizerScratchMono.mutableBytes;
@@ -593,7 +751,7 @@ RCT_EXPORT_MODULE();
         return;
     }
 
-    memset(monoPtr, 0, frameCount * sizeof(float));
+    vDSP_vclr(monoPtr, 1, frameCount);
 
     AudioBuffer buffer = bufferList->mBuffers[0];
     BOOL interleaved = (numberBuffers == 1 && buffer.mNumberChannels > 1);
@@ -601,74 +759,110 @@ RCT_EXPORT_MODULE();
     if (interleaved) {
         float *samples = (float *)buffer.mData;
         UInt32 channels = MAX(1u, buffer.mNumberChannels);
-        for (UInt32 frame = 0; frame < frameCount; frame++) {
-            float sum = 0;
-            UInt32 baseIndex = frame * channels;
-            for (UInt32 channel = 0; channel < channels; channel++) {
-                sum += samples[baseIndex + channel];
-            }
-            monoPtr[frame] = sum / channels;
+        if (!samples) {
+            return;
         }
+
+        size_t availableFrames = (channels > 0) ? (buffer.mDataByteSize / (sizeof(float) * channels)) : 0;
+        size_t framesToProcess = MIN((size_t)frameCount, availableFrames);
+        if (framesToProcess == 0) {
+            return;
+        }
+
+        float addFactor = 1.0f;
+        for (UInt32 channel = 0; channel < channels; channel++) {
+            vDSP_vsma(samples + channel, channels, &addFactor, monoPtr, 1, monoPtr, 1, framesToProcess);
+        }
+
+        float scale = (channels > 0) ? (1.0f / (float)channels) : 1.0f;
+        vDSP_vsmul(monoPtr, 1, &scale, monoPtr, 1, framesToProcess);
     } else {
+        NSUInteger contributingBuffers = 0;
         for (UInt32 bufferIndex = 0; bufferIndex < numberBuffers; bufferIndex++) {
             AudioBuffer currentBuffer = bufferList->mBuffers[bufferIndex];
-            float *samples = (float *)currentBuffer.mData;
+            const float *samples = (const float *)currentBuffer.mData;
+            if (!samples) {
+                continue;
+            }
+
             UInt32 channels = MAX(1u, currentBuffer.mNumberChannels);
-            for (UInt32 frame = 0; frame < frameCount; frame++) {
-                UInt32 sampleIndex = frame * channels;
-                if (sampleIndex < currentBuffer.mDataByteSize / sizeof(float)) {
-                    monoPtr[frame] += samples[sampleIndex];
+            size_t availableFrames = (channels > 0)
+                                         ? (currentBuffer.mDataByteSize / (sizeof(float) * channels))
+                                         : 0;
+            size_t framesToProcess = MIN((size_t)frameCount, availableFrames);
+            if (framesToProcess == 0) {
+                continue;
+            }
+
+            float addFactor = 1.0f;
+            if (channels == 1) {
+                vDSP_vsma(samples, 1, &addFactor, monoPtr, 1, monoPtr, 1, framesToProcess);
+            } else {
+                for (UInt32 channel = 0; channel < channels; channel++) {
+                    vDSP_vsma(samples + channel, channels, &addFactor, monoPtr, 1, monoPtr, 1, framesToProcess);
                 }
             }
+            contributingBuffers += 1;
         }
 
-        for (UInt32 frame = 0; frame < frameCount; frame++) {
-            monoPtr[frame] /= numberBuffers;
-        }
+        float scale = (contributingBuffers > 0) ? (1.0f / (float)contributingBuffers) : 1.0f;
+        vDSP_vsmul(monoPtr, 1, &scale, monoPtr, 1, frameCount);
     }
 
-    NSData *copy = [NSData dataWithBytes:monoPtr length:frameCount * sizeof(float)];
-    if (!copy) {
+    size_t minimumCapacity = MAX((size_t)(self.visualizerFFTSize * 4), (size_t)frameCount + self.visualizerFFTSize);
+    if (!VisualizerRingBufferEnsureCapacity(&_visualizerRingBuffer, minimumCapacity)) {
         return;
     }
+    VisualizerRingBufferWrite(&_visualizerRingBuffer, monoPtr, frameCount);
 
-    dispatch_async(self.visualizerQueue, ^{
-        [self enqueueVisualizerSamples:(const float *)copy.bytes frameCount:frameCount];
-    });
+    [self scheduleVisualizerDrain];
 }
 
-- (void)enqueueVisualizerSamples:(const float *)samples frameCount:(NSUInteger)frameCount
+- (void)scheduleVisualizerDrain
 {
-    if (!samples || frameCount == 0 || !self.visualizerEnabled) {
+    if (!self.visualizerQueue || !self.visualizerEnabled) {
         return;
     }
 
-    if (!self.visualizerAccumulator) {
-        self.visualizerAccumulator = [NSMutableData data];
+    if (!atomic_flag_test_and_set_explicit(&_visualizerDrainScheduled, memory_order_acq_rel)) {
+        dispatch_async(self.visualizerQueue, ^{
+            [self drainVisualizerRingBuffer];
+            atomic_flag_clear_explicit(&_visualizerDrainScheduled, memory_order_release);
+        });
     }
+}
 
-    [self.visualizerAccumulator appendBytes:samples length:frameCount * sizeof(float)];
-
-    NSUInteger totalSamples = self.visualizerAccumulator.length / sizeof(float);
-    if (totalSamples < self.visualizerFFTSize) {
+- (void)drainVisualizerRingBuffer
+{
+    if (!self.visualizerEnabled) {
+        VisualizerRingBufferReset(&_visualizerRingBuffer);
         return;
     }
 
-    float *accumulated = (float *)self.visualizerAccumulator.mutableBytes;
-    while (totalSamples >= self.visualizerFFTSize) {
-        [self processVisualizerFrameWithSamples:accumulated];
+    NSUInteger fftSize = self.visualizerFFTSize;
+    NSUInteger hopSize = self.visualizerHopSize;
+    if (fftSize == 0 || hopSize == 0) {
+        return;
+    }
 
-        if (totalSamples <= self.visualizerHopSize) {
-            totalSamples = 0;
-            [self.visualizerAccumulator setLength:0];
+    const size_t requiredFrameBytes = (size_t)fftSize * sizeof(float);
+
+    while (VisualizerRingBufferReadable(&_visualizerRingBuffer) >= fftSize) {
+        if (self.visualizerFrameBuffer.length < requiredFrameBytes) {
+            self.visualizerFrameBuffer.length = requiredFrameBytes;
+        }
+
+        float *frameBuffer = (float *)self.visualizerFrameBuffer.mutableBytes;
+        if (!frameBuffer) {
             break;
         }
 
-        NSUInteger remainingSamples = totalSamples - self.visualizerHopSize;
-        memmove(accumulated, accumulated + self.visualizerHopSize, remainingSamples * sizeof(float));
-        [self.visualizerAccumulator setLength:remainingSamples * sizeof(float)];
-        totalSamples = remainingSamples;
-        accumulated = (float *)self.visualizerAccumulator.mutableBytes;
+        if (!VisualizerRingBufferCopy(&_visualizerRingBuffer, frameBuffer, fftSize)) {
+            break;
+        }
+
+        [self processVisualizerFrameWithSamples:frameBuffer];
+        VisualizerRingBufferConsume(&_visualizerRingBuffer, hopSize);
     }
 }
 
@@ -807,9 +1001,7 @@ RCT_EXPORT_MODULE();
             memset(self.visualizerSmoothedBins.mutableBytes, 0, self.visualizerSmoothedBins.length);
             [self recalculateVisualizerBinMappingWithSpectrumSize:spectrumSize];
         }
-        if (self.visualizerAccumulator) {
-            [self.visualizerAccumulator setLength:0];
-        }
+        VisualizerRingBufferReset(&_visualizerRingBuffer);
         self.visualizerThrottleInterval = MAX(self.visualizerThrottleInterval, 0.05);
         RCTLogWarn(@"Visualizer processing taking %.2f ms, reducing resolution to %lu bins and throttle %.0f ms",
                    processDuration * 1000.0,
@@ -952,6 +1144,7 @@ RCT_EXPORT_MODULE();
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     [self teardownRemoteCommands];
     [self removeVisualizerTap];
+    VisualizerRingBufferDeallocate(&_visualizerRingBuffer);
     if (self.visualizerFFTSetup) {
         vDSP_destroy_fftsetup(self.visualizerFFTSetup);
         self.visualizerFFTSetup = NULL;

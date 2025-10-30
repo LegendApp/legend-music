@@ -33,7 +33,7 @@ Eliminate the most expensive work in the macOS audio → shader pipeline so visu
 - Include target budgets in docs: ≤4 ms native analysis, ≤2 ms JS uniform updates, stable 60 fps render.
 
 ## Steps
-- [ ] Implement ring buffer + overlap-save windowing; vectorize mono mixing with Accelerate.
+- [x] Implement ring buffer + overlap-save windowing; vectorize mono mixing with Accelerate.
 - [ ] Optimize binning: prefix sums or vectorized dB mapping + precomputed emphasis/gamma.
 - [ ] Unify cadence defaults at 16 ms and add adaptive backoff before reducing bins.
 - [ ] Redesign bridge payload (NSData floats or quantized) and document wire format.
