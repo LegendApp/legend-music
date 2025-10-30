@@ -1,13 +1,13 @@
 #!/usr/bin/env bun
 
-import { spawnSync } from 'node:child_process';
-import { existsSync, rmSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { spawnSync } from "node:child_process";
+import { existsSync, rmSync } from "node:fs";
+import { join, resolve } from "node:path";
 
 function execCommand(command: string, args: string[], errorMessage: string) {
-    console.log(`Executing: ${command} ${args.join(' ')}`);
+    console.log(`Executing: ${command} ${args.join(" ")}`);
     const result = spawnSync(command, args, {
-        stdio: 'inherit',
+        stdio: "inherit",
         cwd: process.cwd(),
     });
 
@@ -24,38 +24,39 @@ function log(message: string) {
 }
 
 function main() {
-    const PROJECT_ROOT = resolve(__dirname, '..');
-    const MACOS_DIR = join(PROJECT_ROOT, 'macos');
-    const RELEASE_APP_PATH = join(MACOS_DIR, 'build/Build/Products/Release/Legend Hub.app');
+    const PROJECT_ROOT = resolve(__dirname, "..");
+    const MACOS_DIR = join(PROJECT_ROOT, "macos");
+    const RELEASE_APP_PATH = join(MACOS_DIR, "build/Build/Products/Release/Legend Hub.app");
 
     // Change directory to macos
     process.chdir(MACOS_DIR);
-    log('Changed directory to macos');
+    log("Changed directory to macos");
 
     // Remove previous Release build if it exists
     if (existsSync(RELEASE_APP_PATH)) {
-        log('Removing previous Release build');
+        log("Removing previous Release build");
         rmSync(RELEASE_APP_PATH, { recursive: true, force: true });
     }
 
     // Run xcodebuild
-    log('Building app with xcodebuild');
+    log("Building app with xcodebuild");
     execCommand(
-        'xcodebuild',
+        "xcodebuild",
         [
-            '-workspace',
-            'LegendMusic.xcworkspace',
-            '-scheme',
-            'LegendMusic-macOS',
-            '-configuration',
-            'Release',
-            '-derivedDataPath',
-            './build',
+            "-workspace",
+            "LegendMusic.xcworkspace",
+            "-scheme",
+            "LegendMusic-macOS",
+            "-configuration",
+            "Release",
+            "-derivedDataPath",
+            "./build",
+            "ONLY_ACTIVE_ARCH=YES",
         ],
-        'Error building app:',
+        "Error building app:",
     );
 
-    log('Build completed successfully');
+    log("Build completed successfully");
 }
 
 // Run the script
