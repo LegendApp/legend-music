@@ -14,11 +14,6 @@ const DEFAULT_BIN_COUNT = 96;
 const DEFAULT_SMOOTHING = 0.6;
 const DEFAULT_THROTTLE_MS = 16;
 const DEFAULT_BACKGROUND = "#020617";
-const BIN_ATTACK = 0.55;
-const BIN_RELEASE = 0.18;
-const AMPLITUDE_ATTACK = 0.45;
-const AMPLITUDE_RELEASE = 0.18;
-
 const computeFftSize = (binCount: number) => {
     const minimum = Math.max(256, binCount * 16);
     const power = Math.ceil(Math.log2(minimum));
@@ -96,7 +91,6 @@ export function ShaderSurface({ definition, style, binCountOverride }: ShaderSur
     extendUniformsRef.current = extendUniforms;
 
     const binsBufferRef = useRef<Float32Array>(createEmptyBins(maxUniformBins));
-    const smoothedBinsRef = useRef<Float32Array>(createEmptyBins(maxUniformBins));
 
     const baseUniformRef = useRef<BaseUniformState>({
         resolution: [0, 0],
@@ -105,7 +99,8 @@ export function ShaderSurface({ definition, style, binCountOverride }: ShaderSur
         binCount: resolvedBinCount,
         bins: binsBufferRef.current,
     });
-    const smoothedAmplitudeRef = useRef(0);
+    const startTimestampRef = useRef<number | null>(null);
+    const fallbackStartMsRef = useRef<number | null>(null);
 
     const buildUniforms = useCallback((base: BaseUniformState): Uniforms => {
         const result: Uniforms = {
@@ -148,12 +143,7 @@ export function ShaderSurface({ definition, style, binCountOverride }: ShaderSur
         if (binsBufferRef.current.length !== maxUniformBins) {
             binsBufferRef.current = createEmptyBins(maxUniformBins);
         }
-        if (smoothedBinsRef.current.length !== maxUniformBins) {
-            smoothedBinsRef.current = createEmptyBins(maxUniformBins);
-        }
-
         binsBufferRef.current.fill(0);
-        smoothedBinsRef.current.fill(0);
 
         applyUniforms((base) => {
             base.binCount = resolvedBinCount;
@@ -178,30 +168,6 @@ export function ShaderSurface({ definition, style, binCountOverride }: ShaderSur
         },
         [applyUniforms],
     );
-
-    useEffect(() => {
-        if (!runtime.effect) {
-            return;
-        }
-
-        let frameId: number;
-        const start = Date.now();
-
-        const tick = () => {
-            const now = Date.now();
-            applyUniforms((base) => {
-                base.time = (now - start) / 1000;
-            });
-            frameId = requestAnimationFrame(tick);
-        };
-
-        frameId = requestAnimationFrame(tick);
-
-        return () => {
-            cancelAnimationFrame(frameId);
-        };
-    }, [runtime.effect, applyUniforms]);
-
     useEffect(() => {
         if (!runtime.effect) {
             return;
@@ -252,10 +218,13 @@ export function ShaderSurface({ definition, style, binCountOverride }: ShaderSur
             let amplitude = frame.rms ?? 0;
             let incomingBins: Float32Array | null = null;
             let sourceCount = 0;
+            let frameTimestamp = typeof frame.timestamp === "number" ? frame.timestamp : null;
 
             const legendModule = (
                 globalThis as {
-                    LegendAudioVisualizer?: { getFrame?: () => { bins?: unknown; binCount?: number; rms?: number } };
+                    LegendAudioVisualizer?: {
+                        getFrame?: () => { bins?: unknown; binCount?: number; rms?: number; timestamp?: number };
+                    };
                 }
             ).LegendAudioVisualizer;
 
@@ -278,6 +247,9 @@ export function ShaderSurface({ definition, style, binCountOverride }: ShaderSur
                         if (typeof typedFrame.rms === "number") {
                             amplitude = typedFrame.rms;
                         }
+                        if (typeof typedFrame.timestamp === "number") {
+                            frameTimestamp = typedFrame.timestamp;
+                        }
                     }
                 } catch (_error) {
                     // Ignore binding fetch errors and fall back to payload decoding.
@@ -296,46 +268,47 @@ export function ShaderSurface({ definition, style, binCountOverride }: ShaderSur
             const bins = binsBufferRef.current;
 
             if (incomingBins && sourceCount > 0) {
-                const sourceRange = Math.max(sourceCount - 1, 1);
-                for (let i = 0; i < targetCount; i += 1) {
-                    const normalized = targetCount > 1 ? i / (targetCount - 1) : 0;
-                    const mapped = normalized * sourceRange;
-                    const leftIndex = Math.floor(mapped);
-                    const rightIndex = Math.min(sourceCount - 1, leftIndex + 1);
-                    const mix = mapped - leftIndex;
-                    const leftValue = incomingBins[leftIndex] ?? 0;
-                    const rightValue = incomingBins[rightIndex] ?? 0;
-                    const sample = leftValue + (rightValue - leftValue) * mix;
-                    const current = smoothedBinsRef.current[i] ?? 0;
-                    const delta = sample - current;
-                    const smoothing = delta > 0 ? BIN_ATTACK : BIN_RELEASE;
-                    const next = current + delta * smoothing;
-                    smoothedBinsRef.current[i] = next;
-                    bins[i] = next;
+                if (sourceCount === targetCount) {
+                    bins.set(incomingBins.subarray(0, targetCount));
+                } else {
+                    const sourceRange = Math.max(sourceCount - 1, 1);
+                    for (let i = 0; i < targetCount; i += 1) {
+                        const normalized = targetCount > 1 ? i / (targetCount - 1) : 0;
+                        const mapped = normalized * sourceRange;
+                        const leftIndex = Math.floor(mapped);
+                        const rightIndex = Math.min(sourceCount - 1, leftIndex + 1);
+                        const mix = mapped - leftIndex;
+                        const leftValue = incomingBins[leftIndex] ?? 0;
+                        const rightValue = incomingBins[rightIndex] ?? 0;
+                        bins[i] = leftValue + (rightValue - leftValue) * mix;
+                    }
                 }
             } else {
-                for (let i = 0; i < targetCount; i += 1) {
-                    smoothedBinsRef.current[i] = 0;
-                    bins[i] = 0;
-                }
+                bins.fill(0, 0, targetCount);
                 amplitude = 0;
             }
 
-            for (let i = targetCount; i < maxUniformBins; i += 1) {
-                smoothedBinsRef.current[i] = 0;
-                bins[i] = 0;
+            bins.fill(0, targetCount, maxUniformBins);
+
+            let uniformTime = baseUniformRef.current.time;
+            if (frameTimestamp != null) {
+                if (startTimestampRef.current == null) {
+                    startTimestampRef.current = frameTimestamp;
+                }
+                uniformTime = frameTimestamp - startTimestampRef.current!;
+                fallbackStartMsRef.current = null;
+            } else {
+                if (fallbackStartMsRef.current == null) {
+                    fallbackStartMsRef.current = Date.now();
+                }
+                uniformTime = (Date.now() - fallbackStartMsRef.current) / 1000;
             }
 
             applyUniforms((base) => {
                 base.bins = bins;
                 base.binCount = targetCount;
-                const rawAmplitude = amplitude;
-                const current = smoothedAmplitudeRef.current;
-                const delta = rawAmplitude - current;
-                const smoothing = delta > 0 ? AMPLITUDE_ATTACK : AMPLITUDE_RELEASE;
-                const nextAmplitude = current + delta * smoothing;
-                smoothedAmplitudeRef.current = nextAmplitude;
-                base.amplitude = nextAmplitude;
+                base.amplitude = amplitude;
+                base.time = uniformTime;
             });
         });
 

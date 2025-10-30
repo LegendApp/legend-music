@@ -38,5 +38,5 @@ Eliminate the most expensive work in the macOS audio → shader pipeline so visu
 - [x] Unify cadence defaults at 16 ms and add adaptive backoff before reducing bins.
 - [x] Redesign bridge payload (NSData floats or quantized) and document wire format.
 - [x] Add optional JSI typed-array path (Phase 2) to bypass JSON/NSArray.
-- [ ] Streamline `ShaderSurface`: persistent typed array uniform, native-only smoothing, UI-thread time.
+- [x] Streamline `ShaderSurface`: persistent typed array uniform, native-only smoothing, UI-thread time.
 - [ ] Ship profiling docs + debug overlay + `os_signpost` POIs and budgets.
