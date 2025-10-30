@@ -72,55 +72,55 @@ export default function VisualizerWindow() {
     }, []);
 
     return (
-        <View className="flex-1 bg-slate-950/85" onLayout={handleLayout}>
-            <View className="flex-1 p-6 gap-5">
-                <View className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-lg shadow-black/40 gap-4">
-                    <View className="flex-row flex-wrap items-end justify-between gap-4">
-                        <View className="gap-1 flex-1 min-w-[220px]">
-                            <Text className="text-xs uppercase tracking-[0.3em] text-white/40">Now Playing</Text>
-                            <Text className="text-white text-xl font-semibold" numberOfLines={1}>
-                                {track?.title ?? "Waiting for playback"}
-                            </Text>
-                            {trackSubtitle ? (
-                                <Text className="text-white/60 text-sm" numberOfLines={1}>
-                                    {trackSubtitle}
+        <View className="flex-1 bg-slate-950" onLayout={handleLayout}>
+            <View className="flex-1">
+                <PresetComponent style={{ flex: 1 }} binCountOverride={binCount} />
+            </View>
+            {!isPlaying ? (
+                <View className="absolute inset-0 items-center justify-center pointer-events-none">
+                    <Text className="text-white/40 text-sm">Start playback to animate the visualizer</Text>
+                </View>
+            ) : null}
+            <View pointerEvents="box-none" className="absolute inset-0 flex-row">
+                <View className="ml-auto p-6 pointer-events-auto max-w-xl gap-5">
+                    <View className="gap-4">
+                        <View className="flex-row flex-wrap items-end justify-between gap-4">
+                            <View className="gap-1 flex-1 min-w-[220px]">
+                                <Text className="text-white text-xl font-semibold" numberOfLines={1}>
+                                    {track?.title ?? "Waiting for playback"}
                                 </Text>
-                            ) : null}
-                        </View>
-                        <View className="flex-row gap-4 min-w-[200px] flex-wrap justify-end">
-                            <View className="gap-2 min-w-[160px]">
-                                <Text className="text-white/70 text-xs uppercase tracking-[0.25em]">Preset</Text>
-                                <Select
-                                    options={options}
-                                    value={preset.id}
-                                    onValueChange={handlePresetChange}
-                                    triggerClassName="bg-white/10 border-white/15 h-10 px-3 rounded-xl"
-                                    textClassName="text-white text-sm"
-                                />
+                                {trackSubtitle ? (
+                                    <Text className="text-white text-sm" numberOfLines={1}>
+                                        {trackSubtitle}
+                                    </Text>
+                                ) : null}
                             </View>
-                            <View className="gap-2 min-w-[160px]">
-                                <Text className="text-white/70 text-xs uppercase tracking-[0.25em]">
-                                    Frequency Detail
-                                </Text>
-                                <Select
-                                    options={binCountOptions}
-                                    value={String(binCount)}
-                                    onValueChange={handleBinCountChange}
-                                    triggerClassName="bg-white/10 border-white/15 h-10 px-3 rounded-xl"
-                                    textClassName="text-white text-sm"
-                                />
+                            <View className="flex-row gap-4 min-w-[200px] flex-wrap justify-end">
+                                <View className="gap-2 min-w-[160px]">
+                                    <Text className="text-white text-xs uppercase tracking-[0.25em]">Preset</Text>
+                                    <Select
+                                        options={options}
+                                        value={preset.id}
+                                        onValueChange={handlePresetChange}
+                                        triggerClassName="bg-black/60 border-white/25 h-10 px-3 rounded-xl"
+                                        textClassName="text-white text-sm"
+                                    />
+                                </View>
+                                <View className="gap-2 min-w-[160px]">
+                                    <Text className="text-white text-xs uppercase tracking-[0.25em]">
+                                        Frequency Detail
+                                    </Text>
+                                    <Select
+                                        options={binCountOptions}
+                                        value={String(binCount)}
+                                        onValueChange={handleBinCountChange}
+                                        triggerClassName="bg-black/60 border-white/25 h-10 px-3 rounded-xl"
+                                        textClassName="text-white text-sm"
+                                    />
+                                </View>
                             </View>
                         </View>
                     </View>
-                </View>
-
-                <View className="flex-1 rounded-3xl border border-white/10 bg-black/40 overflow-hidden relative">
-                    <PresetComponent style={{ flex: 1 }} binCountOverride={binCount} />
-                    {!isPlaying ? (
-                        <View className="absolute inset-0 items-center justify-center pointer-events-none">
-                            <Text className="text-white/40 text-sm">Start playback to animate the visualizer</Text>
-                        </View>
-                    ) : null}
                 </View>
             </View>
         </View>

@@ -29,7 +29,7 @@ const windowsConfig = {
         loadComponent: () => import("@/visualizer/VisualizerWindow"),
         identifier: "visualizer",
         options: {
-            title: "Visualizer",
+            title: "",
             windowStyle: {
                 width: 780,
                 height: 420,
