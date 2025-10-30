@@ -6,6 +6,8 @@
 #import <math.h>
 #import <stdatomic.h>
 
+#import "AudioPlayer+JSI.h"
+
 typedef struct {
     __unsafe_unretained AudioPlayer *audioPlayer;
 } VisualizerTapContext;
@@ -611,6 +613,7 @@ RCT_EXPORT_MODULE();
     self.visualizerCPUOverrunFrames = 0;
     self.visualizerCPUBudgetRecoveryFrames = 0;
     atomic_flag_clear_explicit(&_visualizerDrainScheduled, memory_order_release);
+    AudioPlayerResetVisualizerJSIState(self);
 }
 
 #pragma mark - Remote Commands & Now Playing
@@ -1166,6 +1169,7 @@ RCT_EXPORT_MODULE();
     }
 
     self.visualizerLastEmitTime = now;
+    AudioPlayerUpdateVisualizerJSIState(self, smoothed, bins, rms, now);
     [self sendVisualizerEventWithRMS:rms bins:smoothed count:bins];
 }
 
@@ -1525,6 +1529,12 @@ RCT_EXPORT_METHOD(configureVisualizer:(NSDictionary *)config
 
         resolve(@{@"success": @YES});
     });
+}
+
+RCT_EXPORT_METHOD(installVisualizerBindings:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+{
+    AudioPlayerScheduleVisualizerJSIInstallation(self, resolve, reject);
 }
 
 RCT_EXPORT_METHOD(updateNowPlayingInfo:(NSDictionary *)info)

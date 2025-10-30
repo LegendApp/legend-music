@@ -91,6 +91,7 @@ export function ShaderSurface({ definition, style, binCountOverride }: ShaderSur
     }, [shader]);
 
     const [runtimeError, setRuntimeError] = useState<string | null>(null);
+    const [jsiBindingsAvailable, setJsiBindingsAvailable] = useState(false);
     const extendUniformsRef = useRef<typeof extendUniforms>(extendUniforms);
     extendUniformsRef.current = extendUniforms;
 
@@ -209,6 +210,25 @@ export function ShaderSurface({ definition, style, binCountOverride }: ShaderSur
         let isMounted = true;
         setRuntimeError(null);
 
+        if (!jsiBindingsAvailable) {
+            audioPlayer
+                .installVisualizerBindings()
+                .then((result) => {
+                    if (!isMounted) {
+                        return;
+                    }
+                    if (result?.installed) {
+                        setJsiBindingsAvailable(true);
+                    }
+                })
+                .catch(() => {
+                    if (!isMounted) {
+                        return;
+                    }
+                    setJsiBindingsAvailable(false);
+                });
+        }
+
         audioPlayer
             .configureVisualizer({
                 enabled: true,
@@ -229,12 +249,53 @@ export function ShaderSurface({ definition, style, binCountOverride }: ShaderSur
                 return;
             }
 
-            const incomingBins = decodeVisualizerBins(frame);
-            const sourceCount = incomingBins.length;
+            let amplitude = frame.rms ?? 0;
+            let incomingBins: Float32Array | null = null;
+            let sourceCount = 0;
+
+            const legendModule = (
+                globalThis as {
+                    LegendAudioVisualizer?: { getFrame?: () => { bins?: unknown; binCount?: number; rms?: number } };
+                }
+            ).LegendAudioVisualizer;
+
+            if (legendModule?.getFrame) {
+                try {
+                    const typedFrame = legendModule.getFrame();
+                    if (typedFrame && typedFrame.bins instanceof Float32Array) {
+                        const typedArray = typedFrame.bins as Float32Array;
+                        const typedCount =
+                            typeof typedFrame.binCount === "number" && typedFrame.binCount > 0
+                                ? typedFrame.binCount
+                                : typedArray.length;
+
+                        if (typedArray.length > 0 && typedCount > 0) {
+                            incomingBins =
+                                typedCount < typedArray.length ? typedArray.subarray(0, typedCount) : typedArray;
+                            sourceCount = incomingBins.length;
+                        }
+
+                        if (typeof typedFrame.rms === "number") {
+                            amplitude = typedFrame.rms;
+                        }
+                    }
+                } catch (_error) {
+                    // Ignore binding fetch errors and fall back to payload decoding.
+                }
+            }
+
+            if (!incomingBins) {
+                const decoded = decodeVisualizerBins(frame);
+                if (decoded.length > 0) {
+                    incomingBins = decoded;
+                    sourceCount = decoded.length;
+                }
+            }
+
             const targetCount = resolvedBinCount;
             const bins = binsBufferRef.current;
 
-            if (sourceCount > 0) {
+            if (incomingBins && sourceCount > 0) {
                 const sourceRange = Math.max(sourceCount - 1, 1);
                 for (let i = 0; i < targetCount; i += 1) {
                     const normalized = targetCount > 1 ? i / (targetCount - 1) : 0;
@@ -257,6 +318,7 @@ export function ShaderSurface({ definition, style, binCountOverride }: ShaderSur
                     smoothedBinsRef.current[i] = 0;
                     bins[i] = 0;
                 }
+                amplitude = 0;
             }
 
             for (let i = targetCount; i < maxUniformBins; i += 1) {
@@ -267,7 +329,7 @@ export function ShaderSurface({ definition, style, binCountOverride }: ShaderSur
             applyUniforms((base) => {
                 base.bins = bins;
                 base.binCount = targetCount;
-                const rawAmplitude = frame.rms ?? 0;
+                const rawAmplitude = amplitude;
                 const current = smoothedAmplitudeRef.current;
                 const delta = rawAmplitude - current;
                 const smoothing = delta > 0 ? AMPLITUDE_ATTACK : AMPLITUDE_RELEASE;
@@ -293,6 +355,7 @@ export function ShaderSurface({ definition, style, binCountOverride }: ShaderSur
         resolvedThrottleMs,
         maxUniformBins,
         applyUniforms,
+        jsiBindingsAvailable,
     ]);
 
     useEffect(() => {

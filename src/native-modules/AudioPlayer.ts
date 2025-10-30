@@ -100,6 +100,7 @@ type AudioPlayerType = {
     updateNowPlayingInfo: (payload: NowPlayingInfoPayload) => void;
     clearNowPlayingInfo: () => void;
     configureVisualizer: (config: VisualizerConfig) => Promise<{ success: boolean }>;
+    installVisualizerBindings: () => Promise<{ installed: boolean }>;
 };
 
 const audioPlayerEmitter = new NativeEventEmitter(AudioPlayer);
@@ -121,6 +122,7 @@ const audioPlayerApi: AudioPlayerType & {
     updateNowPlayingInfo: (payload: NowPlayingInfoPayload) => AudioPlayer.updateNowPlayingInfo(payload),
     clearNowPlayingInfo: () => AudioPlayer.clearNowPlayingInfo(),
     configureVisualizer: (config: VisualizerConfig) => AudioPlayer.configureVisualizer(config),
+    installVisualizerBindings: () => AudioPlayer.installVisualizerBindings(),
     addListener: <T extends keyof AudioPlayerEvents>(eventType: T, listener: AudioPlayerEvents[T]) => {
         const subscription = audioPlayerEmitter.addListener(eventType, listener);
         return {

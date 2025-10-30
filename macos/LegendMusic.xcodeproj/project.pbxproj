@@ -32,6 +32,7 @@
 		69EDB1012DCA10FA00CCB7F7 /* ContextMenuManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 69EDB0FF2DCA10FA00CCB7F7 /* ContextMenuManager.m */; };
 		69F4D1012F0A123400CCB7F7 /* FileDialog.m in Sources */ = {isa = PBXBuildFile; fileRef = 69F4D0FF2F0A123400CCB7F7 /* FileDialog.m */; };
 		A1B2C3D4E5F607801234567 /* AudioPlayer.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D6E5F607801234567 /* AudioPlayer.m */; };
+		9A8F300132D2512A00B67AC1 /* AudioPlayer+JSI.mm in Sources */ = {isa = PBXBuildFile; fileRef = 9A8F300032D2512A00B67AC1 /* AudioPlayer+JSI.mm */; };
 		BEF2DD5FAECBF3C737045F10 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E3812CA0776629430D89D5DA /* PrivacyInfo.xcprivacy */; };
 		DD7A5E943F53F74817727672 /* libPods-LegendMusic-macOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D923D34EAC788A5DE1EAAF00 /* libPods-LegendMusic-macOS.a */; };
 /* End PBXBuildFile section */
@@ -76,6 +77,8 @@
 		69F4D0FF2F0A123400CCB7F7 /* FileDialog.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FileDialog.m; sourceTree = "<group>"; };
 		A1B2C3D5E5F607801234567 /* AudioPlayer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AudioPlayer.h; sourceTree = "<group>"; };
 		A1B2C3D6E5F607801234567 /* AudioPlayer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AudioPlayer.m; sourceTree = "<group>"; };
+		9A8F300032D2512A00B67AC1 /* AudioPlayer+JSI.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = "AudioPlayer+JSI.mm"; sourceTree = "<group>"; };
+		9A8F300232D2512A00B67AC1 /* AudioPlayer+JSI.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "AudioPlayer+JSI.h"; sourceTree = "<group>"; };
 		D923D34EAC788A5DE1EAAF00 /* libPods-LegendMusic-macOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-LegendMusic-macOS.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		E3812CA0776629430D89D5DA /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
@@ -278,15 +281,17 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		A1B2C3D7E5F607801234567 /* AudioPlayer */ = {
-			isa = PBXGroup;
-			children = (
-				A1B2C3D5E5F607801234567 /* AudioPlayer.h */,
-				A1B2C3D6E5F607801234567 /* AudioPlayer.m */,
-			);
-			path = AudioPlayer;
-			sourceTree = "<group>";
-		};
+	A1B2C3D7E5F607801234567 /* AudioPlayer */ = {
+		isa = PBXGroup;
+		children = (
+			A1B2C3D5E5F607801234567 /* AudioPlayer.h */,
+			A1B2C3D6E5F607801234567 /* AudioPlayer.m */,
+			9A8F300232D2512A00B67AC1 /* AudioPlayer+JSI.h */,
+			9A8F300032D2512A00B67AC1 /* AudioPlayer+JSI.mm */,
+		);
+		path = AudioPlayer;
+		sourceTree = "<group>";
+	};
 		B669C9BC2CE56F5EFB57A35A /* ExpoModulesProviders */ = {
 			isa = PBXGroup;
 			children = (
@@ -531,6 +536,7 @@
 			files = (
 				514201582437B4B40078DB4F /* main.m in Sources */,
 				A1B2C3D4E5F607801234567 /* AudioPlayer.m in Sources */,
+				9A8F300132D2512A00B67AC1 /* AudioPlayer+JSI.mm in Sources */,
 				69EDA8112DC910FA00CCB7F7 /* MenuEvents.m in Sources */,
 				69D53FB72DC6653D0004AD94 /* SFSymbol.swift in Sources */,
 				698A69F42E1838D0001B4A90 /* RNKeyboardManager.swift in Sources */,
