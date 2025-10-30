@@ -1,11 +1,12 @@
 import type { Observable } from "@legendapp/state";
-import { use$, useObservable, useObserveEffect } from "@legendapp/state/react";
-import { memo, useEffect, useRef } from "react";
-import { Text, TextInput, View } from "react-native";
+import { use$, useObservable } from "@legendapp/state/react";
+import { memo, useEffect } from "react";
+import { Text, View } from "react-native";
 import { AlbumArt } from "@/components/AlbumArt";
 import { Button } from "@/components/Button";
 import { CustomSlider } from "@/components/CustomSlider";
 import { localAudioControls, localPlayerState$ } from "@/components/LocalAudioPlayer";
+import { SkiaText } from "@/components/SkiaText";
 import { cn } from "@/utils/cn";
 import { perfCount } from "@/utils/perfLogger";
 
@@ -16,74 +17,33 @@ type PlaybackAreaProps = {
 // Format time for local playback with caching to reduce computation
 const formatTimeCache = new Map<number, string>();
 
-const CurrentTime = memo(function CurrentTime({
-    currentLocalTime$,
-    isSliderHovered$,
-}: {
-    currentLocalTime$: Observable<number>;
-    isSliderHovered$: Observable<boolean>;
-}) {
-    // const text = useSharedValue("asdf");
-    const ref = useRef<TextInput>(null);
-    const isVisible$ = useObservable(true);
+const CurrentTime = memo(function CurrentTime({ currentLocalTime$ }: { currentLocalTime$: Observable<number> }) {
+    const formattedTime$ = useObservable(formatTime(currentLocalTime$.get?.() ?? 0, false));
 
-    useObserveEffect(() => {
-        const currentTime = currentLocalTime$.get();
-        const isSliderHovered = isSliderHovered$.get();
-        const display = formatTime(currentTime, false) + " ";
-        if (isSliderHovered) {
-            ref.current?.setNativeProps({ text: display, style: { opacity: 1 } });
-            isVisible$.set(true);
-        } else {
-            if (isVisible$.get()) {
-                ref.current?.setNativeProps({ style: { opacity: 0 } });
-            }
-            isVisible$.set(false);
-        }
-    });
+    useEffect(() => {
+        const unsubscribe = currentLocalTime$.onChange(({ value }) => {
+            formattedTime$.set(formatTime(value ?? 0, false));
+        });
 
-    // Animated prop maps shared value -> native TextInput "text" prop
-    // const animatedProps = useAnimatedProps(() => {
-    //     console.log("CurrentTime.useAnimatedProps", text.get());
-    //     return {
-    //         defaultValue: text.get(),
-    //         text: text.get(),
-    //     };
-    // });
+        return () => unsubscribe();
+    }, [currentLocalTime$, formattedTime$]);
 
-    // const animatedProps = useAnimatedProps(() => {
-    //     text.get();
-    //     console.log("CurrentTime.useAnimatedProps", text.get());
-    //     return {
-    //         value: Math.random() + "",
-    //         text: Math.random() + "",
-    //         defaultValue: Math.random() + "",
-    //     };
-    // });
-
-    return (
-        <TextInput
-            className="text-white/70 text-xs pr-2"
-            numberOfLines={1}
-            // ellipsizeMode="clip"
-            style={{ fontVariant: ["tabular-nums"] }}
-            // animatedProps={animatedProps}
-            editable={false}
-            ref={ref}
-        />
-    );
+    return <SkiaText text$={formattedTime$} fontSize={12} color="#ffffffb3" width={36} />;
 });
 
-function CurrentDuration({ isSliderHovered$ }: { isSliderHovered$: Observable<boolean> }) {
-    const duration = use$(localPlayerState$.duration);
-    const isSliderHovered = use$(isSliderHovered$);
+const CurrentDuration = memo(function CurrentDuration() {
+    const duration$ = useObservable(formatTime(localPlayerState$.duration.get?.() ?? 0, true));
 
-    return (
-        <Text className={cn("text-white/70 text-xs pl-2", !isSliderHovered && "opacity-0")}>
-            {formatTime(duration, true)}
-        </Text>
-    );
-}
+    useEffect(() => {
+        const unsubscribe = localPlayerState$.duration.onChange(({ value }) => {
+            duration$.set(formatTime(value ?? 0, true));
+        });
+
+        return () => unsubscribe();
+    }, [duration$]);
+
+    return <SkiaText text$={duration$} fontSize={12} color="#ffffffb3" width={36} align="right" />;
+});
 
 function formatTime(seconds: number, cache?: boolean): string {
     // Round to nearest second for caching efficiency
@@ -113,13 +73,6 @@ export function PlaybackArea({ showBorder = true }: PlaybackAreaProps = {}) {
     const currentTrack = use$(localPlayerState$.currentTrack);
     const isPlaying = use$(localPlayerState$.isPlaying);
     const currentLocalTime$ = localPlayerState$.currentTime;
-    const isSliderHovered$ = useObservable(false);
-
-    useEffect(() => {
-        if (!currentTrack) {
-            isSliderHovered$.set(false);
-        }
-    }, [currentTrack]);
 
     // perfLog("PlaybackArea.state", {
     //     track: currentTrack?.title,
@@ -129,11 +82,7 @@ export function PlaybackArea({ showBorder = true }: PlaybackAreaProps = {}) {
     // });
 
     return (
-        <View
-            className={cn("px-3 pt-3", showBorder && "border-b border-white/10")}
-            onMouseEnter={() => isSliderHovered$.set(true)}
-            onMouseLeave={() => isSliderHovered$.set(false)}
-        >
+        <View className={cn("px-3 pt-3", showBorder && "border-b border-white/10")}>
             <View className="flex-row items-center">
                 {/* Album Art */}
                 <View className="mr-3">
@@ -186,7 +135,7 @@ export function PlaybackArea({ showBorder = true }: PlaybackAreaProps = {}) {
                 </View>
             </View>
             <View className={cn("group flex-row items-center pb-1 pt-1", !currentTrack && "opacity-0")}>
-                <CurrentTime currentLocalTime$={currentLocalTime$} isSliderHovered$={isSliderHovered$} />
+                <CurrentTime currentLocalTime$={currentLocalTime$} />
                 <CustomSlider
                     style={{ height: 24, flex: 1 }}
                     minimumValue={0}
@@ -199,7 +148,7 @@ export function PlaybackArea({ showBorder = true }: PlaybackAreaProps = {}) {
                     maximumTrackTintColor="#ffffff40"
                     disabled={!currentTrack}
                 />
-                <CurrentDuration isSliderHovered$={isSliderHovered$} />
+                <CurrentDuration />
             </View>
         </View>
     );
