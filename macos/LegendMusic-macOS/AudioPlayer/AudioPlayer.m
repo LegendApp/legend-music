@@ -214,6 +214,7 @@ static inline NSUInteger VisualizerFindThrottleLevel(NSTimeInterval interval)
 @property (nonatomic, strong) NSMutableData *visualizerGammaVector;
 @property (nonatomic, strong) NSMutableData *visualizerBinScratch;
 @property (nonatomic, strong) NSMutableData *visualizerPrefixSums;
+@property (nonatomic, strong) NSMutableData *visualizerBridgePacket;
 @property (nonatomic, assign) NSUInteger visualizerCPUOverrunFrames;
 @property (nonatomic, assign) NSUInteger visualizerCPUBudgetRecoveryFrames;
 
@@ -1174,15 +1175,32 @@ RCT_EXPORT_MODULE();
         return;
     }
 
-    NSMutableArray<NSNumber *> *binArray = [NSMutableArray arrayWithCapacity:count];
-    for (NSUInteger index = 0; index < count; index++) {
-        [binArray addObject:@(bins[index])];
+    NSUInteger byteCount = count * sizeof(float);
+    if (!self.visualizerBridgePacket) {
+        self.visualizerBridgePacket = [NSMutableData dataWithLength:byteCount];
+    }
+    if (self.visualizerBridgePacket.length != byteCount) {
+        self.visualizerBridgePacket.length = byteCount;
+    }
+
+    if (!self.visualizerBridgePacket) {
+        return;
+    }
+
+    memcpy(self.visualizerBridgePacket.mutableBytes, bins, byteCount);
+    NSString *payloadString = [self.visualizerBridgePacket base64EncodedStringWithOptions:0];
+    if (!payloadString) {
+        return;
     }
 
     NSDictionary *payload = @{
         @"rms": @(rms),
-        @"bins": binArray,
-        @"timestamp": @(CFAbsoluteTimeGetCurrent())
+        @"timestamp": @(CFAbsoluteTimeGetCurrent()),
+        @"binCount": @(count),
+        @"stride": @(sizeof(float)),
+        @"format": @"f32-le",
+        @"version": @1,
+        @"payload": payloadString
     };
 
     dispatch_async(dispatch_get_main_queue(), ^{

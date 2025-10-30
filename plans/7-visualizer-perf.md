@@ -36,7 +36,7 @@ Eliminate the most expensive work in the macOS audio → shader pipeline so visu
 - [x] Implement ring buffer + overlap-save windowing; vectorize mono mixing with Accelerate.
 - [x] Optimize binning: prefix sums or vectorized dB mapping + precomputed emphasis/gamma.
 - [x] Unify cadence defaults at 16 ms and add adaptive backoff before reducing bins.
-- [ ] Redesign bridge payload (NSData floats or quantized) and document wire format.
+- [x] Redesign bridge payload (NSData floats or quantized) and document wire format.
 - [ ] Add optional JSI typed-array path (Phase 2) to bypass JSON/NSArray.
 - [ ] Streamline `ShaderSurface`: persistent typed array uniform, native-only smoothing, UI-thread time.
 - [ ] Ship profiling docs + debug overlay + `os_signpost` POIs and budgets.

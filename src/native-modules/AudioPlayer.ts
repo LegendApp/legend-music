@@ -26,6 +26,14 @@ export interface NowPlayingInfoPayload {
     isPlaying?: boolean;
 }
 
+/**
+ * Visualizer configuration mirrored on the native FFT pipeline.
+ *
+ * The native tap targets a 16 ms cadence (≈60 Hz). When the FFT processing time exceeds its 4 ms CPU
+ * budget repeatedly, it will expand the throttle window through 24 ms, 33 ms, and 50 ms before finally
+ * halving the bin count. Providing a larger `throttleMs` opts into a slower base cadence; set `0` to
+ * disable throttling and allow the adaptive backoff to re-enable it if necessary.
+ */
 export interface VisualizerConfig {
     enabled: boolean;
     fftSize?: number;
@@ -35,9 +43,39 @@ export interface VisualizerConfig {
 }
 
 export interface VisualizerFrame {
+    /**
+     * Root-mean-square amplitude for the frame (0-1).
+     */
     rms: number;
-    bins: number[];
+    /**
+     * High-resolution monotonic timestamp from native (seconds).
+     */
     timestamp: number;
+    /**
+     * Base64-encoded payload containing successive 32-bit float bin magnitudes in little-endian order.
+     * Present when `format === "f32-le"` and preferred for bandwidth-sensitive consumers.
+     */
+    payload?: string;
+    /**
+     * Payload format identifier. Currently `"f32-le"` for float32 values encoded with little-endian byte order.
+     */
+    format?: "f32-le";
+    /**
+     * Number of bytes for each sample in the payload (defaults to 4 for float32).
+     */
+    stride?: number;
+    /**
+     * Number of bins encoded in the payload.
+     */
+    binCount?: number;
+    /**
+     * Payload schema version. Starts at `1` for the base64 float32 format.
+     */
+    version?: number;
+    /**
+     * Legacy fallback array of normalized bin magnitudes. Only populated for older native builds.
+     */
+    bins?: number[];
 }
 
 export interface AudioPlayerEvents {

@@ -7,6 +7,8 @@ import { useSharedValue } from "react-native-reanimated";
 
 import { useAudioPlayer, type VisualizerConfig } from "@/native-modules/AudioPlayer";
 
+import { decodeVisualizerBins } from "./decodeVisualizerPayload";
+
 const UNIFORM_BIN_COUNT = 128;
 const DEFAULT_BIN_COUNT = 96;
 const DEFAULT_SMOOTHING = 0.6;
@@ -104,14 +106,14 @@ export function ShaderSurface({ definition, style, binCountOverride }: ShaderSur
     });
     const smoothedAmplitudeRef = useRef(0);
 
-const buildUniforms = useCallback((base: BaseUniformState): Uniforms => {
-    const result: Uniforms = {
-        u_resolution: [...base.resolution] as [number, number],
-        u_time: base.time,
-        u_amplitude: base.amplitude,
-        u_binCount: base.binCount,
-        u_bins: Array.from(base.bins),
-    };
+    const buildUniforms = useCallback((base: BaseUniformState): Uniforms => {
+        const result: Uniforms = {
+            u_resolution: [...base.resolution] as [number, number],
+            u_time: base.time,
+            u_amplitude: base.amplitude,
+            u_binCount: base.binCount,
+            u_bins: Array.from(base.bins),
+        };
 
         const extend = extendUniformsRef.current;
         if (extend) {
@@ -227,7 +229,7 @@ const buildUniforms = useCallback((base: BaseUniformState): Uniforms => {
                 return;
             }
 
-            const incomingBins = frame.bins ?? [];
+            const incomingBins = decodeVisualizerBins(frame);
             const sourceCount = incomingBins.length;
             const targetCount = resolvedBinCount;
             const bins = binsBufferRef.current;
