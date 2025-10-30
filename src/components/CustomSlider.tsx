@@ -173,7 +173,7 @@ export function CustomSlider({
             >
                 <View
                     onLayout={handleTrackLayout}
-                    className="h-1 bg-white/20 rounded-full"
+                    className="h-1.5 bg-white/20 rounded-full"
                     style={{ backgroundColor: maximumTrackTintColor }}
                 >
                     {/* Progress track */}
