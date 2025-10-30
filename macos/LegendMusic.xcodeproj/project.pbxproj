@@ -658,7 +658,10 @@
 				CODE_SIGN_ENTITLEMENTS = "LegendMusic-macOS/LegendMusic-macOS.entitlements";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CURRENT_PROJECT_VERSION = 1;
+				COPY_PHASE_STRIP = YES;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 93M3EVVYB2;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				INFOPLIST_FILE = "LegendMusic-macos/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -669,11 +672,14 @@
 					"$(inherited)",
 					"-ObjC",
 					"-lc++",
+					"-Wl,-dead_strip",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.legendapp.LegendMusic;
 				PRODUCT_NAME = LegendMusic;
 				SDKROOT = macosx;
+				STRIP_INSTALLED_PRODUCT = YES;
+				STRIP_STYLE = "non-global";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;

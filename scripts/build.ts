@@ -26,16 +26,19 @@ function log(message: string) {
 function main() {
     const PROJECT_ROOT = resolve(__dirname, "..");
     const MACOS_DIR = join(PROJECT_ROOT, "macos");
-    const RELEASE_APP_PATH = join(MACOS_DIR, "build/Build/Products/Release/Legend Hub.app");
+    const RELEASE_PRODUCTS_DIR = join(MACOS_DIR, "build/Build/Products/Release");
 
     // Change directory to macos
     process.chdir(MACOS_DIR);
     log("Changed directory to macos");
 
-    // Remove previous Release build if it exists
-    if (existsSync(RELEASE_APP_PATH)) {
-        log("Removing previous Release build");
-        rmSync(RELEASE_APP_PATH, { recursive: true, force: true });
+    // Remove previous Release outputs if they exist
+    for (const artifact of ["LegendMusic.app", "LegendMusic.app.dSYM"]) {
+        const artifactPath = join(RELEASE_PRODUCTS_DIR, artifact);
+        if (existsSync(artifactPath)) {
+            log(`Removing previous ${artifact}`);
+            rmSync(artifactPath, { recursive: true, force: true });
+        }
     }
 
     // Run xcodebuild
