@@ -1,5 +1,11 @@
 import { observable } from "@legendapp/state";
 
+import {
+    OVERLAY_MAX_DISPLAY_DURATION_SECONDS,
+    OVERLAY_MIN_DISPLAY_DURATION_SECONDS,
+    settings$,
+} from "@/systems/Settings";
+
 export const DEFAULT_OVERLAY_DISPLAY_DURATION_MS = 5000;
 
 export const currentSongOverlay$ = observable({
@@ -17,7 +23,18 @@ const clearHideTimer = () => {
     }
 };
 
-const scheduleHideTimer = (durationMs: number = DEFAULT_OVERLAY_DISPLAY_DURATION_MS) => {
+const getDisplayDurationMs = () => {
+    const configuredSeconds = settings$.overlay.displayDurationSeconds.get();
+    const numericSeconds =
+        typeof configuredSeconds === "number" ? configuredSeconds : DEFAULT_OVERLAY_DISPLAY_DURATION_MS / 1000;
+    const clampedSeconds = Math.min(
+        Math.max(numericSeconds, OVERLAY_MIN_DISPLAY_DURATION_SECONDS),
+        OVERLAY_MAX_DISPLAY_DURATION_SECONDS,
+    );
+    return clampedSeconds * 1000;
+};
+
+const scheduleHideTimer = (durationMs: number = getDisplayDurationMs()) => {
     clearHideTimer();
     hideTimer = setTimeout(() => {
         requestCurrentSongOverlayDismissal();
@@ -25,6 +42,10 @@ const scheduleHideTimer = (durationMs: number = DEFAULT_OVERLAY_DISPLAY_DURATION
 };
 
 export const presentCurrentSongOverlay = () => {
+    if (!settings$.overlay.enabled.get()) {
+        cancelCurrentSongOverlay();
+        return;
+    }
     clearHideTimer();
     currentSongOverlay$.isExiting.set(false);
     currentSongOverlay$.isWindowOpen.set(true);

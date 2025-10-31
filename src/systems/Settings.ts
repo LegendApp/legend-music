@@ -2,6 +2,21 @@ import { createJSONManager } from "@/utils/JSONManager";
 
 export type PlaylistStyle = "compact" | "comfortable";
 
+export type OverlayVerticalPosition = "top" | "middle" | "bottom";
+export type OverlayHorizontalPosition = "left" | "center" | "right";
+
+export const OVERLAY_MIN_DISPLAY_DURATION_SECONDS = 1;
+export const OVERLAY_MAX_DISPLAY_DURATION_SECONDS = 30;
+
+export interface OverlaySettingsConfig {
+    enabled: boolean;
+    displayDurationSeconds: number;
+    position: {
+        vertical: OverlayVerticalPosition;
+        horizontal: OverlayHorizontalPosition;
+    };
+}
+
 export interface AppSettings {
     state: {
         sidebarWidth: number;
@@ -16,6 +31,7 @@ export interface AppSettings {
         isRegistered: boolean;
         registrationType?: "legendkit" | "standalone";
     };
+    overlay: OverlaySettingsConfig;
     uniqueId: string;
     isAuthed: boolean;
 }
@@ -37,6 +53,14 @@ export const settings$ = createJSONManager<AppSettings>({
         // Registration settings
         registration: {
             isRegistered: false,
+        },
+        overlay: {
+            enabled: true,
+            displayDurationSeconds: 5,
+            position: {
+                vertical: "top",
+                horizontal: "center",
+            },
         },
         uniqueId: "",
         isAuthed: false,

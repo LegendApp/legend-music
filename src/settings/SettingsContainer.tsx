@@ -8,16 +8,18 @@ import { AccountSettings } from "@/settings/AccountSettings";
 import { GeneralSettings } from "@/settings/GeneralSettings";
 import { LibrarySettings } from "@/settings/LibrarySettings";
 import { OpenSourceSettings } from "@/settings/OpenSourceSettings";
+import { OverlaySettings } from "@/settings/OverlaySettings";
 import { state$ } from "@/systems/State";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 import { TooltipProvider } from "@/components/TooltipProvider";
 
-export type SettingsPage = "general" | "library" | "account" | "open-source";
+export type SettingsPage = "general" | "library" | "overlay" | "account" | "open-source";
 
 // Define the categories for settings
 const SETTING_PAGES: { id: SettingsPage; name: string }[] = [
     { id: "general", name: "General" },
     { id: "library", name: "Library" },
+    { id: "overlay", name: "Overlay" },
     { id: "account", name: "Account" },
     { id: "open-source", name: "Open Source" },
 ];
@@ -33,6 +35,8 @@ export default function SettingsContainer() {
                 return <GeneralSettings />;
             case "library":
                 return <LibrarySettings />;
+            case "overlay":
+                return <OverlaySettings />;
             case "open-source":
                 return <OpenSourceSettings />;
             case "account":

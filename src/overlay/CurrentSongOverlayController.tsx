@@ -3,11 +3,13 @@ import { useRef } from "react";
 
 import { localPlayerState$ } from "@/components/LocalAudioPlayer";
 import { appState$ } from "@/observables/appState";
+import { settings$ } from "@/systems/Settings";
 
 import {
     currentSongOverlay$,
     presentCurrentSongOverlay,
     requestCurrentSongOverlayDismissal,
+    resetCurrentSongOverlayTimer,
 } from "./CurrentSongOverlayState";
 
 export function CurrentSongOverlayController() {
@@ -18,7 +20,8 @@ export function CurrentSongOverlayController() {
         const isPlaying = localPlayerState$.isPlaying.get();
         const isAppActive = appState$.isActive.get();
         const trackId = currentTrack?.id ?? null;
-        const shouldShow = Boolean(trackId && isPlaying && isAppActive);
+        const overlayEnabled = settings$.overlay.enabled.get();
+        const shouldShow = Boolean(trackId && isPlaying && isAppActive && overlayEnabled);
 
         if (shouldShow && trackId) {
             if (trackId !== lastTrackIdRef.current) {
@@ -36,6 +39,13 @@ export function CurrentSongOverlayController() {
             lastTrackIdRef.current = null;
         } else if (isAppActive) {
             lastTrackIdRef.current = trackId;
+        }
+    });
+
+    useObserveEffect(() => {
+        settings$.overlay.displayDurationSeconds.get();
+        if (currentSongOverlay$.isWindowOpen.get()) {
+            resetCurrentSongOverlayTimer();
         }
     });
 

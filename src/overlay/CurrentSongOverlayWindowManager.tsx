@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { Dimensions } from "react-native";
 
 import { useWindowManager, WindowStyleMask } from "@/native-modules/WindowManager";
+import { settings$ } from "@/systems/Settings";
 import { perfCount, perfLog } from "@/utils/perfLogger";
 import { WindowsNavigator } from "@/windows";
 
@@ -17,11 +18,16 @@ const OVERLAY_WINDOW_ID = WindowsNavigator.getIdentifier(OVERLAY_WINDOW_KEY);
 const DEFAULT_WIDTH = 360;
 const DEFAULT_HEIGHT = 140;
 const TOP_MARGIN = 48;
+const HORIZONTAL_MARGIN = 32;
+const BOTTOM_MARGIN = 64;
 
 export const CurrentSongOverlayWindowManager = () => {
     perfCount("CurrentSongOverlayWindowManager.render");
     const windowManager = useWindowManager();
     const isWindowOpen = use$(currentSongOverlay$.isWindowOpen);
+    const overlayPosition = use$(settings$.overlay.position);
+    const horizontalPosition = overlayPosition?.horizontal ?? "center";
+    const verticalPosition = overlayPosition?.vertical ?? "top";
 
     useEffect(() => {
         const subscription = windowManager.onWindowClosed(({ identifier }) => {
@@ -61,8 +67,26 @@ export const CurrentSongOverlayWindowManager = () => {
                         : typeof windowDims?.width === "number"
                           ? windowDims.width
                           : DEFAULT_WIDTH;
-                const x = Math.max(Math.round((screenWidth - DEFAULT_WIDTH) / 2), 0);
-                const y = Math.max(TOP_MARGIN, 0);
+                const screenHeight =
+                    typeof screen?.height === "number"
+                        ? screen.height
+                        : typeof windowDims?.height === "number"
+                          ? windowDims.height
+                          : DEFAULT_HEIGHT;
+
+                let x = Math.max(Math.round((screenWidth - DEFAULT_WIDTH) / 2), 0);
+                if (horizontalPosition === "left") {
+                    x = HORIZONTAL_MARGIN;
+                } else if (horizontalPosition === "right") {
+                    x = Math.max(screenWidth - DEFAULT_WIDTH - HORIZONTAL_MARGIN, 0);
+                }
+
+                let y = Math.max(TOP_MARGIN, 0);
+                if (verticalPosition === "middle") {
+                    y = Math.max(Math.round((screenHeight - DEFAULT_HEIGHT) / 2), TOP_MARGIN);
+                } else if (verticalPosition === "bottom") {
+                    y = Math.max(screenHeight - DEFAULT_HEIGHT - BOTTOM_MARGIN, TOP_MARGIN);
+                }
 
                 await WindowsNavigator.open(OVERLAY_WINDOW_KEY, {
                     x,
@@ -82,7 +106,7 @@ export const CurrentSongOverlayWindowManager = () => {
                 perfLog("CurrentSongOverlayWindowManager.openWindow.error", error);
             }
         })();
-    }, [isWindowOpen]);
+    }, [isWindowOpen, horizontalPosition, verticalPosition]);
 
     return null;
 };
