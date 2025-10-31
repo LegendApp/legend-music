@@ -72,13 +72,18 @@ function CurrentSongOverlayWindow() {
     }, [isExiting, opacity, handleExitComplete]);
 
     return (
-        <VibrancyView blendingMode="behindWindow" material="sidebar" style={styles.vibrancy}>
+        <VibrancyView
+            blendingMode="behindWindow"
+            material="hudWindow"
+            state="active"
+            style={styles.vibrancy}
+        >
             <ThemeProvider>
                 <PortalProvider>
                     <TooltipProvider>
-                        {/* <Animated.View style={[styles.overlaySurface, animatedStyle]}> */}
-                        <PlaybackArea showBorder={false} />
-                        {/* </Animated.View> */}
+                        <Animated.View style={[styles.overlaySurface, animatedStyle]}>
+                            <PlaybackArea showBorder={false} />
+                        </Animated.View>
                     </TooltipProvider>
                 </PortalProvider>
             </ThemeProvider>
