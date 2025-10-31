@@ -25,6 +25,23 @@ const windowsConfig = {
             },
         },
     },
+    CurrentSongOverlayWindow: {
+        loadComponent: () => import("@/overlay/CurrentSongOverlayWindow"),
+        identifier: "current-song-overlay",
+        options: {
+            title: "",
+            windowStyle: {
+                width: 360,
+                height: 140,
+                mask: [
+                    WindowStyleMask.Borderless,
+                    WindowStyleMask.NonactivatingPanel,
+                    WindowStyleMask.FullSizeContentView,
+                ],
+                titlebarAppearsTransparent: true,
+            },
+        },
+    },
 } satisfies WindowsConfig;
 
 export const WindowsNavigator = createWindowsNavigator(windowsConfig);

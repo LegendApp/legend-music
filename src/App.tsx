@@ -9,6 +9,7 @@ import { MainContainer } from "@/components/MainContainer";
 import { TitleBar } from "@/components/TitleBar";
 import { TooltipProvider } from "@/components/TooltipProvider";
 import { MediaLibraryWindowManager } from "@/media-library/MediaLibraryWindowManager";
+import { CurrentSongOverlayWindowManager } from "@/overlay/CurrentSongOverlayWindowManager";
 import { SettingsWindowManager } from "@/settings/SettingsWindowManager";
 import { HookKeyboard } from "@/systems/keyboard/HookKeyboard";
 import { hydrateLibraryFromCache } from "@/systems/LibraryState";
@@ -75,6 +76,7 @@ function App(): React.JSX.Element | null {
                 <TitleBar />
                 <MediaLibraryWindowManager />
                 <SettingsWindowManager />
+                <CurrentSongOverlayWindowManager />
             </ThemeProvider>
         </WindowProvider>
     );
