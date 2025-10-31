@@ -30,7 +30,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     overlaySurface: {
-        flex: 1,
+        alignSelf: "stretch",
     },
 });
 
@@ -50,7 +50,6 @@ function CurrentSongOverlayWindow() {
         );
 
         return {
-            flex: 1,
             opacity: opacity.value,
             transform: [{ translateY: translateY.value }],
             backgroundColor,

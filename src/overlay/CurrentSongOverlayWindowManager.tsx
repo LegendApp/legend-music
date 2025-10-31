@@ -16,7 +16,7 @@ import {
 const OVERLAY_WINDOW_KEY = "CurrentSongOverlayWindow" as const;
 const OVERLAY_WINDOW_ID = WindowsNavigator.getIdentifier(OVERLAY_WINDOW_KEY);
 const DEFAULT_WIDTH = 360;
-const DEFAULT_HEIGHT = 140;
+const DEFAULT_HEIGHT = 116;
 const TOP_MARGIN = 48;
 const HORIZONTAL_MARGIN = 32;
 const BOTTOM_MARGIN = 64;

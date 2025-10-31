@@ -1,8 +1,6 @@
 import { useObserveEffect } from "@legendapp/state/react";
 import { useRef } from "react";
-
 import { localPlayerState$ } from "@/components/LocalAudioPlayer";
-import { appState$ } from "@/observables/appState";
 import { settings$ } from "@/systems/Settings";
 
 import {
@@ -18,10 +16,9 @@ export function CurrentSongOverlayController() {
     useObserveEffect(() => {
         const currentTrack = localPlayerState$.currentTrack.get();
         const isPlaying = localPlayerState$.isPlaying.get();
-        const isAppActive = appState$.isActive.get();
         const trackId = currentTrack?.id ?? null;
         const overlayEnabled = settings$.overlay.enabled.get();
-        const shouldShow = Boolean(trackId && isPlaying && isAppActive && overlayEnabled);
+        const shouldShow = Boolean(trackId && isPlaying && overlayEnabled);
 
         if (shouldShow && trackId) {
             if (trackId !== lastTrackIdRef.current) {
@@ -35,11 +32,7 @@ export function CurrentSongOverlayController() {
             requestCurrentSongOverlayDismissal();
         }
 
-        if (!trackId) {
-            lastTrackIdRef.current = null;
-        } else if (isAppActive) {
-            lastTrackIdRef.current = trackId;
-        }
+        lastTrackIdRef.current = trackId;
     });
 
     useObserveEffect(() => {
