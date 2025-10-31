@@ -6,7 +6,11 @@ import { useWindowManager, WindowStyleMask } from "@/native-modules/WindowManage
 import { perfCount, perfLog } from "@/utils/perfLogger";
 import { WindowsNavigator } from "@/windows";
 
-import { currentSongOverlay$, hideCurrentSongOverlay } from "./CurrentSongOverlayState";
+import {
+    cancelCurrentSongOverlay,
+    currentSongOverlay$,
+    finalizeCurrentSongOverlayDismissal,
+} from "./CurrentSongOverlayState";
 
 const OVERLAY_WINDOW_KEY = "CurrentSongOverlayWindow" as const;
 const OVERLAY_WINDOW_ID = WindowsNavigator.getIdentifier(OVERLAY_WINDOW_KEY);
@@ -17,12 +21,12 @@ const TOP_MARGIN = 48;
 export const CurrentSongOverlayWindowManager = () => {
     perfCount("CurrentSongOverlayWindowManager.render");
     const windowManager = useWindowManager();
-    const isOpen = use$(currentSongOverlay$.isOpen);
+    const isWindowOpen = use$(currentSongOverlay$.isWindowOpen);
 
     useEffect(() => {
         const subscription = windowManager.onWindowClosed(({ identifier }) => {
             if (identifier === OVERLAY_WINDOW_ID) {
-                hideCurrentSongOverlay();
+                finalizeCurrentSongOverlayDismissal();
             }
         });
 
@@ -32,8 +36,8 @@ export const CurrentSongOverlayWindowManager = () => {
     }, [windowManager]);
 
     useEffect(() => {
-        perfLog("CurrentSongOverlayWindowManager.isOpenEffect", { isOpen });
-        if (!isOpen) {
+        perfLog("CurrentSongOverlayWindowManager.isOpenEffect", { isWindowOpen });
+        if (!isWindowOpen) {
             void (async () => {
                 try {
                     perfLog("CurrentSongOverlayWindowManager.closeWindow.start");
@@ -50,7 +54,14 @@ export const CurrentSongOverlayWindowManager = () => {
             try {
                 perfLog("CurrentSongOverlayWindowManager.openWindow.start");
                 const screen = Dimensions.get("screen");
-                const x = Math.round((screen.width - DEFAULT_WIDTH) / 2);
+                const windowDims = Dimensions.get("window");
+                const screenWidth =
+                    typeof screen?.width === "number"
+                        ? screen.width
+                        : typeof windowDims?.width === "number"
+                          ? windowDims.width
+                          : DEFAULT_WIDTH;
+                const x = Math.max(Math.round((screenWidth - DEFAULT_WIDTH) / 2), 0);
                 const y = Math.max(TOP_MARGIN, 0);
 
                 await WindowsNavigator.open(OVERLAY_WINDOW_KEY, {
@@ -71,11 +82,11 @@ export const CurrentSongOverlayWindowManager = () => {
                 perfLog("CurrentSongOverlayWindowManager.openWindow.error", error);
             }
         })();
-    }, [isOpen]);
+    }, [isWindowOpen]);
 
     return null;
 };
 
 export const ensureOverlayWindowClosed = () => {
-    hideCurrentSongOverlay();
+    cancelCurrentSongOverlay();
 };

@@ -24,5 +24,5 @@ Deliver a compact `CurrentSongOverlay` window that reuses the existing `Playback
 
 ## Steps
 - [x] Implement the `CurrentSongOverlay` window and render the existing `PlaybackArea`.
-- [ ] Animate show/hide with blur + opacity transitions tied to track start events.
+- [x] Animate show/hide with blur + opacity transitions tied to track start events.
 - [ ] Expose overlay configuration options under Settings ▸ Overlay with enable, duration, and position controls.

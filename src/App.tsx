@@ -9,6 +9,7 @@ import { MainContainer } from "@/components/MainContainer";
 import { TitleBar } from "@/components/TitleBar";
 import { TooltipProvider } from "@/components/TooltipProvider";
 import { MediaLibraryWindowManager } from "@/media-library/MediaLibraryWindowManager";
+import { CurrentSongOverlayController } from "@/overlay/CurrentSongOverlayController";
 import { CurrentSongOverlayWindowManager } from "@/overlay/CurrentSongOverlayWindowManager";
 import { SettingsWindowManager } from "@/settings/SettingsWindowManager";
 import { HookKeyboard } from "@/systems/keyboard/HookKeyboard";
@@ -49,6 +50,9 @@ function App(): React.JSX.Element | null {
             void WindowsNavigator.prefetch("MediaLibraryWindow").catch((error) => {
                 console.warn("Failed to prefetch media library window:", error);
             });
+            void WindowsNavigator.prefetch("CurrentSongOverlayWindow").catch((error) => {
+                console.warn("Failed to prefetch current song overlay window:", error);
+            });
         });
 
         return () => {
@@ -77,6 +81,7 @@ function App(): React.JSX.Element | null {
                 <MediaLibraryWindowManager />
                 <SettingsWindowManager />
                 <CurrentSongOverlayWindowManager />
+                <CurrentSongOverlayController />
             </ThemeProvider>
         </WindowProvider>
     );

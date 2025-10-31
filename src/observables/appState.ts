@@ -1,9 +1,11 @@
 import { observable } from "@legendapp/state";
 import { AppState } from "react-native";
 
+const initialState = AppState.currentState;
+
 export const appState$ = observable({
-    isActive: false,
-    state: AppState.currentState,
+    isActive: initialState === "active",
+    state: initialState,
 });
 
 AppState.addEventListener("change", (nextAppState) => {
