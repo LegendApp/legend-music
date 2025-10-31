@@ -78,6 +78,7 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
   NSNumber *maskNumber = windowStyle[@"mask"];
   NSNumber *transparentTitlebar = windowStyle[@"titlebarAppearsTransparent"];
   NSNumber *levelNumber = options[@"level"];
+  BOOL transparentBackground = [options[@"transparentBackground"] boolValue];
 
   NSNumber *widthNumber = windowStyle[@"width"] ?: options[@"width"];
   NSNumber *heightNumber = windowStyle[@"height"] ?: options[@"height"];
@@ -89,6 +90,7 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
 
   NSWindow *existingWindow = self.windows[identifier];
   if (existingWindow) {
+    RCTRootView *existingRootView = self.rootViews[identifier];
     NSRect frame = [existingWindow frame];
     CGFloat newWidth = frame.size.width;
     CGFloat newHeight = frame.size.height;
@@ -129,11 +131,19 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
       [existingWindow orderFrontRegardless];
     }
 
+    if (transparentBackground) {
+      [existingWindow setOpaque:NO];
+      [existingWindow setBackgroundColor:[NSColor clearColor]];
+      NSView *contentView = existingWindow.contentView;
+      contentView.wantsLayer = YES;
+      contentView.layer.backgroundColor = [NSColor clearColor].CGColor;
+      existingRootView.backgroundColor = [NSColor clearColor];
+    }
+
     existingWindow.title = title;
 
     existingWindow.delegate = self;
 
-    RCTRootView *existingRootView = self.rootViews[identifier];
     NSDictionary *initialProps = [self initialPropsFromOptions:options];
     if (existingRootView && initialProps) {
       existingRootView.appProperties = initialProps;
@@ -166,6 +176,11 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
     [window setLevel:[levelNumber integerValue]];
   }
 
+  if (transparentBackground) {
+    [window setOpaque:NO];
+    [window setBackgroundColor:[NSColor clearColor]];
+  }
+
   if (originX || originY) {
     NSRect currentFrame = [window frame];
     NSPoint origin = currentFrame.origin;
@@ -193,6 +208,11 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
                                             initialProperties:initialProps];
 
   [window setContentView:rootView];
+  if (transparentBackground) {
+    rootView.backgroundColor = [NSColor clearColor];
+    window.contentView.wantsLayer = YES;
+    window.contentView.layer.backgroundColor = [NSColor clearColor].CGColor;
+  }
   [window setDelegate:self];
 
   self.windows[identifier] = window;

@@ -31,6 +31,7 @@ const windowsConfig = {
         options: {
             title: "",
             level: "status",
+            transparentBackground: true,
             windowStyle: {
                 width: 360,
                 height: 140,

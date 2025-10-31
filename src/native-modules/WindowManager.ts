@@ -63,6 +63,7 @@ export type WindowOptions = {
     windowStyle?: WindowStyleOptions;
     initialProperties?: Record<string, unknown>;
     level?: WindowLevel;
+    transparentBackground?: boolean;
 };
 
 type NativeWindowStyleOptions = Omit<WindowStyleOptions, "mask"> & {
