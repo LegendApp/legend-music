@@ -74,11 +74,9 @@ export const LibrarySettings = observer(function LibrarySettings() {
                     control={<Checkbox $checked={localMusicSettings$.autoScanOnStart} />}
                     controlWrapperClassName="ml-6"
                 />
-                <View className="pt-4 border-t border-border-primary">
-                    <Button variant="primary" onClick={handleRescanLibrary} className="h-9 px-4">
-                        <Text className="text-white font-medium text-sm">Rescan Library Now</Text>
-                    </Button>
-                </View>
+                <Button variant="primary" size="medium" className="self-start" onClick={handleRescanLibrary}>
+                    <Text className="text-white font-medium text-sm">Rescan Library Now</Text>
+                </Button>
             </SettingsSection>
 
             <SettingsSection title="Library Paths">
@@ -122,9 +120,10 @@ export const LibrarySettings = observer(function LibrarySettings() {
                     Currently configured library paths for local music scanning
                 </Text>
                 <Button
-                    variant="secondary"
+                    variant="primary"
                     icon="plus"
-                    className="h-9 px-4 mt-4 self-start"
+                    size="medium"
+                    className="self-start"
                     onClick={() => {
                         void handleAddLibraryPath();
                     }}

@@ -7,9 +7,9 @@ import { Panel, PanelGroup, ResizeHandle } from "@/components/ResizablePanels";
 import type { TextInputSearchRef } from "@/components/TextInputSearch";
 import { libraryUI$ } from "@/systems/LibraryState";
 import { settings$ } from "@/systems/Settings";
-import { perfCount } from "@/utils/perfLogger";
 import type { SFSymbols } from "@/types/SFSymbols";
 import { cn } from "@/utils/cn";
+import { perfCount } from "@/utils/perfLogger";
 
 import { LibraryTree } from "./MediaLibrary/LibraryTree";
 import { MediaLibrarySearchBar } from "./MediaLibrary/SearchBar";
@@ -29,7 +29,7 @@ function LibraryCollectionTabs() {
             {collectionTabs.map((tab) => (
                 <Button
                     key={tab.id}
-                    variant="ghost"
+                    variant="primary"
                     size="small"
                     icon={tab.icon}
                     iconSize={14}
