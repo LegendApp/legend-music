@@ -79,6 +79,9 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
   NSNumber *transparentTitlebar = windowStyle[@"titlebarAppearsTransparent"];
   NSNumber *levelNumber = options[@"level"];
   BOOL transparentBackground = [options[@"transparentBackground"] boolValue];
+  NSNumber *hasShadowNumber = options[@"hasShadow"];
+  BOOL shouldApplyHasShadow = hasShadowNumber != nil;
+  BOOL hasShadow = shouldApplyHasShadow ? [hasShadowNumber boolValue] : NO;
 
   NSNumber *widthNumber = windowStyle[@"width"] ?: options[@"width"];
   NSNumber *heightNumber = windowStyle[@"height"] ?: options[@"height"];
@@ -131,12 +134,20 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
       [existingWindow orderFrontRegardless];
     }
 
+    if (shouldApplyHasShadow) {
+      [existingWindow setHasShadow:hasShadow];
+      if (hasShadow) {
+        [existingWindow invalidateShadow];
+      }
+    }
+
     if (transparentBackground) {
       [existingWindow setOpaque:NO];
       [existingWindow setBackgroundColor:[NSColor clearColor]];
       NSView *contentView = existingWindow.contentView;
       contentView.wantsLayer = YES;
       contentView.layer.backgroundColor = [NSColor clearColor].CGColor;
+      contentView.layer.masksToBounds = NO;
       existingRootView.backgroundColor = [NSColor clearColor];
     }
 
@@ -176,9 +187,18 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
     [window setLevel:[levelNumber integerValue]];
   }
 
+  if (shouldApplyHasShadow) {
+    [window setHasShadow:hasShadow];
+    if (hasShadow) {
+      [window invalidateShadow];
+    }
+  }
+
   if (transparentBackground) {
     [window setOpaque:NO];
     [window setBackgroundColor:[NSColor clearColor]];
+    window.contentView.wantsLayer = YES;
+    window.contentView.layer.masksToBounds = NO;
   }
 
   if (originX || originY) {
@@ -212,6 +232,7 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
     rootView.backgroundColor = [NSColor clearColor];
     window.contentView.wantsLayer = YES;
     window.contentView.layer.backgroundColor = [NSColor clearColor].CGColor;
+    window.contentView.layer.masksToBounds = NO;
   }
   [window setDelegate:self];
 

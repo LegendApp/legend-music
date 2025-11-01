@@ -3,7 +3,7 @@ import { VibrancyView } from "@fluentui-react-native/vibrancy-view";
 import { PortalProvider } from "@gorhom/portal";
 import { use$ } from "@legendapp/state/react";
 import { useCallback, useEffect } from "react";
-import { StyleSheet } from "react-native";
+import { StyleSheet, View } from "react-native";
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
 import { PlaybackArea } from "@/components/PlaybackArea";
@@ -16,16 +16,30 @@ import { currentSongOverlay$, finalizeCurrentSongOverlayDismissal } from "./Curr
 const WINDOW_ID = "current-song-overlay";
 
 const styles = StyleSheet.create({
-    vibrancy: {
+    root: {
+        alignSelf: "stretch",
+        flex: 1,
+        paddingTop: 22,
+        paddingHorizontal: 30,
+        paddingBottom: 36,
+        backgroundColor: "transparent",
+    },
+    shadowContainer: {
         flex: 1,
         borderRadius: 20,
+        shadowColor: "#000000",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        backgroundColor: "transparent",
+        borderWidth: 1,
+        borderColor: "rgba(255, 255, 255, 0.08)",
         overflow: "hidden",
     },
     overlaySurface: {
-        alignSelf: "stretch",
-        borderRadius: 20,
+        flex: 1,
+        borderRadius: 18,
         overflow: "hidden",
-        backgroundColor: "transparent",
     },
 });
 
@@ -72,22 +86,24 @@ function CurrentSongOverlayWindow() {
     }, [isExiting, opacity, handleExitComplete]);
 
     return (
-        <VibrancyView
-            blendingMode="behindWindow"
-            material="hudWindow"
-            state="active"
-            style={styles.vibrancy}
-        >
-            <ThemeProvider>
-                <PortalProvider>
-                    <TooltipProvider>
-                        <Animated.View style={[styles.overlaySurface, animatedStyle]}>
-                            <PlaybackArea showBorder={false} />
-                        </Animated.View>
-                    </TooltipProvider>
-                </PortalProvider>
-            </ThemeProvider>
-        </VibrancyView>
+        <Animated.View style={[styles.root, animatedStyle]}>
+            <View style={styles.shadowContainer}>
+                <VibrancyView
+                    blendingMode="behindWindow"
+                    material="hudWindow"
+                    state="active"
+                    style={styles.overlaySurface}
+                >
+                    <ThemeProvider>
+                        <PortalProvider>
+                            <TooltipProvider>
+                                <PlaybackArea showBorder={false} />
+                            </TooltipProvider>
+                        </PortalProvider>
+                    </ThemeProvider>
+                </VibrancyView>
+            </View>
+        </Animated.View>
     );
 }
 

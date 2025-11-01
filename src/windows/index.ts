@@ -32,9 +32,10 @@ const windowsConfig = {
             title: "",
             level: "status",
             transparentBackground: true,
+            hasShadow: true,
             windowStyle: {
-                width: 360,
-                height: 140,
+                width: 400,
+                height: 198,
                 mask: [
                     WindowStyleMask.Borderless,
                     WindowStyleMask.NonactivatingPanel,

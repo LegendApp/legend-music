@@ -15,11 +15,11 @@ import {
 
 const OVERLAY_WINDOW_KEY = "CurrentSongOverlayWindow" as const;
 const OVERLAY_WINDOW_ID = WindowsNavigator.getIdentifier(OVERLAY_WINDOW_KEY);
-const DEFAULT_WIDTH = 360;
-const DEFAULT_HEIGHT = 90;
-const TOP_MARGIN = 48;
+const DEFAULT_WIDTH = 400;
+const DEFAULT_HEIGHT = 154;
+const TOP_MARGIN = 0;
 const HORIZONTAL_MARGIN = 32;
-const BOTTOM_MARGIN = 64;
+const BOTTOM_MARGIN = 32;
 
 export const CurrentSongOverlayWindowManager = () => {
     perfCount("CurrentSongOverlayWindowManager.render");

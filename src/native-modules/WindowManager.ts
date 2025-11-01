@@ -60,6 +60,7 @@ export type WindowOptions = {
     title?: string;
     x?: number;
     y?: number;
+    hasShadow?: boolean;
     windowStyle?: WindowStyleOptions;
     initialProperties?: Record<string, unknown>;
     level?: WindowLevel;
