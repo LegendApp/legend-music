@@ -1,6 +1,6 @@
 import type { LibraryItem, LibraryTrack } from "@/systems/LibraryState";
 import type { LocalTrack } from "@/systems/LocalMusicState";
-import { DEFAULT_LOCAL_PLAYLIST_ID } from "@/systems/LocalMusicState";
+import { DEFAULT_LOCAL_PLAYLIST_ID } from "@/systems/localMusicConstants";
 
 export interface PlaylistResolutionSource {
     id: string;

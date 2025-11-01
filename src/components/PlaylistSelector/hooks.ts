@@ -123,10 +123,8 @@ export function usePlaylistQueueHandlers({
 
             if (resolvedTracks.length > 0) {
                 localAudioControls.queue.replace(resolvedTracks, { startIndex: 0, playImmediately: true });
-            } else {
-                if (playlist.type !== "local-files") {
-                    console.warn(`No tracks resolved for playlist ${playlist.name}`);
-                }
+            } else if (playlist.type !== "local-files") {
+                console.warn(`No tracks resolved for playlist ${playlist.name}`);
                 localAudioControls.queue.clear();
             }
 
@@ -195,7 +193,7 @@ export function usePlaylistQueueHandlers({
 
             if (resolvedTracks.length > 0) {
                 localAudioControls.queue.replace(resolvedTracks, { startIndex: 0, playImmediately: true });
-            } else {
+            } else if (playlist.id !== DEFAULT_LOCAL_PLAYLIST_ID) {
                 console.warn(`No tracks resolved for playlist ${playlist.name}`);
                 localAudioControls.queue.clear();
             }

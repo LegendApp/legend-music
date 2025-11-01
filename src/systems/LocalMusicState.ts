@@ -12,6 +12,7 @@ import { ensureCacheDirectory, getCacheDirectory } from "@/utils/cacheDirectorie
 import { createJSONManager } from "@/utils/JSONManager";
 import { perfCount, perfDelta, perfLog, perfTime } from "@/utils/perfLogger";
 import { runAfterInteractions } from "@/utils/runAfterInteractions";
+import { DEFAULT_LOCAL_PLAYLIST_ID, DEFAULT_LOCAL_PLAYLIST_NAME } from "./localMusicConstants";
 
 export interface LocalTrack {
     id: string;
@@ -48,8 +49,7 @@ export interface LocalMusicState {
     playlists: LocalPlaylist[];
 }
 
-export const DEFAULT_LOCAL_PLAYLIST_ID = "LOCAL_FILES";
-export const DEFAULT_LOCAL_PLAYLIST_NAME = "All Songs";
+export { DEFAULT_LOCAL_PLAYLIST_ID, DEFAULT_LOCAL_PLAYLIST_NAME } from "./localMusicConstants";
 
 // Settings persistence
 export const localMusicSettings$ = createJSONManager<LocalMusicSettings>({

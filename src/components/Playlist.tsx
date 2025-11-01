@@ -16,11 +16,13 @@ import {
 import { TrackDragSource } from "@/native-modules/TrackDragSource";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import {
+    DEFAULT_LOCAL_PLAYLIST_ID,
     createLocalTrackFromFile,
     ensureLocalTrackThumbnail,
     localMusicSettings$,
     localMusicState$,
     scanLocalMusic,
+    setCurrentPlaylist,
 } from "@/systems/LocalMusicState";
 import { settings$ } from "@/systems/Settings";
 import { state$ } from "@/systems/State";
@@ -56,11 +58,14 @@ type LegendListHandle = ElementRef<typeof LegendList> & {
 export function Playlist() {
     perfCount("Playlist.render");
     const localMusicState = use$(localMusicState$);
+    const libraryPaths = use$(localMusicSettings$.libraryPaths);
     const queueTracks = use$(queue$.tracks);
     const currentTrackIndex = use$(localPlayerState$.currentIndex);
     const isPlayerActive = use$(localPlayerState$.isPlaying);
     const playlistStyle = use$(settings$.general.playlistStyle);
     const queueLength = queueTracks.length;
+    const hasConfiguredLibrary = libraryPaths.length > 0;
+    const isDefaultPlaylistSelected = localMusicState.isLocalFilesSelected;
     const [isDragOver, setIsDragOver] = useState(false);
     const [dropFeedback, setDropFeedback] = useState<DropFeedback | null>(null);
     const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -602,15 +607,24 @@ export function Playlist() {
                     void ensureLocalTrackThumbnail(track);
                 });
 
+                if (!hasConfiguredLibrary && !isDefaultPlaylistSelected) {
+                    setCurrentPlaylist(DEFAULT_LOCAL_PLAYLIST_ID, "file");
+                }
+
+                const additionSummary = `Added ${formatTrackCount(tracksToAdd.length)}`;
+                const persistenceHint = hasConfiguredLibrary
+                    ? ""
+                    : " Add a library folder in Settings to keep them around next time.";
+
                 if (skipped > 0) {
                     showDropFeedback({
                         type: "warning",
-                        message: `Added ${formatTrackCount(tracksToAdd.length)} (skipped ${formatTrackCount(skipped)}).`,
+                        message: `${additionSummary} (skipped ${formatTrackCount(skipped)}).${persistenceHint}`,
                     });
                 } else {
                     showDropFeedback({
                         type: "success",
-                        message: `Added ${formatTrackCount(tracksToAdd.length)} to the queue.`,
+                        message: `${additionSummary} to the queue.${persistenceHint}`,
                     });
                 }
 
@@ -623,7 +637,7 @@ export function Playlist() {
                 });
             }
         },
-        [showDropFeedback],
+        [hasConfiguredLibrary, isDefaultPlaylistSelected, setCurrentPlaylist, showDropFeedback],
     );
 
     const handleDragEnter = useCallback(() => {
