@@ -82,6 +82,15 @@ export function PlaylistSelector() {
         [playlistMap],
     );
 
+    const renderPlaylistItemText = useMemo(
+        () => (playlistId: string | null) => {
+            if (!playlistId) return "Null";
+            const playlist = playlistMap.get(playlistId);
+            return playlist?.name ?? "Null";
+        },
+        [playlistMap],
+    );
+
     return (
         <View className="px-1 border-t border-white/10" onLayout={handleLayout}>
             <View className="flex-row items-center">
@@ -94,9 +103,11 @@ export function PlaylistSelector() {
                         getItemKey={(playlist) => playlist}
                         className="min-h-[200px]"
                         renderItem={renderPlaylistItem}
+                        renderItemText={renderPlaylistItemText}
                         unstyled={true}
                         triggerClassName="hover:bg-white/10 rounded-md h-8 px-2"
                         contentMaxHeightClassName="max-h-[600px]"
+                        textClassName="text-xs"
                         contentMinWidth={dropdownWidth}
                         contentMaxWidth={dropdownWidth}
                         minContentHeight={200}
