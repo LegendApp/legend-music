@@ -2,7 +2,6 @@ import { observer } from "@legendapp/state/react";
 import { Text, View } from "react-native";
 
 import { Checkbox } from "@/components/Checkbox";
-import { Select } from "@/components/Select";
 import { SettingsPage, SettingsRow, SettingsSection } from "@/settings/components";
 import { settings$ } from "@/systems/Settings";
 
@@ -15,7 +14,7 @@ export const GeneralSettings = observer(function GeneralSettings() {
     return (
         <SettingsPage title="General Settings">
             <SettingsSection title="Appearance">
-                <SettingsRow
+                {/* <SettingsRow
                     title="Playlist Style"
                     description="Choose how playlist items are displayed"
                     control={
@@ -27,7 +26,7 @@ export const GeneralSettings = observer(function GeneralSettings() {
                         />
                     }
                     controlWrapperClassName="w-40 ml-6"
-                />
+                /> */}
 
                 <SettingsRow
                     title="Display Hints"

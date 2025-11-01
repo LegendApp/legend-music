@@ -1,6 +1,6 @@
 import { createJSONManager } from "@/utils/JSONManager";
 
-export type PlaylistStyle = "compact" | "comfortable";
+export type PlaylistStyle = "compact";
 
 export type OverlayVerticalPosition = "top" | "middle" | "bottom";
 export type OverlayHorizontalPosition = "left" | "center" | "right";
@@ -47,7 +47,7 @@ export const settings$ = createJSONManager<AppSettings>({
         },
         // General settings
         general: {
-            playlistStyle: "comfortable",
+            playlistStyle: "compact",
             showHints: true,
         },
         // Registration settings
