@@ -39,6 +39,10 @@ const scheduleHideTimer = (durationMs: number = getDisplayDurationMs()) => {
     }, durationMs);
 };
 
+export const pauseCurrentSongOverlayDismissal = () => {
+    clearHideTimer();
+};
+
 export const presentCurrentSongOverlay = () => {
     if (!settings$.overlay.enabled.get()) {
         cancelCurrentSongOverlay();

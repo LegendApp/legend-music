@@ -4,13 +4,7 @@ import { PortalProvider } from "@gorhom/portal";
 import { useObserveEffect } from "@legendapp/state/react";
 import { useCallback } from "react";
 import { Platform, StyleSheet, View } from "react-native";
-import Animated, {
-    Easing,
-    runOnJS,
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming,
-} from "react-native-reanimated";
+import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
 import { PlaybackArea } from "@/components/PlaybackArea";
 import { TooltipProvider } from "@/components/TooltipProvider";
@@ -18,12 +12,18 @@ import { setWindowBlur } from "@/native-modules/WindowManager";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 import { withWindowProvider } from "@/windows";
 
-import { currentSongOverlay$, finalizeCurrentSongOverlayDismissal } from "./CurrentSongOverlayState";
+import {
+    currentSongOverlay$,
+    finalizeCurrentSongOverlayDismissal,
+    pauseCurrentSongOverlayDismissal,
+    resetCurrentSongOverlayTimer,
+} from "./CurrentSongOverlayState";
 
 const WINDOW_ID = "current-song-overlay";
 const SHOW_DURATION_MS = 400;
 const HIDE_DURATION_MS = 300;
-const MAX_BLUR_RADIUS = 8;
+const MAX_BLUR_RADIUS = 4;
+const SCALE = 0.9;
 
 const styles = StyleSheet.create({
     root: {
@@ -37,25 +37,29 @@ const styles = StyleSheet.create({
     shadowContainer: {
         flex: 1,
         borderRadius: 20,
+        backgroundColor: "#050505",
         shadowColor: "#000000",
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
-        backgroundColor: "transparent",
+    },
+    overlayWrapper: {
+        flex: 1,
+        borderRadius: 18,
         overflow: "hidden",
     },
     overlaySurface: {
         flex: 1,
         borderRadius: 18,
         borderWidth: 1,
-        borderColor: "#464747",
+        borderColor: "#3a3b3b",
         overflow: "hidden",
     },
 });
 
 function CurrentSongOverlayWindow() {
     const opacity = useSharedValue(0);
-    const scale = useSharedValue(0.95);
+    const scale = useSharedValue(SCALE);
 
     const animatedStyle = useAnimatedStyle(() => ({
         opacity: opacity.value,
@@ -64,6 +68,17 @@ function CurrentSongOverlayWindow() {
 
     const handleExitComplete = useCallback(() => {
         finalizeCurrentSongOverlayDismissal();
+    }, []);
+
+    const handleMouseEnter = useCallback(() => {
+        pauseCurrentSongOverlayDismissal();
+    }, []);
+
+    const handleMouseLeave = useCallback(() => {
+        if (currentSongOverlay$.isExiting.peek()) {
+            return;
+        }
+        resetCurrentSongOverlayTimer();
     }, []);
 
     useObserveEffect(() => {
@@ -94,7 +109,7 @@ function CurrentSongOverlayWindow() {
                 },
             );
 
-            scale.value = withTiming(0.95, {
+            scale.value = withTiming(SCALE, {
                 duration: HIDE_DURATION_MS,
                 easing: Easing.in(Easing.cubic),
             });
@@ -107,7 +122,7 @@ function CurrentSongOverlayWindow() {
         }
 
         opacity.value = 0;
-        scale.value = 0.95;
+        scale.value = SCALE;
 
         opacity.value = withTiming(1, {
             duration: SHOW_DURATION_MS,
@@ -132,24 +147,30 @@ function CurrentSongOverlayWindow() {
     });
 
     return (
-        <Animated.View style={[styles.root, animatedStyle]}>
+        <Animated.View
+            style={[styles.root, animatedStyle]}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+        >
             <View style={styles.shadowContainer}>
-                <VibrancyView
-                    blendingMode="behindWindow"
-                    material="hudWindow"
-                    state="active"
-                    style={styles.overlaySurface}
-                >
-                    <View className="flex-1 bg-background-primary/40">
-                        <ThemeProvider>
-                            <PortalProvider>
-                                <TooltipProvider>
-                                    <PlaybackArea showBorder={false} />
-                                </TooltipProvider>
-                            </PortalProvider>
-                        </ThemeProvider>
-                    </View>
-                </VibrancyView>
+                <View style={styles.overlayWrapper}>
+                    <VibrancyView
+                        blendingMode="behindWindow"
+                        material="hudWindow"
+                        state="active"
+                        style={styles.overlaySurface}
+                    >
+                        <View className="flex-1 bg-background-primary/40">
+                            <ThemeProvider>
+                                <PortalProvider>
+                                    <TooltipProvider>
+                                        <PlaybackArea showBorder={false} />
+                                    </TooltipProvider>
+                                </PortalProvider>
+                            </ThemeProvider>
+                        </View>
+                    </VibrancyView>
+                </View>
             </View>
         </Animated.View>
     );

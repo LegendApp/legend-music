@@ -18,7 +18,7 @@ export function CurrentSongOverlayController() {
         const isPlaying = localPlayerState$.isPlaying.get();
         const trackId = currentTrack?.id ?? null;
         const overlayEnabled = settings$.overlay.enabled.get();
-        const shouldShow = Boolean(trackId && isPlaying && overlayEnabled);
+        const shouldShow = Boolean(trackId && overlayEnabled && isPlaying);
 
         if (shouldShow && trackId) {
             if (trackId !== lastTrackIdRef.current) {
@@ -32,7 +32,9 @@ export function CurrentSongOverlayController() {
             requestCurrentSongOverlayDismissal();
         }
 
-        lastTrackIdRef.current = trackId;
+        if (!trackId) {
+            lastTrackIdRef.current = null;
+        }
     });
 
     useObserveEffect(() => {
