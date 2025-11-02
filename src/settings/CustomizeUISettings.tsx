@@ -67,19 +67,19 @@ const BOTTOM_BAR_CONTROL_DEFINITIONS: ControlDefinition<BottomBarControlId>[] = 
     {
         id: "savePlaylist",
         label: "Save Playlist",
-        description: "Export the current queue",
+        // description: "Export the current queue",
         icon: "square.and.arrow.down",
     },
     {
         id: "toggleVisualizer",
         label: "Visualizer",
-        description: "Show or hide the visualizer",
+        // description: "Show or hide the visualizer",
         icon: "waveform",
     },
     {
         id: "toggleLibrary",
         label: "Library",
-        description: "Open or close the media library",
+        // description: "Open or close the media library",
         icon: "sidebar.right",
     },
 ];
@@ -273,9 +273,23 @@ function ControlGroup<T extends string>({ label, items, group, section, definiti
                             >
                                 <ControlChip definition={definitions[controlId]} />
                             </DraggableItem>
-                            <ControlDropZone targetGroup={group} section={section} index={index + 1} onMove={onMove} />
+                            {index < items.length - 1 && (
+                                <ControlDropZone
+                                    targetGroup={group}
+                                    section={section}
+                                    index={index + 1}
+                                    onMove={onMove}
+                                />
+                            )}
                         </Fragment>
                     ))}
+                    <ControlDropZone
+                        targetGroup={group}
+                        section={section}
+                        index={items.length}
+                        onMove={onMove}
+                        isExpanded
+                    />
                 </View>
             </View>
         </View>
@@ -298,7 +312,7 @@ function ControlDropZone<T extends string>({
     isExpanded = false,
 }: ControlDropZoneProps<T>) {
     const dropId = `${section}-${targetGroup}-drop-${index}`;
-    const baseClassName = isExpanded ? "px-2 h-20 w-full basis-full" : "h-10 w-2 flex-shrink-0";
+    const baseClassName = isExpanded ? "px-2 h-20 flex-1 w-full basis-full" : "h-10 w-2 flex-shrink-0";
     const indicatorClass = isExpanded
         ? "rounded-2xl border border-emerald-500/40 bg-emerald-500/10"
         : "rounded-full bg-emerald-500/40";
