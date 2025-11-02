@@ -16,7 +16,7 @@ import { cn } from "@/utils/cn";
  */
 export function HotkeySettings() {
     const hotkeys = use$(hotkeys$);
-    const hotkeyNames = Object.keys(hotkeys);
+    const hotkeyNames = Object.keys(hotkeys).sort((a, b) => a.localeCompare(b));
 
     return (
         <SettingsPage title="Keyboard Shortcuts" scroll contentClassName="p-5 gap-4">
@@ -44,12 +44,21 @@ interface HotkeyItemProps {
     keyCode: KeyboardEventCodeHotkey;
 }
 
+function formatHotkeyName(name: string): string {
+    return name.replace(/([a-z0-9])([A-Z])/g, "$1 $2");
+}
+
 function HotkeyItem({ name, description, keyCode }: HotkeyItemProps) {
+    const displayName = formatHotkeyName(name);
+    const showSecondaryLabel = description.length > 0 && description !== displayName;
+
     return (
         <View className="flex-row justify-between items-center my-2">
             <View className="flex-1">
-                <Text className="text-lg">{name}</Text>
-                <Text className="text-sm text-gray-600">{description}</Text>
+                <Text className="text-lg font-semibold text-gray-100">{description || displayName}</Text>
+                <Text className="text-xs text-gray-500 mt-1 uppercase tracking-wide">
+                    {showSecondaryLabel ? displayName : name}
+                </Text>
             </View>
             <HotkeyInput hotkeyName={name} currentKeyCode={keyCode} />
         </View>

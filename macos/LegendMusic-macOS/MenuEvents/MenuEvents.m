@@ -1,5 +1,8 @@
 #import "MenuEvents.h"
 
+static NSString *const kMenuCommandTriggeredNotification = @"MenuCommandTriggered";
+static NSString *const kMenuCommandUpdateNotification = @"MenuCommandUpdate";
+
 @implementation MenuEvents {
   BOOL hasListeners;
 }
@@ -12,7 +15,7 @@ RCT_EXPORT_MODULE();
     // Add generic menu handler
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(handleMenuCommand:)
-                                                 name:@"MenuCommandTriggered"
+                                                 name:kMenuCommandTriggeredNotification
                                                object:nil];
   }
   return self;
@@ -30,6 +33,19 @@ RCT_EXPORT_MODULE();
       [self sendEventWithName:@"onMenuCommand" body:@{@"commandId": commandId}];
     }
   }
+}
+
+- (void)postMenuUpdateWithUserInfo:(NSDictionary *)userInfo {
+  NSString *commandId = userInfo[@"commandId"];
+  if (!commandId) {
+    return;
+  }
+
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [[NSNotificationCenter defaultCenter] postNotificationName:kMenuCommandUpdateNotification
+                                                        object:nil
+                                                      userInfo:userInfo];
+  });
 }
 
 - (NSArray<NSString *> *)supportedEvents {
@@ -54,6 +70,27 @@ RCT_EXPORT_MODULE();
 RCT_EXPORT_METHOD(isAvailable:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject) {
   resolve(@YES);
+}
+
+RCT_EXPORT_METHOD(updateMenuItemState:(NSString *)commandId state:(BOOL)state) {
+  if (!commandId) {
+    return;
+  }
+  [self postMenuUpdateWithUserInfo:@{ @"commandId": commandId, @"state": @(state) }];
+}
+
+RCT_EXPORT_METHOD(setMenuItemEnabled:(NSString *)commandId enabled:(BOOL)enabled) {
+  if (!commandId) {
+    return;
+  }
+  [self postMenuUpdateWithUserInfo:@{ @"commandId": commandId, @"enabled": @(enabled) }];
+}
+
+RCT_EXPORT_METHOD(updateMenuItemTitle:(NSString *)commandId title:(NSString *)title) {
+  if (!commandId || title == nil) {
+    return;
+  }
+  [self postMenuUpdateWithUserInfo:@{ @"commandId": commandId, @"title": title }];
 }
 
 @end

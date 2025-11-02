@@ -7,12 +7,16 @@ import { Button } from "@/components/Button";
 import { CustomSlider } from "@/components/CustomSlider";
 import { localAudioControls, localPlayerState$ } from "@/components/LocalAudioPlayer";
 import { SkiaText } from "@/components/SkiaText";
+import { usePlaybackControlLayout } from "@/hooks/useUIControls";
+import { settings$, type PlaybackControlId } from "@/systems/Settings";
 import { cn } from "@/utils/cn";
 import { perfCount } from "@/utils/perfLogger";
 
 type PlaybackAreaProps = {
     showBorder?: boolean;
 };
+
+const DEFAULT_PLAYBACK_BUTTONS: PlaybackControlId[] = ["playPause", "next"];
 
 // Format time for local playback with caching to reduce computation
 const formatTimeCache = new Map<number, string>();
@@ -73,6 +77,9 @@ export function PlaybackArea({ showBorder = true }: PlaybackAreaProps = {}) {
     const currentTrack = use$(localPlayerState$.currentTrack);
     const isPlaying = use$(localPlayerState$.isPlaying);
     const currentLocalTime$ = localPlayerState$.currentTime;
+    const playbackControlsLayout = usePlaybackControlLayout();
+    const shuffleEnabled = use$(settings$.playback.shuffle);
+    const repeatMode = use$(settings$.playback.repeatMode);
 
     // perfLog("PlaybackArea.state", {
     //     track: currentTrack?.title,
@@ -99,40 +106,96 @@ export function PlaybackArea({ showBorder = true }: PlaybackAreaProps = {}) {
                     </Text>
                 </View>
                 <View className="flex-row items-center">
-                    {/* Playback Controls */}
                     <View className="flex-row items-center ml-1 -mr-1">
-                        {/* <Button
-                            icon="backward.fill"
-                            variant="icon-bg"
-                            iconSize={14}
-                            size="medium"
-                            onClick={localAudioControls.playPrevious}
-                            className="bg-transparent"
-                            // className="bg-white/15 hover:bg-white/25 active:bg-white/35 border-white/10 rounded-full"
-                        /> */}
+                        {((playbackControlsLayout?.shown?.length
+                            ? playbackControlsLayout.shown
+                            : DEFAULT_PLAYBACK_BUTTONS) as PlaybackControlId[]) // Ensure default buttons when no layout present
+                            .filter((controlId, index, array) => array.indexOf(controlId) === index)
+                            .map((controlId) => {
+                                switch (controlId) {
+                                    case "previous":
+                                        return (
+                                            <Button
+                                                key="previous"
+                                                icon="backward.end.fill"
+                                                variant="icon"
+                                                iconSize={16}
+                                                size="small"
+                                                iconMarginTop={-1}
+                                                onClick={localAudioControls.playPrevious}
+                                                tooltip="Previous"
+                                                className="mx-0.5"
+                                            />
+                                        );
+                                    case "playPause":
+                                        return (
+                                            <Button
+                                                key="playPause"
+                                                icon={isPlaying ? "pause.fill" : "play.fill"}
+                                                variant="icon"
+                                                iconSize={16}
+                                                size="small"
+                                                iconMarginTop={-1}
+                                                onClick={localAudioControls.togglePlayPause}
+                                                tooltip={isPlaying ? "Pause" : "Play"}
+                                                className="mx-0.5"
+                                            />
+                                        );
+                                    case "next":
+                                        return (
+                                            <Button
+                                                key="next"
+                                                icon="forward.end.fill"
+                                                variant="icon"
+                                                iconSize={16}
+                                                size="small"
+                                                iconMarginTop={-1}
+                                                onClick={localAudioControls.playNext}
+                                                tooltip="Next"
+                                                className="mx-0.5"
+                                            />
+                                        );
+                                    case "shuffle":
+                                        return (
+                                            <Button
+                                                key="shuffle"
+                                                icon="shuffle"
+                                                variant="icon"
+                                                iconSize={16}
+                                                size="small"
+                                                iconMarginTop={-1}
+                                                onClick={localAudioControls.toggleShuffle}
+                                                tooltip={shuffleEnabled ? "Disable shuffle" : "Enable shuffle"}
+                                                className={cn("mx-0.5", shuffleEnabled && "bg-white/15")}
+                                            />
+                                        );
+                                    case "repeat": {
+                                        const repeatIcon = repeatMode === "one" ? "repeat.1" : "repeat";
+                                        const repeatTooltip =
+                                            repeatMode === "off"
+                                                ? "Enable repeat"
+                                                : repeatMode === "all"
+                                                ? "Repeat all tracks"
+                                                : "Repeat current track";
 
-                        <Button
-                            icon={isPlaying ? "pause.fill" : "play.fill"}
-                            variant="icon"
-                            iconSize={16}
-                            size="small"
-                            iconMarginTop={-1}
-                            onClick={localAudioControls.togglePlayPause}
-                            tooltip={isPlaying ? "Pause" : "Play"}
-                            // className="bg-white/15 hover:bg-white/25 active:bg-white/35 border-white/15 rounded-full"
-                        />
-
-                        <Button
-                            icon="forward.end.fill"
-                            variant="icon"
-                            iconSize={16}
-                            size="small"
-                            iconMarginTop={-1}
-                            onClick={localAudioControls.playNext}
-                            tooltip="Next"
-                            // className="bg-transparent"
-                            // className="bg-white/15 hover:bg-white/25 active:bg-white/35 border-white/10 rounded-full"
-                        />
+                                        return (
+                                            <Button
+                                                key="repeat"
+                                                icon={repeatIcon}
+                                                variant="icon"
+                                                iconSize={16}
+                                                size="small"
+                                                iconMarginTop={-1}
+                                                onClick={localAudioControls.cycleRepeatMode}
+                                                tooltip={repeatTooltip}
+                                                className={cn("mx-0.5", repeatMode !== "off" && "bg-white/15")}
+                                            />
+                                        );
+                                    }
+                                    default:
+                                        return null;
+                                }
+                            })}
                     </View>
                 </View>
             </View>

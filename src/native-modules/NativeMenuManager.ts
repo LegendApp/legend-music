@@ -67,6 +67,42 @@ class MenuManager {
         this.eventSubscriptions = {};
         this.commandListeners.clear();
     }
+
+    public setMenuItemState(commandId: string, state: boolean) {
+        if (!this.isNativeModuleAvailable || typeof MenuEvents?.updateMenuItemState !== "function") {
+            return;
+        }
+
+        try {
+            MenuEvents.updateMenuItemState(commandId, state);
+        } catch (error) {
+            console.warn(`MenuManager: Failed to update state for ${commandId}`, error);
+        }
+    }
+
+    public setMenuItemEnabled(commandId: string, enabled: boolean) {
+        if (!this.isNativeModuleAvailable || typeof MenuEvents?.setMenuItemEnabled !== "function") {
+            return;
+        }
+
+        try {
+            MenuEvents.setMenuItemEnabled(commandId, enabled);
+        } catch (error) {
+            console.warn(`MenuManager: Failed to update enabled state for ${commandId}`, error);
+        }
+    }
+
+    public setMenuItemTitle(commandId: string, title: string) {
+        if (!this.isNativeModuleAvailable || typeof MenuEvents?.updateMenuItemTitle !== "function") {
+            return;
+        }
+
+        try {
+            MenuEvents.updateMenuItemTitle(commandId, title);
+        } catch (error) {
+            console.warn(`MenuManager: Failed to update title for ${commandId}`, error);
+        }
+    }
 }
 
 // Create singleton instance

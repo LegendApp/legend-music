@@ -6,6 +6,7 @@ import type { LocalTrack } from "@/systems/LocalMusicState";
 import { ensureLocalTrackThumbnail } from "@/systems/LocalMusicState";
 import type { PlaylistSnapshot, SerializedQueuedTrack } from "@/systems/PlaylistCache";
 import { getPlaylistCacheSnapshot, persistPlaylistSnapshot } from "@/systems/PlaylistCache";
+import { type RepeatMode, settings$ } from "@/systems/Settings";
 import { clearQueueM3U, loadQueueFromM3U, saveQueueToM3U } from "@/utils/m3uManager";
 import { perfCount, perfDelta, perfLog } from "@/utils/perfLogger";
 import { runAfterInteractions } from "@/utils/runAfterInteractions";
@@ -52,6 +53,9 @@ const deserializeQueuedTrack = (track: SerializedQueuedTrack): QueuedTrack => ({
 const snapshotFromCache = getPlaylistCacheSnapshot();
 let queueHydratedFromSnapshot = false;
 let pendingInitialTrackRestore: { track: QueuedTrack; autoPlay: boolean } | null = null;
+
+const playbackHistory: number[] = [];
+const MAX_HISTORY_LENGTH = 100;
 
 if (snapshotFromCache.queue.length > 0) {
     const hydratedTracks = snapshotFromCache.queue.map(deserializeQueuedTrack);
@@ -204,6 +208,32 @@ function setQueueTracks(tracks: QueuedTrack[]): void {
     }
 }
 
+function pushHistory(index: number): void {
+    if (index < 0) {
+        return;
+    }
+    playbackHistory.push(index);
+    if (playbackHistory.length > MAX_HISTORY_LENGTH) {
+        playbackHistory.shift();
+    }
+}
+
+function popHistory(): number | undefined {
+    return playbackHistory.pop();
+}
+
+function clearHistory(): void {
+    playbackHistory.length = 0;
+}
+
+function getPlaybackSettings() {
+    const playbackSettings = settings$.playback.get();
+    return {
+        shuffle: playbackSettings.shuffle,
+        repeatMode: playbackSettings.repeatMode,
+    };
+}
+
 localPlayerState$.currentIndex.onChange(() => {
     schedulePlaylistSnapshotPersist();
 });
@@ -328,13 +358,22 @@ async function loadTrackInternal(track: LocalTrack, autoPlay: boolean): Promise<
     }
 }
 
-function playTrackFromQueue(index: number, options: QueueUpdateOptions = {}): void {
+interface PlayTrackFromQueueOptions extends QueueUpdateOptions {
+    recordHistory?: boolean;
+}
+
+function playTrackFromQueue(index: number, options: PlayTrackFromQueueOptions = {}): void {
     const tracks = getQueueSnapshot();
     const targetIndex = clampIndex(options.startIndex ?? index, tracks.length);
 
     if (tracks.length === 0 || targetIndex === -1) {
         resetPlayerForEmptyQueue();
         return;
+    }
+
+    const currentIndex = localPlayerState$.currentIndex.peek();
+    if (options.recordHistory && currentIndex !== -1 && currentIndex !== targetIndex) {
+        pushHistory(currentIndex);
     }
 
     const track = tracks[targetIndex];
@@ -345,6 +384,7 @@ function playTrackFromQueue(index: number, options: QueueUpdateOptions = {}): vo
 function queueReplace(tracksInput: LocalTrack[], options: QueueUpdateOptions = {}): void {
     perfLog("Queue.replace", { length: tracksInput.length, startIndex: options.startIndex });
     const tracks = tracksInput.map(createQueuedTrack);
+    clearHistory();
     setQueueTracks(tracks);
 
     if (tracks.length === 0) {
@@ -370,6 +410,7 @@ function queueAppend(input: QueueInput, options: QueueUpdateOptions = {}): void 
     setQueueTracks(nextQueue);
 
     if (wasEmpty) {
+        clearHistory();
         playTrackFromQueue(0, {
             playImmediately: options.playImmediately ?? true,
             startIndex: 0,
@@ -523,6 +564,7 @@ function queueRemoveIndices(indices: number[]): void {
     const nextQueue = existing.filter((_, index) => !removalSet.has(index));
 
     perfLog("Queue.removeIndices", { count: uniqueSorted.length });
+    clearHistory();
     setQueueTracks(nextQueue);
 
     if (nextQueue.length === 0) {
@@ -555,6 +597,7 @@ function queueRemoveIndices(indices: number[]): void {
 
 function queueClear(): void {
     perfLog("Queue.clear");
+    clearHistory();
     setQueueTracks([]);
     resetPlayerForEmptyQueue();
 
@@ -580,6 +623,7 @@ async function initializeQueueFromCache(): Promise<void> {
 
         if (savedTracks.length > 0) {
             // Convert to queued tracks without triggering save
+            clearHistory();
             const queuedTracks = savedTracks.map(createQueuedTrack);
             queue$.tracks.set(queuedTracks);
             console.log(`Restored queue with ${queuedTracks.length} tracks from cache`);
@@ -640,32 +684,114 @@ async function togglePlayPause(): Promise<void> {
     }
 }
 
-function playPrevious(): void {
-    const currentIndex = localPlayerState$.currentIndex.peek();
-    const tracks = getQueueSnapshot();
-    perfLog("LocalAudioControls.playPrevious", { currentIndex, queueLength: tracks.length });
-    if (tracks.length === 0 || currentIndex <= 0) {
-        return;
-    }
-
-    const newIndex = currentIndex - 1;
-    playTrackFromQueue(newIndex, { playImmediately: true, startIndex: newIndex });
+function toggleShuffle(): void {
+    const isShuffleEnabled = settings$.playback.shuffle.get();
+    settings$.playback.shuffle.set(!isShuffleEnabled);
 }
 
-function playNext(): void {
+function cycleRepeatMode(): void {
+    const currentMode = settings$.playback.repeatMode.get();
+    const order: RepeatMode[] = ["off", "all", "one"];
+    const nextIndex = (order.indexOf(currentMode) + 1) % order.length;
+    settings$.playback.repeatMode.set(order[nextIndex]);
+}
+
+function setRepeatMode(mode: RepeatMode): void {
+    settings$.playback.repeatMode.set(mode);
+}
+
+function playPrevious(): void {
+    const { shuffle, repeatMode } = getPlaybackSettings();
     const currentIndex = localPlayerState$.currentIndex.peek();
     const tracks = getQueueSnapshot();
-    perfLog("LocalAudioControls.playNext", { currentIndex, queueLength: tracks.length });
+    perfLog("LocalAudioControls.playPrevious", { currentIndex, queueLength: tracks.length, shuffle, repeatMode });
+
     if (tracks.length === 0) {
         return;
     }
 
-    if (currentIndex < tracks.length - 1) {
-        const newIndex = currentIndex + 1;
-        playTrackFromQueue(newIndex, { playImmediately: true, startIndex: newIndex });
-    } else {
-        localPlayerState$.isPlaying.set(false);
+    if (repeatMode === "one" && currentIndex >= 0) {
+        playTrackFromQueue(currentIndex, {
+            playImmediately: true,
+            startIndex: currentIndex,
+            recordHistory: false,
+        });
+        return;
     }
+
+    if (shuffle) {
+        const previousIndex = popHistory();
+        if (previousIndex != null && previousIndex >= 0 && previousIndex < tracks.length) {
+            playTrackFromQueue(previousIndex, {
+                playImmediately: true,
+                startIndex: previousIndex,
+                recordHistory: false,
+            });
+            return;
+        }
+    }
+
+    if (currentIndex <= 0) {
+        if (repeatMode === "all" && tracks.length > 0) {
+            const lastIndex = tracks.length - 1;
+            playTrackFromQueue(lastIndex, {
+                playImmediately: true,
+                startIndex: lastIndex,
+                recordHistory: true,
+            });
+        }
+        return;
+    }
+
+    const newIndex = currentIndex - 1;
+    playTrackFromQueue(newIndex, { playImmediately: true, startIndex: newIndex, recordHistory: false });
+}
+
+function playNext(): void {
+    const { shuffle, repeatMode } = getPlaybackSettings();
+    const currentIndex = localPlayerState$.currentIndex.peek();
+    const tracks = getQueueSnapshot();
+    perfLog("LocalAudioControls.playNext", { currentIndex, queueLength: tracks.length, shuffle, repeatMode });
+
+    if (tracks.length === 0) {
+        return;
+    }
+
+    if (repeatMode === "one" && currentIndex >= 0) {
+        playTrackFromQueue(currentIndex, {
+            playImmediately: true,
+            startIndex: currentIndex,
+            recordHistory: false,
+        });
+        return;
+    }
+
+    let nextIndex = -1;
+
+    if (shuffle) {
+        const available = tracks.map((_, idx) => idx).filter((idx) => idx !== currentIndex);
+        if (available.length > 0) {
+            const randomIdx = Math.floor(Math.random() * available.length);
+            nextIndex = available[randomIdx];
+        } else if (repeatMode === "all" && currentIndex >= 0) {
+            nextIndex = currentIndex;
+        }
+    } else if (currentIndex < tracks.length - 1) {
+        nextIndex = currentIndex + 1;
+    } else if (repeatMode === "all") {
+        nextIndex = tracks.length > 0 ? 0 : -1;
+    }
+
+    if (nextIndex === -1) {
+        localPlayerState$.isPlaying.set(false);
+        return;
+    }
+
+    playTrackFromQueue(nextIndex, {
+        playImmediately: true,
+        startIndex: nextIndex,
+        recordHistory: true,
+    });
 }
 
 function playTrackAtIndex(index: number): void {
@@ -675,7 +801,7 @@ function playTrackAtIndex(index: number): void {
         return;
     }
 
-    playTrackFromQueue(index, { playImmediately: true, startIndex: index });
+    playTrackFromQueue(index, { playImmediately: true, startIndex: index, recordHistory: true });
 }
 
 async function setVolume(volume: number): Promise<void> {
@@ -727,6 +853,9 @@ export const localAudioControls = {
     play,
     pause,
     togglePlayPause,
+    toggleShuffle,
+    cycleRepeatMode,
+    setRepeatMode,
     playPrevious,
     playNext,
     playTrackAtIndex,

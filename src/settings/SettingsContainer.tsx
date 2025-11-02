@@ -6,6 +6,7 @@ import { StyleSheet, View } from "react-native";
 import { Sidebar } from "@/components/Sidebar";
 import { TooltipProvider } from "@/components/TooltipProvider";
 import { AccountSettings } from "@/settings/AccountSettings";
+import { CustomizeUISettings } from "@/settings/CustomizeUISettings";
 import { GeneralSettings } from "@/settings/GeneralSettings";
 import { LibrarySettings } from "@/settings/LibrarySettings";
 import { OpenSourceSettings } from "@/settings/OpenSourceSettings";
@@ -13,13 +14,14 @@ import { OverlaySettings } from "@/settings/OverlaySettings";
 import { state$ } from "@/systems/State";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 
-export type SettingsPage = "general" | "library" | "overlay" | "account" | "open-source";
+export type SettingsPage = "general" | "library" | "overlay" | "ui-customize" | "account" | "open-source";
 
 // Define the categories for settings
 const SETTING_PAGES: { id: SettingsPage; name: string }[] = [
     { id: "general", name: "General" },
     { id: "library", name: "Library" },
     { id: "overlay", name: "Overlay" },
+    { id: "ui-customize", name: "Customize UI" },
     { id: "account", name: "Account" },
     { id: "open-source", name: "Open Source" },
 ];
@@ -37,6 +39,8 @@ export default function SettingsContainer() {
                 return <LibrarySettings />;
             case "overlay":
                 return <OverlaySettings />;
+            case "ui-customize":
+                return <CustomizeUISettings />;
             case "open-source":
                 return <OpenSourceSettings />;
             case "account":

@@ -12,6 +12,8 @@ const DEFAULT_HOTKEYS = {
     PlayPauseSpace: KeyCodes.KEY_SPACE,
     NextTrack: KeyCodes.KEY_MEDIA_NEXT,
     PreviousTrack: KeyCodes.KEY_MEDIA_PREVIOUS,
+    ToggleShuffle: `${KeyCodes.MODIFIER_OPTION}+${KeyCodes.KEY_S}`,
+    ToggleRepeatMode: `${KeyCodes.MODIFIER_OPTION}+${KeyCodes.KEY_R}`,
     Up: KeyCodes.KEY_UP,
     Down: KeyCodes.KEY_DOWN,
     Enter: KeyCodes.KEY_RETURN,
@@ -42,6 +44,12 @@ export const HotkeyMetadata: Record<HotkeyName, { description: string; repeat?: 
     },
     PreviousTrack: {
         description: "Play previous track",
+    },
+    ToggleShuffle: {
+        description: "Toggle shuffle mode",
+    },
+    ToggleRepeatMode: {
+        description: "Cycle repeat mode",
     },
     Up: {
         description: "Move selection up",

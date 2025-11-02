@@ -13,9 +13,11 @@ export function MainContainer() {
 
     useOnHotkeys(
         {
-            // PlayPause: localAudioControls.togglePlayPause,
-            // NextTrack: localAudioControls.playNext,
-            // PreviousTrack: localAudioControls.playPrevious,
+            PlayPause: localAudioControls.togglePlayPause,
+            NextTrack: localAudioControls.playNext,
+            PreviousTrack: localAudioControls.playPrevious,
+            ToggleShuffle: localAudioControls.toggleShuffle,
+            ToggleRepeatMode: localAudioControls.cycleRepeatMode,
             // Only handle space bar globally when no track is selected in the playlist
             PlayPauseSpace: localAudioControls.togglePlayPause,
         },

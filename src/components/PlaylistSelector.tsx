@@ -10,6 +10,8 @@ import { SelectLegendList } from "@/components/SelectLegendList";
 import { useOnHotkeys } from "@/systems/keyboard/Keyboard";
 import { library$ } from "@/systems/LibraryState";
 import { DEFAULT_LOCAL_PLAYLIST_NAME, localMusicState$ } from "@/systems/LocalMusicState";
+import { useBottomBarControlLayout } from "@/hooks/useUIControls";
+import type { BottomBarControlId } from "@/systems/Settings";
 import { cn } from "@/utils/cn";
 import {
     selectedPlaylist$,
@@ -19,6 +21,12 @@ import {
     useQueueExporter,
     useVisualizerToggle,
 } from "./PlaylistSelector/hooks";
+
+const DEFAULT_BOTTOM_BAR_BUTTONS: BottomBarControlId[] = [
+    "savePlaylist",
+    "toggleVisualizer",
+    "toggleLibrary",
+];
 
 export function PlaylistSelector() {
     const localMusicState = use$(localMusicState$);
@@ -57,6 +65,8 @@ export function PlaylistSelector() {
     useOnHotkeys({
         Search: () => dropdownMenuRef.current?.open(),
     });
+
+    const bottomBarLayout = useBottomBarControlLayout();
 
     const renderPlaylistItem = useMemo(
         () => (playlistId: string | null, mode: "item" | "preview") => {
@@ -128,36 +138,58 @@ export function PlaylistSelector() {
                     onSelectPlaylist={handleSearchPlaylistSelect}
                     dropdownWidth={dropdownWidth}
                 />
-                <Button
-                    icon="square.and.arrow.down"
-                    variant="icon"
-                    size="small"
-                    iconSize={14}
-                    iconMarginTop={-4}
-                    onClick={handleSavePlaylist}
-                    className="ml-2 hover:bg-white/10"
-                    disabled={queue.tracks.length === 0}
-                    tooltip="Save playlist"
-                />
-                <Button
-                    icon="waveform"
-                    variant="icon"
-                    size="small"
-                    iconSize={14}
-                    iconMarginTop={-1}
-                    onClick={toggleVisualizer}
-                    className={cn("ml-2 hover:bg-white/10", isVisualizerOpen && "bg-white/15")}
-                    tooltip={isVisualizerOpen ? "Hide visualizer" : "Show visualizer"}
-                />
-                <Button
-                    icon={isLibraryOpen ? "sidebar.right" : "sidebar.right"}
-                    variant="icon"
-                    size="small"
-                    iconSize={14}
-                    onClick={toggleLibraryWindow}
-                    className={cn("ml-2 hover:bg-white/10", isLibraryOpen && "bg-white/15")}
-                    tooltip={isLibraryOpen ? "Hide library" : "Show library"}
-                />
+                {((bottomBarLayout?.shown?.length
+                    ? bottomBarLayout.shown
+                    : DEFAULT_BOTTOM_BAR_BUTTONS) as BottomBarControlId[]) // default order when no layout present
+                    .filter((controlId, index, array) => array.indexOf(controlId) === index)
+                    .map((controlId) => {
+                        switch (controlId) {
+                            case "savePlaylist":
+                                return (
+                                    <Button
+                                        key="savePlaylist"
+                                        icon="square.and.arrow.down"
+                                        variant="icon"
+                                        size="small"
+                                        iconSize={14}
+                                        iconMarginTop={-4}
+                                        onClick={handleSavePlaylist}
+                                        className="ml-2 hover:bg-white/10"
+                                        disabled={queue.tracks.length === 0}
+                                        tooltip="Save playlist"
+                                    />
+                                );
+                            case "toggleVisualizer":
+                                return (
+                                    <Button
+                                        key="toggleVisualizer"
+                                        icon="waveform"
+                                        variant="icon"
+                                        size="small"
+                                        iconSize={14}
+                                        iconMarginTop={-1}
+                                        onClick={toggleVisualizer}
+                                        className={cn("ml-2 hover:bg-white/10", isVisualizerOpen && "bg-white/15")}
+                                        tooltip={isVisualizerOpen ? "Hide visualizer" : "Show visualizer"}
+                                    />
+                                );
+                            case "toggleLibrary":
+                                return (
+                                    <Button
+                                        key="toggleLibrary"
+                                        icon={isLibraryOpen ? "sidebar.right" : "sidebar.right"}
+                                        variant="icon"
+                                        size="small"
+                                        iconSize={14}
+                                        onClick={toggleLibraryWindow}
+                                        className={cn("ml-2 hover:bg-white/10", isLibraryOpen && "bg-white/15")}
+                                        tooltip={isLibraryOpen ? "Hide library" : "Show library"}
+                                    />
+                                );
+                            default:
+                                return null;
+                        }
+                    })}
             </View>
         </View>
     );

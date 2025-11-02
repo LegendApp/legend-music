@@ -17,6 +17,27 @@ export interface OverlaySettingsConfig {
     };
 }
 
+export type RepeatMode = "off" | "all" | "one";
+
+export interface PlaybackSettingsConfig {
+    shuffle: boolean;
+    repeatMode: RepeatMode;
+}
+
+export type PlaybackControlId = "previous" | "playPause" | "next" | "shuffle" | "repeat";
+
+export type BottomBarControlId = "savePlaylist" | "toggleVisualizer" | "toggleLibrary";
+
+export interface UIControlLayout<T extends string> {
+    shown: T[];
+    hidden: T[];
+}
+
+export interface UISettingsConfig {
+    playback: UIControlLayout<PlaybackControlId>;
+    bottomBar: UIControlLayout<BottomBarControlId>;
+}
+
 export interface AppSettings {
     state: {
         sidebarWidth: number;
@@ -32,6 +53,8 @@ export interface AppSettings {
         registrationType?: "legendkit" | "standalone";
     };
     overlay: OverlaySettingsConfig;
+    playback: PlaybackSettingsConfig;
+    ui: UISettingsConfig;
     uniqueId: string;
     isAuthed: boolean;
 }
@@ -60,6 +83,20 @@ export const settings$ = createJSONManager<AppSettings>({
             position: {
                 vertical: "bottom",
                 horizontal: "center",
+            },
+        },
+        playback: {
+            shuffle: false,
+            repeatMode: "off",
+        },
+        ui: {
+            playback: {
+                shown: ["playPause", "next"],
+                hidden: ["previous", "shuffle", "repeat"],
+            },
+            bottomBar: {
+                shown: ["savePlaylist", "toggleVisualizer", "toggleLibrary"],
+                hidden: [],
             },
         },
         uniqueId: "",

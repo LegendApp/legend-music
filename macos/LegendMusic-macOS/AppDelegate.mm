@@ -9,6 +9,9 @@
 #import <React/RCTDevSettings.h>
 #import <objc/runtime.h>
 
+static NSString *const kMenuCommandTriggeredNotification = @"MenuCommandTriggered";
+static NSString *const kMenuCommandUpdateNotification = @"MenuCommandUpdate";
+
 // Forward declaration for notification
 @interface NSNotificationCenter (MenuEvents)
 - (void)postNotificationName:(NSString *)name object:(id)object userInfo:(NSDictionary *)userInfo;
@@ -17,6 +20,7 @@
 
 @interface AppDelegate ()
 @property (nonatomic, assign) BOOL mainWindowFrameAdjusted;
+@property (nonatomic, strong) NSMutableDictionary<NSString *, NSMenuItem *> *menuCommandItems;
 @end
 
 
@@ -28,6 +32,7 @@
   // You can add your custom initial props in the dictionary below.
   // They will be passed down to the ViewController used by React Native.
   self.initialProps = @{};
+  self.menuCommandItems = [NSMutableDictionary dictionary];
 
   // Sometimes the "loading bar" gets stuck on and you have to kill the app to fix it;
   // by turning it off here, we avoid that issue
@@ -39,6 +44,11 @@
   [[NSNotificationCenter defaultCenter] addObserver:self
                                            selector:@selector(windowDidBecomeKey:)
                                                name:NSWindowDidBecomeKeyNotification
+                                             object:nil];
+
+  [[NSNotificationCenter defaultCenter] addObserver:self
+                                           selector:@selector(handleMenuItemUpdate:)
+                                               name:kMenuCommandUpdateNotification
                                              object:nil];
 
   [self performSelector:@selector(setupMenuConnections) withObject:nil afterDelay:0.5];
@@ -102,18 +112,25 @@
   [self setupMenuCommand:@"settings" itemTitle:@"Settings…" inMenu:@"LegendMusic"];
 //   [self setupMenuCommand:@"checkForUpdates" itemTitle:@"Check for Updates..." inMenu:@"LegendPhotos"];
   [self setupMenuCommand:@"jump" itemTitle:@"Jump" inMenu:@"File"];
+  [self setupPlaybackMenu];
+}
+
+- (SEL)selectorForCommandId:(NSString *)commandId {
+  NSString *selectorName = [NSString stringWithFormat:@"%@:", commandId];
+  SEL selector = NSSelectorFromString(selectorName);
+
+  if (!class_respondsToSelector([self class], selector)) {
+    class_addMethod([self class], selector, imp_implementationWithBlock(^(id _self, id sender) {
+      [_self triggerMenuCommand:commandId];
+    }), "v@:@");
+  }
+
+  return selector;
 }
 
 // Combined method to setup a menu command and connect it to a menu item
 - (BOOL)setupMenuCommand:(NSString *)commandId itemTitle:(NSString *)itemTitle inMenu:(NSString *)menuTitle {
-  // Create the selector name from the command ID
-  NSString *selectorName = [NSString stringWithFormat:@"%@:", commandId];
-  SEL selector = NSSelectorFromString(selectorName);
-
-  // Dynamically add the method to AppDelegate
-  class_addMethod([self class], selector, imp_implementationWithBlock(^(id _self, id sender) {
-    [_self triggerMenuCommand:commandId];
-  }), "v@:@");
+  SEL selector = [self selectorForCommandId:commandId];
 
   // Connect the menu item
   NSMenu *mainMenu = [NSApp mainMenu];
@@ -150,16 +167,121 @@
   // Connect the action
   [targetItem setTarget:self];
   [targetItem setAction:selector];
+  if (commandId && targetItem) {
+    self.menuCommandItems[commandId] = targetItem;
+  }
 
   return YES;
+}
+
+- (void)addMenuCommand:(NSString *)commandId
+                 title:(NSString *)title
+               iconName:(NSString *)iconName
+                 toMenu:(NSMenu *)menu {
+  if (!menu) {
+    return;
+  }
+
+  SEL selector = [self selectorForCommandId:commandId];
+  NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:title action:selector keyEquivalent:@""];
+  [item setTarget:self];
+
+  if (@available(macOS 11.0, *)) {
+    if (iconName.length > 0) {
+      NSImage *symbolImage = [NSImage imageWithSystemSymbolName:iconName accessibilityDescription:title];
+      if (symbolImage) {
+        symbolImage.template = YES;
+        item.image = symbolImage;
+      }
+    }
+  }
+
+  [menu addItem:item];
+  if (commandId) {
+    self.menuCommandItems[commandId] = item;
+  }
+}
+
+- (void)setupPlaybackMenu {
+  NSMenu *mainMenu = [NSApp mainMenu];
+  if (!mainMenu) {
+    return;
+  }
+
+  NSMenuItem *playbackMenuItem = [mainMenu itemWithTitle:@"Playback"];
+  if (!playbackMenuItem) {
+    playbackMenuItem = [[NSMenuItem alloc] initWithTitle:@"Playback" action:nil keyEquivalent:@""];
+    NSMenu *submenu = [[NSMenu alloc] initWithTitle:@"Playback"];
+    playbackMenuItem.submenu = submenu;
+    [mainMenu addItem:playbackMenuItem];
+  }
+
+  NSMenu *playbackMenu = [playbackMenuItem submenu];
+  if (!playbackMenu) {
+    return;
+  }
+
+  NSArray<NSString *> *playbackCommandKeys = @[
+    @"playbackPrevious",
+    @"playbackPlayPause",
+    @"playbackNext",
+    @"playbackToggleShuffle",
+    @"playbackToggleRepeat"
+  ];
+  [self.menuCommandItems removeObjectsForKeys:playbackCommandKeys];
+
+  while ([playbackMenu numberOfItems] > 0) {
+    [playbackMenu removeItemAtIndex:0];
+  }
+
+  [self addMenuCommand:@"playbackPrevious" title:@"Previous Track" iconName:@"backward.end.fill" toMenu:playbackMenu];
+  [self addMenuCommand:@"playbackPlayPause" title:@"Play" iconName:@"play.fill" toMenu:playbackMenu];
+  [self addMenuCommand:@"playbackNext" title:@"Next Track" iconName:@"forward.end.fill" toMenu:playbackMenu];
+
+  [playbackMenu addItem:[NSMenuItem separatorItem]];
+
+  [self addMenuCommand:@"playbackToggleShuffle" title:@"Shuffle" iconName:@"shuffle" toMenu:playbackMenu];
+  [self addMenuCommand:@"playbackToggleRepeat" title:@"Repeat Off" iconName:@"repeat" toMenu:playbackMenu];
+}
+
+- (void)handleMenuItemUpdate:(NSNotification *)notification {
+  NSDictionary *userInfo = notification.userInfo;
+  NSString *commandId = userInfo[@"commandId"];
+  if (!commandId) {
+    return;
+  }
+
+  NSMenuItem *menuItem = self.menuCommandItems[commandId];
+  if (!menuItem) {
+    return;
+  }
+
+  NSNumber *stateValue = userInfo[@"state"];
+  if (stateValue) {
+    menuItem.state = stateValue.boolValue ? NSControlStateValueOn : NSControlStateValueOff;
+  }
+
+  NSNumber *enabledValue = userInfo[@"enabled"];
+  if (enabledValue) {
+    menuItem.enabled = enabledValue.boolValue;
+  }
+
+  NSString *title = userInfo[@"title"];
+  if (title) {
+    menuItem.title = title;
+  }
 }
 
 // Generic method to trigger menu commands
 - (void)triggerMenuCommand:(NSString *)commandId {
   NSDictionary *userInfo = @{@"commandId": commandId};
-  [[NSNotificationCenter defaultCenter] postNotificationName:@"MenuCommandTriggered"
+  [[NSNotificationCenter defaultCenter] postNotificationName:kMenuCommandTriggeredNotification
                                                       object:nil
                                                     userInfo:userInfo];
+}
+
+- (void)dealloc {
+  [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 - (NSURL *)sourceURLForBridge:(RCTBridge *)bridge
