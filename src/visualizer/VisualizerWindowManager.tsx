@@ -12,9 +12,15 @@ import { WindowsNavigator } from "@/windows";
 const VISUALIZER_WINDOW_KEY = "VisualizerWindow" as const;
 const VISUALIZER_WINDOW_ID = WindowsNavigator.getIdentifier(VISUALIZER_WINDOW_KEY);
 
-const visualizerWindowState$ = observable({
+export const visualizerWindowState$ = observable({
     isOpen: false,
 });
+
+export function toggleVisualizerWindow() {
+    const current = visualizerWindowState$.isOpen.get();
+    perfLog("VisualizerWindowManager.toggle", { current });
+    visualizerWindowState$.isOpen.set(!current);
+}
 
 export const VisualizerWindowManager = () => {
     const windowManager = useWindowManager();
@@ -23,9 +29,7 @@ export const VisualizerWindowManager = () => {
     const isPlaying = use$(localPlayerState$.isPlaying);
 
     const toggleVisualizer = useCallback(() => {
-        const current = visualizerWindowState$.isOpen.get();
-        perfLog("VisualizerWindowManager.toggle", { current });
-        visualizerWindowState$.isOpen.set(!current);
+        toggleVisualizerWindow();
     }, []);
 
     // useEffect(() => {

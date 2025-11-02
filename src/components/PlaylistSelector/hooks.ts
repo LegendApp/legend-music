@@ -17,6 +17,7 @@ import { ensureCacheDirectory, getCacheDirectory } from "@/utils/cacheDirectorie
 import { perfLog } from "@/utils/perfLogger";
 import type { QueueAction } from "@/utils/queueActions";
 import { buildTrackLookup, getTracksForLibraryItem, resolvePlaylistTracks } from "@/utils/trackResolution";
+import { toggleVisualizerWindow, visualizerWindowState$ } from "@/visualizer/VisualizerWindowManager";
 
 interface PlaylistOption {
     id: string;
@@ -224,6 +225,13 @@ export function useLibraryToggle() {
     }, []);
 
     return { isLibraryOpen, toggleLibraryWindow };
+}
+
+export function useVisualizerToggle() {
+    const isVisualizerOpen = use$(visualizerWindowState$.isOpen);
+    const toggleVisualizer = useCallback(toggleVisualizerWindow, [toggleVisualizerWindow]);
+
+    return { isVisualizerOpen, toggleVisualizer };
 }
 
 interface QueueExporterArgs {

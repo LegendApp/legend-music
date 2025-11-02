@@ -17,6 +17,7 @@ import {
     usePlaylistOptions,
     usePlaylistQueueHandlers,
     useQueueExporter,
+    useVisualizerToggle,
 } from "./PlaylistSelector/hooks";
 
 export function PlaylistSelector() {
@@ -41,6 +42,7 @@ export function PlaylistSelector() {
 
     const { availablePlaylistIds, playlistMap, tracksByPath } = usePlaylistOptions(localMusicState);
     const { isLibraryOpen, toggleLibraryWindow } = useLibraryToggle();
+    const { isVisualizerOpen, toggleVisualizer } = useVisualizerToggle();
 
     const { handlePlaylistSelect, handleTrackSelect, handleLibraryItemSelect, handleSearchPlaylistSelect } =
         usePlaylistQueueHandlers({
@@ -135,6 +137,15 @@ export function PlaylistSelector() {
                     className="ml-2 hover:bg-white/10"
                     disabled={queue.tracks.length === 0}
                     tooltip="Save playlist"
+                />
+                <Button
+                    icon="waveform"
+                    variant="icon"
+                    size="small"
+                    iconSize={14}
+                    onClick={toggleVisualizer}
+                    className={`ml-2 hover:bg-white/10 ${isVisualizerOpen ? "bg-white/15" : ""}`}
+                    tooltip={isVisualizerOpen ? "Hide visualizer" : "Show visualizer"}
                 />
                 <Button
                     icon={isLibraryOpen ? "sidebar.right" : "sidebar.right"}
