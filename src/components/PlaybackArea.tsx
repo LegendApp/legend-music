@@ -116,6 +116,7 @@ export function PlaybackArea({ showBorder = true }: PlaybackAreaProps = {}) {
                             variant="icon"
                             iconSize={16}
                             size="small"
+                            iconMarginTop={-1}
                             onClick={localAudioControls.togglePlayPause}
                             tooltip={isPlaying ? "Pause" : "Play"}
                             // className="bg-white/15 hover:bg-white/25 active:bg-white/35 border-white/15 rounded-full"
@@ -126,6 +127,7 @@ export function PlaybackArea({ showBorder = true }: PlaybackAreaProps = {}) {
                             variant="icon"
                             iconSize={16}
                             size="small"
+                            iconMarginTop={-1}
                             onClick={localAudioControls.playNext}
                             tooltip="Next"
                             // className="bg-transparent"

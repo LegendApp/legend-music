@@ -78,6 +78,7 @@ export const LibrarySettings = observer(function LibrarySettings() {
                                         variant="icon"
                                         size="medium"
                                         tooltip="Choose folder"
+                                        iconMarginTop={-1}
                                         onClick={() => {
                                             void handleChangeLibraryPath(index);
                                         }}
@@ -87,6 +88,7 @@ export const LibrarySettings = observer(function LibrarySettings() {
                                         variant="icon"
                                         size="medium"
                                         tooltip="Remove path"
+                                        iconMarginTop={-1}
                                         onClick={() => handleRemoveLibraryPath(index)}
                                     />
                                 </View>
@@ -106,6 +108,7 @@ export const LibrarySettings = observer(function LibrarySettings() {
                     variant="primary"
                     icon="plus"
                     size="medium"
+                    iconMarginTop={-1}
                     className="self-start"
                     onClick={() => {
                         void handleAddLibraryPath();

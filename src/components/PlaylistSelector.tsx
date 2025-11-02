@@ -10,6 +10,7 @@ import { SelectLegendList } from "@/components/SelectLegendList";
 import { useOnHotkeys } from "@/systems/keyboard/Keyboard";
 import { library$ } from "@/systems/LibraryState";
 import { DEFAULT_LOCAL_PLAYLIST_NAME, localMusicState$ } from "@/systems/LocalMusicState";
+import { cn } from "@/utils/cn";
 import {
     selectedPlaylist$,
     useLibraryToggle,
@@ -132,6 +133,7 @@ export function PlaylistSelector() {
                     variant="icon"
                     size="small"
                     iconSize={14}
+                    iconMarginTop={-4}
                     onClick={handleSavePlaylist}
                     className="ml-2 hover:bg-white/10"
                     disabled={queue.tracks.length === 0}
@@ -142,8 +144,9 @@ export function PlaylistSelector() {
                     variant="icon"
                     size="small"
                     iconSize={14}
+                    iconMarginTop={-1}
                     onClick={toggleVisualizer}
-                    className={`ml-2 hover:bg-white/10 ${isVisualizerOpen ? "bg-white/15" : ""}`}
+                    className={cn("ml-2 hover:bg-white/10", isVisualizerOpen && "bg-white/15")}
                     tooltip={isVisualizerOpen ? "Hide visualizer" : "Show visualizer"}
                 />
                 <Button
@@ -152,7 +155,7 @@ export function PlaylistSelector() {
                     size="small"
                     iconSize={14}
                     onClick={toggleLibraryWindow}
-                    className={`ml-2 hover:bg-white/10 ${isLibraryOpen ? "bg-white/15" : ""}`}
+                    className={cn("ml-2 hover:bg-white/10", isLibraryOpen && "bg-white/15")}
                     tooltip={isLibraryOpen ? "Hide library" : "Show library"}
                 />
             </View>

@@ -16,16 +16,16 @@ import { MediaLibrarySearchBar } from "./MediaLibrary/SearchBar";
 import { TrackList } from "./MediaLibrary/TrackList";
 
 const collectionTabs = [
-    { id: "artists", label: "Artists", icon: "person.crop.square" as SFSymbols },
-    { id: "albums", label: "Albums", icon: "rectangle.stack.person.crop" as SFSymbols },
-    { id: "playlists", label: "Playlists", icon: "music.note.list" as SFSymbols },
+    { id: "artists", label: "Artists", icon: "person.crop.square" as SFSymbols, marginTop: -7 },
+    { id: "albums", label: "Albums", icon: "rectangle.stack.person.crop" as SFSymbols, marginTop: -9 },
+    { id: "playlists", label: "Playlists", icon: "music.note.list" as SFSymbols, marginTop: -7 },
 ] as const;
 
 function LibraryCollectionTabs() {
     const selectedCollection = use$(libraryUI$.selectedCollection);
 
     return (
-        <View className="flex-row gap-1 px-3 pb-3">
+        <View className="flex-row gap-1 px-2 pb-3">
             {collectionTabs.map((tab) => (
                 <Button
                     key={tab.id}
@@ -33,6 +33,7 @@ function LibraryCollectionTabs() {
                     size="small"
                     icon={tab.icon}
                     iconSize={14}
+                    iconMarginTop={tab.marginTop}
                     className={cn(
                         "flex-1 h-7",
                         selectedCollection === tab.id ? "bg-white/15 text-white" : "bg-transparent text-white/70",

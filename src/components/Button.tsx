@@ -18,6 +18,7 @@ export interface ButtonProps
     variant?: "icon" | "icon-bg" | "primary" | "secondary" | "accent" | "destructive" | "inverse";
     size?: "small" | "medium" | "large";
     iconSize?: number;
+    iconMarginTop?: number;
     tooltip?: string;
     onClick?: (event: NativeMouseEvent) => void;
     onMouseDown?: (event: NativeMouseEvent) => void;
@@ -33,6 +34,7 @@ export function Button({
     variant,
     size,
     iconSize: iconSizeProp,
+    iconMarginTop,
     onClick,
     onMouseDown,
     onMouseUp,
@@ -146,7 +148,7 @@ export function Button({
             {...restPressableProps}
             ref={pressableRef}
             className={cn(
-                icon && children && "flex-row items-center gap-1",
+                icon && children && "flex-row items-center gap-2",
                 icon && !children && "items-center justify-center",
                 size === "small" && isIcon && "size-7 pb-1.5",
                 size === "medium" && isIcon && "size-9 pb-1.5",
@@ -169,7 +171,7 @@ export function Button({
             onHoverIn={handleHoverIn}
             onHoverOut={handleHoverOut}
         >
-            {icon && <Icon name={icon} size={iconSize} />}
+            {icon && <Icon name={icon} size={iconSize} marginTop={iconMarginTop} />}
             {isString(children) ? <Text className="text-white text-base">{children}</Text> : children}
         </Pressable>
     );

@@ -137,6 +137,7 @@ export const PlaylistSelectorSearchDropdown = forwardRef<DropdownMenuRootRef, Pl
                         icon="magnifyingglass"
                         variant="icon"
                         size="small"
+                        iconMarginTop={-1}
                         className="ml-2 hover:bg-white/10"
                         tooltip="Search playlists"
                     />

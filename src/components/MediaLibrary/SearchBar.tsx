@@ -17,9 +17,9 @@ export function MediaLibrarySearchBar({ searchInputRef, query }: MediaLibrarySea
     }, [searchInputRef]);
 
     return (
-        <View className="px-3 pt-3 pb-2">
+        <View className="px-2 pt-1 pb-2">
             <View className="relative">
-                <View className="bg-background-tertiary border border-border-primary rounded-md px-3 py-1.5 pr-10">
+                <View className="bg-background-secondary border border-border-primary rounded-md px-3 py-2">
                     <TextInputSearch
                         ref={searchInputRef}
                         value$={libraryUI$.searchQuery}
@@ -34,6 +34,7 @@ export function MediaLibrarySearchBar({ searchInputRef, query }: MediaLibrarySea
                             variant="icon"
                             size="small"
                             accessibilityLabel="Clear search"
+                            iconMarginTop={-1}
                             onClick={handleClearSearch}
                             className="bg-transparent hover:bg-white/10"
                         />
