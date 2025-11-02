@@ -226,7 +226,7 @@ export const DraggableItem = <T,>({
             {isDragging && positionReady && childMeasurementsRef.current && (
                 <Portal>
                     <Animated.View
-                        className="rounded-md z-[9999] absolute bg-border-popup"
+                        className="rounded-md z-[9999] absolute"
                         style={[
                             {
                                 top: portalPosition.top - 1,
@@ -238,7 +238,7 @@ export const DraggableItem = <T,>({
                             },
                         ]}
                     >
-                        <View className="border border-border-popup rounded-md overflow-hidden">{children}</View>
+                        <View className="rounded-md overflow-hidden">{children}</View>
                     </Animated.View>
                 </Portal>
             )}

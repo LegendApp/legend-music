@@ -65,6 +65,12 @@ const PLAYBACK_CONTROL_DEFINITIONS: ControlDefinition<PlaybackControlId>[] = [
 
 const BOTTOM_BAR_CONTROL_DEFINITIONS: ControlDefinition<BottomBarControlId>[] = [
     {
+        id: "search",
+        label: "Search",
+        // description: "Open the search dialog",
+        icon: "magnifyingglass",
+    },
+    {
         id: "savePlaylist",
         label: "Save Playlist",
         // description: "Export the current queue",
@@ -283,13 +289,15 @@ function ControlGroup<T extends string>({ label, items, group, section, definiti
                             )}
                         </Fragment>
                     ))}
-                    <ControlDropZone
-                        targetGroup={group}
-                        section={section}
-                        index={items.length}
-                        onMove={onMove}
-                        isExpanded
-                    />
+                    {hasItems && (
+                        <ControlDropZone
+                            targetGroup={group}
+                            section={section}
+                            index={items.length}
+                            onMove={onMove}
+                            isExpanded
+                        />
+                    )}
                 </View>
             </View>
         </View>
@@ -312,7 +320,7 @@ function ControlDropZone<T extends string>({
     isExpanded = false,
 }: ControlDropZoneProps<T>) {
     const dropId = `${section}-${targetGroup}-drop-${index}`;
-    const baseClassName = isExpanded ? "px-2 h-20 flex-1 w-full basis-full" : "h-10 w-2 flex-shrink-0";
+    const baseClassName = isExpanded ? "px-2 h-10 flex-1 w-full basis-full" : "h-10 w-2 flex-shrink-0";
     const indicatorClass = isExpanded
         ? "rounded-2xl border border-emerald-500/40 bg-emerald-500/10"
         : "rounded-full bg-emerald-500/40";
@@ -357,7 +365,7 @@ interface ControlChipProps<T extends string> {
 function ControlChip<T extends string>({ definition }: ControlChipProps<T>) {
     return (
         <View className="flex-row items-center gap-3 rounded-xl border border-white/10 bg-black/40 px-3 py-2">
-            <View className="rounded-lg bg-white/10 p-2">
+            <View className="rounded-lg bg-white/10 p-2 pointer-events-none">
                 <Icon name={definition.icon} size={14} color="#fff" />
             </View>
             <View className="flex-col max-w-[160px]">

@@ -14,6 +14,7 @@ interface DroppableZoneProps {
     children?: DroppableZoneChildren;
     className?: string;
     activeClassName?: string;
+    disableProximityDetection?: boolean;
 }
 
 export const DroppableZone = ({
@@ -23,6 +24,7 @@ export const DroppableZone = ({
     children,
     className = "",
     activeClassName = "",
+    disableProximityDetection = false,
 }: DroppableZoneProps) => {
     // Generate an ID if one wasn't provided
     const generatedId = useId();
@@ -46,12 +48,12 @@ export const DroppableZone = ({
 
     // Register the drop zone on mount and unregister on unmount
     useEffect(() => {
-        registerDropZone(id, layoutRef.current, allowDrop, onDrop);
+        registerDropZone(id, layoutRef.current, allowDrop, onDrop, { disableProximityDetection });
 
         return () => {
             unregisterDropZone(id);
         };
-    }, [id, registerDropZone, unregisterDropZone, allowDrop, onDrop]);
+    }, [id, registerDropZone, unregisterDropZone, allowDrop, onDrop, disableProximityDetection]);
 
     // Handle layout changes
     const updateRectFromWindow = () => {

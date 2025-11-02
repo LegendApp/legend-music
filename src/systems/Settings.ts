@@ -26,7 +26,7 @@ export interface PlaybackSettingsConfig {
 
 export type PlaybackControlId = "previous" | "playPause" | "next" | "shuffle" | "repeat";
 
-export type BottomBarControlId = "savePlaylist" | "toggleVisualizer" | "toggleLibrary";
+export type BottomBarControlId = "search" | "savePlaylist" | "toggleVisualizer" | "toggleLibrary";
 
 export interface UIControlLayout<T extends string> {
     shown: T[];
@@ -93,7 +93,7 @@ export const settings$ = createJSONManager<AppSettings>({
                 shown: ["playPause", "next"],
             },
             bottomBar: {
-                shown: ["savePlaylist", "toggleVisualizer", "toggleLibrary"],
+                shown: ["search", "savePlaylist", "toggleVisualizer", "toggleLibrary"],
             },
         },
         uniqueId: "",

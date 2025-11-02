@@ -3,6 +3,8 @@ import { use$, useObservable } from "@legendapp/state/react";
 import { createContext, type ReactNode, useContext, useRef } from "react";
 import { type LayoutRectangle, View } from "react-native";
 
+const MAX_VERTICAL_PROXIMITY = 80;
+
 // Type for the dragged item
 export interface DraggedItem<T = any> {
     id: string;
@@ -18,6 +20,7 @@ interface DragDropContextValue {
         rect: LayoutRectangle,
         allowDrop: (item: DraggedItem) => boolean,
         onDrop: (item: DraggedItem) => void,
+        options?: { disableProximityDetection?: boolean },
     ) => void;
     unregisterDropZone: (id: string) => void;
     updateDropZoneRect: (id: string, rect: LayoutRectangle) => void;
@@ -32,6 +35,7 @@ export interface DropZone {
     rect: LayoutRectangle;
     allowDrop: (item: DraggedItem) => boolean;
     onDrop: (item: DraggedItem) => void;
+    disableProximityDetection?: boolean;
 }
 
 // Create context
@@ -71,8 +75,9 @@ export const DragDropProvider = ({ children }: DragDropProviderProps) => {
         rect: LayoutRectangle,
         allowDrop: (item: DraggedItem) => boolean,
         onDrop: (item: DraggedItem) => void,
+        options?: { disableProximityDetection?: boolean },
     ) => {
-        dropZonesRef.current.set(id, { id, rect, allowDrop, onDrop });
+        dropZonesRef.current.set(id, { id, rect, allowDrop, onDrop, ...options });
     };
 
     // Unregister a drop zone
@@ -120,12 +125,12 @@ export const DragDropProvider = ({ children }: DragDropProviderProps) => {
                 break;
             }
 
-            if (canDrop) {
+            if (canDrop && !dropZone.disableProximityDetection) {
                 const withinHorizontalBounds = x >= rect.x && x <= rect.x + rect.width;
                 if (withinHorizontalBounds) {
                     const centerY = rect.y + rect.height / 2;
                     const distance = Math.abs(centerY - y);
-                    if (distance < closestDistance) {
+                    if (distance < closestDistance && distance <= MAX_VERTICAL_PROXIMITY) {
                         closestDistance = distance;
                         closestZoneId = zoneId;
                     }

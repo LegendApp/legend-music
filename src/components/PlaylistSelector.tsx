@@ -23,6 +23,7 @@ import {
 } from "./PlaylistSelector/hooks";
 
 const DEFAULT_BOTTOM_BAR_BUTTONS: BottomBarControlId[] = [
+    "search",
     "savePlaylist",
     "toggleVisualizer",
     "toggleLibrary",
@@ -62,11 +63,20 @@ export function PlaylistSelector() {
 
     const { handleSavePlaylist } = useQueueExporter({ queueTracks: queue.tracks });
 
-    useOnHotkeys({
-        Search: () => dropdownMenuRef.current?.open(),
-    });
-
     const bottomBarLayout = useBottomBarControlLayout();
+    const bottomBarControls = ((bottomBarLayout?.shown?.length
+        ? bottomBarLayout.shown
+        : DEFAULT_BOTTOM_BAR_BUTTONS) as BottomBarControlId[])
+        .filter((controlId, index, array) => array.indexOf(controlId) === index);
+    const hasSearchControl = bottomBarControls.includes("search");
+
+    useOnHotkeys(
+        hasSearchControl
+            ? {
+                  Search: () => dropdownMenuRef.current?.open(),
+              }
+            : {},
+    );
 
     const renderPlaylistItem = useMemo(
         () => (playlistId: string | null, mode: "item" | "preview") => {
@@ -129,67 +139,67 @@ export function PlaylistSelector() {
                         maxWidthMatchTrigger={true}
                     />
                 </View>
-                <PlaylistSelectorSearchDropdown
-                    ref={dropdownMenuRef}
-                    tracks={localMusicState.tracks}
-                    playlists={localMusicState.playlists}
-                    onSelectTrack={handleTrackSelect}
-                    onSelectLibraryItem={handleLibraryItemSelect}
-                    onSelectPlaylist={handleSearchPlaylistSelect}
-                    dropdownWidth={dropdownWidth}
-                />
-                {((bottomBarLayout?.shown?.length
-                    ? bottomBarLayout.shown
-                    : DEFAULT_BOTTOM_BAR_BUTTONS) as BottomBarControlId[]) // default order when no layout present
-                    .filter((controlId, index, array) => array.indexOf(controlId) === index)
-                    .map((controlId) => {
-                        switch (controlId) {
-                            case "savePlaylist":
-                                return (
-                                    <Button
-                                        key="savePlaylist"
-                                        icon="square.and.arrow.down"
-                                        variant="icon"
-                                        size="small"
-                                        iconSize={14}
-                                        iconMarginTop={-4}
-                                        onClick={handleSavePlaylist}
-                                        className="ml-2 hover:bg-white/10"
-                                        disabled={queue.tracks.length === 0}
-                                        tooltip="Save playlist"
-                                    />
-                                );
-                            case "toggleVisualizer":
-                                return (
-                                    <Button
-                                        key="toggleVisualizer"
-                                        icon="waveform"
-                                        variant="icon"
-                                        size="small"
-                                        iconSize={14}
-                                        iconMarginTop={-1}
-                                        onClick={toggleVisualizer}
-                                        className={cn("ml-2 hover:bg-white/10", isVisualizerOpen && "bg-white/15")}
-                                        tooltip={isVisualizerOpen ? "Hide visualizer" : "Show visualizer"}
-                                    />
-                                );
-                            case "toggleLibrary":
-                                return (
-                                    <Button
-                                        key="toggleLibrary"
-                                        icon={isLibraryOpen ? "sidebar.right" : "sidebar.right"}
-                                        variant="icon"
-                                        size="small"
-                                        iconSize={14}
-                                        onClick={toggleLibraryWindow}
-                                        className={cn("ml-2 hover:bg-white/10", isLibraryOpen && "bg-white/15")}
-                                        tooltip={isLibraryOpen ? "Hide library" : "Show library"}
-                                    />
-                                );
-                            default:
-                                return null;
-                        }
-                    })}
+                {bottomBarControls.map((controlId) => {
+                    switch (controlId) {
+                        case "search":
+                            return (
+                                <PlaylistSelectorSearchDropdown
+                                    key="search"
+                                    ref={dropdownMenuRef}
+                                    tracks={localMusicState.tracks}
+                                    playlists={localMusicState.playlists}
+                                    onSelectTrack={handleTrackSelect}
+                                    onSelectLibraryItem={handleLibraryItemSelect}
+                                    onSelectPlaylist={handleSearchPlaylistSelect}
+                                    dropdownWidth={dropdownWidth}
+                                />
+                            );
+                        case "savePlaylist":
+                            return (
+                                <Button
+                                    key="savePlaylist"
+                                    icon="square.and.arrow.down"
+                                    variant="icon"
+                                    size="small"
+                                    iconSize={14}
+                                    iconMarginTop={-4}
+                                    onClick={handleSavePlaylist}
+                                    className="ml-2 hover:bg-white/10"
+                                    disabled={queue.tracks.length === 0}
+                                    tooltip="Save playlist"
+                                />
+                            );
+                        case "toggleVisualizer":
+                            return (
+                                <Button
+                                    key="toggleVisualizer"
+                                    icon="waveform"
+                                    variant="icon"
+                                    size="small"
+                                    iconSize={14}
+                                    iconMarginTop={-1}
+                                    onClick={toggleVisualizer}
+                                    className={cn("ml-2 hover:bg-white/10", isVisualizerOpen && "bg-white/15")}
+                                    tooltip={isVisualizerOpen ? "Hide visualizer" : "Show visualizer"}
+                                />
+                            );
+                        case "toggleLibrary":
+                            return (
+                                <Button
+                                    key="toggleLibrary"
+                                    icon={isLibraryOpen ? "sidebar.right" : "sidebar.right"}
+                                    variant="icon"
+                                    size="small"
+                                    iconSize={14}
+                                    onClick={toggleLibraryWindow}
+                                    className={cn("ml-2 hover:bg-white/10", isLibraryOpen && "bg-white/15")}
+                                    tooltip={isLibraryOpen ? "Hide library" : "Show library"}
+                                />
+                            );
+                        default:
+                            return null;
+                    }
+                })}
             </View>
         </View>
     );
