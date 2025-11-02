@@ -30,7 +30,6 @@ export type BottomBarControlId = "savePlaylist" | "toggleVisualizer" | "toggleLi
 
 export interface UIControlLayout<T extends string> {
     shown: T[];
-    hidden: T[];
 }
 
 export interface UISettingsConfig {
@@ -92,11 +91,9 @@ export const settings$ = createJSONManager<AppSettings>({
         ui: {
             playback: {
                 shown: ["playPause", "next"],
-                hidden: ["previous", "shuffle", "repeat"],
             },
             bottomBar: {
                 shown: ["savePlaylist", "toggleVisualizer", "toggleLibrary"],
-                hidden: [],
             },
         },
         uniqueId: "",

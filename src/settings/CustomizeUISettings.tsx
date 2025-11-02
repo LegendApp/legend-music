@@ -4,15 +4,10 @@ import { Text, View } from "react-native";
 import { DragDropProvider, DraggableItem, DroppableZone } from "@/components/dnd";
 import { useBottomBarControlLayout, usePlaybackControlLayout } from "@/hooks/useUIControls";
 import { SettingsPage, SettingsSection } from "@/settings/components";
-import {
-    settings$,
-    type BottomBarControlId,
-    type PlaybackControlId,
-    type UIControlLayout,
-} from "@/systems/Settings";
 import { Icon } from "@/systems/Icon";
-import { cn } from "@/utils/cn";
+import { type BottomBarControlId, type PlaybackControlId, settings$, type UIControlLayout } from "@/systems/Settings";
 import type { SFSymbols } from "@/types/SFSymbols";
+import { cn } from "@/utils/cn";
 
 type ControlGroup = "shown" | "hidden";
 type ControlSectionType = "playback" | "bottomBar";
@@ -30,6 +25,11 @@ interface ControlDefinition<T extends string> {
     icon: SFSymbols;
 }
 
+interface NormalizedUIControlLayout<T extends string> {
+    shown: T[];
+    hidden: T[];
+}
+
 const PLAYBACK_CONTROL_DEFINITIONS: ControlDefinition<PlaybackControlId>[] = [
     {
         id: "previous",
@@ -41,7 +41,7 @@ const PLAYBACK_CONTROL_DEFINITIONS: ControlDefinition<PlaybackControlId>[] = [
         id: "playPause",
         label: "Play / Pause",
         description: "Toggle playback",
-        icon: "playpause",
+        icon: "play.fill",
     },
     {
         id: "next",
@@ -147,18 +147,40 @@ export function CustomizeUISettings() {
 function useNormalizedLayout<T extends string>(
     layout: UIControlLayout<T>,
     definitions: ControlDefinition<T>[],
-): UIControlLayout<T> {
-    return useMemo(() => {
-        const allIds = definitions.map((definition) => definition.id);
-        const shown = layout.shown.filter((id): id is T => allIds.includes(id));
-        const hidden = layout.hidden.filter((id): id is T => allIds.includes(id));
-        const missing = allIds.filter((id) => !shown.includes(id) && !hidden.includes(id));
+): NormalizedUIControlLayout<T> {
+    return useMemo(
+        () => normalizeLayout(layout, definitions),
+        [layout.shown, definitions],
+    );
+}
 
-        return {
-            shown,
-            hidden: [...hidden, ...missing],
-        };
-    }, [layout.hidden, layout.shown, definitions]);
+function normalizeLayout<T extends string>(
+    layout: UIControlLayout<T> | undefined,
+    definitions: ControlDefinition<T>[],
+): NormalizedUIControlLayout<T> {
+    const allIds = definitions.map((definition) => definition.id);
+    const allowed = new Set(allIds);
+    const seen = new Set<T>();
+    const shown: T[] = [];
+
+    for (const id of layout?.shown ?? []) {
+        if (allowed.has(id) && !seen.has(id)) {
+            shown.push(id);
+            seen.add(id);
+        }
+    }
+
+    const hidden = allIds.filter((id) => !seen.has(id));
+
+    return { shown, hidden };
+}
+
+function arraysEqual<T>(a: readonly T[], b: readonly T[]): boolean {
+    if (a.length !== b.length) {
+        return false;
+    }
+
+    return a.every((value, index) => value === b[index]);
 }
 
 function ensureLayoutCompleteness<T extends string>(
@@ -166,18 +188,14 @@ function ensureLayoutCompleteness<T extends string>(
     layout: UIControlLayout<T>,
     definitions: ControlDefinition<T>[],
 ) {
-    const allIds = definitions.map((definition) => definition.id);
-    const present = new Set<T>([...layout.shown, ...layout.hidden]);
-    const missing = allIds.filter((id) => !present.has(id));
+    const normalized = normalizeLayout(layout, definitions);
+    const sanitizedLayout: UIControlLayout<T> = {
+        shown: normalized.shown,
+    };
 
-    if (missing.length === 0) {
+    if (arraysEqual(layout?.shown ?? [], sanitizedLayout.shown)) {
         return;
     }
-
-    const sanitizedLayout: UIControlLayout<T> = {
-        shown: layout.shown.filter((id): id is T => allIds.includes(id)),
-        hidden: [...layout.hidden.filter((id): id is T => allIds.includes(id)), ...missing],
-    };
 
     if (section === "playback") {
         settings$.ui.playback.set(sanitizedLayout as UIControlLayout<PlaybackControlId>);
@@ -188,7 +206,7 @@ function ensureLayoutCompleteness<T extends string>(
 
 interface ControlLayoutEditorProps<T extends string> {
     section: ControlSectionType;
-    layout: UIControlLayout<T>;
+    layout: NormalizedUIControlLayout<T>;
     definitions: Record<T, ControlDefinition<T>>;
 }
 
@@ -340,32 +358,49 @@ interface MoveControlParams<T extends string> {
     targetIndex: number;
 }
 
-function moveControl<T extends string>({ section, controlId, sourceGroup, targetGroup, targetIndex }: MoveControlParams<T>) {
-    const layout = (section === "playback"
-        ? (settings$.ui.playback.get() as UIControlLayout<T>)
-        : (settings$.ui.bottomBar.get() as UIControlLayout<T>));
+function moveControl<T extends string>({
+    section,
+    controlId,
+    sourceGroup,
+    targetGroup,
+    targetIndex,
+}: MoveControlParams<T>) {
+    const layout =
+        section === "playback"
+            ? ((settings$.ui.playback.get() as UIControlLayout<T>) ?? { shown: [] })
+            : ((settings$.ui.bottomBar.get() as UIControlLayout<T>) ?? { shown: [] });
 
-    const originalShownIndex = layout.shown.indexOf(controlId);
-    const originalHiddenIndex = layout.hidden.indexOf(controlId);
+    const definitions =
+        (section === "playback"
+            ? (PLAYBACK_CONTROL_DEFINITIONS as ControlDefinition<T>[])
+            : (BOTTOM_BAR_CONTROL_DEFINITIONS as ControlDefinition<T>[]));
 
-    const filteredShown = layout.shown.filter((id) => id !== controlId);
-    const filteredHidden = layout.hidden.filter((id) => id !== controlId);
+    const normalized = normalizeLayout(layout, definitions);
+    const filteredShown = normalized.shown.filter((id) => id !== controlId);
 
-    const isSameGroup = sourceGroup === targetGroup;
-    const originalIndex = sourceGroup === "shown" ? originalShownIndex : originalHiddenIndex;
+    let nextShown = filteredShown;
 
-    let insertIndex = targetIndex;
-    if (isSameGroup && originalIndex !== -1 && originalIndex < targetIndex) {
-        insertIndex = Math.max(0, targetIndex - 1);
+    if (targetGroup === "shown") {
+        const originalIndex = normalized.shown.indexOf(controlId);
+        let insertIndex = targetIndex;
+
+        if (sourceGroup === "shown" && originalIndex !== -1 && originalIndex < targetIndex) {
+            insertIndex = Math.max(0, targetIndex - 1);
+        }
+
+        const boundedIndex = Math.max(0, Math.min(insertIndex, filteredShown.length));
+        nextShown = [...filteredShown];
+        nextShown.splice(boundedIndex, 0, controlId);
     }
 
-    const targetArray = targetGroup === "shown" ? filteredShown : filteredHidden;
-    const boundedIndex = Math.max(0, Math.min(insertIndex, targetArray.length));
-    targetArray.splice(boundedIndex, 0, controlId);
+    const sanitized = normalizeLayout({ shown: nextShown }, definitions);
+
+    if (arraysEqual(normalized.shown, sanitized.shown)) {
+        return;
+    }
 
     const nextLayout: UIControlLayout<T> = {
-        shown: targetGroup === "shown" ? targetArray : filteredShown,
-        hidden: targetGroup === "hidden" ? targetArray : filteredHidden,
+        shown: sanitized.shown,
     };
 
     if (section === "playback") {
