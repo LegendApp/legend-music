@@ -14,10 +14,11 @@ import {
     type TrackDragEvent,
 } from "@/native-modules/DragDropView";
 import { TrackDragSource } from "@/native-modules/TrackDragSource";
+import { libraryUI$ } from "@/systems/LibraryState";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import {
-    DEFAULT_LOCAL_PLAYLIST_ID,
     createLocalTrackFromFile,
+    DEFAULT_LOCAL_PLAYLIST_ID,
     ensureLocalTrackThumbnail,
     localMusicSettings$,
     localMusicState$,
@@ -65,6 +66,7 @@ export function Playlist() {
     const playlistStyle = use$(settings$.general.playlistStyle);
     const queueLength = queueTracks.length;
     const hasConfiguredLibrary = libraryPaths.length > 0;
+    const hasLibraryTracks = localMusicState.tracks.length > 0;
     const isDefaultPlaylistSelected = localMusicState.isLocalFilesSelected;
     const [isDragOver, setIsDragOver] = useState(false);
     const [dropFeedback, setDropFeedback] = useState<DropFeedback | null>(null);
@@ -250,6 +252,11 @@ export function Playlist() {
         },
         [],
     );
+
+    const handleAddLibraryTracks = useCallback(() => {
+        perfLog("Playlist.openLibraryFromEmptyState");
+        libraryUI$.isOpen.set(true);
+    }, []);
 
     const toWindowCoordinates = useCallback((location: { x: number; y: number }) => {
         const rect = dropAreaWindowRectRef.current;
@@ -681,63 +688,51 @@ export function Playlist() {
     const isQueueEmpty = playlist.length === 0;
 
     const overlayClassName = cn(
-        isQueueEmpty && !isDragOver && "border border-white/12 border-dashed bg-white/5",
-        isDragOver && "bg-blue-500/20 border-2 border-blue-500 border-dashed",
+        isQueueEmpty && !isDragOver && "bg-white/5",
+        isDragOver && "bg-blue-500/20 border-dashed",
     );
 
-    const emptyStateContent = isQueueEmpty
-        ? localMusicState.isScanning
-            ? (
-                  <>
-                      <Text className="text-white font-medium text-base">Scanning your library…</Text>
-                      <Text className="text-white/70 text-sm mt-2">
-                          {localMusicState.scanTotal > 0
-                              ? `${localMusicState.scanProgress}/${localMusicState.scanTotal}`
-                              : `${localMusicState.scanProgress} items processed`}
-                      </Text>
-                      <Text className="text-white/50 text-xs mt-4 text-center max-w-sm">
-                          You can still drag songs or folders here while we finish scanning.
-                      </Text>
-                      {isDragOver ? (
-                          <Text className="text-blue-300 text-sm mt-6 font-medium">Drop to add these tracks</Text>
-                      ) : null}
-                  </>
-              )
-            : localMusicState.error
-              ? (
-                    <>
-                        <Text className="text-red-300 font-medium text-base">We couldn&apos;t read your music folder.</Text>
-                        <Text className="text-white/70 text-sm mt-2 text-center max-w-sm">
-                            {typeof localMusicState.error === "string"
-                                ? localMusicState.error
-                                : "Check the folder permissions or pick a different location."}
-                        </Text>
-                        <Button variant="secondary" size="medium" className="mt-4" onClick={handleOpenLibrarySettings}>
-                            Open Library Settings
-                        </Button>
-                        <Text className="text-white/50 text-xs mt-6 text-center max-w-sm">
-                            You can also drag songs directly into this area to start listening immediately.
-                        </Text>
-                    </>
-                )
-              : (
-                    <>
-                        <Text className="text-white font-semibold text-base">Bring your music</Text>
-                        <Text className="text-white/70 text-sm mt-2 text-center max-w-sm">
-                            Drag individual songs or an entire folder here to build your queue, or choose a library folder to watch.
-                        </Text>
-                        <Button variant="secondary" size="medium" className="mt-4" onClick={handleOpenLibrarySettings}>
-                            Open Library Settings
-                        </Button>
-                        <Text className="text-white/50 text-xs mt-6 text-center uppercase tracking-wide">
-                            Supported formats: MP3, WAV, M4A, AAC, FLAC
-                        </Text>
-                        {isDragOver ? (
-                            <Text className="text-blue-300 text-sm mt-6 font-medium">Drop to add these tracks</Text>
-                        ) : null}
-                    </>
-                )
-        : null;
+    const emptyStateContent = isQueueEmpty ? (
+        localMusicState.isScanning ? (
+            <>
+                <Text className="text-white font-medium text-base">Scanning your library…</Text>
+                <Text className="text-white/70 text-sm mt-2">
+                    {localMusicState.scanTotal > 0
+                        ? `${localMusicState.scanProgress}/${localMusicState.scanTotal}`
+                        : `${localMusicState.scanProgress} items processed`}
+                </Text>
+                <Text className="text-white/50 text-xs mt-4 text-center max-w-sm">
+                    You can still drag songs or folders here while we finish scanning.
+                </Text>
+                {isDragOver ? (
+                    <Text className="text-blue-300 text-sm mt-6 font-medium">Drop to add these tracks</Text>
+                ) : null}
+            </>
+        ) : hasLibraryTracks ? (
+            <>
+                <Text className="text-white font-semibold text-base">No tracks queued yet</Text>
+                <Text className="text-white/70 text-xs mt-2 text-center max-w-sm">
+                    Open your library to pick what plays next.
+                </Text>
+                <Button variant="primary" size="small" className="mt-4" onClick={handleAddLibraryTracks}>
+                    <Text className="text-white text-sm">Open Media Library</Text>
+                </Button>
+                {isDragOver ? (
+                    <Text className="text-blue-300 text-sm mt-6 font-medium">Drop to add these tracks</Text>
+                ) : null}
+            </>
+        ) : (
+            <>
+                <Text className="text-white font-semibold text-base">Add music to get started</Text>
+                <Text className="text-white/70 text-sm mt-2 text-center max-w-sm">
+                    Drag songs or folders here, or choose your library folders.
+                </Text>
+                <Button variant="primary" size="small" className="mt-4" onClick={handleOpenLibrarySettings}>
+                    <Text className="text-white text-sm">Open Library Settings</Text>
+                </Button>
+            </>
+        )
+    ) : null;
 
     return (
         <DragDropView
@@ -868,7 +863,7 @@ export function Playlist() {
 
 const styles = StyleSheet.create({
     container: {
-        paddingVertical: 2,
+        // paddingVertical: 2,
     },
 });
 

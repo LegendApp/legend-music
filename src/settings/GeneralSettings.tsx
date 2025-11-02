@@ -6,10 +6,10 @@ import { SettingsPage, SettingsRow, SettingsSection } from "@/settings/component
 import { settings$ } from "@/systems/Settings";
 
 export const GeneralSettings = observer(function GeneralSettings() {
-    const playlistStyleOptions = [
-        { value: "compact", label: "Compact" },
-        { value: "comfortable", label: "Comfortable" },
-    ];
+    // const playlistStyleOptions = [
+    //     { value: "compact", label: "Compact" },
+    //     { value: "comfortable", label: "Comfortable" },
+    // ];
 
     return (
         <SettingsPage title="General Settings">

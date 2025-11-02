@@ -2,17 +2,12 @@ import { observer, use$ } from "@legendapp/state/react";
 import { Text, View } from "react-native";
 
 import { Button } from "@/components/Button";
-import { Checkbox } from "@/components/Checkbox";
 import { selectDirectory } from "@/native-modules/FileDialog";
-import { SettingsPage, SettingsRow, SettingsSection } from "@/settings/components";
-import { localMusicSettings$, scanLocalMusic } from "@/systems/LocalMusicState";
+import { SettingsPage, SettingsSection } from "@/settings/components";
+import { localMusicSettings$ } from "@/systems/LocalMusicState";
 
 export const LibrarySettings = observer(function LibrarySettings() {
     const localMusicSettings = use$(localMusicSettings$);
-
-    const handleRescanLibrary = () => {
-        scanLocalMusic();
-    };
 
     const handleRemoveLibraryPath = (index: number) => {
         localMusicSettings$.libraryPaths.set((paths) => {
@@ -67,18 +62,6 @@ export const LibrarySettings = observer(function LibrarySettings() {
 
     return (
         <SettingsPage title="Library Settings">
-            <SettingsSection title="Scanning">
-                <SettingsRow
-                    title="Auto-scan on startup"
-                    description="Automatically scan for new music files when the app starts"
-                    control={<Checkbox $checked={localMusicSettings$.autoScanOnStart} />}
-                    controlWrapperClassName="ml-6"
-                />
-                <Button variant="primary" size="medium" className="self-start" onClick={handleRescanLibrary}>
-                    <Text className="text-white font-medium text-sm">Rescan Library Now</Text>
-                </Button>
-            </SettingsSection>
-
             <SettingsSection title="Library Paths">
                 {localMusicSettings.libraryPaths.length > 0 ? (
                     <View className="flex flex-col gap-2">
@@ -131,20 +114,6 @@ export const LibrarySettings = observer(function LibrarySettings() {
                     <Text className="text-text-primary font-medium text-sm">Add Library Folder</Text>
                 </Button>
             </SettingsSection>
-
-            {localMusicSettings.lastScanTime > 0 ? (
-                <SettingsSection title="Scan Status">
-                    <View className="flex-row items-center justify-between">
-                        <View>
-                            <Text className="text-text-primary text-base font-medium">Last Scan</Text>
-                            <Text className="text-text-secondary text-sm mt-1">
-                                {new Date(localMusicSettings.lastScanTime).toLocaleString()}
-                            </Text>
-                        </View>
-                        <View className="h-3 w-3 rounded-full bg-emerald-500" />
-                    </View>
-                </SettingsSection>
-            ) : null}
         </SettingsPage>
     );
 });

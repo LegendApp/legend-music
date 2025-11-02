@@ -101,48 +101,48 @@ export const TrackItem = ({
     };
 
     // Compact mode: single line format "${number}. ${artist} - ${song}"
-    if (playlistStyle === "compact") {
-        const rowClassName = cn(
-            listItemStyles.getRowClassName({
-                variant: "compact",
-                isActive: !suppressActiveState && isPlaying,
-                isSelected,
-                isInteractive: !disableHover,
-            }),
-            track.fromSuggestions ? "opacity-75" : "",
-            "w-full",
-        );
-        const indexTone = track.fromSuggestions ? listItemStyles.text.muted : listItemStyles.text.secondary;
-        const primaryTone = track.fromSuggestions ? listItemStyles.text.secondary : listItemStyles.text.primary;
+    // if (playlistStyle === "compact") {
+    const rowClassName = cn(
+        listItemStyles.getRowClassName({
+            variant: "compact",
+            isActive: !suppressActiveState && isPlaying,
+            isSelected,
+            isInteractive: !disableHover,
+        }),
+        track.fromSuggestions ? "opacity-75" : "",
+        "w-full",
+    );
+    const indexTone = track.fromSuggestions ? listItemStyles.text.muted : listItemStyles.text.secondary;
+    const primaryTone = track.fromSuggestions ? listItemStyles.text.secondary : listItemStyles.text.primary;
 
-        return (
-            <Button
-                className={rowClassName}
-                onClick={onClick ? (event) => onClick(index, event) : undefined}
-                onDoubleClick={onDoubleClick ? (event) => onDoubleClick(index, event) : undefined}
-                onRightClick={handleRightClick}
-                onMouseDown={onMouseDown ? (event) => onMouseDown(index, event) : undefined}
+    return (
+        <Button
+            className={rowClassName}
+            onClick={onClick ? (event) => onClick(index, event) : undefined}
+            onDoubleClick={onDoubleClick ? (event) => onDoubleClick(index, event) : undefined}
+            onRightClick={handleRightClick}
+            onMouseDown={onMouseDown ? (event) => onMouseDown(index, event) : undefined}
+        >
+            {showIndex && (
+                <View className="min-w-7">
+                    <Text className={cn("tabular-nums text-xs", indexTone)}>
+                        {(track.index ?? index) >= 0 ? `${(track.index ?? index) + 1}.  ` : ""}
+                    </Text>
+                </View>
+            )}
+            <Text className={cn("flex-1 tabular-nums text-sm", primaryTone)} numberOfLines={1}>
+                <Text className={cn("text-sm font-medium", listItemStyles.text.primary)}>{track.artist}</Text>
+                <Text className={cn("text-sm", listItemStyles.text.secondary)}> - {track.title}</Text>
+            </Text>
+
+            <Text
+                className={listItemStyles.getMetaClassName({
+                    className: cn("text-xs ml-4", track.fromSuggestions ? listItemStyles.text.muted : ""),
+                })}
             >
-                {showIndex && (
-                    <View className="min-w-7">
-                        <Text className={cn("tabular-nums text-xs", indexTone)}>
-                            {(track.index ?? index) >= 0 ? `${(track.index ?? index) + 1}.  ` : ""}
-                        </Text>
-                    </View>
-                )}
-                <Text className={cn("flex-1 tabular-nums text-sm", primaryTone)} numberOfLines={1}>
-                    <Text className={cn("text-sm font-medium", listItemStyles.text.primary)}>{track.artist}</Text>
-                    <Text className={cn("text-sm", listItemStyles.text.secondary)}> - {track.title}</Text>
-                </Text>
-
-                <Text
-                    className={listItemStyles.getMetaClassName({
-                        className: cn("text-xs ml-4", track.fromSuggestions ? listItemStyles.text.muted : ""),
-                    })}
-                >
-                    {track.duration}
-                </Text>
-            </Button>
-        );
-    }
+                {track.duration}
+            </Text>
+        </Button>
+    );
+    // }
 };
