@@ -40,6 +40,7 @@ const styles = StyleSheet.create({
         backgroundColor: "transparent",
     },
     shadowContainer: {
+        flex: 1,
         borderRadius: 20,
         backgroundColor: "#050505",
         shadowColor: "#000000",
