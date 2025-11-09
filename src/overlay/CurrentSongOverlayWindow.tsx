@@ -27,8 +27,8 @@ const MAX_BLUR_RADIUS = 4;
 const SCALE = 0.9;
 const ROOT_PADDING_TOP = 22;
 const ROOT_PADDING_BOTTOM = 36;
-const COMPACT_WINDOW_HEIGHT = 124;
-const EXPANDED_WINDOW_HEIGHT = 154;
+const COMPACT_WINDOW_HEIGHT = 168;
+const EXPANDED_WINDOW_HEIGHT = 200;
 
 const styles = StyleSheet.create({
     root: {

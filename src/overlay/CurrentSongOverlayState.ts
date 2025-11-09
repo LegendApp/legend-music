@@ -6,7 +6,7 @@ import {
     settings$,
 } from "@/systems/Settings";
 
-export const DEFAULT_OVERLAY_WINDOW_HEIGHT = 154;
+export const DEFAULT_OVERLAY_WINDOW_HEIGHT = 168;
 
 export const currentSongOverlay$ = observable({
     isWindowOpen: false,
