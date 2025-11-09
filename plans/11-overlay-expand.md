@@ -22,7 +22,7 @@ Provide a dedicated overlay mode for `PlaybackArea` that collapses transport UI 
 - Add or outline tests/manual QA steps covering hover transitions, resizing, and regression checks for playback interactions.
 
 - [x] Introduce overlay compact mode prop/context and wire it from overlay components.
-- [ ] Hide time/slider/controls group when compact and idle.
+- [x] Hide time/slider/controls group when compact and idle.
 - [ ] Implement hover state transitions that fade controls in/out.
 - [ ] Animate overlay window size alongside the control reveal.
 - [ ] Validate behavior and document test coverage/manual QA.
