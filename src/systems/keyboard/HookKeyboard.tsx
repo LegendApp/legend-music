@@ -60,17 +60,6 @@ export function HiddenTextInput() {
         <TextInput
             ref={inputRef}
             className="absolute left-[-1000px] h-0 w-0 opacity-0"
-            onBlur={(e) => {
-                perfLog("HookKeyboard.HiddenTextInput.onBlur");
-                if (appStateRef.current === "active") {
-                    e.preventDefault();
-                    requestAnimationFrame(() => {
-                        if (appStateRef.current === "active") {
-                            inputRef.current?.focus();
-                        }
-                    });
-                }
-            }}
             onFocus={() => perfLog("HookKeyboard.HiddenTextInput.onFocus")}
             autoFocus
         />
