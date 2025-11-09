@@ -1,7 +1,7 @@
 import type { Observable } from "@legendapp/state";
 import { use$, useObservable } from "@legendapp/state/react";
 import { memo, useCallback, useEffect } from "react";
-import { Text, View } from "react-native";
+import { LayoutChangeEvent, Text, View } from "react-native";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { AlbumArt } from "@/components/AlbumArt";
 import { Button } from "@/components/Button";
@@ -93,6 +93,7 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
     const overlayModeEnabled = overlayMode?.enabled ?? false;
     const overlayControlsVisible = overlayModeEnabled ? overlayMode?.showControls ?? false : true;
     const overlayControlsProgress = useSharedValue(overlayControlsVisible ? 1 : 0);
+    const sliderRowHeight = useSharedValue(0);
 
     useEffect(() => {
         if (!overlayModeEnabled) {
@@ -111,10 +112,14 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
         transform: [{ translateY: (1 - overlayControlsProgress.value) * 6 }],
     }));
 
-    const sliderAnimatedStyle = useAnimatedStyle(() => ({
-        opacity: overlayControlsProgress.value,
-        transform: [{ translateY: (1 - overlayControlsProgress.value) * 10 }],
-    }));
+    const sliderAnimatedStyle = useAnimatedStyle(() => {
+        const measuredHeight = sliderRowHeight.value;
+        return {
+            opacity: overlayControlsProgress.value,
+            transform: [{ translateY: (1 - overlayControlsProgress.value) * 10 }],
+            height: measuredHeight === 0 ? undefined : measuredHeight * overlayControlsProgress.value,
+        };
+    });
 
     const playbackControlsNode = (
         <View className="flex-row items-center ml-1 -mr-1">
@@ -210,8 +215,18 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
         </View>
     );
 
+    const handleSliderRowLayout = useCallback(
+        (event: LayoutChangeEvent) => {
+            sliderRowHeight.value = event.nativeEvent.layout.height;
+        },
+        [sliderRowHeight],
+    );
+
     const sliderRowNode = (
-        <View className={cn("group flex-row items-center pb-1 pt-1", !currentTrack && "opacity-0")}>
+        <View
+            className={cn("group flex-row items-center pb-1 pt-1", !currentTrack && "opacity-0")}
+            onLayout={handleSliderRowLayout}
+        >
             <CurrentTime currentLocalTime$={currentLocalTime$} />
             <CustomSlider
                 style={{ height: 24, flex: 1 }}
@@ -271,7 +286,7 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
             {overlayModeEnabled ? (
                 <Animated.View
                     pointerEvents={overlayControlsVisible ? "auto" : "none"}
-                    style={sliderAnimatedStyle}
+                    style={[sliderAnimatedStyle, { overflow: "hidden" }]}
                 >
                     {sliderRowNode}
                 </Animated.View>

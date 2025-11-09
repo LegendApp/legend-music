@@ -2,7 +2,7 @@ import "@/../global.css";
 import { VibrancyView } from "@fluentui-react-native/vibrancy-view";
 import { PortalProvider } from "@gorhom/portal";
 import { useObserveEffect } from "@legendapp/state/react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
@@ -24,6 +24,8 @@ const SHOW_DURATION_MS = 400;
 const HIDE_DURATION_MS = 300;
 const MAX_BLUR_RADIUS = 4;
 const SCALE = 0.9;
+const OVERLAY_EXPANDED_HEIGHT = 154;
+const OVERLAY_COMPACT_HEIGHT = 120;
 
 const styles = StyleSheet.create({
     root: {
@@ -35,18 +37,21 @@ const styles = StyleSheet.create({
         backgroundColor: "transparent",
     },
     shadowContainer: {
-        flex: 1,
         borderRadius: 20,
         backgroundColor: "#050505",
         shadowColor: "#000000",
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
+        alignSelf: "stretch",
+        width: "100%",
     },
     overlayWrapper: {
         flex: 1,
         borderRadius: 18,
         overflow: "hidden",
+        alignSelf: "stretch",
+        width: "100%",
     },
     overlaySurface: {
         flex: 1,
@@ -54,6 +59,8 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: "#AAABAB22",
         overflow: "hidden",
+        alignSelf: "stretch",
+        width: "100%",
     },
 });
 
@@ -61,10 +68,15 @@ function CurrentSongOverlayWindow() {
     const opacity = useSharedValue(0);
     const scale = useSharedValue(SCALE);
     const [isHovered, setIsHovered] = useState(false);
+    const cardHeight = useSharedValue(OVERLAY_COMPACT_HEIGHT);
 
     const animatedStyle = useAnimatedStyle(() => ({
         opacity: opacity.value,
         transform: [{ scale: scale.value }],
+    }));
+
+    const heightAnimatedStyle = useAnimatedStyle(() => ({
+        height: cardHeight.value,
     }));
 
     const handleExitComplete = useCallback(() => {
@@ -83,6 +95,13 @@ function CurrentSongOverlayWindow() {
         }
         resetCurrentSongOverlayTimer();
     }, []);
+
+    useEffect(() => {
+        cardHeight.value = withTiming(isHovered ? OVERLAY_EXPANDED_HEIGHT : OVERLAY_COMPACT_HEIGHT, {
+            duration: 220,
+            easing: Easing.out(Easing.cubic),
+        });
+    }, [cardHeight, isHovered]);
 
     useObserveEffect(() => {
         const exiting = currentSongOverlay$.isExiting.get();
@@ -155,7 +174,7 @@ function CurrentSongOverlayWindow() {
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
         >
-            <View style={styles.shadowContainer}>
+            <Animated.View style={[styles.shadowContainer, heightAnimatedStyle]}>
                 <View style={styles.overlayWrapper}>
                     <VibrancyView
                         blendingMode="behindWindow"
@@ -177,7 +196,7 @@ function CurrentSongOverlayWindow() {
                         </View>
                     </VibrancyView>
                 </View>
-            </View>
+            </Animated.View>
         </Animated.View>
     );
 }
