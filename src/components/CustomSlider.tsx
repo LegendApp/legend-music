@@ -13,6 +13,8 @@ interface CustomSliderProps {
     minimumValue: number;
     $maximumValue: Observable<number>;
     onSlidingComplete?: (value: number) => void;
+    onSlidingStart?: () => void;
+    onSlidingEnd?: () => void;
     onHoverChange?: (hovered: boolean) => void;
     disabled?: boolean;
     style?: any;
@@ -25,6 +27,8 @@ export function CustomSlider({
     minimumValue,
     $maximumValue,
     onSlidingComplete,
+    onSlidingStart,
+    onSlidingEnd,
     onHoverChange,
     disabled: disabledProp = false,
     style,
@@ -94,6 +98,7 @@ export function CustomSlider({
                     if (isDisabled$.get()) return;
 
                     isDragging$.set(true);
+                    onSlidingStart?.();
                     updateValueFromLocation(event.nativeEvent.locationX);
                 },
                 onPanResponderMove: (event: GestureResponderEvent) => {
@@ -109,14 +114,16 @@ export function CustomSlider({
 
                     updateValueFromLocation(event.nativeEvent.locationX);
                     isDragging$.set(false);
+                    onSlidingEnd?.();
                 },
                 onPanResponderTerminationRequest: () => false,
                 onPanResponderTerminate: () => {
                     perfLog("CustomSlider.panTerminate", { disabled: isDisabled$.get() });
                     isDragging$.set(false);
+                    onSlidingEnd?.();
                 },
             }),
-        [isDisabled$, isDragging$, updateValueFromLocation],
+        [isDisabled$, isDragging$, onSlidingEnd, onSlidingStart, updateValueFromLocation],
     );
 
     const handleHoverIn = () => {

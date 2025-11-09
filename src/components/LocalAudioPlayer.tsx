@@ -7,6 +7,7 @@ import { ensureLocalTrackThumbnail } from "@/systems/LocalMusicState";
 import type { PlaylistSnapshot, SerializedQueuedTrack } from "@/systems/PlaylistCache";
 import { getPlaylistCacheSnapshot, persistPlaylistSnapshot } from "@/systems/PlaylistCache";
 import { type RepeatMode, settings$ } from "@/systems/Settings";
+import { playbackInteractionState$ } from "@/systems/PlaybackInteractionState";
 import { clearQueueM3U, loadQueueFromM3U, saveQueueToM3U } from "@/utils/m3uManager";
 import { perfCount, perfDelta, perfLog } from "@/utils/perfLogger";
 import { runAfterInteractions } from "@/utils/runAfterInteractions";
@@ -926,7 +927,9 @@ export function LocalAudioPlayer() {
                 perfCount("LocalAudioPlayer.onProgress");
                 const delta = perfDelta("LocalAudioPlayer.onProgress");
                 perfLog("LocalAudioPlayer.onProgress", { delta, current: data.currentTime, duration: data.duration });
-                localPlayerState$.currentTime.set(data.currentTime);
+                if (!playbackInteractionState$.isScrubbing.peek()) {
+                    localPlayerState$.currentTime.set(data.currentTime);
+                }
                 if (data.duration !== localPlayerState$.duration.peek()) {
                     localPlayerState$.duration.set(data.duration);
                 }

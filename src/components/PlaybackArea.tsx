@@ -1,6 +1,6 @@
 import type { Observable } from "@legendapp/state";
 import { use$, useObservable } from "@legendapp/state/react";
-import { memo, useEffect } from "react";
+import { memo, useCallback, useEffect } from "react";
 import { Text, View } from "react-native";
 import { AlbumArt } from "@/components/AlbumArt";
 import { Button } from "@/components/Button";
@@ -9,6 +9,7 @@ import { localAudioControls, localPlayerState$ } from "@/components/LocalAudioPl
 import { SkiaText } from "@/components/SkiaText";
 import { usePlaybackControlLayout } from "@/hooks/useUIControls";
 import { settings$, type PlaybackControlId } from "@/systems/Settings";
+import { setIsScrubbing } from "@/systems/PlaybackInteractionState";
 import { cn } from "@/utils/cn";
 import { perfCount } from "@/utils/perfLogger";
 
@@ -80,6 +81,8 @@ export function PlaybackArea({ showBorder = true }: PlaybackAreaProps = {}) {
     const playbackControlsLayout = usePlaybackControlLayout();
     const shuffleEnabled = use$(settings$.playback.shuffle);
     const repeatMode = use$(settings$.playback.repeatMode);
+    const handleSlidingStart = useCallback(() => setIsScrubbing(true), []);
+    const handleSlidingEnd = useCallback(() => setIsScrubbing(false), []);
 
     // perfLog("PlaybackArea.state", {
     //     track: currentTrack?.title,
@@ -206,9 +209,11 @@ export function PlaybackArea({ showBorder = true }: PlaybackAreaProps = {}) {
                     minimumValue={0}
                     $maximumValue={localPlayerState$.duration}
                     $value={currentLocalTime$}
+                    onSlidingStart={handleSlidingStart}
                     onSlidingComplete={(value) => {
                         localAudioControls.seek(value);
                     }}
+                    onSlidingEnd={handleSlidingEnd}
                     minimumTrackTintColor="#ffffff"
                     maximumTrackTintColor="#ffffff40"
                     disabled={!currentTrack}
