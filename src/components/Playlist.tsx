@@ -1,15 +1,11 @@
+import { VibrancyView } from "@fluentui-react-native/vibrancy-view";
 import { LegendList } from "@legendapp/list";
 import { use$ } from "@legendapp/state/react";
 import { type ElementRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { findNodeHandle, type NativeSyntheticEvent, Platform, StyleSheet, Text, UIManager, View } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 import { Button } from "@/components/Button";
-import {
-    localAudioControls,
-    localPlayerState$,
-    queue$,
-    type QueuedTrack,
-} from "@/components/LocalAudioPlayer";
+import { localAudioControls, localPlayerState$, type QueuedTrack, queue$ } from "@/components/LocalAudioPlayer";
 import { type TrackData, TrackItem } from "@/components/TrackItem";
 import { usePlaylistSelection } from "@/hooks/usePlaylistSelection";
 import {
@@ -774,13 +770,13 @@ export function Playlist() {
             allowedFileTypes={["mp3", "wav", "m4a", "aac", "flac"]}
         >
             {dropFeedback ? (
-                <View className="pointer-events-none absolute bottom-6 left-0 right-0 z-20 items-center">
+                <View className="pointer-events-none absolute bottom-2 left-0 right-0 z-20 items-center">
                     <View
                         className={cn(
-                            "px-3 py-2 rounded-md border shadow-lg backdrop-blur-md",
+                            "px-3 py-2 rounded-lg border shadow-lg",
                             dropFeedback.type === "warning"
-                                ? "bg-yellow-500/20 border-yellow-400/70"
-                                : "bg-emerald-500/20 border-emerald-400/60",
+                                ? "bg-yellow-500/70 border-yellow-400/70"
+                                : "bg-emerald-500/70 border-emerald-400/60",
                         )}
                     >
                         <Text
