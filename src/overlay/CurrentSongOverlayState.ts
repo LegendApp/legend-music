@@ -6,13 +6,14 @@ import {
     settings$,
 } from "@/systems/Settings";
 
-export const DEFAULT_OVERLAY_WINDOW_HEIGHT = 168;
+import { OVERLAY_WINDOW_HEIGHT_COMPACT, OVERLAY_WINDOW_WIDTH_COMPACT } from "./OverlayConstants";
 
 export const currentSongOverlay$ = observable({
     isWindowOpen: false,
     presentationId: 0,
     isExiting: false,
-    windowHeight: DEFAULT_OVERLAY_WINDOW_HEIGHT,
+    windowHeight: OVERLAY_WINDOW_HEIGHT_COMPACT,
+    windowWidth: OVERLAY_WINDOW_WIDTH_COMPACT,
 });
 
 let hideTimer: ReturnType<typeof setTimeout> | null = null;
@@ -36,6 +37,8 @@ const getDisplayDurationMs = () => {
 };
 
 const scheduleHideTimer = (durationMs: number = getDisplayDurationMs()) => {
+    return;
+
     clearHideTimer();
     hideTimer = setTimeout(() => {
         requestCurrentSongOverlayDismissal();
@@ -98,4 +101,12 @@ export const setCurrentSongOverlayWindowHeight = (height: number) => {
         return;
     }
     currentSongOverlay$.windowHeight.set(normalizedHeight);
+};
+
+export const setCurrentSongOverlayWindowWidth = (width: number) => {
+    const normalizedWidth = Math.max(200, Math.round(width));
+    if (currentSongOverlay$.windowWidth.get() === normalizedWidth) {
+        return;
+    }
+    currentSongOverlay$.windowWidth.set(normalizedWidth);
 };

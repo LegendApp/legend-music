@@ -9,8 +9,9 @@ import { CustomSlider } from "@/components/CustomSlider";
 import { localAudioControls, localPlayerState$ } from "@/components/LocalAudioPlayer";
 import { SkiaText } from "@/components/SkiaText";
 import { usePlaybackControlLayout } from "@/hooks/useUIControls";
-import { settings$, type PlaybackControlId } from "@/systems/Settings";
+import { OVERLAY_WINDOW_WIDTH_COMPACT } from "@/overlay/OverlayConstants";
 import { setIsScrubbing } from "@/systems/PlaybackInteractionState";
+import { type PlaybackControlId, settings$ } from "@/systems/Settings";
 import { cn } from "@/utils/cn";
 import { perfCount } from "@/utils/perfLogger";
 
@@ -91,7 +92,7 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
     const handleSlidingStart = useCallback(() => setIsScrubbing(true), []);
     const handleSlidingEnd = useCallback(() => setIsScrubbing(false), []);
     const overlayModeEnabled = overlayMode?.enabled ?? false;
-    const overlayControlsVisible = overlayModeEnabled ? overlayMode?.showControls ?? false : true;
+    const overlayControlsVisible = overlayModeEnabled ? (overlayMode?.showControls ?? false) : true;
     const overlayControlsProgress = useSharedValue(overlayControlsVisible ? 1 : 0);
     const sliderRowHeight = useSharedValue(0);
 
@@ -109,7 +110,6 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
 
     const controlsAnimatedStyle = useAnimatedStyle(() => ({
         opacity: overlayControlsProgress.value,
-        transform: [{ translateY: (1 - overlayControlsProgress.value) * 6 }],
     }));
 
     const sliderAnimatedStyle = useAnimatedStyle(() => {
@@ -123,9 +123,11 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
 
     const playbackControlsNode = (
         <View className="flex-row items-center ml-1 -mr-1">
-            {((playbackControlsLayout?.shown?.length
-                ? playbackControlsLayout.shown
-                : DEFAULT_PLAYBACK_BUTTONS) as PlaybackControlId[]) // Ensure default buttons when no layout present
+            {(
+                (playbackControlsLayout?.shown?.length
+                    ? playbackControlsLayout.shown
+                    : DEFAULT_PLAYBACK_BUTTONS) as PlaybackControlId[]
+            ) // Ensure default buttons when no layout present
                 .filter((controlId, index, array) => array.indexOf(controlId) === index)
                 .map((controlId) => {
                     switch (controlId) {
@@ -262,7 +264,10 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
                 </View>
 
                 {/* Song Info */}
-                <View className="flex-1 flex-col">
+                <View
+                    className={cn("flex-1 flex-col overflow-hidden")}
+                    style={{ maxWidth: overlayModeEnabled ? OVERLAY_WINDOW_WIDTH_COMPACT - 148 : undefined }}
+                >
                     <Text className="text-white text-sm font-semibold" numberOfLines={1}>
                         {currentTrack?.title || " "}
                     </Text>
@@ -273,8 +278,9 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
                 <View className="flex-row items-center">
                     {overlayModeEnabled ? (
                         <Animated.View
+                            className={cn(overlayModeEnabled && " absolute top-0 bottom-0")}
                             pointerEvents={overlayControlsVisible ? "auto" : "none"}
-                            style={controlsAnimatedStyle}
+                            style={[controlsAnimatedStyle, { right: -60 }]}
                         >
                             {playbackControlsNode}
                         </Animated.View>

@@ -18,25 +18,30 @@ import {
     pauseCurrentSongOverlayDismissal,
     resetCurrentSongOverlayTimer,
     setCurrentSongOverlayWindowHeight,
+    setCurrentSongOverlayWindowWidth,
 } from "./CurrentSongOverlayState";
 
-const WINDOW_ID = "current-song-overlay";
-const SHOW_DURATION_MS = 400;
-const HIDE_DURATION_MS = 300;
-const MAX_BLUR_RADIUS = 4;
-const SCALE = 0.9;
-const ROOT_PADDING_TOP = 22;
-const ROOT_PADDING_BOTTOM = 36;
-const COMPACT_WINDOW_HEIGHT = 132;
-const EXPANDED_WINDOW_HEIGHT = 154;
+import {
+    OVERLAY_WINDOW_HIDE_DURATION_MS,
+    OVERLAY_WINDOW_MAX_BLUR_RADIUS,
+    OVERLAY_WINDOW_HEIGHT_COMPACT,
+    OVERLAY_WINDOW_HEIGHT_EXPANDED,
+    OVERLAY_WINDOW_INITIAL_SCALE,
+    OVERLAY_WINDOW_ROOT_PADDING_BOTTOM,
+    OVERLAY_WINDOW_ROOT_PADDING_TOP,
+    OVERLAY_WINDOW_SHOW_DURATION_MS,
+    OVERLAY_WINDOW_WIDTH_COMPACT,
+    OVERLAY_WINDOW_WIDTH_EXPANDED,
+} from "./OverlayConstants";
 
+const WINDOW_ID = "current-song-overlay";
 const styles = StyleSheet.create({
     root: {
         alignSelf: "stretch",
         flex: 1,
-        paddingTop: ROOT_PADDING_TOP,
+        paddingTop: OVERLAY_WINDOW_ROOT_PADDING_TOP,
         paddingHorizontal: 30,
-        paddingBottom: ROOT_PADDING_BOTTOM,
+        paddingBottom: OVERLAY_WINDOW_ROOT_PADDING_BOTTOM,
         backgroundColor: "transparent",
     },
     shadowContainer: {
@@ -70,7 +75,7 @@ const styles = StyleSheet.create({
 
 function CurrentSongOverlayWindow() {
     const opacity = useSharedValue(0);
-    const scale = useSharedValue(SCALE);
+    const scale = useSharedValue(OVERLAY_WINDOW_INITIAL_SCALE);
     const [isHovered, setIsHovered] = useState(false);
 
     const animatedStyle = useAnimatedStyle(() => ({
@@ -96,8 +101,10 @@ function CurrentSongOverlayWindow() {
     }, []);
 
     useEffect(() => {
-        const targetHeight = isHovered ? EXPANDED_WINDOW_HEIGHT : COMPACT_WINDOW_HEIGHT;
+        const targetHeight = isHovered ? OVERLAY_WINDOW_HEIGHT_EXPANDED : OVERLAY_WINDOW_HEIGHT_COMPACT;
+        const targetWidth = isHovered ? OVERLAY_WINDOW_WIDTH_EXPANDED : OVERLAY_WINDOW_WIDTH_COMPACT;
         setCurrentSongOverlayWindowHeight(targetHeight);
+        setCurrentSongOverlayWindowWidth(targetWidth);
     }, [isHovered]);
 
     useObserveEffect(() => {
@@ -108,7 +115,7 @@ function CurrentSongOverlayWindow() {
             if (Platform.OS === "macos") {
                 void (async () => {
                     try {
-                        await setWindowBlur(WINDOW_ID, MAX_BLUR_RADIUS, HIDE_DURATION_MS);
+                        await setWindowBlur(WINDOW_ID, OVERLAY_WINDOW_MAX_BLUR_RADIUS, OVERLAY_WINDOW_HIDE_DURATION_MS);
                     } catch (error) {
                         console.error("Failed to animate overlay blur on hide:", error);
                     }
@@ -118,7 +125,7 @@ function CurrentSongOverlayWindow() {
             opacity.value = withTiming(
                 0,
                 {
-                    duration: HIDE_DURATION_MS,
+                    duration: OVERLAY_WINDOW_HIDE_DURATION_MS,
                     easing: Easing.in(Easing.cubic),
                 },
                 (finished) => {
@@ -128,8 +135,8 @@ function CurrentSongOverlayWindow() {
                 },
             );
 
-            scale.value = withTiming(SCALE, {
-                duration: HIDE_DURATION_MS,
+            scale.value = withTiming(OVERLAY_WINDOW_INITIAL_SCALE, {
+                duration: OVERLAY_WINDOW_HIDE_DURATION_MS,
                 easing: Easing.in(Easing.cubic),
             });
 
@@ -141,23 +148,23 @@ function CurrentSongOverlayWindow() {
         }
 
         opacity.value = 0;
-        scale.value = SCALE;
+        scale.value = OVERLAY_WINDOW_INITIAL_SCALE;
 
         opacity.value = withTiming(1, {
-            duration: SHOW_DURATION_MS,
+            duration: OVERLAY_WINDOW_SHOW_DURATION_MS,
             easing: Easing.out(Easing.cubic),
         });
 
         scale.value = withTiming(1, {
-            duration: SHOW_DURATION_MS,
+            duration: OVERLAY_WINDOW_SHOW_DURATION_MS,
             easing: Easing.out(Easing.cubic),
         });
 
         if (Platform.OS === "macos") {
             void (async () => {
                 try {
-                    await setWindowBlur(WINDOW_ID, MAX_BLUR_RADIUS, 0);
-                    await setWindowBlur(WINDOW_ID, 0, SHOW_DURATION_MS);
+                    await setWindowBlur(WINDOW_ID, OVERLAY_WINDOW_MAX_BLUR_RADIUS, 0);
+                    await setWindowBlur(WINDOW_ID, 0, OVERLAY_WINDOW_SHOW_DURATION_MS);
                 } catch (error) {
                     console.error("Failed to animate overlay blur on show:", error);
                 }

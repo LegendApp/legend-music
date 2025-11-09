@@ -1,5 +1,5 @@
 import { use$ } from "@legendapp/state/react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Dimensions } from "react-native";
 
 import { useWindowManager, WindowStyleMask } from "@/native-modules/WindowManager";
@@ -7,29 +7,32 @@ import { settings$ } from "@/systems/Settings";
 import { perfCount, perfLog } from "@/utils/perfLogger";
 import { WindowsNavigator } from "@/windows";
 
+import { cancelCurrentSongOverlay, currentSongOverlay$, finalizeCurrentSongOverlayDismissal } from "./CurrentSongOverlayState";
+
 import {
-    DEFAULT_OVERLAY_WINDOW_HEIGHT,
-    cancelCurrentSongOverlay,
-    currentSongOverlay$,
-    finalizeCurrentSongOverlayDismissal,
-} from "./CurrentSongOverlayState";
+    OVERLAY_WINDOW_ANIMATION_DURATION_MS,
+    OVERLAY_WINDOW_BOTTOM_MARGIN,
+    OVERLAY_WINDOW_HEIGHT_COMPACT,
+    OVERLAY_WINDOW_HORIZONTAL_MARGIN,
+    OVERLAY_WINDOW_TOP_MARGIN,
+    OVERLAY_WINDOW_WIDTH_COMPACT,
+} from "./OverlayConstants";
 
 const OVERLAY_WINDOW_KEY = "CurrentSongOverlayWindow" as const;
 const OVERLAY_WINDOW_ID = WindowsNavigator.getIdentifier(OVERLAY_WINDOW_KEY);
-const DEFAULT_WIDTH = 400;
-const DEFAULT_HEIGHT = DEFAULT_OVERLAY_WINDOW_HEIGHT;
-const TOP_MARGIN = 48;
-const HORIZONTAL_MARGIN = 0;
-const BOTTOM_MARGIN = 0;
+const DEFAULT_WIDTH = OVERLAY_WINDOW_WIDTH_COMPACT;
+const DEFAULT_HEIGHT = OVERLAY_WINDOW_HEIGHT_COMPACT;
 
 export const CurrentSongOverlayWindowManager = () => {
     perfCount("CurrentSongOverlayWindowManager.render");
     const windowManager = useWindowManager();
     const isWindowOpen = use$(currentSongOverlay$.isWindowOpen);
     const overlayPosition = use$(settings$.overlay.position);
-    const windowHeight = use$(currentSongOverlay$.windowHeight) ?? DEFAULT_OVERLAY_WINDOW_HEIGHT;
+    const windowHeight = use$(currentSongOverlay$.windowHeight) ?? OVERLAY_WINDOW_HEIGHT_COMPACT;
+    const windowWidth = use$(currentSongOverlay$.windowWidth) ?? OVERLAY_WINDOW_WIDTH_COMPACT;
     const horizontalPosition = overlayPosition?.horizontal ?? "center";
     const verticalPosition = overlayPosition?.vertical ?? "top";
+    const previousDimensionsRef = useRef<{ width: number; height: number } | null>(null);
 
     useEffect(() => {
         const subscription = windowManager.onWindowClosed(({ identifier }) => {
@@ -55,8 +58,13 @@ export const CurrentSongOverlayWindowManager = () => {
                     perfLog("CurrentSongOverlayWindowManager.closeWindow.error", error);
                 }
             })();
+            previousDimensionsRef.current = null;
             return;
         }
+
+        const shouldAnimateFrameChange =
+            previousDimensionsRef.current !== null &&
+            (previousDimensionsRef.current.width !== windowWidth || previousDimensionsRef.current.height !== windowHeight);
 
         void (async () => {
             try {
@@ -76,28 +84,30 @@ export const CurrentSongOverlayWindowManager = () => {
                           ? windowDims.height
                           : DEFAULT_HEIGHT;
 
-                let x = Math.max(Math.round((screenWidth - DEFAULT_WIDTH) / 2), 0);
+                let x = Math.max(Math.round((screenWidth - windowWidth) / 2), 0);
                 if (horizontalPosition === "left") {
-                    x = HORIZONTAL_MARGIN;
+                    x = OVERLAY_WINDOW_HORIZONTAL_MARGIN;
                 } else if (horizontalPosition === "right") {
-                    x = Math.max(screenWidth - DEFAULT_WIDTH - HORIZONTAL_MARGIN, 0);
+                    x = Math.max(screenWidth - windowWidth - OVERLAY_WINDOW_HORIZONTAL_MARGIN, 0);
                 }
 
                 const maxY = Math.max(screenHeight - windowHeight, 0);
                 const clampY = (value: number) => Math.min(Math.max(value, 0), maxY);
 
-                let y = clampY(maxY - TOP_MARGIN);
+                let y = clampY(maxY - OVERLAY_WINDOW_TOP_MARGIN);
                 if (verticalPosition === "middle") {
                     y = clampY(Math.round(maxY / 2));
                 } else if (verticalPosition === "bottom") {
-                    y = clampY(BOTTOM_MARGIN);
+                    y = clampY(OVERLAY_WINDOW_BOTTOM_MARGIN);
                 }
 
                 await WindowsNavigator.open(OVERLAY_WINDOW_KEY, {
                     x,
                     y,
+                    animateFrameChange: shouldAnimateFrameChange,
+                    frameAnimationDurationMs: shouldAnimateFrameChange ? OVERLAY_WINDOW_ANIMATION_DURATION_MS : undefined,
                     windowStyle: {
-                        width: DEFAULT_WIDTH,
+                        width: windowWidth,
                         height: windowHeight,
                         mask: [
                             WindowStyleMask.Borderless,
@@ -106,12 +116,13 @@ export const CurrentSongOverlayWindowManager = () => {
                         ],
                     },
                 });
+                previousDimensionsRef.current = { width: windowWidth, height: windowHeight };
             } catch (error) {
                 console.error("Failed to open current song overlay window:", error);
                 perfLog("CurrentSongOverlayWindowManager.openWindow.error", error);
             }
         })();
-    }, [isWindowOpen, horizontalPosition, verticalPosition, windowHeight]);
+    }, [isWindowOpen, horizontalPosition, verticalPosition, windowHeight, windowWidth]);
 
     return null;
 };

@@ -32,7 +32,7 @@ RCT_EXPORT_MODULE();
 
 - (NSDictionary *)constantsToExport
 {
-  return @{ 
+  return @{
     @"STYLE_MASK_BORDERLESS": @(NSWindowStyleMaskBorderless),
     @"STYLE_MASK_TITLED": @(NSWindowStyleMaskTitled),
     @"STYLE_MASK_CLOSABLE": @(NSWindowStyleMaskClosable),
@@ -97,6 +97,11 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
   BOOL shouldApplyHasShadow = hasShadowNumber != nil;
   BOOL hasShadow = shouldApplyHasShadow ? [hasShadowNumber boolValue] : NO;
 
+  NSNumber *animateFrameChangeNumber = options[@"animateFrameChange"];
+  BOOL animateFrameChange = animateFrameChangeNumber ? [animateFrameChangeNumber boolValue] : NO;
+  NSNumber *frameAnimationDurationNumber = options[@"frameAnimationDurationMs"];
+  NSTimeInterval frameAnimationDuration = frameAnimationDurationNumber ? ([frameAnimationDurationNumber doubleValue] / 1000.0) : 0;
+
   NSNumber *widthNumber = windowStyle[@"width"] ?: options[@"width"];
   NSNumber *heightNumber = windowStyle[@"height"] ?: options[@"height"];
   CGFloat width = widthNumber ? [widthNumber floatValue] : 400;
@@ -133,7 +138,15 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
     }
 
     NSRect newFrame = NSMakeRect(origin.x, origin.y, newWidth, newHeight);
-    [existingWindow setFrame:newFrame display:YES animate:NO];
+    if (animateFrameChange && frameAnimationDuration > 0) {
+      [NSAnimationContext runAnimationGroup:^(NSAnimationContext *context) {
+        context.duration = frameAnimationDuration;
+        context.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        [[existingWindow animator] setFrame:newFrame display:YES];
+      } completionHandler:nil];
+    } else {
+      [existingWindow setFrame:newFrame display:YES animate:animateFrameChange];
+    }
 
     if (maskNumber) {
       [existingWindow setStyleMask:[maskNumber unsignedIntegerValue]];
@@ -423,14 +436,14 @@ RCT_EXPORT_METHOD(setWindowBlur:(NSString *)identifier
   // Get the main window from the app delegate
   NSApplication *app = [NSApplication sharedApplication];
   NSArray *windows = [app windows];
-  
+
   for (NSWindow *window in windows) {
     // The main window is typically the first window that's not a panel or sheet
     if ([window isKindOfClass:[NSWindow class]] && ![window isSheet] && ![window isKindOfClass:[NSPanel class]]) {
       return window;
     }
   }
-  
+
   // Fallback to the key window if no main window found
   return [app keyWindow];
 }
@@ -442,7 +455,7 @@ RCT_EXPORT_METHOD(getMainWindowFrame:(RCTPromiseResolveBlock)resolve
     reject(@"no_main_window", @"Main window not found", nil);
     return;
   }
-  
+
   NSRect frame = [mainWindow frame];
   NSDictionary *frameDict = @{
     @"x": @(frame.origin.x),
@@ -450,7 +463,7 @@ RCT_EXPORT_METHOD(getMainWindowFrame:(RCTPromiseResolveBlock)resolve
     @"width": @(frame.size.width),
     @"height": @(frame.size.height)
   };
-  
+
   resolve(frameDict);
 }
 
@@ -462,15 +475,15 @@ RCT_EXPORT_METHOD(setMainWindowFrame:(NSDictionary *)frameDict
     reject(@"no_main_window", @"Main window not found", nil);
     return;
   }
-  
+
   CGFloat x = [frameDict[@"x"] doubleValue];
   CGFloat y = [frameDict[@"y"] doubleValue];
   CGFloat width = [frameDict[@"width"] doubleValue];
   CGFloat height = [frameDict[@"height"] doubleValue];
-  
+
   NSRect newFrame = NSMakeRect(x, y, width, height);
   [mainWindow setFrame:newFrame display:YES animate:NO];
-  
+
   resolve(@{@"success": @YES});
 }
 
@@ -479,7 +492,7 @@ RCT_EXPORT_METHOD(setMainWindowFrame:(NSDictionary *)frameDict
   if (!mainWindow) {
     return;
   }
-  
+
   // Set up notification observers for window events
   [[NSNotificationCenter defaultCenter] addObserver:self
                                            selector:@selector(mainWindowDidMove:)
@@ -500,30 +513,30 @@ RCT_EXPORT_METHOD(setMainWindowFrame:(NSDictionary *)frameDict
 - (void)mainWindowDidMove:(NSNotification *)notification {
   NSWindow *window = notification.object;
   NSRect frame = [window frame];
-  
+
   NSDictionary *frameDict = @{
     @"x": @(frame.origin.x),
     @"y": @(frame.origin.y),
     @"width": @(frame.size.width),
     @"height": @(frame.size.height)
   };
-  
+
   // No need to manually save - setFrameAutosaveName handles persistence
-  
+
   [self sendEventWithName:@"onMainWindowMoved" body:frameDict];
 }
 
 - (void)mainWindowDidResize:(NSNotification *)notification {
   NSWindow *window = notification.object;
   NSRect frame = [window frame];
-  
+
   NSDictionary *frameDict = @{
     @"x": @(frame.origin.x),
     @"y": @(frame.origin.y),
     @"width": @(frame.size.width),
     @"height": @(frame.size.height)
   };
-  
+
   // No need to manually save - setFrameAutosaveName handles persistence
 
   [self sendEventWithName:@"onMainWindowResized" body:frameDict];

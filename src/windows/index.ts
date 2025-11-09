@@ -1,5 +1,7 @@
 import { createWindowsNavigator, WindowStyleMask, type WindowsConfig } from "./api";
 
+import { OVERLAY_WINDOW_HEIGHT_COMPACT, OVERLAY_WINDOW_WIDTH_COMPACT } from "@/overlay/OverlayConstants";
+
 const windowsConfig = {
     SettingsWindow: {
         loadComponent: () => import("@/settings/SettingsContainer"),
@@ -34,8 +36,8 @@ const windowsConfig = {
             transparentBackground: true,
             hasShadow: true,
             windowStyle: {
-                width: 400,
-                height: 198,
+                width: OVERLAY_WINDOW_WIDTH_COMPACT,
+                height: OVERLAY_WINDOW_HEIGHT_COMPACT,
                 mask: [
                     WindowStyleMask.Borderless,
                     WindowStyleMask.NonactivatingPanel,

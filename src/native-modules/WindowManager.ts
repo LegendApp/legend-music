@@ -65,6 +65,8 @@ export type WindowOptions = {
     initialProperties?: Record<string, unknown>;
     level?: WindowLevel;
     transparentBackground?: boolean;
+    animateFrameChange?: boolean;
+    frameAnimationDurationMs?: number;
 };
 
 type NativeWindowStyleOptions = Omit<WindowStyleOptions, "mask"> & {
@@ -111,7 +113,7 @@ const convertWindowLevelToNative = (level?: WindowLevel) => {
 };
 
 const convertOptionsToNative = (options: WindowOptions = {}): NativeWindowOptions => {
-    const { level, windowStyle, ...rest } = options;
+    const { level, windowStyle, animateFrameChange, frameAnimationDurationMs, ...rest } = options;
     const nativeWindowStyle = convertWindowStyleToNative(windowStyle);
 
     const nativeOptions: NativeWindowOptions = {
@@ -130,6 +132,14 @@ const convertOptionsToNative = (options: WindowOptions = {}): NativeWindowOption
     const nativeLevel = convertWindowLevelToNative(level);
     if (nativeLevel !== undefined) {
         nativeOptions.level = nativeLevel;
+    }
+
+    if (animateFrameChange !== undefined) {
+        nativeOptions.animateFrameChange = animateFrameChange;
+    }
+
+    if (frameAnimationDurationMs !== undefined) {
+        nativeOptions.frameAnimationDurationMs = frameAnimationDurationMs;
     }
 
     return nativeOptions;
