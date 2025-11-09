@@ -2,7 +2,7 @@ import "@/../global.css";
 import { VibrancyView } from "@fluentui-react-native/vibrancy-view";
 import { PortalProvider } from "@gorhom/portal";
 import { useObserveEffect } from "@legendapp/state/react";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
@@ -60,6 +60,7 @@ const styles = StyleSheet.create({
 function CurrentSongOverlayWindow() {
     const opacity = useSharedValue(0);
     const scale = useSharedValue(SCALE);
+    const [isHovered, setIsHovered] = useState(false);
 
     const animatedStyle = useAnimatedStyle(() => ({
         opacity: opacity.value,
@@ -71,10 +72,12 @@ function CurrentSongOverlayWindow() {
     }, []);
 
     const handleMouseEnter = useCallback(() => {
+        setIsHovered(true);
         pauseCurrentSongOverlayDismissal();
     }, []);
 
     const handleMouseLeave = useCallback(() => {
+        setIsHovered(false);
         if (currentSongOverlay$.isExiting.peek()) {
             return;
         }
@@ -164,7 +167,10 @@ function CurrentSongOverlayWindow() {
                             <ThemeProvider>
                                 <PortalProvider>
                                     <TooltipProvider>
-                                        <PlaybackArea showBorder={false} />
+                                        <PlaybackArea
+                                            showBorder={false}
+                                            overlayMode={{ enabled: true, showControls: isHovered }}
+                                        />
                                     </TooltipProvider>
                                 </PortalProvider>
                             </ThemeProvider>

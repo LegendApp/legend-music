@@ -13,8 +13,14 @@ import { setIsScrubbing } from "@/systems/PlaybackInteractionState";
 import { cn } from "@/utils/cn";
 import { perfCount } from "@/utils/perfLogger";
 
+type OverlayPlaybackMode = {
+    enabled: boolean;
+    showControls: boolean;
+};
+
 type PlaybackAreaProps = {
     showBorder?: boolean;
+    overlayMode?: OverlayPlaybackMode;
 };
 
 const DEFAULT_PLAYBACK_BUTTONS: PlaybackControlId[] = ["playPause", "next"];
@@ -73,7 +79,7 @@ function formatTime(seconds: number, cache?: boolean): string {
     return formatted;
 }
 
-export function PlaybackArea({ showBorder = true }: PlaybackAreaProps = {}) {
+export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaProps = {}) {
     perfCount("PlaybackArea.render");
     const currentTrack = use$(localPlayerState$.currentTrack);
     const isPlaying = use$(localPlayerState$.isPlaying);
