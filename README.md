@@ -2,6 +2,8 @@
 
 Legend Music is a macOS-first local music player built with React Native. It ingests folders of audio files, keeps the library in sync via native filesystem watchers, and exposes a multi-window experience with a Skia-driven visualizer, floating overlay, and pop-out settings surfaces. State is persisted with `@legendapp/state` + `expo-file-system`, so the queue, library, and preferences survive restarts.
 
+![](overlay2.mov)
+
 ## Highlights
 
 - Local-first ingestion: parse ID3/JS media tags, cache artwork, and rescan when Finder changes trigger the native watcher.
