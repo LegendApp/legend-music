@@ -1,6 +1,6 @@
 import { observable } from "@legendapp/state";
-import { Directory, File } from "expo-file-system/next";
 import { Skia } from "@shopify/react-native-skia";
+import { Directory, File } from "expo-file-system/next";
 import * as ID3 from "id3js";
 import type { JsMediaTagsSuccess } from "jsmediatags/build2/jsmediatags";
 import jsmediatags from "jsmediatags/build2/jsmediatags";
@@ -210,7 +210,7 @@ function getExtensionForMime(mime: string | null): string {
 
 function downscaleArtworkToSquare(buffer: Uint8Array, targetSize = 128): Uint8Array | null {
     try {
-        const image = Skia.Image.MakeImageFromEncoded(buffer);
+        const image = Skia.Image.MakeImageFromEncoded(Skia.Data.fromBytes(buffer));
         if (!image) {
             return null;
         }
@@ -234,7 +234,7 @@ function downscaleArtworkToSquare(buffer: Uint8Array, targetSize = 128): Uint8Ar
         const srcRect = Skia.XYWHRect(srcX, srcY, cropSize, cropSize);
         const destRect = Skia.XYWHRect(0, 0, targetSize, targetSize);
 
-        canvas.drawImageRect(image, srcRect, destRect, null);
+        canvas.drawImageRect(image, srcRect, destRect, Skia.Paint());
 
         const snapshot = surface.makeImageSnapshot();
         const encoded = snapshot.encodeToBytes();
