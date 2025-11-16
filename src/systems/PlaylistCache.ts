@@ -100,7 +100,7 @@ const sanitizeSnapshot = (input: Partial<PlaylistSnapshot>): PlaylistSnapshot =>
 
 export const getPlaylistCacheSnapshot = (): PlaylistSnapshot => {
     const snapshot = playlistCache$.get();
-    if (!snapshot || snapshot.version !== PLAYLIST_CACHE_VERSION) {
+    if (!snapshot) {
         return defaultSnapshot;
     }
 

@@ -53,9 +53,6 @@ const collectLibrarySnapshot = (): LibrarySnapshotPayload => {
     const lastScan = library$.lastScanTime.peek();
 
     return {
-        artists: library$.artists.peek(),
-        albums: library$.albums.peek(),
-        playlists: library$.playlists.peek(),
         tracks: library$.tracks.peek(),
         isScanning: library$.isScanning.peek(),
         lastScanTime: lastScan instanceof Date ? lastScan.getTime() : null,
@@ -214,27 +211,30 @@ export const isLibraryCacheAvailable = (): boolean => hasCachedLibraryData();
 
 export const hydrateLibraryFromCache = (): boolean => {
     const snapshot = getLibrarySnapshot();
-    const hasData =
-        snapshot.artists.length > 0 ||
-        snapshot.albums.length > 0 ||
-        snapshot.playlists.length > 0 ||
-        snapshot.tracks.length > 0;
+    const hasData = snapshot.tracks.length > 0;
 
     if (!hasData) {
         return false;
     }
 
-    library$.artists.set(snapshot.artists);
-    library$.albums.set(snapshot.albums);
-    library$.playlists.set(snapshot.playlists);
-    library$.tracks.set(snapshot.tracks);
+    const tracks = snapshot.tracks.map((track) => ({
+        id: track.filePath,
+        title: track.title,
+        artist: track.artist,
+        album: track.album,
+        duration: track.duration,
+        filePath: track.filePath,
+        fileName: track.filePath.split("/").pop() ?? track.filePath,
+        thumbnail: track.thumbnail,
+    }));
+
+    library$.tracks.set(tracks);
+    library$.artists.set(buildArtistItems(tracks));
+    library$.albums.set(buildAlbumItems(tracks));
     library$.isScanning.set(snapshot.isScanning);
     library$.lastScanTime.set(snapshot.lastScanTime ? new Date(snapshot.lastScanTime) : null);
 
     lastLibrarySnapshotKey = JSON.stringify({
-        artists: snapshot.artists,
-        albums: snapshot.albums,
-        playlists: snapshot.playlists,
         tracks: snapshot.tracks,
         isScanning: snapshot.isScanning,
         lastScanTime: snapshot.lastScanTime,
