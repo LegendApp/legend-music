@@ -1,0 +1,83 @@
+diff --git a/build2/ReactNativeFileReader.js b/build2/ReactNativeFileReader.js
+index 0a28f9c0bab8e0558792cfdad389f36efedc7f7b..c54aa75977b136e2a56a969e7d79edc2f8740cf0 100644
+--- a/build2/ReactNativeFileReader.js
++++ b/build2/ReactNativeFileReader.js
+@@ -24,7 +24,7 @@ function _defineProperties(target, props) { for (var i = 0; i < props.length; i+
+ 
+ function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+ 
+-var RNFS = require('react-native-fs');
++var FileSystemNext = require("expo-file-system/next");
+ 
+ var _require = require('buffer'),
+     Buffer = _require.Buffer;
+@@ -62,21 +62,23 @@ var ReactNativeFileReader = /*#__PURE__*/function (_MediaFileReader) {
+   }, {
+     key: "_init",
+     value: function _init(callbacks) {
+-      var self = this;
+-      RNFS.stat(self._path).then(function (statResult) {
+-        self._size = statResult.size;
++      try {
++        this._file = new FileSystemNext.File(this._path);
++        this._handle = this._file.open();
++        var handleSize = this._handle && typeof this._handle.size === "number" ? this._handle.size : 0;
++        var fileSize = this._file && typeof this._file.size === "number" ? this._file.size : 0;
++        this._size = handleSize || fileSize || 0;
+         callbacks.onSuccess();
+-      })["catch"](function (error) {
++      } catch (error) {
+         callbacks.onError({
+           "type": "fs",
+           "info": error
+         });
+-      });
++      }
+     }
+   }, {
+     key: "loadRange",
+     value: function loadRange(range, callbacks) {
+-      var fd = -1;
+       var self = this;
+       var fileData = this._fileData;
+       var length = range[1] - range[0] + 1;
+@@ -84,19 +86,32 @@ var ReactNativeFileReader = /*#__PURE__*/function (_MediaFileReader) {
+ 
+       var onError = callbacks.onError || function (object) {};
+ 
+-      RNFS.read(this._path, length, range[0], {
+-        encoding: 'base64'
+-      }).then(function (readData) {
+-        var buffer = new Buffer(readData, 'base64');
+-        var data = Array.prototype.slice.call(buffer, 0, length);
++      try {
++        if (!self._handle) {
++          self._file = new FileSystemNext.File(self._path);
++          self._handle = self._file.open();
++        }
++
++        var size = self._handle && typeof self._handle.size === "number" ? self._handle.size : 0;
++        var start = Math.max(0, Math.min(range[0], size));
++        var available = Math.max(0, size - start);
++        var toRead = Math.max(0, Math.min(length, available));
++        var bytes = new Uint8Array(toRead);
++
++        if (toRead > 0) {
++          self._handle.offset = start;
++          bytes = self._handle.readBytes(toRead);
++        }
++
++        var data = Array.prototype.slice.call(bytes, 0, length);
+         fileData.addData(range[0], data);
+         onSuccess();
+-      })["catch"](function (err) {
++      } catch (err) {
+         onError({
+           "type": "fs",
+           "info": err
+         });
+-      });
++      }
+     }
+   }], [{
+     key: "canReadFile",

@@ -16,7 +16,6 @@ module.exports = {
         ],
         ["module:react-native-dotenv"],
         "react-native-reanimated/plugin",
-        "module:react-native-node-api/babel-plugin",
     ],
     env: {
         production: {
