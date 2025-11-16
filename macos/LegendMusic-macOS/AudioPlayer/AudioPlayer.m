@@ -1026,6 +1026,11 @@ RCT_EXPORT_METHOD(loadTrack:(NSString *)filePath
                 return;
             }
 
+            // Keep buffering tight for local files to reduce memory spikes
+            self.player.automaticallyWaitsToMinimizeStalling = YES;
+            self.playerItem.preferredForwardBufferDuration = 4.0;
+            self.playerItem.canUseNetworkResourcesForLiveStreamingWhilePaused = NO;
+
             // Replace current item
             [self.player replaceCurrentItemWithPlayerItem:self.playerItem];
 

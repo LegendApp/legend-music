@@ -1,5 +1,6 @@
 import { observable } from "@legendapp/state";
 import { Directory, File } from "expo-file-system/next";
+import { Skia } from "@shopify/react-native-skia";
 import * as ID3 from "id3js";
 import type { JsMediaTagsSuccess } from "jsmediatags/build2/jsmediatags";
 import jsmediatags from "jsmediatags/build2/jsmediatags";
@@ -207,6 +208,47 @@ function getExtensionForMime(mime: string | null): string {
     return "jpg";
 }
 
+function downscaleArtworkToSquare(buffer: Uint8Array, targetSize = 128): Uint8Array | null {
+    try {
+        const image = Skia.Image.MakeImageFromEncoded(buffer);
+        if (!image) {
+            return null;
+        }
+
+        const sourceWidth = image.width();
+        const sourceHeight = image.height();
+        if (sourceWidth === 0 || sourceHeight === 0) {
+            return null;
+        }
+
+        const cropSize = Math.min(sourceWidth, sourceHeight);
+        const srcX = Math.floor((sourceWidth - cropSize) / 2);
+        const srcY = Math.floor((sourceHeight - cropSize) / 2);
+
+        const surface = Skia.Surface.Make(targetSize, targetSize);
+        if (!surface) {
+            return null;
+        }
+
+        const canvas = surface.getCanvas();
+        const srcRect = Skia.XYWHRect(srcX, srcY, cropSize, cropSize);
+        const destRect = Skia.XYWHRect(0, 0, targetSize, targetSize);
+
+        canvas.drawImageRect(image, srcRect, destRect, null);
+
+        const snapshot = surface.makeImageSnapshot();
+        const encoded = snapshot.encodeToBytes();
+        if (!encoded || encoded.length === 0) {
+            return null;
+        }
+
+        return encoded;
+    } catch (error) {
+        console.warn("Failed to downscale artwork", error);
+        return null;
+    }
+}
+
 function fileNameFromPath(path: string): string {
     const lastSlash = path.lastIndexOf("/");
     return lastSlash === -1 ? path : path.slice(lastSlash + 1);
@@ -316,10 +358,14 @@ function extractEmbeddedArtwork(filePath: string, tags: unknown): string | undef
         bufferToWrite = stripUnsynchronization(buffer);
     }
 
-    const cacheFile = new File(thumbnailsDir, `${cacheKey}.${extension}`);
+    const scaledBuffer = downscaleArtworkToSquare(bufferToWrite, 128);
+    const outputBuffer = scaledBuffer ?? bufferToWrite;
+    const outputExtension = scaledBuffer ? "png" : extension;
+
+    const cacheFile = new File(thumbnailsDir, `${cacheKey}.${outputExtension}`);
     try {
         cacheFile.create({ overwrite: true, intermediates: true });
-        cacheFile.write(bufferToWrite);
+        cacheFile.write(outputBuffer);
         return cacheFile.uri;
     } catch (error) {
         console.warn(`Failed to cache album art for ${filePath}:`, error);
