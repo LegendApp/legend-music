@@ -351,7 +351,14 @@ export async function ensureLocalTrackThumbnail(track: LocalTrack): Promise<stri
 async function extractId3Metadata(
     filePath: string,
     fileName: string,
-): Promise<{ title: string; artist: string; album?: string; duration?: string; thumbnail?: string; thumbnailKey?: string }> {
+): Promise<{
+    title: string;
+    artist: string;
+    album?: string;
+    duration?: string;
+    thumbnail?: string;
+    thumbnailKey?: string;
+}> {
     perfCount("LocalMusic.extractId3Metadata");
 
     const fallback = parseFilenameOnly(fileName);
@@ -595,7 +602,9 @@ async function scanLibraryNative(paths: string[], thumbnailsDirUri: string): Pro
                     ? nativeTrack.artist
                     : fallback.artist;
             const album =
-                typeof nativeTrack.album === "string" && nativeTrack.album.trim().length > 0 ? nativeTrack.album : undefined;
+                typeof nativeTrack.album === "string" && nativeTrack.album.trim().length > 0
+                    ? nativeTrack.album
+                    : undefined;
 
             const durationSeconds =
                 typeof nativeTrack.durationSeconds === "number" && Number.isFinite(nativeTrack.durationSeconds)
@@ -777,7 +786,10 @@ async function scanDirectory(directoryPath: string, seenPaths?: Set<string>): Pr
 
 // Scan all configured library paths
 export async function scanLocalMusic(): Promise<void> {
-    const paths = localMusicSettings$.libraryPaths.get().map((path) => normalizeRootPath(path)).filter(Boolean);
+    const paths = localMusicSettings$.libraryPaths
+        .get()
+        .map((path) => normalizeRootPath(path))
+        .filter(Boolean);
 
     if (paths.length === 0) {
         localMusicState$.error.set("No library paths configured");
@@ -798,11 +810,11 @@ export async function scanLocalMusic(): Promise<void> {
 
         try {
             collectedTracks = await scanLibraryNative(paths, thumbnailsDir.uri);
+            console.log("collectedTracks native", collectedTracks.length);
         } catch (nativeError) {
             console.warn("Native scan failed, falling back to JS pipeline:", nativeError);
             localMusicState$.scanProgress.set(0);
             localMusicState$.scanTotal.set(paths.length);
-            collectedTracks = await scanLibraryFallback(paths);
         }
 
         const dedupedTracks = Array.from(new Map(collectedTracks.map((track) => [track.id, track])).values());

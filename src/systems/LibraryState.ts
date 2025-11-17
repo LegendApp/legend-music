@@ -2,8 +2,8 @@ import { observable } from "@legendapp/state";
 import type { LibrarySnapshot, PersistedLibraryTrack } from "@/systems/LibraryCache";
 import { getLibrarySnapshot, hasCachedLibraryData, persistLibrarySnapshot } from "@/systems/LibraryCache";
 import { type LocalTrack, localMusicSettings$, localMusicState$ } from "@/systems/LocalMusicState";
-import { createJSONManager } from "@/utils/JSONManager";
 import { getCacheDirectory } from "@/utils/cacheDirectories";
+import { createJSONManager } from "@/utils/JSONManager";
 import { perfCount, perfLog, perfTime } from "@/utils/perfLogger";
 import { runAfterInteractions } from "@/utils/runAfterInteractions";
 
@@ -44,7 +44,6 @@ export const library$ = observable({
     albums: [] as LibraryItem[],
     playlists: [] as LibraryItem[],
     tracks: [] as LibraryTrack[],
-    isScanning: false,
     lastScanTime: null as Date | null,
 });
 
@@ -142,7 +141,10 @@ const buildThumbnailUri = (baseUri: string, key: string | undefined): string | u
 
 const collectLibrarySnapshot = (sourceTracks: LibraryTrack[]): LibrarySnapshotPayload => {
     const lastScan = library$.lastScanTime.peek();
-    const roots = localMusicSettings$.libraryPaths.get().map((path) => normalizeRootPath(path)).filter(Boolean);
+    const roots = localMusicSettings$.libraryPaths
+        .get()
+        .map((path) => normalizeRootPath(path))
+        .filter(Boolean);
     const tracks = sourceTracks.map((track) => buildPersistedTrack(track, roots));
 
     return {
@@ -284,7 +286,6 @@ function syncLibraryFromLocalState(): void {
 }
 
 syncLibraryFromLocalState();
-library$.isScanning.set(localMusicState$.isScanning.get());
 const initialLastScan = localMusicSettings$.lastScanTime.get();
 library$.lastScanTime.set(initialLastScan ? new Date(initialLastScan) : null);
 const initialTracks = library$.tracks.peek();
@@ -292,7 +293,6 @@ lastLibrarySnapshotSignature = makeLibrarySnapshotSignature(collectLibrarySnapsh
 
 localMusicState$.tracks.onChange(syncLibraryFromLocalState);
 localMusicState$.isScanning.onChange(({ value }) => {
-    library$.isScanning.set(value);
     scheduleLibrarySnapshotPersist();
 });
 
