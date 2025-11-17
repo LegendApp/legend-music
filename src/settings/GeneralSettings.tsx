@@ -1,9 +1,11 @@
 import { observer } from "@legendapp/state/react";
-import { Text, View } from "react-native";
+import { Linking, Text, View } from "react-native";
 
+import { Button } from "@/components/Button";
 import { Checkbox } from "@/components/Checkbox";
 import { SettingsPage, SettingsRow, SettingsSection } from "@/settings/components";
 import { settings$ } from "@/systems/Settings";
+import packageJson from "../../package.json";
 
 export const GeneralSettings = observer(function GeneralSettings() {
     // const playlistStyleOptions = [
@@ -33,6 +35,24 @@ export const GeneralSettings = observer(function GeneralSettings() {
                     description="Toggle contextual hints like the media library status bar"
                     control={<Checkbox $checked={settings$.general.showHints} />}
                 />
+            </SettingsSection>
+
+            <SettingsSection title="About">
+                <View className="flex-row items-center gap-3">
+                    <View className="flex-1">
+                        <Text className="text-text-primary font-semibold text-sm">Version</Text>
+                        <Text className="text-text-secondary text-sm">{packageJson.version}</Text>
+                    </View>
+                    <Button
+                        variant="secondary"
+                        icon="exclamationmark.circle"
+                        size="medium"
+                        iconMarginTop={-2}
+                        onClick={() => Linking.openURL("https://github.com/LegendApp/legend-music/issues/new")}
+                    >
+                        <Text className="text-text-primary font-medium text-sm">Report an Issue</Text>
+                    </Button>
+                </View>
             </SettingsSection>
         </SettingsPage>
     );

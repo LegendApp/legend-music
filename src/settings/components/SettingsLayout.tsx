@@ -42,6 +42,7 @@ interface SettingsSectionProps {
     className?: string;
     contentClassName?: string;
     headerRight?: ReactNode;
+    card?: boolean;
 }
 
 export function SettingsSection({
@@ -51,9 +52,11 @@ export function SettingsSection({
     className,
     contentClassName,
     headerRight,
+    card = true,
 }: SettingsSectionProps) {
-    return (
-        <SettingsCard className={cn("mt-6 flex flex-col gap-6", className)}>
+    const containerClassName = cn("mt-6 flex flex-col gap-6", className);
+    const content = (
+        <>
             <View className="flex-row items-start justify-between gap-4">
                 <View className="flex-1 flex-col gap-1.5">
                     <Text className="text-xl font-semibold text-text-primary leading-tight">{title}</Text>
@@ -64,8 +67,14 @@ export function SettingsSection({
                 {headerRight ? <View className="flex-none ml-4">{headerRight}</View> : null}
             </View>
             {children ? <View className={cn("flex flex-col gap-5", contentClassName)}>{children}</View> : null}
-        </SettingsCard>
+        </>
     );
+
+    if (!card) {
+        return <View className={containerClassName}>{content}</View>;
+    }
+
+    return <SettingsCard className={containerClassName}>{content}</SettingsCard>;
 }
 
 interface SettingsCardProps {

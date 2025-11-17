@@ -1,15 +1,23 @@
 import { observer, use$ } from "@legendapp/state/react";
-import { Text, View } from "react-native";
+import { Alert, Text, View } from "react-native";
 
-import { SkiaSpinner } from "@/components/SkiaSpinner";
 import { Button } from "@/components/Button";
+import { SkiaSpinner } from "@/components/SkiaSpinner";
 import { selectDirectory } from "@/native-modules/FileDialog";
 import { SettingsPage, SettingsSection } from "@/settings/components";
-import { localMusicSettings$, localMusicState$, markLibraryChangeUserInitiated } from "@/systems/LocalMusicState";
+import {
+    localMusicSettings$,
+    localMusicState$,
+    markLibraryChangeUserInitiated,
+    resetLibraryCaches,
+    scanLocalMusic,
+} from "@/systems/LocalMusicState";
+import type { SFSymbols } from "@/types/SFSymbols";
 
 export const LibrarySettings = observer(function LibrarySettings() {
     const localMusicSettings = use$(localMusicSettings$);
     const localMusicState = use$(localMusicState$);
+    const latestError = use$(localMusicState$.error);
 
     const hasTrackEstimate =
         localMusicState.scanTrackTotal > 0 && localMusicState.scanTrackTotal >= localMusicState.scanTrackProgress;
@@ -21,9 +29,7 @@ export const LibrarySettings = observer(function LibrarySettings() {
               : "Preparing track list…";
 
     const folderProgressText =
-        localMusicState.scanTotal > 0
-            ? `${localMusicState.scanProgress}/${localMusicState.scanTotal} folders`
-            : null;
+        localMusicState.scanTotal > 0 ? `${localMusicState.scanProgress}/${localMusicState.scanTotal} folders` : null;
 
     const handleRemoveLibraryPath = (index: number) => {
         markLibraryChangeUserInitiated();
@@ -76,6 +82,28 @@ export const LibrarySettings = observer(function LibrarySettings() {
 
             return [...paths, directory];
         });
+    };
+
+    const handleRescanLibrary = () => {
+        markLibraryChangeUserInitiated();
+        void scanLocalMusic();
+    };
+
+    const handleResetCaches = () => {
+        Alert.alert(
+            "Reset library caches",
+            "This will clear cached library data and playlist state. Your folders stay intact.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Reset",
+                    style: "destructive",
+                    onPress: () => {
+                        resetLibraryCaches();
+                    },
+                },
+            ],
+        );
     };
 
     return (
@@ -151,6 +179,40 @@ export const LibrarySettings = observer(function LibrarySettings() {
                         </View>
                     </View>
                 ) : null}
+            </SettingsSection>
+
+            <SettingsSection title="Maintenance" description="Rescan or reset caches if the library looks incorrect.">
+                {latestError ? (
+                    <View className="rounded-md border border-border-primary/60 bg-red-500/10 px-3 py-2">
+                        <Text className="text-sm text-red-200">{latestError}</Text>
+                    </View>
+                ) : null}
+                <View className="flex-row items-center gap-3">
+                    <Button
+                        variant="primary"
+                        icon={"arrow.clockwise" as SFSymbols}
+                        size="medium"
+                        iconMarginTop={-1}
+                        disabled={localMusicState.isScanning}
+                        onClick={handleRescanLibrary}
+                        tooltip="Rescan all library folders"
+                    >
+                        <Text className="text-text-primary font-medium text-sm">Rescan Library</Text>
+                    </Button>
+                    <Button
+                        variant="secondary"
+                        icon={"trash" as SFSymbols}
+                        size="medium"
+                        iconMarginTop={-1}
+                        onClick={handleResetCaches}
+                        tooltip="Clear cached library and playlist data"
+                    >
+                        <Text className="text-text-primary font-medium text-sm">Reset Caches</Text>
+                    </Button>
+                </View>
+                <Text className="text-text-tertiary text-xs">
+                    Resetting clears cached metadata and playlists without deleting your actual music files.
+                </Text>
             </SettingsSection>
         </SettingsPage>
     );
