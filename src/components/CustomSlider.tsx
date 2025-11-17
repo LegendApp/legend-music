@@ -97,7 +97,9 @@ export function CustomSlider({
         () =>
             PanResponder.create({
                 onStartShouldSetPanResponder: () => !isDisabled$.get(),
+                onStartShouldSetPanResponderCapture: () => !isDisabled$.get(),
                 onMoveShouldSetPanResponder: () => !isDisabled$.get(),
+                onMoveShouldSetPanResponderCapture: () => !isDisabled$.get(),
                 onPanResponderGrant: (event: GestureResponderEvent) => {
                     perfLog("CustomSlider.panGrant", { disabled: isDisabled$.get() });
                     if (isDisabled$.get()) return;
