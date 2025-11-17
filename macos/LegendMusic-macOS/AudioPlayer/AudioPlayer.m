@@ -7,7 +7,11 @@
 #import <ImageIO/ImageIO.h>
 #import <CoreServices/CoreServices.h>
 #import <CommonCrypto/CommonCrypto.h>
+#if __has_include("LegendMusic_macOS-Swift.h")
+#import "LegendMusic_macOS-Swift.h"
+#elif __has_include("LegendMusic-Swift.h")
 #import "LegendMusic-Swift.h"
+#endif
 #import <math.h>
 
 typedef struct {
