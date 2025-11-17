@@ -1,5 +1,4 @@
 import { observable } from "@legendapp/state";
-import * as FileSystem from "expo-file-system";
 import { Directory, File } from "expo-file-system/next";
 import AudioPlayer, {
     type MediaScanBatchEvent,
@@ -168,10 +167,10 @@ async function validateLibraryPaths(paths: string[]): Promise<{ existing: string
 
     const results = await Promise.all(
         paths.map(async (path) => {
-            const target = path.startsWith("file://") ? path : `file://${path}`;
             try {
-                const info = await FileSystem.getInfoAsync(target);
-                return { path, exists: !!info.exists };
+                const directory = new Directory(path);
+                const exists = directory.exists;
+                return { path, exists };
             } catch (error) {
                 console.warn(`validateLibraryPaths: failed to inspect ${path}`, error);
                 return { path, exists: false };
