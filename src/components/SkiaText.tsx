@@ -1,7 +1,7 @@
 import type { Observable } from "@legendapp/state";
 import { use$, useObservable } from "@legendapp/state/react";
 import { Canvas, matchFont, type SkFont, Text as SkiaTextNode } from "@shopify/react-native-skia";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Platform, type StyleProp, StyleSheet, View, type ViewStyle } from "react-native";
 import { useSharedValue } from "react-native-reanimated";
 
