@@ -27,8 +27,9 @@ Move ID3 parsing and artwork extraction into a native module to reduce JS CPU an
 - [x] Bridge to JS and integrate into LocalMusicState scanning pipeline.
 - [x] Cache artwork thumbs and verify scan flow is stable without RangeErrors.
 - [ ] Move directory traversal + metadata extraction fully native with batched results back to JS.
+- [x] Move directory traversal + metadata extraction fully native with batched results back to JS.
     - [x] Add native scan API (walk directories, extract metadata/artwork, batch results).
-    - [ ] Wire JS scan flow to consume native batches and update state/progress.
+    - [x] Wire JS scan flow to consume native batches and update state/progress.
 - [ ] Update library cache to store only file names (not full paths) and adjust consumers.
     - [ ] Persist library roots array and store relative paths with root index.
     - [ ] Persist thumbnail hash/key (no full path) and reconstruct thumbnail URIs in code.
