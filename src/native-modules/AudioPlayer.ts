@@ -49,6 +49,14 @@ export interface MediaTags {
     artworkKey?: string;
 }
 
+export interface MediaTagWritePayload {
+    title?: string | null;
+    artist?: string | null;
+    album?: string | null;
+    artworkBase64?: string | null;
+    artworkMime?: string | null;
+}
+
 export interface NativeScannedTrack {
     rootIndex: number;
     relativePath: string;
@@ -107,6 +115,7 @@ type AudioPlayerNativeType = {
     setVolume: (volume: number) => Promise<{ success: boolean; error?: string }>;
     getCurrentState: () => Promise<AudioPlayerState>;
     getMediaTags: (filePath: string, cacheDir: string) => Promise<MediaTags>;
+    writeMediaTags: (filePath: string, payload: MediaTagWritePayload) => Promise<{ success: boolean }>;
     scanMediaLibrary: (paths: string[], cacheDir: string, options?: MediaScanOptions) => Promise<MediaScanResult>;
     updateNowPlayingInfo: (payload: NowPlayingInfoPayload) => void;
     clearNowPlayingInfo: () => void;
@@ -129,6 +138,7 @@ const audioPlayerApi: AudioPlayerNativeType & {
     setVolume: (volume: number) => AudioPlayer.setVolume(volume),
     getCurrentState: () => AudioPlayer.getCurrentState(),
     getMediaTags: (filePath: string, cacheDir: string) => AudioPlayer.getMediaTags(filePath, cacheDir),
+    writeMediaTags: (filePath: string, payload: MediaTagWritePayload) => AudioPlayer.writeMediaTags(filePath, payload),
     scanMediaLibrary: (paths: string[], cacheDir: string, options?: MediaScanOptions) =>
         AudioPlayer.scanMediaLibrary(paths, cacheDir, options ?? {}),
     updateNowPlayingInfo: (payload: NowPlayingInfoPayload) => AudioPlayer.updateNowPlayingInfo(payload),

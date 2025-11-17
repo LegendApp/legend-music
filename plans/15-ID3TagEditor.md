@@ -29,6 +29,6 @@ Assuming the native-first scanning from plans/14-native-id3.md is complete, use 
 - [x] Add ID3TagEditor to the macOS target with minimal build/config overhead.
 - [x] Implement the native reader using ID3TagEditor + minimal duration probe inside the existing native scan pipeline and expose it via the AudioPlayer bridge.
 - [x] Keep non-MP3 formats on the current native path, preserving artwork caching and batched results to JS.
-- [ ] Implement a native ID3 write API for basic fields and bridge it to JS with clear error handling for unsupported cases.
+- [x] Implement a native ID3 write API for basic fields and bridge it to JS with clear error handling for unsupported cases.
 - [ ] Send a skip set of known tracks (root + relative path) into native scan so existing files are skipped without re-reading metadata.
 - [ ] Validate performance and correctness (benchmarks/manual checks/tests) and update docs as needed.

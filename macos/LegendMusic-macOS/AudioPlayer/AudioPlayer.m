@@ -1432,6 +1432,44 @@ RCT_EXPORT_METHOD(getMediaTags:(NSString *)filePath
     });
 }
 
+RCT_EXPORT_METHOD(writeMediaTags:(NSString *)filePath
+                  updates:(NSDictionary *)updates
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+{
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        @autoreleasepool {
+            NSURL *fileURL = LMURLFromPathString(filePath);
+            if (!fileURL) {
+                reject(@"INVALID_URL", @"Invalid file path", nil);
+                return;
+            }
+
+            if (![[NSFileManager defaultManager] fileExistsAtPath:fileURL.path]) {
+                reject(@"FILE_NOT_FOUND", @"Audio file not found", nil);
+                return;
+            }
+
+            if (!LMIsMP3URL(fileURL)) {
+                reject(@"UNSUPPORTED_FORMAT", @"ID3 tag writing is only supported for MP3 files", nil);
+                return;
+            }
+
+            NSDictionary *payload = [updates isKindOfClass:[NSDictionary class]] ? updates : @{};
+            NSError *writeError = nil;
+            NSNumber *success = [LMID3TagEditorBridge writeTagsForURL:fileURL fields:payload error:&writeError];
+
+            if (success.boolValue) {
+                resolve(@{@"success": @YES});
+            } else {
+                NSString *message = writeError.localizedDescription ?: @"Failed to write tags";
+                NSString *code = writeError.domain.length > 0 ? writeError.domain : @"WRITE_FAILED";
+                reject(code, message, writeError);
+            }
+        }
+    });
+}
+
 RCT_EXPORT_METHOD(scanMediaLibrary:(NSArray<NSString *> *)paths
                   cacheDir:(NSString *)cacheDir
                   options:(NSDictionary *)options
