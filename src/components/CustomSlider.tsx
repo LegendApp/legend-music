@@ -1,6 +1,6 @@
 import type { Observable } from "@legendapp/state";
 import { use$, useObservable, useObserveEffect } from "@legendapp/state/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { GestureResponderEvent, LayoutChangeEvent } from "react-native";
 import { PanResponder, Pressable, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
@@ -42,6 +42,7 @@ export function CustomSlider({
     const [sliderWidth, setSliderWidth] = useState(0);
     const isDisabled$ = useObservableLatest(disabledProp);
     const isDisabled = use$(isDisabled$);
+    const lastCommittedValueRef = useRef<number | null>(null);
 
     // Calculate progress percentage
     const progress$ = useObservableSharedValue(() => {
@@ -62,7 +63,7 @@ export function CustomSlider({
     }, [isDragging, isHovered]);
 
     const updateValueFromLocation = useCallback(
-        (locationX: number) => {
+        (locationX: number, commit?: boolean) => {
             if (sliderWidth <= 0) {
                 return;
             }
@@ -79,7 +80,11 @@ export function CustomSlider({
             });
 
             $value.set(newValue);
-            onSlidingComplete?.(newValue);
+
+            if (commit && newValue !== lastCommittedValueRef.current) {
+                onSlidingComplete?.(newValue);
+                lastCommittedValueRef.current = newValue;
+            }
         },
         [$maximumValue, $value, minimumValue, onSlidingComplete, sliderWidth],
     );
@@ -97,9 +102,10 @@ export function CustomSlider({
                     perfLog("CustomSlider.panGrant", { disabled: isDisabled$.get() });
                     if (isDisabled$.get()) return;
 
+                    lastCommittedValueRef.current = null;
                     isDragging$.set(true);
                     onSlidingStart?.();
-                    updateValueFromLocation(event.nativeEvent.locationX);
+                    updateValueFromLocation(event.nativeEvent.locationX, true);
                 },
                 onPanResponderMove: (event: GestureResponderEvent) => {
                     if (isDisabled$.get() || !isDragging$.get()) {
@@ -112,13 +118,16 @@ export function CustomSlider({
                     perfLog("CustomSlider.panRelease", { disabled: isDisabled$.get() });
                     if (isDisabled$.get()) return;
 
-                    updateValueFromLocation(event.nativeEvent.locationX);
+                    updateValueFromLocation(event.nativeEvent.locationX, true);
                     isDragging$.set(false);
                     onSlidingEnd?.();
                 },
                 onPanResponderTerminationRequest: () => false,
-                onPanResponderTerminate: () => {
+                onPanResponderTerminate: (event: GestureResponderEvent) => {
                     perfLog("CustomSlider.panTerminate", { disabled: isDisabled$.get() });
+                    if (isDisabled$.get()) return;
+
+                    updateValueFromLocation(event.nativeEvent.locationX, true);
                     isDragging$.set(false);
                     onSlidingEnd?.();
                 },
@@ -146,12 +155,6 @@ export function CustomSlider({
         onHoverChange?.(false);
     };
 
-    const handlePress = (event: GestureResponderEvent) => {
-        perfLog("CustomSlider.handlePress", { disabled: isDisabled$.get() });
-        if (isDisabled$.get()) return;
-        updateValueFromLocation(event.nativeEvent.locationX);
-    };
-
     // Animated style for the thumb
     const thumbAnimatedStyle = useAnimatedStyle(() => {
         const height = thumbHeight.value;
@@ -174,7 +177,6 @@ export function CustomSlider({
             <Pressable
                 onHoverIn={handleHoverIn}
                 onHoverOut={handleHoverOut}
-                onPress={handlePress}
                 disabled={isDisabled}
                 className="flex-1 justify-center"
             >
