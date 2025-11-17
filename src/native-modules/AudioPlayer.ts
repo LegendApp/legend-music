@@ -46,6 +46,43 @@ export interface MediaTags {
     album?: string;
     durationSeconds?: number;
     artworkUri?: string;
+    artworkKey?: string;
+}
+
+export interface NativeScannedTrack {
+    rootIndex: number;
+    relativePath: string;
+    fileName: string;
+    title?: string;
+    artist?: string;
+    album?: string;
+    durationSeconds?: number;
+    artworkUri?: string;
+    artworkKey?: string;
+}
+
+export interface MediaScanBatchEvent {
+    tracks: NativeScannedTrack[];
+    rootIndex: number;
+    completedRoots?: number;
+    totalRoots?: number;
+}
+
+export interface MediaScanProgressEvent {
+    rootIndex: number;
+    completedRoots: number;
+    totalRoots: number;
+}
+
+export interface MediaScanResult {
+    totalTracks: number;
+    totalRoots: number;
+    errors?: string[];
+}
+
+export interface MediaScanOptions {
+    batchSize?: number;
+    includeHidden?: boolean;
 }
 
 export interface AudioPlayerEvents {
@@ -56,6 +93,9 @@ export interface AudioPlayerEvents {
     onCompletion: () => void;
     onRemoteCommand: (data: { command: RemoteCommand }) => void;
     onVisualizerFrame: (data: VisualizerFrame) => void;
+    onMediaScanBatch: (data: MediaScanBatchEvent) => void;
+    onMediaScanProgress: (data: MediaScanProgressEvent) => void;
+    onMediaScanComplete: (data: MediaScanResult) => void;
 }
 
 type AudioPlayerType = {
@@ -67,6 +107,7 @@ type AudioPlayerType = {
     setVolume: (volume: number) => Promise<{ success: boolean; error?: string }>;
     getCurrentState: () => Promise<AudioPlayerState>;
     getMediaTags: (filePath: string, cacheDir: string) => Promise<MediaTags>;
+    scanMediaLibrary: (paths: string[], cacheDir: string, options?: MediaScanOptions) => Promise<MediaScanResult>;
     updateNowPlayingInfo: (payload: NowPlayingInfoPayload) => void;
     clearNowPlayingInfo: () => void;
     configureVisualizer: (config: VisualizerConfig) => Promise<{ success: boolean }>;
@@ -88,6 +129,8 @@ const audioPlayerApi: AudioPlayerType & {
     setVolume: (volume: number) => AudioPlayer.setVolume(volume),
     getCurrentState: () => AudioPlayer.getCurrentState(),
     getMediaTags: (filePath: string, cacheDir: string) => AudioPlayer.getMediaTags(filePath, cacheDir),
+    scanMediaLibrary: (paths: string[], cacheDir: string, options?: MediaScanOptions) =>
+        AudioPlayer.scanMediaLibrary(paths, cacheDir, options ?? {}),
     updateNowPlayingInfo: (payload: NowPlayingInfoPayload) => AudioPlayer.updateNowPlayingInfo(payload),
     clearNowPlayingInfo: () => AudioPlayer.clearNowPlayingInfo(),
     configureVisualizer: (config: VisualizerConfig) => AudioPlayer.configureVisualizer(config),

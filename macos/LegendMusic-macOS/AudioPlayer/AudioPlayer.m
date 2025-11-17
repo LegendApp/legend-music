@@ -91,6 +91,164 @@ static NSNumber *LMReadDurationSeconds(NSURL *fileURL) {
     return @(durationSeconds);
 }
 
+static NSString *LMNormalizePathString(NSString *path) {
+    if (path.length == 0) {
+        return path;
+    }
+
+    if ([path hasPrefix:@"file://"]) {
+        NSURL *url = [NSURL URLWithString:path];
+        if (url && url.path) {
+            return [url.path stringByStandardizingPath];
+        }
+    }
+
+    return [path stringByStandardizingPath];
+}
+
+static NSURL *LMURLFromPathString(NSString *path) {
+    if (path.length == 0) {
+        return nil;
+    }
+
+    if ([path hasPrefix:@"file://"]) {
+        return [NSURL URLWithString:path];
+    }
+
+    return [NSURL fileURLWithPath:path];
+}
+
+static NSString *LMRelativePathFromRoot(NSString *fullPath, NSString *rootPath) {
+    if (fullPath.length == 0 || rootPath.length == 0) {
+        return fullPath;
+    }
+
+    NSString *normalizedFullPath = [fullPath stringByStandardizingPath];
+    NSString *normalizedRoot = [rootPath stringByStandardizingPath];
+
+    if ([normalizedFullPath hasPrefix:normalizedRoot]) {
+        NSString *relative = [normalizedFullPath substringFromIndex:normalizedRoot.length];
+        if ([relative hasPrefix:@"/"]) {
+            relative = [relative substringFromIndex:1];
+        }
+        return relative.length > 0 ? relative : normalizedFullPath.lastPathComponent;
+    }
+
+    return normalizedFullPath;
+}
+
+static NSDictionary *LMExtractMediaTags(NSURL *fileURL, NSString *cacheDirPath) {
+    if (!fileURL) {
+        return @{};
+    }
+
+    AVURLAsset *asset = [AVURLAsset URLAssetWithURL:fileURL options:nil];
+    NSArray<AVMetadataItem *> *commonMetadata = [asset commonMetadata];
+
+    NSString *title = nil;
+    NSString *artist = nil;
+    NSString *album = nil;
+    NSNumber *durationSeconds = nil;
+    NSString *artworkPath = nil;
+    NSString *artworkKey = nil;
+
+    NSArray<AVMetadataItem *> *titleItems = [AVMetadataItem metadataItemsFromArray:commonMetadata withKey:AVMetadataCommonKeyTitle keySpace:AVMetadataKeySpaceCommon];
+    if (titleItems.count > 0) {
+        title = [titleItems.firstObject stringValue];
+    }
+
+    NSArray<AVMetadataItem *> *artistItems = [AVMetadataItem metadataItemsFromArray:commonMetadata withKey:AVMetadataCommonKeyArtist keySpace:AVMetadataKeySpaceCommon];
+    if (artistItems.count > 0) {
+        artist = [artistItems.firstObject stringValue];
+    }
+
+    NSArray<AVMetadataItem *> *albumItems = [AVMetadataItem metadataItemsFromArray:commonMetadata withKey:AVMetadataCommonKeyAlbumName keySpace:AVMetadataKeySpaceCommon];
+    if (albumItems.count > 0) {
+        album = [albumItems.firstObject stringValue];
+    }
+
+    CMTime duration = asset.duration;
+    if (CMTIME_IS_NUMERIC(duration)) {
+        Float64 seconds = CMTimeGetSeconds(duration);
+        if (isfinite(seconds) && seconds > 0) {
+            durationSeconds = @(seconds);
+        }
+    }
+
+    if (!durationSeconds) {
+        durationSeconds = LMReadDurationSeconds(fileURL);
+    }
+
+    NSData *artworkData = nil;
+    NSArray<AVMetadataItem *> *artworkItems = [AVMetadataItem metadataItemsFromArray:commonMetadata withKey:AVMetadataCommonKeyArtwork keySpace:AVMetadataKeySpaceCommon];
+    if (artworkItems.count > 0) {
+        artworkData = [artworkItems.firstObject dataValue];
+    }
+    if (!artworkData) {
+        NSArray<AVMetadataItem *> *id3ArtworkItems = [AVMetadataItem metadataItemsFromArray:[asset metadataForFormat:AVMetadataFormatiTunesMetadata] withKey:AVMetadataiTunesMetadataKeyCoverArt keySpace:AVMetadataKeySpaceiTunes];
+        if (id3ArtworkItems.count == 0) {
+            id3ArtworkItems = [AVMetadataItem metadataItemsFromArray:[asset metadataForFormat:AVMetadataFormatiTunesMetadata] withKey:AVMetadataCommonKeyArtwork keySpace:AVMetadataKeySpaceCommon];
+        }
+        if (id3ArtworkItems.count > 0) {
+            artworkData = [id3ArtworkItems.firstObject dataValue];
+        }
+    }
+    if (!artworkData) {
+        NSArray<AVMetadataItem *> *id3Attached = [AVMetadataItem metadataItemsFromArray:[asset metadataForFormat:AVMetadataFormatID3Metadata] withKey:AVMetadataID3MetadataKeyAttachedPicture keySpace:AVMetadataKeySpaceID3];
+        if (id3Attached.count > 0) {
+            artworkData = [id3Attached.firstObject dataValue];
+        }
+    }
+
+    if (artworkData && cacheDirPath.length > 0) {
+        NSData *thumbnailData = LMCreateThumbnail(artworkData, 128);
+        if (thumbnailData) {
+            artworkKey = LMHashStringSHA256([NSString stringWithFormat:@"%@:%@", fileURL.path ?: @"", @"artwork"]);
+            NSString *fileName = [NSString stringWithFormat:@"%@.png", artworkKey];
+            NSString *normalizedCacheDir = LMNormalizePathString(cacheDirPath);
+
+            NSError *dirError = nil;
+            [[NSFileManager defaultManager] createDirectoryAtPath:normalizedCacheDir withIntermediateDirectories:YES attributes:nil error:&dirError];
+
+            if (!dirError) {
+                NSString *fullPath = [normalizedCacheDir stringByAppendingPathComponent:fileName];
+                NSError *writeError = nil;
+                BOOL wrote = [thumbnailData writeToFile:fullPath options:NSDataWritingAtomic error:&writeError];
+                if (wrote && !writeError) {
+                    NSURL *uri = [NSURL fileURLWithPath:fullPath];
+                    artworkPath = uri.absoluteString;
+                } else {
+                    RCTLogWarn(@"Failed to write artwork thumbnail for %@: %@", fileURL.path, writeError.localizedDescription);
+                }
+            } else {
+                RCTLogWarn(@"Failed to create cache dir %@: %@", normalizedCacheDir, dirError.localizedDescription);
+            }
+        }
+    }
+
+    NSMutableDictionary *result = [NSMutableDictionary dictionary];
+    if (title.length > 0) {
+        result[@"title"] = title;
+    }
+    if (artist.length > 0) {
+        result[@"artist"] = artist;
+    }
+    if (album.length > 0) {
+        result[@"album"] = album;
+    }
+    if (durationSeconds) {
+        result[@"durationSeconds"] = durationSeconds;
+    }
+    if (artworkPath.length > 0) {
+        result[@"artworkUri"] = artworkPath;
+    }
+    if (artworkKey.length > 0) {
+        result[@"artworkKey"] = artworkKey;
+    }
+
+    return result;
+}
+
 @interface AudioPlayer ()
 
 @property (nonatomic, assign) BOOL visualizerEnabled;
@@ -118,6 +276,8 @@ static NSNumber *LMReadDurationSeconds(NSURL *fileURL) {
 @property (nonatomic, strong) NSMutableData *visualizerBinStartIndices;
 @property (nonatomic, strong) NSMutableData *visualizerBinEndIndices;
 @property (nonatomic, assign) NSUInteger visualizerCPUOverrunFrames;
+@property (nonatomic, strong) dispatch_queue_t mediaScanQueue;
+@property (atomic, assign) BOOL isMediaScanning;
 
 - (void)configureVisualizerDefaults;
 - (void)installVisualizerTapIfNeeded;
@@ -229,7 +389,10 @@ RCT_EXPORT_MODULE();
         @"onProgress",
         @"onCompletion",
         @"onRemoteCommand",
-        @"onVisualizerFrame"
+        @"onVisualizerFrame",
+        @"onMediaScanBatch",
+        @"onMediaScanProgress",
+        @"onMediaScanComplete"
     ];
 }
 
@@ -243,6 +406,8 @@ RCT_EXPORT_MODULE();
         _currentTime = 0;
         _nowPlayingInfo = [NSMutableDictionary dictionary];
         _visualizerQueue = dispatch_queue_create("com.legendmusic.audio.visualizer", DISPATCH_QUEUE_SERIAL);
+        _mediaScanQueue = dispatch_queue_create("com.legendmusic.audio.scanner", DISPATCH_QUEUE_SERIAL);
+        _isMediaScanning = NO;
         [self configureVisualizerDefaults];
         [self setupRemoteCommands];
     }
@@ -1129,12 +1294,7 @@ RCT_EXPORT_METHOD(getMediaTags:(NSString *)filePath
 {
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
         @autoreleasepool {
-            NSURL *fileURL;
-            if ([filePath hasPrefix:@"file://"]) {
-                fileURL = [NSURL URLWithString:filePath];
-            } else {
-                fileURL = [NSURL fileURLWithPath:filePath];
-            }
+            NSURL *fileURL = LMURLFromPathString(filePath);
 
             if (!fileURL) {
                 reject(@"INVALID_URL", @"Invalid file path", nil);
@@ -1146,112 +1306,216 @@ RCT_EXPORT_METHOD(getMediaTags:(NSString *)filePath
                 return;
             }
 
-            AVURLAsset *asset = [AVURLAsset URLAssetWithURL:fileURL options:nil];
-            NSArray<AVMetadataItem *> *commonMetadata = [asset commonMetadata];
+            NSString *normalizedCacheDir = cacheDir ? LMNormalizePathString(cacheDir) : @"";
+            NSDictionary *result = LMExtractMediaTags(fileURL, normalizedCacheDir);
+            resolve(result ?: @{});
+        }
+    });
+}
 
-            NSString *title = nil;
-            NSString *artist = nil;
-            NSString *album = nil;
-            NSNumber *durationSeconds = nil;
-            NSString *artworkPath = nil;
+RCT_EXPORT_METHOD(scanMediaLibrary:(NSArray<NSString *> *)paths
+                  cacheDir:(NSString *)cacheDir
+                  options:(NSDictionary *)options
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+{
+    if (self.isMediaScanning) {
+        reject(@"SCAN_IN_PROGRESS", @"A media scan is already running", nil);
+        return;
+    }
 
-            // Metadata helpers
-            NSArray<AVMetadataItem *> *titleItems = [AVMetadataItem metadataItemsFromArray:commonMetadata withKey:AVMetadataCommonKeyTitle keySpace:AVMetadataKeySpaceCommon];
-            if (titleItems.count > 0) {
-                title = [titleItems.firstObject stringValue];
-            }
+    if (paths.count == 0) {
+        resolve(@{ @"totalTracks": @0, @"totalRoots": @0, @"errors": @[] });
+        return;
+    }
 
-            NSArray<AVMetadataItem *> *artistItems = [AVMetadataItem metadataItemsFromArray:commonMetadata withKey:AVMetadataCommonKeyArtist keySpace:AVMetadataKeySpaceCommon];
-            if (artistItems.count > 0) {
-                artist = [artistItems.firstObject stringValue];
-            }
+    self.isMediaScanning = YES;
 
-            NSArray<AVMetadataItem *> *albumItems = [AVMetadataItem metadataItemsFromArray:commonMetadata withKey:AVMetadataCommonKeyAlbumName keySpace:AVMetadataKeySpaceCommon];
-            if (albumItems.count > 0) {
-                album = [albumItems.firstObject stringValue];
-            }
-
-            CMTime duration = asset.duration;
-            if (CMTIME_IS_NUMERIC(duration)) {
-                Float64 seconds = CMTimeGetSeconds(duration);
-                if (isfinite(seconds) && seconds > 0) {
-                    durationSeconds = @(seconds);
+    dispatch_queue_t queue = self.mediaScanQueue ?: dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0);
+    dispatch_async(queue, ^{
+        @autoreleasepool {
+            NSMutableArray<NSString *> *normalizedRoots = [NSMutableArray arrayWithCapacity:paths.count];
+            for (id rawPath in paths) {
+                if (![rawPath isKindOfClass:[NSString class]]) {
+                    continue;
                 }
+
+                NSString *normalized = LMNormalizePathString((NSString *)rawPath);
+                if (normalized.length == 0) {
+                    continue;
+                }
+                while ([normalized hasSuffix:@"/"] && normalized.length > 1) {
+                    normalized = [normalized substringToIndex:normalized.length - 1];
+                }
+
+                [normalizedRoots addObject:normalized];
             }
 
-            if (!durationSeconds) {
-                durationSeconds = LMReadDurationSeconds(fileURL);
+            NSUInteger totalRoots = normalizedRoots.count;
+            if (totalRoots == 0) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    self.isMediaScanning = NO;
+                    resolve(@{ @"totalTracks": @0, @"totalRoots": @0, @"errors": @[] });
+                });
+                return;
             }
 
-            // Artwork: prefer common artwork, fallback to ID3 attached picture
-            NSData *artworkData = nil;
-            NSArray<AVMetadataItem *> *artworkItems = [AVMetadataItem metadataItemsFromArray:commonMetadata withKey:AVMetadataCommonKeyArtwork keySpace:AVMetadataKeySpaceCommon];
-            if (artworkItems.count > 0) {
-                artworkData = [artworkItems.firstObject dataValue];
-            }
-            if (!artworkData) {
-                NSArray<AVMetadataItem *> *id3ArtworkItems = [AVMetadataItem metadataItemsFromArray:[asset metadataForFormat:AVMetadataFormatiTunesMetadata] withKey:AVMetadataiTunesMetadataKeyCoverArt keySpace:AVMetadataKeySpaceiTunes];
-                if (id3ArtworkItems.count == 0) {
-                    id3ArtworkItems = [AVMetadataItem metadataItemsFromArray:[asset metadataForFormat:AVMetadataFormatiTunesMetadata] withKey:AVMetadataCommonKeyArtwork keySpace:AVMetadataKeySpaceCommon];
-                }
-                if (id3ArtworkItems.count > 0) {
-                    artworkData = [id3ArtworkItems.firstObject dataValue];
-                }
-            }
-            if (!artworkData) {
-                NSArray<AVMetadataItem *> *id3Attached = [AVMetadataItem metadataItemsFromArray:[asset metadataForFormat:AVMetadataFormatID3Metadata] withKey:AVMetadataID3MetadataKeyAttachedPicture keySpace:AVMetadataKeySpaceID3];
-                if (id3Attached.count > 0) {
-                    artworkData = [id3Attached.firstObject dataValue];
-                }
+            NSUInteger maxBatchSize = [[options objectForKey:@"batchSize"] unsignedIntegerValue];
+            if (maxBatchSize == 0) {
+                maxBatchSize = 32;
             }
 
-            if (artworkData && cacheDir.length > 0) {
-                NSData *thumbnailData = LMCreateThumbnail(artworkData, 128);
-                if (thumbnailData) {
-                    NSString *hashKey = LMHashStringSHA256([NSString stringWithFormat:@"%@:%@", filePath, @"artwork"]);
-                    NSString *fileName = [NSString stringWithFormat:@"%@.png", hashKey];
-                    NSString *normalizedCacheDir = cacheDir;
-                    if ([normalizedCacheDir hasPrefix:@"file://"]) {
-                        normalizedCacheDir = [NSURL URLWithString:normalizedCacheDir].path;
+            BOOL includeHidden = [[options objectForKey:@"includeHidden"] boolValue];
+            NSString *normalizedCacheDir = cacheDir ? LMNormalizePathString(cacheDir) : @"";
+
+            NSDirectoryEnumerationOptions enumerationOptions = NSDirectoryEnumerationSkipsPackageDescendants;
+            if (!includeHidden) {
+                enumerationOptions = enumerationOptions | NSDirectoryEnumerationSkipsHiddenFiles;
+            }
+
+            NSMutableArray<NSString *> *errors = [NSMutableArray array];
+            NSUInteger totalTracks = 0;
+            NSUInteger completedRoots = 0;
+
+            NSFileManager *fileManager = [NSFileManager defaultManager];
+
+            void (^emitBatch)(NSArray<NSDictionary *> *, NSUInteger) = ^(NSArray<NSDictionary *> *tracks, NSUInteger rootIndex) {
+                if (tracks.count == 0) {
+                    return;
+                }
+
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [self sendEventWithName:@"onMediaScanBatch"
+                                       body:@{
+                            @"tracks": tracks,
+                            @"rootIndex": @(rootIndex),
+                            @"completedRoots": @(completedRoots),
+                            @"totalRoots": @(totalRoots)
+                        }];
+                });
+            };
+
+            void (^emitProgress)(NSUInteger) = ^(NSUInteger rootIndex) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [self sendEventWithName:@"onMediaScanProgress"
+                                       body:@{
+                            @"rootIndex": @(rootIndex),
+                            @"completedRoots": @(completedRoots),
+                            @"totalRoots": @(totalRoots)
+                        }];
+                });
+            };
+
+            for (NSUInteger rootIndex = 0; rootIndex < normalizedRoots.count; rootIndex++) {
+                @autoreleasepool {
+                    NSString *rootPath = normalizedRoots[rootIndex];
+                    BOOL isDirectory = NO;
+
+                    if (![fileManager fileExistsAtPath:rootPath isDirectory:&isDirectory] || !isDirectory) {
+                        [errors addObject:[NSString stringWithFormat:@"Root not found: %@", rootPath]];
+                        completedRoots += 1;
+                        emitProgress(rootIndex);
+                        continue;
                     }
 
-                    NSError *dirError = nil;
-                    [[NSFileManager defaultManager] createDirectoryAtPath:normalizedCacheDir withIntermediateDirectories:YES attributes:nil error:&dirError];
-
-                    if (!dirError) {
-                        NSString *fullPath = [normalizedCacheDir stringByAppendingPathComponent:fileName];
-                        NSError *writeError = nil;
-                        BOOL wrote = [thumbnailData writeToFile:fullPath options:NSDataWritingAtomic error:&writeError];
-                        if (wrote && !writeError) {
-                            NSURL *uri = [NSURL fileURLWithPath:fullPath];
-                            artworkPath = uri.absoluteString;
-                        } else {
-                            RCTLogWarn(@"Failed to write artwork thumbnail for %@: %@", filePath, writeError.localizedDescription);
+                    NSURL *rootURL = [NSURL fileURLWithPath:rootPath];
+                    NSDirectoryEnumerator<NSURL *> *enumerator = [fileManager enumeratorAtURL:rootURL
+                                                                    includingPropertiesForKeys:@[ NSURLIsDirectoryKey ]
+                                                                                       options:enumerationOptions
+                                                                                  errorHandler:^BOOL(NSURL *url, NSError *error) {
+                        @synchronized(errors) {
+                            [errors addObject:[NSString stringWithFormat:@"%@", error.localizedDescription ?: @"Unknown error"]];
                         }
-                    } else {
-                        RCTLogWarn(@"Failed to create cache dir %@: %@", normalizedCacheDir, dirError.localizedDescription);
+                        return YES; // Continue enumeration
+                    }];
+
+                    if (!enumerator) {
+                        [errors addObject:[NSString stringWithFormat:@"Failed to enumerate: %@", rootPath]];
+                        completedRoots += 1;
+                        emitProgress(rootIndex);
+                        continue;
                     }
+
+                    NSMutableArray<NSDictionary *> *batch = [NSMutableArray arrayWithCapacity:maxBatchSize];
+
+                    for (NSURL *fileURL in enumerator) {
+                        NSNumber *isDirectoryValue = nil;
+                        [fileURL getResourceValue:&isDirectoryValue forKey:NSURLIsDirectoryKey error:nil];
+                        if (isDirectoryValue.boolValue) {
+                            continue;
+                        }
+
+                        NSString *extension = [[fileURL pathExtension] lowercaseString];
+                        if (![extension isEqualToString:@"mp3"]) {
+                            continue;
+                        }
+
+                        NSString *relativePath = LMRelativePathFromRoot(fileURL.path, rootPath);
+                        NSString *fileName = fileURL.lastPathComponent ?: relativePath;
+
+                        NSDictionary *tags = LMExtractMediaTags(fileURL, normalizedCacheDir);
+
+                        NSMutableDictionary *track = [@{
+                            @"rootIndex": @(rootIndex),
+                            @"relativePath": relativePath ?: fileURL.path,
+                            @"fileName": fileName ?: fileURL.lastPathComponent ?: fileURL.path
+                        } mutableCopy];
+
+                        id titleValue = tags[@"title"];
+                        if (titleValue) {
+                            track[@"title"] = titleValue;
+                        }
+
+                        id artistValue = tags[@"artist"];
+                        if (artistValue) {
+                            track[@"artist"] = artistValue;
+                        }
+
+                        id albumValue = tags[@"album"];
+                        if (albumValue) {
+                            track[@"album"] = albumValue;
+                        }
+
+                        id durationValue = tags[@"durationSeconds"];
+                        if (durationValue) {
+                            track[@"durationSeconds"] = durationValue;
+                        }
+
+                        id artworkUri = tags[@"artworkUri"];
+                        if (artworkUri) {
+                            track[@"artworkUri"] = artworkUri;
+                        }
+
+                        id artworkKey = tags[@"artworkKey"];
+                        if (artworkKey) {
+                            track[@"artworkKey"] = artworkKey;
+                        }
+
+                        [batch addObject:track];
+                        totalTracks += 1;
+
+                        if (batch.count >= maxBatchSize) {
+                            emitBatch(batch, rootIndex);
+                            [batch removeAllObjects];
+                        }
+                    }
+
+                    if (batch.count > 0) {
+                        emitBatch(batch, rootIndex);
+                    }
+
+                    completedRoots += 1;
+                    emitProgress(rootIndex);
                 }
             }
 
-            NSMutableDictionary *result = [NSMutableDictionary dictionary];
-            if (title.length > 0) {
-                result[@"title"] = title;
-            }
-            if (artist.length > 0) {
-                result[@"artist"] = artist;
-            }
-            if (album.length > 0) {
-                result[@"album"] = album;
-            }
-            if (durationSeconds) {
-                result[@"durationSeconds"] = durationSeconds;
-            }
-            if (artworkPath.length > 0) {
-                result[@"artworkUri"] = artworkPath;
-            }
+            NSDictionary *result = @{ @"totalTracks": @(totalTracks), @"totalRoots": @(totalRoots), @"errors": errors };
 
-            resolve(result);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self sendEventWithName:@"onMediaScanComplete" body:result];
+                self.isMediaScanning = NO;
+                resolve(result);
+            });
         }
     });
 }
