@@ -1,11 +1,11 @@
 import { observer, use$ } from "@legendapp/state/react";
-import { ActivityIndicator, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
+import { SkiaSpinner } from "@/components/SkiaSpinner";
 import { Button } from "@/components/Button";
 import { selectDirectory } from "@/native-modules/FileDialog";
 import { SettingsPage, SettingsSection } from "@/settings/components";
 import { localMusicSettings$, localMusicState$ } from "@/systems/LocalMusicState";
-import { colors } from "@/theme/colors";
 
 export const LibrarySettings = observer(function LibrarySettings() {
     const localMusicSettings = use$(localMusicSettings$);
@@ -134,7 +134,7 @@ export const LibrarySettings = observer(function LibrarySettings() {
                 </Button>
                 {localMusicState.isScanning ? (
                     <View className="flex-row items-center gap-3 mb-3">
-                        <ActivityIndicator size="small" color={colors.dark.accent.primary} />
+                        <SkiaSpinner size={28} color="#7dd6ff" trailColor="rgba(255,255,255,0.08)" />
                         <View className="flex-1 gap-1">
                             <Text className="text-text-primary text-sm font-medium">Scanning your library…</Text>
                             <View className="flex-row items-center gap-2">
