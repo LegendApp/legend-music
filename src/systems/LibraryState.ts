@@ -88,7 +88,7 @@ const resolveRelativePathForTrack = (
             const relativePath = normalizedFilePath.slice(root.length).replace(/^\/+/, "");
             return {
                 rootIndex: i,
-                relativePath: relativePath.length > 0 ? relativePath : track.fileName,
+                relativePath: relativePath.length > 0 ? relativePath : fileNameFromPath(normalizedFilePath),
             };
         }
     }
@@ -104,32 +104,31 @@ const buildPersistedTrack = (track: LocalTrack, roots: string[]): PersistedLibra
     const thumbnailKey = track.thumbnailKey ?? deriveThumbnailKey(track.thumbnail);
 
     return {
-        rootIndex,
-        relativePath,
-        fileName: track.fileName ?? fileNameFromPath(relativePath),
+        root: rootIndex,
+        rel: relativePath,
         title: track.title,
         artist: track.artist,
         album: track.album,
         duration: track.duration,
-        thumbnailKey,
+        thumb: thumbnailKey,
     };
 };
 
 const buildFilePathFromPersisted = (track: PersistedLibraryTrack, roots: string[]): string => {
-    const root = roots[track.rootIndex];
+    const root = roots[track.root];
     if (root) {
-        if (track.relativePath.startsWith("/")) {
-            return `${root}${track.relativePath}`;
+        if (track.rel.startsWith("/")) {
+            return `${root}${track.rel}`;
         }
 
         if (root.endsWith("/")) {
-            return `${root}${track.relativePath}`;
+            return `${root}${track.rel}`;
         }
 
-        return `${root}/${track.relativePath}`;
+        return `${root}/${track.rel}`;
     }
 
-    return track.relativePath;
+    return track.rel;
 };
 
 const buildThumbnailUri = (baseUri: string, key: string | undefined): string | undefined => {
@@ -356,9 +355,9 @@ export const hydrateLibraryFromCache = (): boolean => {
             album: track.album,
             duration: track.duration,
             filePath,
-            fileName: track.fileName ?? fileNameFromPath(filePath),
-            thumbnailKey: track.thumbnailKey,
-            thumbnail: buildThumbnailUri(thumbnailBaseUri, track.thumbnailKey) ?? track.thumbnail,
+            fileName: fileNameFromPath(filePath),
+            thumbnailKey: track.thumb,
+            thumbnail: buildThumbnailUri(thumbnailBaseUri, track.thumb) ?? track.thumbnail,
         };
     });
 

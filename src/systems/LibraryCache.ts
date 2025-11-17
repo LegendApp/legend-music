@@ -2,15 +2,14 @@ import { deleteCacheFiles } from "@/utils/cacheDirectories";
 import { createJSONManager } from "@/utils/JSONManager";
 
 export interface PersistedLibraryTrack {
-    rootIndex: number;
-    relativePath: string;
-    fileName: string;
+    root: number;
+    rel: string;
     title: string;
     artist: string;
     album?: string;
     duration: string;
     thumbnail?: string;
-    thumbnailKey?: string;
+    thumb?: string;
 }
 
 export interface LibrarySnapshot {
@@ -22,7 +21,7 @@ export interface LibrarySnapshot {
     roots: string[];
 }
 
-const LIBRARY_CACHE_VERSION = 3;
+const LIBRARY_CACHE_VERSION = 4;
 
 const defaultSnapshot: LibrarySnapshot = {
     version: LIBRARY_CACHE_VERSION,
@@ -36,7 +35,7 @@ const defaultSnapshot: LibrarySnapshot = {
 const libraryCache$ = createJSONManager<LibrarySnapshot>({
     filename: "libraryCache",
     initialValue: defaultSnapshot,
-    format: "msgpack",
+    format: "json",
     saveTimeout: 0,
     preload: false,
 });
@@ -79,46 +78,35 @@ const deriveThumbnailKey = (thumbnail: unknown): string | undefined => {
     return baseName && baseName.length > 0 ? baseName : undefined;
 };
 
-const sanitizeTrack = (
-    track: RawLibraryTrack | PersistedLibraryTrack,
-    roots: string[],
-): PersistedLibraryTrack | null => {
-    const rootIndex =
-        typeof track.rootIndex === "number" && track.rootIndex >= 0 && track.rootIndex < roots.length
-            ? track.rootIndex
-            : 0;
+const sanitizeTrack = (track: RawLibraryTrack | PersistedLibraryTrack, roots: string[]): PersistedLibraryTrack | null => {
+    const rootIndexRaw = (track as { root?: unknown; rootIndex?: unknown }).root ?? (track as any).rootIndex;
+    const rootIndex = typeof rootIndexRaw === "number" && rootIndexRaw >= 0 && rootIndexRaw < roots.length ? rootIndexRaw : 0;
 
-    const relativePath =
-        typeof track.relativePath === "string" && track.relativePath.length > 0 ? track.relativePath : "";
+    const relativePathRaw = (track as { rel?: unknown; relativePath?: unknown }).rel ?? (track as any).relativePath;
+    const relativePath = typeof relativePathRaw === "string" && relativePathRaw.length > 0 ? relativePathRaw : "";
 
     if (relativePath.length === 0) {
         return null;
     }
 
-    const fileName =
-        typeof track.fileName === "string" && track.fileName.length > 0
-            ? track.fileName
-            : fileNameFromPath(relativePath);
-
-    const thumbnailKey =
-        typeof track.thumbnailKey === "string" && track.thumbnailKey.length > 0
-            ? track.thumbnailKey
-            : deriveThumbnailKey(track.thumbnail);
+    const thumbRaw = (track as { thumb?: unknown; thumbnailKey?: unknown }).thumb ?? (track as any).thumbnailKey;
+    const thumbnailKey = typeof thumbRaw === "string" && thumbRaw.length > 0 ? thumbRaw : deriveThumbnailKey(track.thumbnail);
     const thumbnail =
         thumbnailKey === undefined && typeof track.thumbnail === "string" && track.thumbnail.length > 0
             ? track.thumbnail
             : undefined;
 
+    const fileName = fileNameFromPath(relativePath);
+
     return {
-        rootIndex: rootIndex >= 0 ? rootIndex : 0,
-        relativePath,
-        fileName,
+        root: rootIndex >= 0 ? rootIndex : 0,
+        rel: relativePath,
         title: typeof track.title === "string" && track.title.length > 0 ? track.title : fileName,
         artist: typeof track.artist === "string" && track.artist.length > 0 ? track.artist : "Unknown Artist",
         album: typeof track.album === "string" && track.album.length > 0 ? track.album : undefined,
         duration: typeof track.duration === "string" && track.duration.length > 0 ? track.duration : "0:00",
         thumbnail,
-        thumbnailKey,
+        thumb: thumbnailKey,
     };
 };
 
