@@ -5,7 +5,7 @@ import { SkiaSpinner } from "@/components/SkiaSpinner";
 import { Button } from "@/components/Button";
 import { selectDirectory } from "@/native-modules/FileDialog";
 import { SettingsPage, SettingsSection } from "@/settings/components";
-import { localMusicSettings$, localMusicState$ } from "@/systems/LocalMusicState";
+import { localMusicSettings$, localMusicState$, markLibraryChangeUserInitiated } from "@/systems/LocalMusicState";
 
 export const LibrarySettings = observer(function LibrarySettings() {
     const localMusicSettings = use$(localMusicSettings$);
@@ -26,6 +26,7 @@ export const LibrarySettings = observer(function LibrarySettings() {
             : null;
 
     const handleRemoveLibraryPath = (index: number) => {
+        markLibraryChangeUserInitiated();
         localMusicSettings$.libraryPaths.set((paths) => {
             if (index < 0 || index >= paths.length) {
                 return paths;
@@ -67,6 +68,7 @@ export const LibrarySettings = observer(function LibrarySettings() {
             return;
         }
 
+        markLibraryChangeUserInitiated();
         localMusicSettings$.libraryPaths.set((paths) => {
             if (paths.includes(directory)) {
                 return paths;

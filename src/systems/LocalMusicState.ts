@@ -85,6 +85,7 @@ export const localMusicState$ = observable<LocalMusicState>({
 });
 
 const FILE_WATCH_DEBOUNCE_MS = 2000;
+let pendingUserInitiatedLibraryChange = false;
 
 let removeLibraryWatcher: (() => void) | undefined;
 let libraryWatcherTimeout: ReturnType<typeof setTimeout> | undefined;
@@ -99,7 +100,7 @@ function clearCachedLibraryData(): void {
     localMusicState$.scanTrackTotal.set(0);
 }
 
-function scheduleScanAfterFileChange(): void {
+function scheduleScanAfterFileChange(delayMs = FILE_WATCH_DEBOUNCE_MS): void {
     if (libraryWatcherTimeout) {
         clearTimeout(libraryWatcherTimeout);
     }
@@ -108,7 +109,7 @@ function scheduleScanAfterFileChange(): void {
         libraryWatcherTimeout = undefined;
 
         if (localMusicState$.isScanning.get()) {
-            scheduleScanAfterFileChange();
+            scheduleScanAfterFileChange(delayMs);
             return;
         }
 
@@ -116,7 +117,7 @@ function scheduleScanAfterFileChange(): void {
         scanLocalMusic().catch((error) => {
             console.error("Failed to rescan local music after filesystem change:", error);
         });
-    }, FILE_WATCH_DEBOUNCE_MS);
+    }, Math.max(0, delayMs));
 }
 
 function configureLibraryPathWatcher(paths: string[]): void {
@@ -964,6 +965,10 @@ export async function scanLocalMusic(): Promise<void> {
     }
 }
 
+export function markLibraryChangeUserInitiated(): void {
+    pendingUserInitiatedLibraryChange = true;
+}
+
 export async function loadLocalPlaylists(): Promise<void> {
     perfLog("LocalMusic.loadLocalPlaylists.start");
 
@@ -1049,6 +1054,9 @@ export function initializeLocalMusic(): void {
     if (!hasSubscribedToLibraryPathChanges) {
         hasSubscribedToLibraryPathChanges = true;
         localMusicSettings$.libraryPaths.onChange(({ value }) => {
+            const userInitiated = pendingUserInitiatedLibraryChange;
+            pendingUserInitiatedLibraryChange = false;
+
             const nextPaths = Array.isArray(value) ? [...value] : [];
             const removedPaths = lastLibraryPaths.filter((path) => !nextPaths.includes(path));
             if (removedPaths.length > 0) {
@@ -1056,7 +1064,16 @@ export function initializeLocalMusic(): void {
             }
             lastLibraryPaths = nextPaths;
             configureLibraryPathWatcher(nextPaths);
-            scheduleScanAfterFileChange();
+
+            if (userInitiated && !localMusicState$.isScanning.get()) {
+                console.log("User initiated library change, scanning immediately");
+                scanLocalMusic().catch((error) => {
+                    console.error("Failed to scan local music after user change:", error);
+                });
+                return;
+            }
+
+            scheduleScanAfterFileChange(userInitiated ? 0 : FILE_WATCH_DEBOUNCE_MS);
         });
     }
 
