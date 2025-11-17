@@ -1,5 +1,5 @@
 import { observable } from "@legendapp/state";
-import type { LibrarySnapshot } from "@/systems/LibraryCache";
+import type { LibrarySnapshot, PersistedLibraryTrack } from "@/systems/LibraryCache";
 import { getLibrarySnapshot, hasCachedLibraryData, persistLibrarySnapshot } from "@/systems/LibraryCache";
 import { type LocalTrack, localMusicSettings$, localMusicState$ } from "@/systems/LocalMusicState";
 import { createJSONManager } from "@/utils/JSONManager";
@@ -49,42 +49,124 @@ export const library$ = observable({
 
 type LibrarySnapshotPayload = Omit<LibrarySnapshot, "version" | "updatedAt">;
 
-const collectLibrarySnapshot = (): LibrarySnapshotPayload => {
-    const lastScan = library$.lastScanTime.peek();
+const normalizeRootPath = (path: string): string => {
+    if (!path) {
+        return "";
+    }
+
+    const withoutPrefix = path.startsWith("file://") ? path.replace("file://", "") : path;
+    const trimmed = withoutPrefix.replace(/\/+$/, "");
+    return trimmed.length > 0 ? trimmed : withoutPrefix;
+};
+
+const fileNameFromPath = (path: string): string => {
+    const lastSlash = path.lastIndexOf("/");
+    return lastSlash === -1 ? path : path.slice(lastSlash + 1);
+};
+
+const resolveRelativePathForTrack = (
+    track: LocalTrack,
+    roots: string[],
+): { rootIndex: number; relativePath: string } => {
+    const normalizedFilePath = normalizeRootPath(track.filePath);
+
+    for (let i = 0; i < roots.length; i++) {
+        const root = roots[i];
+        if (root && normalizedFilePath.startsWith(root)) {
+            const relativePath = normalizedFilePath.slice(root.length).replace(/^\/+/, "");
+            return {
+                rootIndex: i,
+                relativePath: relativePath.length > 0 ? relativePath : track.fileName,
+            };
+        }
+    }
 
     return {
-        tracks: library$.tracks.peek(),
+        rootIndex: roots.length > 0 ? 0 : 0,
+        relativePath: normalizedFilePath,
+    };
+};
+
+const buildPersistedTrack = (track: LocalTrack, roots: string[]): PersistedLibraryTrack => {
+    const { rootIndex, relativePath } = resolveRelativePathForTrack(track, roots);
+
+    return {
+        rootIndex,
+        relativePath,
+        fileName: track.fileName ?? fileNameFromPath(relativePath),
+        title: track.title,
+        artist: track.artist,
+        album: track.album,
+        duration: track.duration,
+        thumbnail: track.thumbnail,
+    };
+};
+
+const buildFilePathFromPersisted = (track: PersistedLibraryTrack, roots: string[]): string => {
+    const root = roots[track.rootIndex];
+    if (root) {
+        if (track.relativePath.startsWith("/")) {
+            return `${root}${track.relativePath}`;
+        }
+
+        if (root.endsWith("/")) {
+            return `${root}${track.relativePath}`;
+        }
+
+        return `${root}/${track.relativePath}`;
+    }
+
+    return track.relativePath;
+};
+
+const collectLibrarySnapshot = (sourceTracks: LibraryTrack[]): LibrarySnapshotPayload => {
+    const lastScan = library$.lastScanTime.peek();
+    const roots = localMusicSettings$.libraryPaths.get().map((path) => normalizeRootPath(path)).filter(Boolean);
+    const tracks = sourceTracks.map((track) => buildPersistedTrack(track, roots));
+
+    return {
+        tracks,
+        roots,
         isScanning: library$.isScanning.peek(),
         lastScanTime: lastScan instanceof Date ? lastScan.getTime() : null,
     };
 };
 
 type LibrarySnapshotSignature = {
-    tracksRef: LibraryTrack[];
+    tracksRef: PersistedLibraryTrack[];
     tracksLength: number;
     isScanning: boolean;
     lastScanTime: number | null;
+    rootsHash: string;
+    sourceTracksRef: LibraryTrack[];
 };
 
-const makeLibrarySnapshotSignature = (snapshot: LibrarySnapshotPayload): LibrarySnapshotSignature => ({
+const makeLibrarySnapshotSignature = (
+    snapshot: LibrarySnapshotPayload,
+    sourceTracksRef: LibraryTrack[],
+): LibrarySnapshotSignature => ({
     tracksRef: snapshot.tracks,
     tracksLength: snapshot.tracks.length,
     isScanning: snapshot.isScanning,
     lastScanTime: snapshot.lastScanTime,
+    rootsHash: snapshot.roots.join("|"),
+    sourceTracksRef,
 });
 
 let lastLibrarySnapshotSignature: LibrarySnapshotSignature | null = null;
 
 const scheduleLibrarySnapshotPersist = () => {
     runAfterInteractions(() => {
-        const snapshot = collectLibrarySnapshot();
-        const signature = makeLibrarySnapshotSignature(snapshot);
+        const sourceTracks = library$.tracks.peek();
+        const snapshot = collectLibrarySnapshot(sourceTracks);
+        const signature = makeLibrarySnapshotSignature(snapshot, sourceTracks);
         if (
             lastLibrarySnapshotSignature &&
-            lastLibrarySnapshotSignature.tracksRef === signature.tracksRef &&
+            lastLibrarySnapshotSignature.sourceTracksRef === signature.sourceTracksRef &&
             lastLibrarySnapshotSignature.tracksLength === signature.tracksLength &&
             lastLibrarySnapshotSignature.isScanning === signature.isScanning &&
-            lastLibrarySnapshotSignature.lastScanTime === signature.lastScanTime
+            lastLibrarySnapshotSignature.lastScanTime === signature.lastScanTime &&
+            lastLibrarySnapshotSignature.rootsHash === signature.rootsHash
         ) {
             return;
         }
@@ -188,7 +270,8 @@ syncLibraryFromLocalState();
 library$.isScanning.set(localMusicState$.isScanning.get());
 const initialLastScan = localMusicSettings$.lastScanTime.get();
 library$.lastScanTime.set(initialLastScan ? new Date(initialLastScan) : null);
-lastLibrarySnapshotSignature = makeLibrarySnapshotSignature(collectLibrarySnapshot());
+const initialTracks = library$.tracks.peek();
+lastLibrarySnapshotSignature = makeLibrarySnapshotSignature(collectLibrarySnapshot(initialTracks), initialTracks);
 
 localMusicState$.tracks.onChange(syncLibraryFromLocalState);
 localMusicState$.isScanning.onChange(({ value }) => {
@@ -237,16 +320,22 @@ export const hydrateLibraryFromCache = (): boolean => {
         return false;
     }
 
-    const tracks = snapshot.tracks.map((track) => ({
-        id: track.filePath,
-        title: track.title,
-        artist: track.artist,
-        album: track.album,
-        duration: track.duration,
-        filePath: track.filePath,
-        fileName: track.filePath.split("/").pop() ?? track.filePath,
-        thumbnail: track.thumbnail,
-    }));
+    const roots = Array.isArray(snapshot.roots) ? snapshot.roots.map((root) => normalizeRootPath(root)) : [];
+
+    const tracks = snapshot.tracks.map((track) => {
+        const filePath = buildFilePathFromPersisted(track, roots);
+
+        return {
+            id: filePath,
+            title: track.title,
+            artist: track.artist,
+            album: track.album,
+            duration: track.duration,
+            filePath,
+            fileName: track.fileName ?? fileNameFromPath(filePath),
+            thumbnail: track.thumbnail,
+        };
+    });
 
     library$.tracks.set(tracks);
     library$.artists.set(buildArtistItems(tracks));
@@ -254,11 +343,15 @@ export const hydrateLibraryFromCache = (): boolean => {
     library$.isScanning.set(snapshot.isScanning);
     library$.lastScanTime.set(snapshot.lastScanTime ? new Date(snapshot.lastScanTime) : null);
 
-    lastLibrarySnapshotSignature = makeLibrarySnapshotSignature({
+    lastLibrarySnapshotSignature = makeLibrarySnapshotSignature(
+        {
+            tracks: snapshot.tracks,
+            roots,
+            isScanning: snapshot.isScanning,
+            lastScanTime: snapshot.lastScanTime,
+        },
         tracks,
-        isScanning: snapshot.isScanning,
-        lastScanTime: snapshot.lastScanTime,
-    });
+    );
 
     libraryHydratedFromCache = true;
     return true;
