@@ -1,11 +1,10 @@
+import { LegendList } from "@legendapp/list";
 import { use$ } from "@legendapp/state/react";
 import { forwardRef, useCallback, useEffect, useMemo, useRef } from "react";
 import { type GestureResponderEvent, Text, useWindowDimensions, View } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
-
 import { Button } from "@/components/Button";
 import { DropdownMenu, type DropdownMenuRootRef } from "@/components/DropdownMenu";
-import { LegendList } from "@legendapp/list";
 import { TextInputSearch, type TextInputSearchRef } from "@/components/TextInputSearch";
 import { TrackItem } from "@/components/TrackItem";
 import type { LibraryItem } from "@/systems/LibraryState";
