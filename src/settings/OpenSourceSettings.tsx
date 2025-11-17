@@ -11,6 +11,16 @@ interface Library {
 
 const libraries: Library[] = [
     {
+        name: "React",
+        description: "UI library powering components and hooks",
+        url: "https://github.com/facebook/react",
+    },
+    {
+        name: "React Native",
+        description: "Core cross-platform runtime",
+        url: "https://github.com/facebook/react-native",
+    },
+    {
         name: "React Native macOS",
         description: "Native macOS app development framework",
         url: "https://github.com/microsoft/react-native-macos",
@@ -24,6 +34,11 @@ const libraries: Library[] = [
         name: "Legend List",
         description: "High-performance virtualized list component",
         url: "https://github.com/LegendApp/legend-list",
+    },
+    {
+        name: "Legend Motion",
+        description: "Animation primitives that stay in sync with Legend State",
+        url: "https://github.com/LegendApp/legend-motion",
     },
     {
         name: "Expo",
@@ -46,6 +61,21 @@ const libraries: Library[] = [
         url: "https://github.com/gorhom/react-native-portal",
     },
     {
+        name: "React Native Reanimated",
+        description: "High-performance animations for React Native",
+        url: "https://github.com/software-mansion/react-native-reanimated",
+    },
+    {
+        name: "React Native Skia",
+        description: "Skia-backed rendering engine for React Native",
+        url: "https://github.com/Shopify/react-native-skia",
+    },
+    {
+        name: "Fluent UI macOS",
+        description: "Native Fluent UI components used for callouts and vibrancy",
+        url: "https://github.com/microsoft/fluentui-react-native",
+    },
+    {
         name: "Biome",
         description: "Fast formatter and linter for web projects",
         url: "https://github.com/biomejs/biome",
@@ -58,8 +88,7 @@ export function OpenSourceSettings() {
     };
 
     const handleOpenLegendMusicSource = () => {
-        // TODO: Add actual repository URL when available
-        console.log("Open Legend Music repository");
+        Linking.openURL("https://github.com/LegendApp/legend-music");
     };
 
     return (
