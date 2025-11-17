@@ -7,7 +7,12 @@ import AudioPlayer, {
     type MediaScanResult,
 } from "@/native-modules/AudioPlayer";
 import { addChangeListener, setWatchedDirectories } from "@/native-modules/FileSystemWatcher";
-import { clearLibraryCache, hasCachedLibraryData } from "@/systems/LibraryCache";
+import {
+    clearLibraryCache,
+    getLibrarySnapshot,
+    hasCachedLibraryData,
+    type PersistedLibraryTrack,
+} from "@/systems/LibraryCache";
 import { hasCachedPlaylistData } from "@/systems/PlaylistCache";
 import { stateSaved$ } from "@/systems/State";
 import { ensureCacheDirectory, getCacheDirectory } from "@/utils/cacheDirectories";
@@ -295,6 +300,76 @@ function buildThumbnailUri(baseUri: string, key?: string): string | undefined {
     return `${normalizedBase}/${key}.png`;
 }
 
+function extractThumbnailKeyFromPersisted(track: PersistedLibraryTrack | undefined): string | undefined {
+    if (!track) {
+        return undefined;
+    }
+
+    if (typeof track.thumb === "string" && track.thumb.length > 0) {
+        return track.thumb;
+    }
+
+    if (typeof track.thumbnail === "string" && track.thumbnail.length > 0) {
+        const fileName = track.thumbnail.split("/").pop() ?? track.thumbnail;
+        const [baseName] = fileName.split(".");
+        return baseName && baseName.length > 0 ? baseName : undefined;
+    }
+
+    return undefined;
+}
+
+function buildCachedTrackIndex(
+    normalizedRoots: string[],
+): {
+    skipEntries: { rootIndex: number; relativePath: string }[];
+    cachedTracksByRoot: Map<number, Map<string, PersistedLibraryTrack>>;
+} {
+    const snapshot = getLibrarySnapshot();
+    if (!Array.isArray(snapshot.tracks) || snapshot.tracks.length === 0) {
+        return { skipEntries: [], cachedTracksByRoot: new Map() };
+    }
+
+    const snapshotRoots = Array.isArray(snapshot.roots)
+        ? snapshot.roots.map((root) => normalizeRootPath(root)).filter(Boolean)
+        : [];
+
+    const skipEntries: { rootIndex: number; relativePath: string }[] = [];
+    const cachedTracksByRoot = new Map<number, Map<string, PersistedLibraryTrack>>();
+    const seen = new Set<string>();
+
+    normalizedRoots.forEach((rootPath, currentRootIndex) => {
+        const snapshotRootIndex = snapshotRoots.indexOf(rootPath);
+        if (snapshotRootIndex === -1) {
+            return;
+        }
+
+        const tracksForRoot = snapshot.tracks.filter((track) => track.root === snapshotRootIndex);
+        if (tracksForRoot.length === 0) {
+            return;
+        }
+
+        const map = new Map<string, PersistedLibraryTrack>();
+        for (const track of tracksForRoot) {
+            const relativePath = typeof track.rel === "string" && track.rel.length > 0 ? track.rel : "";
+            if (!relativePath) {
+                continue;
+            }
+            map.set(relativePath, track);
+            const cacheKey = `${currentRootIndex}:${relativePath}`;
+            if (!seen.has(cacheKey)) {
+                skipEntries.push({ rootIndex: currentRootIndex, relativePath });
+                seen.add(cacheKey);
+            }
+        }
+
+        if (map.size > 0) {
+            cachedTracksByRoot.set(currentRootIndex, map);
+        }
+    });
+
+    return { skipEntries, cachedTracksByRoot };
+}
+
 function joinPath(parent: string, child: string): string {
     const trimmedChild = child.startsWith("/") ? child.replace(/^\/+/, "") : child;
     if (parent.endsWith("/")) {
@@ -559,6 +634,7 @@ async function scanLibraryNative(paths: string[], thumbnailsDirUri: string): Pro
     const normalizedRoots = paths.map((path) => normalizeRootPath(path));
     const tracks: LocalTrack[] = [];
     const seenPaths = new Set<string>();
+    const { skipEntries, cachedTracksByRoot } = buildCachedTrackIndex(normalizedRoots);
 
     const handleBatch = (event: MediaScanBatchEvent) => {
         if (!event || !Array.isArray(event.tracks)) {
@@ -567,6 +643,7 @@ async function scanLibraryNative(paths: string[], thumbnailsDirUri: string): Pro
 
         const rootIndex = typeof event.rootIndex === "number" ? event.rootIndex : -1;
         const rootPath = normalizedRoots[rootIndex];
+        const cachedTracks = cachedTracksByRoot.get(rootIndex);
         if (!rootPath) {
             return;
         }
@@ -593,18 +670,27 @@ async function scanLibraryNative(paths: string[], thumbnailsDirUri: string): Pro
 
             const fileName = nativeTrack.fileName ?? fileNameFromPath(absolutePath);
             const fallback = parseFilenameOnly(fileName);
+
+            const cachedTrack = cachedTracks?.get(relativePath);
+
             const title =
-                typeof nativeTrack.title === "string" && nativeTrack.title.trim().length > 0
+                (typeof nativeTrack.title === "string" && nativeTrack.title.trim().length > 0
                     ? nativeTrack.title
-                    : fallback.title;
+                    : undefined) ??
+                (cachedTrack?.title && cachedTrack.title.length > 0 ? cachedTrack.title : undefined) ??
+                fallback.title;
             const artist =
-                typeof nativeTrack.artist === "string" && nativeTrack.artist.trim().length > 0
+                (typeof nativeTrack.artist === "string" && nativeTrack.artist.trim().length > 0
                     ? nativeTrack.artist
-                    : fallback.artist;
+                    : undefined) ??
+                (cachedTrack?.artist && cachedTrack.artist.length > 0 ? cachedTrack.artist : undefined) ??
+                fallback.artist;
             const album =
-                typeof nativeTrack.album === "string" && nativeTrack.album.trim().length > 0
+                (typeof nativeTrack.album === "string" && nativeTrack.album.trim().length > 0
                     ? nativeTrack.album
-                    : undefined;
+                    : undefined) ??
+                (cachedTrack?.album && cachedTrack.album.length > 0 ? cachedTrack.album : undefined) ??
+                undefined;
 
             const durationSeconds =
                 typeof nativeTrack.durationSeconds === "number" && Number.isFinite(nativeTrack.durationSeconds)
@@ -614,19 +700,21 @@ async function scanLibraryNative(paths: string[], thumbnailsDirUri: string): Pro
             const thumbnailKey =
                 typeof nativeTrack.artworkKey === "string" && nativeTrack.artworkKey.length > 0
                     ? nativeTrack.artworkKey
-                    : undefined;
+                    : extractThumbnailKeyFromPersisted(cachedTrack);
             const thumbnailUri =
                 buildThumbnailUri(thumbnailsDirUri, thumbnailKey) ??
                 (typeof nativeTrack.artworkUri === "string" && nativeTrack.artworkUri.length > 0
                     ? nativeTrack.artworkUri
-                    : undefined);
+                    : cachedTrack?.thumbnail);
+            const duration =
+                typeof durationSeconds === "number" ? formatDuration(durationSeconds) : cachedTrack?.duration ?? "0:00";
 
             tracks.push({
                 id: absolutePath,
                 title,
                 artist,
                 album,
-                duration: durationSeconds ? formatDuration(durationSeconds) : "0:00",
+                duration,
                 thumbnail: thumbnailUri,
                 thumbnailKey,
                 filePath: absolutePath,
@@ -663,7 +751,10 @@ async function scanLibraryNative(paths: string[], thumbnailsDirUri: string): Pro
     ];
 
     try {
-        const result = await AudioPlayer.scanMediaLibrary(normalizedRoots, thumbnailsDirUri, { batchSize: 48 });
+        const result = await AudioPlayer.scanMediaLibrary(normalizedRoots, thumbnailsDirUri, {
+            batchSize: 48,
+            skip: skipEntries,
+        });
         const totalRoots =
             typeof result.totalRoots === "number" && result.totalRoots > 0 ? result.totalRoots : normalizedRoots.length;
         localMusicState$.scanTotal.set(totalRoots);

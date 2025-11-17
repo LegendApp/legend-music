@@ -1525,6 +1525,37 @@ RCT_EXPORT_METHOD(scanMediaLibrary:(NSArray<NSString *> *)paths
             BOOL includeHidden = [[options objectForKey:@"includeHidden"] boolValue];
             NSString *normalizedCacheDir = cacheDir ? LMNormalizePathString(cacheDir) : @"";
 
+            NSMutableDictionary<NSNumber *, NSMutableSet<NSString *> *> *skipLookup = [NSMutableDictionary dictionary];
+            NSArray *skipEntries = [options objectForKey:@"skip"];
+            if ([skipEntries isKindOfClass:[NSArray class]]) {
+                for (id rawEntry in skipEntries) {
+                    if (![rawEntry isKindOfClass:[NSDictionary class]]) {
+                        continue;
+                    }
+
+                    NSDictionary *entry = (NSDictionary *)rawEntry;
+                    NSNumber *rootIndexValue = entry[@"rootIndex"];
+                    NSString *relativePathValue = entry[@"relativePath"];
+
+                    if (![rootIndexValue isKindOfClass:[NSNumber class]] || ![relativePathValue isKindOfClass:[NSString class]]) {
+                        continue;
+                    }
+
+                    if (relativePathValue.length == 0) {
+                        continue;
+                    }
+
+                    NSNumber *rootKey = @([rootIndexValue unsignedIntegerValue]);
+                    NSMutableSet<NSString *> *existingSet = skipLookup[rootKey];
+                    if (!existingSet) {
+                        existingSet = [NSMutableSet set];
+                        skipLookup[rootKey] = existingSet;
+                    }
+
+                    [existingSet addObject:relativePathValue];
+                }
+            }
+
             NSDirectoryEnumerationOptions enumerationOptions = NSDirectoryEnumerationSkipsPackageDescendants;
             if (!includeHidden) {
                 enumerationOptions = enumerationOptions | NSDirectoryEnumerationSkipsHiddenFiles;
@@ -1612,6 +1643,31 @@ RCT_EXPORT_METHOD(scanMediaLibrary:(NSArray<NSString *> *)paths
 
                         NSString *relativePath = LMRelativePathFromRoot(fileURL.path, rootPath);
                         NSString *fileName = fileURL.lastPathComponent ?: relativePath;
+
+                        BOOL shouldSkipMetadata = NO;
+                        NSMutableSet<NSString *> *rootSkipSet = skipLookup[@(rootIndex)];
+                        if (rootSkipSet && relativePath.length > 0) {
+                            shouldSkipMetadata = [rootSkipSet containsObject:relativePath];
+                        }
+
+                        if (shouldSkipMetadata) {
+                            NSMutableDictionary *track = [@{
+                                @"rootIndex": @(rootIndex),
+                                @"relativePath": relativePath ?: fileURL.path,
+                                @"fileName": fileName ?: fileURL.lastPathComponent ?: fileURL.path,
+                                @"skipped": @YES,
+                            } mutableCopy];
+
+                            [batch addObject:track];
+                            totalTracks += 1;
+
+                            if (batch.count >= maxBatchSize) {
+                                emitBatch(batch, rootIndex);
+                                [batch removeAllObjects];
+                            }
+
+                            continue;
+                        }
 
                         NSDictionary *tags = LMExtractMediaTags(fileURL, normalizedCacheDir);
 

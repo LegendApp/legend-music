@@ -67,6 +67,7 @@ export interface NativeScannedTrack {
     durationSeconds?: number;
     artworkUri?: string;
     artworkKey?: string;
+    skipped?: boolean;
 }
 
 export interface MediaScanBatchEvent {
@@ -91,6 +92,7 @@ export interface MediaScanResult {
 export interface MediaScanOptions {
     batchSize?: number;
     includeHidden?: boolean;
+    skip?: { rootIndex: number; relativePath: string }[];
 }
 
 export interface AudioPlayerEvents {
