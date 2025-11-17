@@ -1,5 +1,4 @@
-import { Platform } from "react-native";
-import { isNativeID3WriterAvailable, writeNativeID3Tags } from "@/utils/id3Writer";
+import * as id3Writer from "@/utils/id3Writer";
 
 const mockWriteMediaTags = jest.fn();
 
@@ -11,28 +10,21 @@ jest.mock("@/native-modules/AudioPlayer", () => ({
 }));
 
 describe("id3Writer helper", () => {
-    let platformSpy: jest.SpyInstance;
-
     beforeEach(() => {
-        platformSpy?.mockRestore();
         jest.clearAllMocks();
+        jest.restoreAllMocks();
+        // Ensure the default export has our mock writer available
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-explicit-any
+        const audioPlayer: any = require("@/native-modules/AudioPlayer").default;
+        audioPlayer.writeMediaTags = mockWriteMediaTags;
     });
-
-    afterAll(() => {
-        platformSpy?.mockRestore();
-    });
-
-    const setPlatform = (os: typeof Platform.OS) => {
-        platformSpy = jest.spyOn(Platform, "OS", "get").mockReturnValue(os);
-    };
 
     it("guards when native writer is unavailable", async () => {
-        setPlatform("ios");
         const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
 
-        const result = await writeNativeID3Tags("/tmp/song.mp3", {});
+        const result = await id3Writer.writeNativeID3Tags("/tmp/song.mp3", {}, () => false);
 
-        expect(isNativeID3WriterAvailable).toBe(false);
+        expect(id3Writer.isNativeID3WriterAvailable()).toBe(false);
         expect(result).toEqual({ success: false });
         expect(mockWriteMediaTags).not.toHaveBeenCalled();
 
@@ -40,12 +32,12 @@ describe("id3Writer helper", () => {
     });
 
     it("delegates to the native writer on macOS", async () => {
-        setPlatform("macos");
+        const availabilityCheck = jest.fn(() => true);
         mockWriteMediaTags.mockResolvedValue({ success: true });
 
-        const result = await writeNativeID3Tags("/tmp/song.mp3", { title: "Track" });
+        const result = await id3Writer.writeNativeID3Tags("/tmp/song.mp3", { title: "Track" }, availabilityCheck);
 
-        expect(isNativeID3WriterAvailable).toBe(true);
+        expect(availabilityCheck).toHaveBeenCalled();
         expect(mockWriteMediaTags).toHaveBeenCalledWith("/tmp/song.mp3", { title: "Track" });
         expect(result).toEqual({ success: true });
     });

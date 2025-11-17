@@ -103,12 +103,17 @@ export async function openFileDialog(options: FileDialogOpenOptions = {}): Promi
 
     const directoryURL = resolveDirectory(options.directoryURL);
 
-    return openMethod({
-        canChooseFiles: options.canChooseFiles,
-        canChooseDirectories: options.canChooseDirectories,
-        allowsMultipleSelection: options.allowsMultipleSelection,
-        directoryURL,
-    });
+    try {
+        return await openMethod({
+            canChooseFiles: options.canChooseFiles,
+            canChooseDirectories: options.canChooseDirectories,
+            allowsMultipleSelection: options.allowsMultipleSelection,
+            directoryURL,
+        });
+    } catch (error) {
+        console.error("Failed to open file dialog", error);
+        return null;
+    }
 }
 
 export async function saveFileDialog(options: FileDialogSaveOptions = {}): Promise<string | null> {
@@ -123,11 +128,16 @@ export async function saveFileDialog(options: FileDialogSaveOptions = {}): Promi
 
     const directory = resolveDirectory(options.directory);
 
-    return saveMethod({
-        defaultName: options.defaultName,
-        directory,
-        allowedFileTypes: options.allowedFileTypes,
-    });
+    try {
+        return await saveMethod({
+            defaultName: options.defaultName,
+            directory,
+            allowedFileTypes: options.allowedFileTypes,
+        });
+    } catch (error) {
+        console.error("Failed to open save dialog", error);
+        return null;
+    }
 }
 
 export async function selectDirectory(options: { directoryURL?: DirectoryLike } = {}): Promise<string | null> {

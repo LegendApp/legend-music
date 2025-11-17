@@ -255,4 +255,4 @@ export type SFSymbolWithVariations =
 /**
  * SF Symbol type that accepts any string but provides autocompletion for common symbols
  */
-export type SFSymbols = SFSymbolWithVariations;
+export type SFSymbols = SFSymbolWithVariations | "repeat.1";
