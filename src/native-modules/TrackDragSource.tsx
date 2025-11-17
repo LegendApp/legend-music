@@ -15,6 +15,8 @@ export interface TrackDragSourceProps extends ViewProps {
     onDragStart?: () => void;
 }
 
+export type { NativeDragTrack } from "@/native-modules/DragDropView";
+
 const NativeTrackDragSourceView = requireNativeComponent<TrackDragSourceNativeProps>("RNTrackDragSource");
 
 cssInterop(NativeTrackDragSourceView, {

@@ -382,7 +382,6 @@ export function PanelResizeHandle({
 
     return (
         <Animated.View
-            // @ts-expect-error - resizes are not a valid style prop
             style={[animatedStyle, { cursor: isVertical ? "ns-resize" : "ew-resize" }]}
             className={cn(
                 "relative z-10 flex justify-center items-center bg-transparent",

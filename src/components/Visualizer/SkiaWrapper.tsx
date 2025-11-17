@@ -37,12 +37,8 @@ export class SkiaWrapper extends React.Component<SkiaWrapperProps, SkiaWrapperSt
 
             return (
                 <View className="flex-1 items-center justify-center p-6">
-                    <Text className="text-white/70 text-center">
-                        Visualizer unavailable: Skia initialization error
-                    </Text>
-                    <Text className="text-white/40 text-xs mt-2 text-center">
-                        {this.state.error?.message}
-                    </Text>
+                    <Text className="text-white/70 text-center">Visualizer unavailable: Skia initialization error</Text>
+                    <Text className="text-white/40 text-xs mt-2 text-center">{this.state.error?.message}</Text>
                 </View>
             );
         }

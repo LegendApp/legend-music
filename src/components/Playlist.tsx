@@ -1,10 +1,9 @@
-import { VibrancyView } from "@fluentui-react-native/vibrancy-view";
-import { LegendList } from "@legendapp/list";
 import { use$ } from "@legendapp/state/react";
 import { type ElementRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { findNodeHandle, type NativeSyntheticEvent, Platform, StyleSheet, Text, UIManager, View } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 import { Button } from "@/components/Button";
+import { LegendList } from "@/components/LegendList";
 import { localAudioControls, localPlayerState$, type QueuedTrack, queue$ } from "@/components/LocalAudioPlayer";
 import { type TrackData, TrackItem } from "@/components/TrackItem";
 import { usePlaylistSelection } from "@/hooks/usePlaylistSelection";
@@ -332,8 +331,13 @@ export function Playlist() {
 
     const handleDropAtPosition = useCallback(
         (item: DraggedItem<DragData>, targetPosition: number) => {
-            if (item.data?.type === "playlist-track") {
-                const sourceIndex = playlist.findIndex((track) => track.queueEntryId === item.data.queueEntryId);
+            const data = item.data;
+            if (!data) {
+                return;
+            }
+
+            if (data.type === "playlist-track") {
+                const sourceIndex = playlist.findIndex((track) => track.queueEntryId === data.queueEntryId);
                 if (sourceIndex === -1) {
                     return;
                 }
@@ -352,10 +356,10 @@ export function Playlist() {
                 return;
             }
 
-            if (item.data?.type === "media-library-tracks") {
+            if (data.type === "media-library-tracks") {
                 const existingQueue = queueTracks;
                 const boundedTarget = Math.max(0, Math.min(targetPosition, existingQueue.length));
-                const { filtered, skipped } = filterTracksForInsert(existingQueue, item.data.tracks);
+                const { filtered, skipped } = filterTracksForInsert(existingQueue, data.tracks);
 
                 if (filtered.length === 0) {
                     showDropFeedback({

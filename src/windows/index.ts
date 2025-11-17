@@ -1,6 +1,5 @@
-import { createWindowsNavigator, WindowStyleMask, type WindowsConfig } from "./api";
-
 import { OVERLAY_WINDOW_HEIGHT_COMPACT, OVERLAY_WINDOW_WIDTH_COMPACT } from "@/overlay/OverlayConstants";
+import { createWindowsNavigator, WindowStyleMask, type WindowsConfig } from "./api";
 
 const windowsConfig = {
     SettingsWindow: {

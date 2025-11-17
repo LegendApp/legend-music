@@ -1,5 +1,5 @@
-import { memo, useEffect, useMemo } from "react";
 import { Canvas, Group, Path, Skia, SweepGradient, vec } from "@shopify/react-native-skia";
+import { memo, useEffect, useMemo } from "react";
 import { Easing, useDerivedValue, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
 
 type SkiaSpinnerProps = {

@@ -5,7 +5,6 @@ import type { NativeMouseEvent } from "react-native-macos";
 import { Button } from "@/components/Button";
 import { localPlayerState$ } from "@/components/LocalAudioPlayer";
 import { useListItemStyles } from "@/hooks/useListItemStyles";
-import { settings$ } from "@/systems/Settings";
 import { cn } from "@/utils/cn";
 import { perfCount } from "@/utils/perfLogger";
 
@@ -51,7 +50,6 @@ export const TrackItem = ({
     suppressActiveState = false,
 }: TrackItemProps) => {
     perfCount("TrackItem.render");
-    const playlistStyle = use$(settings$.general.playlistStyle);
     const listItemStyles = useListItemStyles();
 
     const trackIsPlayingFlag = track.isPlaying;

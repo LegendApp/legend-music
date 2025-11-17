@@ -1,4 +1,4 @@
-import { ShaderSurface, type ShaderDefinition } from "@/visualizer/shaders/ShaderSurface";
+import { type ShaderDefinition, ShaderSurface } from "@/visualizer/shaders/ShaderSurface";
 
 import type { VisualizerComponentProps, VisualizerPresetDefinition } from "./types";
 

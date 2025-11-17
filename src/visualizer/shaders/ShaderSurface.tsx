@@ -1,5 +1,5 @@
 import { Canvas, Rect, Shader, Skia, type Uniforms } from "@shopify/react-native-skia";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LayoutChangeEvent, StyleProp, ViewStyle } from "react-native";
 import { StyleSheet, Text, View } from "react-native";
 import type { SharedValue } from "react-native-reanimated";
@@ -105,14 +105,14 @@ export function ShaderSurface({ definition, style, binCountOverride, shaderChild
     });
     const smoothedAmplitudeRef = useRef(0);
 
-const buildUniforms = useCallback((base: BaseUniformState): Uniforms => {
-    const result: Uniforms = {
-        u_resolution: [...base.resolution] as [number, number],
-        u_time: base.time,
-        u_amplitude: base.amplitude,
-        u_binCount: base.binCount,
-        u_bins: Array.from(base.bins),
-    };
+    const buildUniforms = useCallback((base: BaseUniformState): Uniforms => {
+        const result: Uniforms = {
+            u_resolution: [...base.resolution] as [number, number],
+            u_time: base.time,
+            u_amplitude: base.amplitude,
+            u_binCount: base.binCount,
+            u_bins: Array.from(base.bins),
+        };
 
         const extend = extendUniformsRef.current;
         if (extend) {

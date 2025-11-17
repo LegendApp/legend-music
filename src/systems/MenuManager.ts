@@ -1,14 +1,13 @@
 import { localAudioControls, localPlayerState$ } from "@/components/LocalAudioPlayer";
 import { menuManager } from "@/native-modules/NativeMenuManager";
-import { settings$, type RepeatMode } from "@/systems/Settings";
+import { type RepeatMode, settings$ } from "@/systems/Settings";
 import { state$ } from "@/systems/State";
 import { perfCount, perfLog } from "@/utils/perfLogger";
 
 let isInitialized = false;
 
 function updateRepeatMenu(mode: RepeatMode) {
-    const menuTitle =
-        mode === "all" ? "Repeat All" : mode === "one" ? "Repeat One" : "Repeat Off";
+    const menuTitle = mode === "all" ? "Repeat All" : mode === "one" ? "Repeat One" : "Repeat Off";
     menuManager.setMenuItemState("playbackToggleRepeat", mode !== "off");
     menuManager.setMenuItemTitle("playbackToggleRepeat", menuTitle);
 }

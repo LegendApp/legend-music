@@ -220,7 +220,6 @@ function ControlLayoutEditor<T extends string>({ section, layout, definitions }:
 
     const shownItems = layout.shown;
     const hiddenItems = layout.hidden;
-    const dragZoneId = section === "playback" ? PLAYBACK_DRAG_ZONE_ID : BOTTOM_BAR_DRAG_ZONE_ID;
 
     return (
         <View className="flex flex-col gap-6">

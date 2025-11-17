@@ -3,10 +3,10 @@ import { useCallback, useMemo } from "react";
 import type { LayoutChangeEvent } from "react-native";
 import { Text, View } from "react-native";
 
-import { Select, type SelectOption } from "@/components/Select";
 import { localPlayerState$ } from "@/components/LocalAudioPlayer";
-import { defaultVisualizerPresetId, getVisualizerPresetById, visualizerPresets } from "@/visualizer/presets";
+import { Select, type SelectOption } from "@/components/Select";
 import { visualizerPreferences$ } from "@/visualizer/preferences";
+import { defaultVisualizerPresetId, getVisualizerPresetById, visualizerPresets } from "@/visualizer/presets";
 
 export default function VisualizerWindow() {
     const track = use$(localPlayerState$.currentTrack);

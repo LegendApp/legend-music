@@ -1,10 +1,10 @@
-import { LegendList } from "@legendapp/list";
 import type { Observable } from "@legendapp/state";
 import { useCallback } from "react";
 import { Platform, Text, View } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 
 import { DraggableItem, MEDIA_LIBRARY_DRAG_ZONE_ID, type MediaLibraryDragData } from "@/components/dnd";
+import { LegendList } from "@/components/LegendList";
 import { type TrackData, TrackItem } from "@/components/TrackItem";
 import { type NativeDragTrack, TrackDragSource } from "@/native-modules/TrackDragSource";
 import { useLibraryTrackList } from "./useLibraryTrackList";

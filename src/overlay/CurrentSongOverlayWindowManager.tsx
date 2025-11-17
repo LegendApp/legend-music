@@ -73,7 +73,8 @@ export const CurrentSongOverlayWindowManager = () => {
 
         const shouldAnimateFrameChange =
             previousDimensionsRef.current !== null &&
-            (previousDimensionsRef.current.width !== windowWidth || previousDimensionsRef.current.height !== windowHeight);
+            (previousDimensionsRef.current.width !== windowWidth ||
+                previousDimensionsRef.current.height !== windowHeight);
 
         void (async () => {
             try {
@@ -114,7 +115,9 @@ export const CurrentSongOverlayWindowManager = () => {
                     x,
                     y,
                     animateFrameChange: shouldAnimateFrameChange,
-                    frameAnimationDurationMs: shouldAnimateFrameChange ? OVERLAY_WINDOW_ANIMATION_DURATION_MS : undefined,
+                    frameAnimationDurationMs: shouldAnimateFrameChange
+                        ? OVERLAY_WINDOW_ANIMATION_DURATION_MS
+                        : undefined,
                     windowStyle: {
                         width: windowWidth,
                         height: windowHeight,

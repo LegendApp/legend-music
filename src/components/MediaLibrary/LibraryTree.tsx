@@ -1,18 +1,18 @@
-import { LegendList } from "@legendapp/list";
 import { use$ } from "@legendapp/state/react";
 import { useCallback, useEffect, useMemo } from "react";
 import { Text, View } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 
 import { Button } from "@/components/Button";
+import { LegendList } from "@/components/LegendList";
 import { localAudioControls } from "@/components/LocalAudioPlayer";
 import { useListItemStyles } from "@/hooks/useListItemStyles";
 import { type ContextMenuItem, showContextMenu } from "@/native-modules/ContextMenu";
 import type { LibraryItem, LibraryTrack } from "@/systems/LibraryState";
 import { library$, libraryUI$ } from "@/systems/LibraryState";
-import { getQueueAction } from "@/utils/queueActions";
 import { cn } from "@/utils/cn";
 import { perfCount } from "@/utils/perfLogger";
+import { getQueueAction } from "@/utils/queueActions";
 import { getTracksForLibraryItem } from "@/utils/trackResolution";
 
 interface LibraryTreeProps {

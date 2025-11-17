@@ -1,10 +1,10 @@
-import { LegendList, type LegendListRenderItemProps } from "@legendapp/list";
 import type { Observable, ObservableParam } from "@legendapp/state";
 import { use$, useObservable } from "@legendapp/state/react";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
-import { Text, View } from "react-native";
+import { Text, View, type ViewStyle } from "react-native";
 import { DropdownMenu } from "@/components/DropdownMenu";
+import { LegendList, type LegendListRenderItemProps } from "@/components/LegendList";
 import { WithCheckbox } from "@/components/WithCheckbox";
 import { cn } from "@/utils/cn";
 import { equals } from "@/utils/equals";
@@ -109,7 +109,7 @@ export function SelectLegendListMultiple<T>({
     const selectedItems = use$<T[]>(selectedItems$);
 
     const contentContainerStyle = useMemo(() => {
-        const style: { width: string; minHeight?: number; maxHeight?: number } = { width: "100%" };
+        const style: ViewStyle = { width: "100%" };
         if (minContentHeight !== undefined) {
             style.minHeight = minContentHeight;
         }

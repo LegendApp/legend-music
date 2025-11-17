@@ -1,7 +1,7 @@
+import { auroraPreset } from "./aurora";
 import { barPreset } from "./bar";
 import { classicPreset } from "./classic";
 import { cubescapePreset } from "./cubescape";
-import { auroraPreset } from "./aurora";
 import { sunsetPreset } from "./sunset";
 import type { VisualizerPresetDefinition } from "./types";
 
@@ -20,9 +20,9 @@ export function getVisualizerPresetById(id: string): VisualizerPresetDefinition 
     return visualizerPresets.find((preset) => preset.id === id) ?? fallback;
 }
 
-export * from "./types";
+export { auroraPreset } from "./aurora";
 export { barPreset } from "./bar";
 export { classicPreset } from "./classic";
 export { cubescapePreset } from "./cubescape";
-export { auroraPreset } from "./aurora";
 export { sunsetPreset } from "./sunset";
+export * from "./types";

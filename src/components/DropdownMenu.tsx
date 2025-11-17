@@ -204,7 +204,7 @@ function Trigger({
 interface ContentProps {
     children: ReactNode;
     className?: string;
-    maxHeightClassName?: `max-h-${number}`;
+    maxHeightClassName?: string;
     scrolls?: boolean;
     directionalHint?:
         | "bottonLeftEdge"

@@ -3,6 +3,7 @@
   "compilerOptions": {
     "skipLibCheck": true,
     "lib": ["esnext", "dom"],
+    "types": ["react-native", "jest", "node"],
     "paths": {
       "@legend-kit/*": [
         "./src/legend-kit/*"

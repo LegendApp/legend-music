@@ -41,9 +41,9 @@ describe("buildSearchResults", () => {
             artists,
         });
 
-        expect(results.map((result) => result.type)).toEqual(["playlist", "library", "library", "track", "track"]);
-        expect(results[0]).toMatchObject({ type: "playlist", item: playlists[0] });
-        expect(results[3]).toMatchObject({ type: "track", item: tracks[0] });
+        expect(results.map((result) => result.type)).toEqual(["track", "track", "playlist", "library", "library"]);
+        expect(results[0]).toMatchObject({ type: "track", item: tracks[0] });
+        expect(results[2]).toMatchObject({ type: "playlist", item: playlists[0] });
     });
 
     it("returns an empty array when query is blank", () => {

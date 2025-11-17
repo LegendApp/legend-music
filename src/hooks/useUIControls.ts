@@ -1,10 +1,6 @@
 import { use$ } from "@legendapp/state/react";
-import {
-    settings$,
-    type BottomBarControlId,
-    type PlaybackControlId,
-    type UIControlLayout,
-} from "@/systems/Settings";
+import type { BottomBarControlId, PlaybackControlId, UIControlLayout } from "@/systems/Settings";
+import { settings$ } from "@/systems/Settings";
 
 export function usePlaybackControlLayout(): UIControlLayout<PlaybackControlId> {
     return use$(settings$.ui.playback) ?? ({ shown: [] } as UIControlLayout<PlaybackControlId>);

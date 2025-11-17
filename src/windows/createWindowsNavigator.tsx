@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from "react";
-import type { ComponentType } from "react";
+import { type ComponentType, useEffect, useState } from "react";
 import { AppRegistry } from "react-native";
 
 import {
@@ -114,13 +113,13 @@ export function createWindowsNavigator<TConfig extends WindowsConfig>(config: TC
                         } else {
                             throw new Error(
                                 `Window '${moduleName}': loaded module is not a valid component. ` +
-                                `Expected a function or object with default export, got: ${typeof loaded}`
+                                    `Expected a function or object with default export, got: ${typeof loaded}`,
                             );
                         }
                     } else {
                         throw new Error(
                             `Window '${moduleName}': loaded module is not a valid component. ` +
-                            `Got: ${typeof loaded}`
+                                `Got: ${typeof loaded}`,
                         );
                     }
 
@@ -139,7 +138,7 @@ export function createWindowsNavigator<TConfig extends WindowsConfig>(config: TC
         AppRegistry.registerComponent(moduleName, () => {
             const LazyWindow = (props: any) => {
                 const [componentWrapper, setComponentWrapper] = useState<{ component: ComponentType<any> } | null>(
-                    cachedComponent ? { component: cachedComponent } : null
+                    cachedComponent ? { component: cachedComponent } : null,
                 );
 
                 useEffect(() => {

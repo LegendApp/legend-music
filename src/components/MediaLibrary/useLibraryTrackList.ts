@@ -12,6 +12,8 @@ import type { LibraryItem, LibraryTrack } from "@/systems/LibraryState";
 import { library$, libraryUI$ } from "@/systems/LibraryState";
 import { getQueueAction, type QueueAction } from "@/utils/queueActions";
 
+type TrackListItem = TrackData;
+
 interface UseLibraryTrackListResult {
     tracks: TrackData[];
     selectedIndices$: Observable<Set<number>>;
@@ -98,7 +100,11 @@ export function useLibraryTrackList(searchQuery: string): UseLibraryTrackListRes
         [allTracks, searchQuery, selectedItem],
     );
 
-    const { selectedIndices$, handleTrackClick: handleSelectionClick, clearSelection } = usePlaylistSelection({
+    const {
+        selectedIndices$,
+        handleTrackClick: handleSelectionClick,
+        clearSelection,
+    } = usePlaylistSelection({
         items: trackItems,
     });
 

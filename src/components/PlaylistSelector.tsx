@@ -7,10 +7,10 @@ import type { DropdownMenuRootRef } from "@/components/DropdownMenu";
 import { queue$ } from "@/components/LocalAudioPlayer";
 import { PlaylistSelectorSearchDropdown } from "@/components/PlaylistSelectorSearchDropdown";
 import { SelectLegendList } from "@/components/SelectLegendList";
+import { useBottomBarControlLayout } from "@/hooks/useUIControls";
 import { useOnHotkeys } from "@/systems/keyboard/Keyboard";
 import { library$ } from "@/systems/LibraryState";
 import { DEFAULT_LOCAL_PLAYLIST_NAME, localMusicState$ } from "@/systems/LocalMusicState";
-import { useBottomBarControlLayout } from "@/hooks/useUIControls";
 import type { BottomBarControlId } from "@/systems/Settings";
 import { cn } from "@/utils/cn";
 import {
@@ -64,10 +64,9 @@ export function PlaylistSelector() {
     const { handleSavePlaylist } = useQueueExporter({ queueTracks: queue.tracks });
 
     const bottomBarLayout = useBottomBarControlLayout();
-    const bottomBarControls = ((bottomBarLayout?.shown?.length
-        ? bottomBarLayout.shown
-        : DEFAULT_BOTTOM_BAR_BUTTONS) as BottomBarControlId[])
-        .filter((controlId, index, array) => array.indexOf(controlId) === index);
+    const bottomBarControls = (
+        (bottomBarLayout?.shown?.length ? bottomBarLayout.shown : DEFAULT_BOTTOM_BAR_BUTTONS) as BottomBarControlId[]
+    ).filter((controlId, index, array) => array.indexOf(controlId) === index);
     const hasSearchControl = bottomBarControls.includes("search");
 
     useOnHotkeys(

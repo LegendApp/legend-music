@@ -6,7 +6,7 @@ import { TextInputSearch, type TextInputSearchRef } from "@/components/TextInput
 import { libraryUI$ } from "@/systems/LibraryState";
 
 interface MediaLibrarySearchBarProps {
-    searchInputRef: RefObject<TextInputSearchRef>;
+    searchInputRef: RefObject<TextInputSearchRef | null>;
     query: string;
 }
 

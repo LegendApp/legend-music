@@ -1,11 +1,11 @@
-import { NativeEventEmitter, NativeModules } from 'react-native';
+import { NativeEventEmitter, NativeModules } from "react-native";
 
 const { FileSystemWatcher } = NativeModules;
 
 export interface DirectoryChangeEvent {
-  path: string; // The directory being watched where the change occurred
-  filePath: string; // The specific file that was changed
-  type: 'add' | 'change' | 'delete'; // Type of change
+    path: string; // The directory being watched where the change occurred
+    filePath: string; // The specific file that was changed
+    type: "add" | "change" | "delete"; // Type of change
 }
 
 const eventEmitter = new NativeEventEmitter(FileSystemWatcher);
@@ -16,8 +16,8 @@ const eventEmitter = new NativeEventEmitter(FileSystemWatcher);
  * @param directories Array of root directory paths to watch
  */
 export function setWatchedDirectories(directories: string[]): void {
-  // Clone the array because the native bridge Object.freezes it
-  FileSystemWatcher.setWatchedDirectories([...directories]);
+    // Clone the array because the native bridge Object.freezes it
+    FileSystemWatcher.setWatchedDirectories([...directories]);
 }
 
 /**
@@ -26,7 +26,7 @@ export function setWatchedDirectories(directories: string[]): void {
  * @returns Promise that resolves to a boolean indicating if the directory is being watched
  */
 export function isWatchingDirectory(directory: string): Promise<boolean> {
-  return FileSystemWatcher.isWatchingDirectory(directory);
+    return FileSystemWatcher.isWatchingDirectory(directory);
 }
 
 /**
@@ -37,6 +37,6 @@ export function isWatchingDirectory(directory: string): Promise<boolean> {
  * @returns Function to remove the listener
  */
 export function addChangeListener(callback: (event: DirectoryChangeEvent) => void): () => void {
-  const subscription = eventEmitter.addListener('onDirectoryChanged', callback);
-  return () => subscription.remove();
+    const subscription = eventEmitter.addListener("onDirectoryChanged", callback);
+    return () => subscription.remove();
 }

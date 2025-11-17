@@ -50,7 +50,7 @@ function LibraryCollectionTabs() {
 export function MediaLibraryView() {
     perfCount("MediaLibraryView.render");
     const searchQuery = use$(libraryUI$.searchQuery);
-    const searchInputRef = useRef<TextInputSearchRef>(null);
+    const searchInputRef = useRef<TextInputSearchRef | null>(null);
     const showHints = use$(settings$.general.showHints);
 
     return (

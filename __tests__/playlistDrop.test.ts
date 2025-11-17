@@ -7,6 +7,8 @@ const makeQueueItem = (id: string, overrides: Partial<{ filePath: string }> = {}
     queueEntryId: `existing-${id}`,
 });
 
+type QueueItem = ReturnType<typeof makeQueueItem>;
+
 const makeTrack = (id: string, overrides: Partial<LocalTrack> = {}): LocalTrack => ({
     id,
     filePath: `/incoming/${id}.mp3`,
@@ -19,7 +21,7 @@ const makeTrack = (id: string, overrides: Partial<LocalTrack> = {}): LocalTrack 
 
 describe("filterTracksForInsert", () => {
     it("includes tracks already present in the queue", () => {
-        const existing = [makeQueueItem("a")];
+        const existing: QueueItem[] = [makeQueueItem("a")];
         const incoming = [makeTrack("a"), makeTrack("b")];
 
         const result = filterTracksForInsert(existing, incoming);
@@ -29,7 +31,7 @@ describe("filterTracksForInsert", () => {
     });
 
     it("keeps duplicate tracks within the drop payload", () => {
-        const existing = [makeQueueItem("duplicate", { filePath: "/shared/path.mp3" })];
+        const existing: QueueItem[] = [makeQueueItem("duplicate", { filePath: "/shared/path.mp3" })];
         const incoming = [
             makeTrack("unique-1"),
             makeTrack("duplicate", { filePath: "/shared/path.mp3" }),
@@ -49,7 +51,7 @@ describe("filterTracksForInsert", () => {
     });
 
     it("allows tracks without identifiers to pass through", () => {
-        const existing = [];
+        const existing: QueueItem[] = [];
         const incoming = [
             makeTrack("no-id", { id: "", filePath: "" }),
             makeTrack("with-id"),
