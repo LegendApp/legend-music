@@ -16,7 +16,7 @@ https://github.com/user-attachments/assets/061cae41-c47a-4977-b095-27d007b9d0e9
 - **Runtime:** React Native 0.78, `react-native-macos`, `@legendapp/state` for local state, `@legendapp/list` for high performance lists.
 - **Styling:** NativeWind + Tailwind tokens (`global.css`, `tailwind.config.js`), Fluent UI Vibrancy surfaces, shared primitives inside `src/legend-kit`.
 - **Native bridges:** Objective-C++ modules in `macos/LegendMusic-macOS` (AudioPlayer, WindowManager, DragDropView, FileDialog, FileSystemWatcher, SFSymbol) consumed through `src/native-modules`.
-- **Persistence:** JSON/msgpack stores under `~/Library/Caches/LegendMusic` driven by `createJSONManager`, plus `.m3u` queue exports for interoperability.
+- **Persistence:** JSON stores under `~/Library/Caches/LegendMusic` driven by `createJSONManager`, plus `.m3u` queue exports for interoperability.
 - **Build/Test:** Bun (`bun.lock`) for dependency + script management, Jest (`bun run test`), Biome (`bun run lint`), and Xcode builds through `scripts/build.ts`/`scripts/package-app.ts`.
 
 ## Prerequisites
@@ -115,7 +115,7 @@ Hotkeys are defined in `src/systems/hotkeys.ts` and persisted to `Cache/hotkeys.
 
 ## Persistence & caches
 
-- All observable stores (`localMusicSettings`, `LibraryCache`, `PlaylistCache`, `settings$, hotkeys$, visualizer preferences`) write to `~/Library/Caches/LegendMusic/data/*.json/lgm`.
+- All observable stores (`localMusicSettings`, `LibraryCache`, `PlaylistCache`, `settings$, hotkeys$, visualizer preferences`) write to `~/Library/Caches/LegendMusic/data/*.json` (with queue exports saved as `.m3u`).
 - Queue exports and imports use M3U via `saveQueueToM3U`/`loadQueueFromM3U`. Clear `queue.m3u` if you need to reset the session.
 - Album art is cached under `~/Library/Caches/LegendMusic/artwork/<hash>.<ext>` with versioning handled in `LocalMusicState`.
 - Removing the cache directory is the fastest way to reset the app without touching Git.

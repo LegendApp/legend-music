@@ -2,14 +2,11 @@ import type { Change } from "@legendapp/state";
 import { applyChanges, internal, isArray } from "@legendapp/state";
 import type { ObservablePersistPlugin, ObservablePersistPluginOptions, PersistMetadata } from "@legendapp/state/sync";
 import * as FileSystemNext from "expo-file-system/next";
-import { Packr } from "msgpackr";
 import { ensureCacheDirectory, getCacheDirectory } from "@/utils/cacheDirectories";
 import { timeoutOnce } from "@/utils/timeoutOnce";
 
 const MetadataSuffix = "__m";
 const { safeParse, safeStringify } = internal;
-
-const packer = new Packr({ bundleStrings: true });
 
 /**
  * Configuration options for the ReactNativeFS plugin
@@ -20,7 +17,7 @@ export interface ExpoFSPersistPluginOptions {
      */
     basePath?: "Cache";
 
-    format: "json" | "msgpack" | "m3u";
+    format: "json" | "m3u";
 
     /**
      * Preload all tables on startup. Can be true to load all, or an array of table names
@@ -39,7 +36,7 @@ class ObservablePersistExpoFS implements ObservablePersistPlugin {
     constructor(configuration: ExpoFSPersistPluginOptions) {
         this.configuration = configuration;
         this.directory = getCacheDirectory("data");
-        this.extension = configuration.format === "json" ? "json" : configuration.format === "m3u" ? "m3u" : "lgm";
+        this.extension = configuration.format === "m3u" ? "m3u" : "json";
     }
 
     public initialize(_configOptions: ObservablePersistPluginOptions) {
@@ -71,12 +68,8 @@ class ObservablePersistExpoFS implements ObservablePersistPlugin {
             const parsed = safeParse(content);
             return parsed;
         }
-        if (this.configuration.format === "m3u") {
-            // For M3U format, just return the plain text content
-            return file.text();
-        }
-        const content = file.bytes();
-        return packer.unpack(content);
+        // For M3U format, just return the plain text content
+        return file.text();
     }
 
     public loadTable(table: string) {
@@ -159,15 +152,12 @@ class ObservablePersistExpoFS implements ObservablePersistPlugin {
         console.log("save debounced", table);
 
         if (v !== undefined && v !== null) {
-            let out: string | Uint8Array;
-            if (this.configuration.format === "json") {
-                out = safeStringify(v);
-            } else if (this.configuration.format === "m3u") {
-                // For M3U format, expect the value to already be a string
-                out = typeof v === "string" ? v : String(v);
-            } else {
-                out = packer.pack(v);
-            }
+            const out =
+                this.configuration.format === "json"
+                    ? safeStringify(v)
+                    : typeof v === "string"
+                        ? v
+                        : String(v);
             return file.write(out);
         }
 

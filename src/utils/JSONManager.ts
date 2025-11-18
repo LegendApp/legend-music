@@ -15,7 +15,7 @@ export function createJSONManager<T extends object>(params: {
     initialValue: T;
     saveDefaultToFile?: boolean;
     transform?: SyncTransform<any, any>;
-    format?: "json" | "msgpack";
+    format?: "json";
     preload?: boolean | string[];
     saveTimeout?: number;
 }): Observable<T> {

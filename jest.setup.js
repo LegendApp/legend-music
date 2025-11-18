@@ -118,24 +118,6 @@ jest.mock("expo-file-system/next", () => {
 });
 
 
-jest.mock("msgpackr", () => {
-    class MockPackr {
-        constructor() {}
-        pack(value) {
-            return value;
-        }
-        unpack(value) {
-            return value;
-        }
-    }
-    return {
-        __esModule: true,
-        Packr: MockPackr,
-        pack: jest.fn(),
-        encode: jest.fn(),
-    };
-});
-
 jest.mock("react-native-reanimated", () => {
     const ReactNative = require("react-native");
 

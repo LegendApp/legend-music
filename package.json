@@ -23,7 +23,6 @@
         "@shopify/react-native-skia": "^2.3.7",
         "clsx": "^2.1.1",
         "expo": "~53.0.9",
-        "msgpackr": "^1.11.3",
         "nativewind": "^4.1.23",
         "react": "19.0.0",
         "react-native": "0.78.2",
