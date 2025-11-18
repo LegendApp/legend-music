@@ -31,7 +31,7 @@ const defaultSnapshot: PlaylistSnapshot = {
 const playlistCache$ = createJSONManager<PlaylistSnapshot>({
     filename: "playlistCache",
     initialValue: defaultSnapshot,
-    format: "msgpack",
+    format: "json",
     saveTimeout: 0,
     preload: false,
 });

@@ -33,7 +33,7 @@ const defaultSnapshot: LibrarySnapshot = {
 const libraryCache$ = createJSONManager<LibrarySnapshot>({
     filename: "libraryCache",
     initialValue: defaultSnapshot,
-    format: "msgpack",
+    format: "json",
     saveTimeout: 0,
     preload: false,
 });
