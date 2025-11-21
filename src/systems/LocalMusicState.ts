@@ -236,11 +236,11 @@ function extractThumbnailKeyFromPersisted(track: PersistedLibraryTrack | undefin
         return undefined;
     }
 
-    if (typeof track.thumb === "string" && track.thumb.length > 0) {
+    if (track.thumb?.length) {
         return track.thumb;
     }
 
-    if (typeof track.thumbnail === "string" && track.thumbnail.length > 0) {
+    if (track.thumbnail?.length) {
         const fileName = track.thumbnail.split("/").pop() ?? track.thumbnail;
         const [baseName] = fileName.split(".");
         return baseName && baseName.length > 0 ? baseName : undefined;
@@ -282,7 +282,7 @@ function buildCachedTrackIndex(normalizedRoots: string[]): {
 
         const map = new Map<string, PersistedLibraryTrack>();
         for (const track of tracksForRoot) {
-            const relativePath = typeof track.rel === "string" && track.rel.length > 0 ? track.rel : "";
+            const relativePath = track.rel ?? "";
             if (!relativePath) {
                 continue;
             }
@@ -303,7 +303,7 @@ function buildCachedTrackIndex(normalizedRoots: string[]): {
 }
 
 export async function ensureLocalTrackThumbnail(track: LocalTrack): Promise<string | undefined> {
-    if (typeof track.thumbnail === "string" && track.thumbnail.length > 0) {
+    if (track.thumbnail?.length) {
         return track.thumbnail;
     }
 
@@ -363,61 +363,30 @@ async function extractId3Metadata(
     try {
         const nativeTags = await AudioPlayer.getMediaTags(filePath, thumbnailsDirUri);
         if (nativeTags) {
-            if (typeof nativeTags.title === "string" && nativeTags.title.trim().length > 0) {
+            if (nativeTags.title?.trim()) {
                 title = nativeTags.title;
             }
-            if (typeof nativeTags.artist === "string" && nativeTags.artist.trim().length > 0) {
+            if (nativeTags.artist?.trim()) {
                 artist = nativeTags.artist;
             }
-            if (typeof nativeTags.album === "string" && nativeTags.album.trim().length > 0) {
+            if (nativeTags.album?.trim()) {
                 album = nativeTags.album;
             }
-            if (
-                typeof nativeTags.durationSeconds === "number" &&
-                Number.isFinite(nativeTags.durationSeconds) &&
-                nativeTags.durationSeconds > 0
-            ) {
+            if (Number.isFinite(nativeTags.durationSeconds) && nativeTags.durationSeconds > 0) {
                 duration = formatDuration(nativeTags.durationSeconds);
             }
-            const nativeThumbnailKey =
-                typeof nativeTags.artworkKey === "string" && nativeTags.artworkKey.length > 0
-                    ? nativeTags.artworkKey
-                    : undefined;
+            const nativeThumbnailKey = nativeTags.artworkKey?.length ? nativeTags.artworkKey : undefined;
             if (nativeThumbnailKey) {
                 thumbnailKey = nativeThumbnailKey;
                 thumbnail = buildThumbnailUri(thumbnailsDirUri, nativeThumbnailKey) ?? thumbnail;
             }
-            if (!thumbnail && typeof nativeTags.artworkUri === "string" && nativeTags.artworkUri.length > 0) {
+            if (!thumbnail && nativeTags.artworkUri?.length) {
                 thumbnail = nativeTags.artworkUri;
             }
         }
     } catch (error) {
         console.warn(`extractId3Metadata: Failed to read native metadata for ${fileName}:`, error);
     }
-
-    // console.log("extractId3Metadata", title, artist, album, duration, thumbnail);
-
-    // if (title === undefined || artist === undefined || album === undefined) {
-    //     console.log('extractId3Metadata did not load title or artist or album')
-    // }
-
-    // try {
-    //     // First try to extract ID3 tags
-    //     const tags = await perfTime("LocalMusic.ID3.fromPath", () => ID3.fromPath(filePath));
-
-    //     if (tags) {
-    //         title = tags.title || title;
-    //         artist = tags.artist || artist;
-    //         album = tags.album || album;
-
-    //         const tagDurationSeconds = parseDurationFromTags(tags);
-    //         if (tagDurationSeconds !== null) {
-    //             duration = formatDuration(tagDurationSeconds);
-    //         }
-    //     }
-    // } catch (error) {
-    //     console.warn(`Failed to read ID3 tags from ${fileName}:`, error);
-    // }
 
     return {
         title,
@@ -513,10 +482,6 @@ async function scanLibraryNative(
         return { tracks: [], errors: [] };
     }
 
-    if (typeof AudioPlayer.scanMediaLibrary !== "function") {
-        throw new Error("Native scan is not available");
-    }
-
     const normalizedRoots = paths.map((path) => normalizeRootPath(path));
     const tracks: LocalTrack[] = [];
     const scanErrors: string[] = [];
@@ -531,7 +496,7 @@ async function scanLibraryNative(
             return;
         }
 
-        const rootIndex = typeof event.rootIndex === "number" ? event.rootIndex : -1;
+        const rootIndex = event.rootIndex ?? -1;
         const rootPath = normalizedRoots[rootIndex];
         const cachedTracks = cachedTracksByRoot.get(rootIndex);
         if (!rootPath) {
@@ -539,12 +504,7 @@ async function scanLibraryNative(
         }
 
         for (const nativeTrack of event.tracks) {
-            const relativePath =
-                typeof nativeTrack.relativePath === "string" && nativeTrack.relativePath.length > 0
-                    ? nativeTrack.relativePath
-                    : typeof nativeTrack.fileName === "string"
-                      ? nativeTrack.fileName
-                      : "";
+            const relativePath = nativeTrack.relativePath?.length ? nativeTrack.relativePath : nativeTrack.fileName ?? "";
 
             if (!relativePath) {
                 continue;
@@ -563,43 +523,21 @@ async function scanLibraryNative(
 
             const cachedTrack = cachedTracks?.get(relativePath);
 
-            const title =
-                (typeof nativeTrack.title === "string" && nativeTrack.title.trim().length > 0
-                    ? nativeTrack.title
-                    : undefined) ??
-                (cachedTrack?.title && cachedTrack.title.length > 0 ? cachedTrack.title : undefined) ??
-                fallback.title;
-            const artist =
-                (typeof nativeTrack.artist === "string" && nativeTrack.artist.trim().length > 0
-                    ? nativeTrack.artist
-                    : undefined) ??
-                (cachedTrack?.artist && cachedTrack.artist.length > 0 ? cachedTrack.artist : undefined) ??
-                fallback.artist;
-            const album =
-                (typeof nativeTrack.album === "string" && nativeTrack.album.trim().length > 0
-                    ? nativeTrack.album
-                    : undefined) ??
-                (cachedTrack?.album && cachedTrack.album.length > 0 ? cachedTrack.album : undefined) ??
-                undefined;
+            const title = nativeTrack.title?.trim() || cachedTrack?.title || fallback.title;
+            const artist = nativeTrack.artist?.trim() || cachedTrack?.artist || fallback.artist;
+            const album = nativeTrack.album?.trim() || cachedTrack?.album || undefined;
 
             const durationSeconds =
-                typeof nativeTrack.durationSeconds === "number" && Number.isFinite(nativeTrack.durationSeconds)
+                Number.isFinite(nativeTrack.durationSeconds) && nativeTrack.durationSeconds != null
                     ? nativeTrack.durationSeconds
                     : undefined;
 
             const thumbnailKey =
-                typeof nativeTrack.artworkKey === "string" && nativeTrack.artworkKey.length > 0
-                    ? nativeTrack.artworkKey
-                    : extractThumbnailKeyFromPersisted(cachedTrack);
+                nativeTrack.artworkKey?.length ? nativeTrack.artworkKey : extractThumbnailKeyFromPersisted(cachedTrack);
             const thumbnailUri =
                 buildThumbnailUri(thumbnailsDirUri, thumbnailKey) ??
-                (typeof nativeTrack.artworkUri === "string" && nativeTrack.artworkUri.length > 0
-                    ? nativeTrack.artworkUri
-                    : cachedTrack?.thumbnail);
-            const duration =
-                typeof durationSeconds === "number"
-                    ? formatDuration(durationSeconds)
-                    : (cachedTrack?.duration ?? "0:00");
+                (nativeTrack.artworkUri?.length ? nativeTrack.artworkUri : cachedTrack?.thumbnail);
+            const duration = durationSeconds != null ? formatDuration(durationSeconds) : cachedTrack?.duration ?? "0:00";
 
             tracks.push({
                 id: absolutePath,
@@ -620,24 +558,16 @@ async function scanLibraryNative(
     };
 
     const handleProgress = (event: MediaScanProgressEvent) => {
-        const totalRoots =
-            typeof event.totalRoots === "number" && event.totalRoots > 0 ? event.totalRoots : normalizedRoots.length;
-        const completedRoots = Math.min(
-            totalRoots,
-            typeof event.completedRoots === "number" ? event.completedRoots : event.rootIndex + 1,
-        );
+        const totalRoots = event.totalRoots && event.totalRoots > 0 ? event.totalRoots : normalizedRoots.length;
+        const completedRoots = Math.min(totalRoots, event.completedRoots ?? event.rootIndex + 1);
 
         localMusicState$.scanTotal.set(totalRoots);
         localMusicState$.scanProgress.set(completedRoots);
     };
 
     const handleComplete = (event: MediaScanResult) => {
-        const totalRoots =
-            typeof event.totalRoots === "number" && event.totalRoots > 0 ? event.totalRoots : normalizedRoots.length;
-        const totalTracks =
-            typeof event.totalTracks === "number" && event.totalTracks >= 0
-                ? event.totalTracks
-                : localMusicState$.scanTrackTotal.get();
+        const totalRoots = event.totalRoots && event.totalRoots > 0 ? event.totalRoots : normalizedRoots.length;
+        const totalTracks = event.totalTracks ?? localMusicState$.scanTrackTotal.get();
         localMusicState$.scanTotal.set(totalRoots);
         localMusicState$.scanProgress.set(totalRoots);
         const finalTotal = Math.max(totalTracks ?? 0, cachedTrackCount, tracks.length);
@@ -645,9 +575,7 @@ async function scanLibraryNative(
         localMusicState$.scanTrackProgress.set(tracks.length);
 
         if (Array.isArray(event.errors) && event.errors.length > 0) {
-            scanErrors.push(
-                ...event.errors.filter((error): error is string => typeof error === "string" && error.length > 0),
-            );
+            scanErrors.push(...(event.errors as string[]));
         }
     };
 
@@ -662,12 +590,8 @@ async function scanLibraryNative(
             batchSize: 48,
             skip: skipEntries,
         });
-        const totalRoots =
-            typeof result.totalRoots === "number" && result.totalRoots > 0 ? result.totalRoots : normalizedRoots.length;
-        const totalTracks =
-            typeof result.totalTracks === "number" && result.totalTracks >= 0
-                ? result.totalTracks
-                : localMusicState$.scanTrackTotal.get();
+        const totalRoots = result.totalRoots && result.totalRoots > 0 ? result.totalRoots : normalizedRoots.length;
+        const totalTracks = result.totalTracks ?? localMusicState$.scanTrackTotal.get();
         localMusicState$.scanTotal.set(totalRoots);
         localMusicState$.scanProgress.set(totalRoots);
         localMusicState$.scanTrackTotal.set((value) =>
@@ -675,7 +599,7 @@ async function scanLibraryNative(
         );
         localMusicState$.scanTrackProgress.set(tracks.length);
         if (Array.isArray(result.errors) && result.errors.length > 0) {
-            scanErrors.push(...result.errors.filter((error): error is string => typeof error === "string"));
+            scanErrors.push(...(result.errors as string[]));
             console.warn("Native library scan completed with errors", {
                 errorCount: scanErrors.length,
                 totalTracks: result.totalTracks,
