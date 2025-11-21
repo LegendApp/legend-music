@@ -16,7 +16,7 @@ import { clearPlaylistCache, hasCachedPlaylistData } from "@/systems/PlaylistCac
 import { stateSaved$ } from "@/systems/State";
 import { ensureCacheDirectory, getCacheDirectory } from "@/utils/cacheDirectories";
 import { createJSONManager } from "@/utils/JSONManager";
-import { perfCount, perfDelta, perfLog, perfTime } from "@/utils/perfLogger";
+import { perfCount, perfLog } from "@/utils/perfLogger";
 import { runAfterInteractions } from "@/utils/runAfterInteractions";
 import { DEFAULT_LOCAL_PLAYLIST_ID } from "./localMusicConstants";
 
@@ -300,23 +300,6 @@ function buildCachedTrackIndex(normalizedRoots: string[]): {
     });
 
     return { skipEntries, cachedTracksByRoot, cachedTrackCount };
-}
-
-function joinPath(parent: string, child: string): string {
-    const trimmedChild = child.startsWith("/") ? child.replace(/^\/+/, "") : child;
-    if (parent.endsWith("/")) {
-        return `${parent}${trimmedChild}`;
-    }
-    return `${parent}/${trimmedChild}`;
-}
-
-function decodeFSComponent(name: string, context: string): string {
-    try {
-        return decodeURIComponent(name);
-    } catch (error) {
-        console.warn(`Failed to decode filesystem component ${name} in ${context}`, error);
-        return name;
-    }
 }
 
 export async function ensureLocalTrackThumbnail(track: LocalTrack): Promise<string | undefined> {
@@ -712,101 +695,6 @@ async function scanLibraryNative(
     }
 }
 
-// Scan directory for MP3 files
-async function scanDirectory(directoryPath: string, seenPaths?: Set<string>): Promise<LocalTrack[]> {
-    const tracks: LocalTrack[] = [];
-    const visited = new Set<string>();
-    const pending: string[] = [directoryPath];
-
-    try {
-        perfLog("LocalMusic.scanDirectory.start", { directoryPath });
-        while (pending.length > 0) {
-            const currentPath = pending.pop();
-            if (!currentPath || visited.has(currentPath)) {
-                continue;
-            }
-
-            visited.add(currentPath);
-
-            const directory = new Directory(currentPath);
-
-            if (!directory.exists) {
-                console.warn(`Directory does not exist: ${currentPath}`);
-                continue;
-            }
-
-            let items: (Directory | File)[] = [];
-
-            try {
-                items = perfTime("LocalMusic.Directory.list", () => directory.list());
-            } catch (error) {
-                console.error(`Failed to list directory ${currentPath}:`, error);
-                continue;
-            }
-
-            for (const item of items) {
-                perfCount("LocalMusic.scanDirectory.item");
-
-                if (item instanceof File) {
-                    const decodedFileName = decodeFSComponent(item.name, currentPath);
-                    if (!decodedFileName.toLowerCase().endsWith(".mp3")) {
-                        continue;
-                    }
-
-                    const filePath = joinPath(currentPath, decodedFileName);
-
-                    if (seenPaths?.has(filePath)) {
-                        continue;
-                    }
-
-                    try {
-                        const id3Delta = perfDelta("LocalMusic.scanDirectory.id3Loop");
-                        perfLog("LocalMusic.scanDirectory.processFile", {
-                            filePath,
-                            id3Delta,
-                        });
-                        // Extract metadata from ID3 tags with filename fallback
-                        const metadata = await extractId3Metadata(filePath, item.name);
-
-                        const track: LocalTrack = {
-                            id: filePath,
-                            title: metadata.title,
-                            artist: metadata.artist,
-                            album: metadata.album,
-                            duration: metadata.duration || "0:00",
-                            thumbnail: metadata.thumbnail,
-                            thumbnailKey: metadata.thumbnailKey,
-                            filePath,
-                            fileName: item.name,
-                        };
-
-                        tracks.push(track);
-                        seenPaths?.add(filePath);
-                    } catch (error) {
-                        console.error(`Failed to process MP3 file ${item.name}:`, error);
-                        // Continue with other files
-                    }
-                    continue;
-                }
-
-                if (item instanceof Directory) {
-                    const decodedDirectoryName = decodeFSComponent(item.name, currentPath);
-                    const childPath = joinPath(currentPath, decodedDirectoryName);
-                    if (!visited.has(childPath)) {
-                        pending.push(childPath);
-                    }
-                }
-            }
-        }
-
-        console.log(`Found ${tracks.length} MP3 files in ${directoryPath}`);
-        return tracks;
-    } catch (error) {
-        console.error(`Error scanning directory ${directoryPath}:`, error);
-        throw error;
-    }
-}
-
 // Scan all configured library paths
 export async function scanLocalMusic(): Promise<void> {
     const paths = Array.from(
@@ -848,29 +736,9 @@ export async function scanLocalMusic(): Promise<void> {
         let collectedTracks: LocalTrack[] = [];
         let scanErrors: string[] = [];
 
-        try {
-            const nativeResult = await scanLibraryNative(availablePaths, thumbnailsDir.uri);
-            collectedTracks = nativeResult.tracks;
-            scanErrors = nativeResult.errors;
-        } catch (nativeError) {
-            console.warn("Native scan failed, falling back to JS pipeline:", nativeError);
-            localMusicState$.scanProgress.set(0);
-            localMusicState$.scanTotal.set(availablePaths.length);
-            localMusicState$.error.set(
-                missingPaths.length > 0
-                    ? `Skipping missing folders: ${missingPaths.join(", ")}. Native scan failed; please retry.`
-                    : "Library scan failed. Please check folder permissions and try again.",
-            );
-
-            for (const path of availablePaths) {
-                try {
-                    const tracks = await scanDirectory(path);
-                    collectedTracks.push(...tracks);
-                } catch (directoryError) {
-                    console.error(`Failed to scan directory ${path}:`, directoryError);
-                }
-            }
-        }
+        const nativeResult = await scanLibraryNative(availablePaths, thumbnailsDir.uri);
+        collectedTracks = nativeResult.tracks;
+        scanErrors = nativeResult.errors;
 
         const dedupedTracks = dedupeTracksByPath(collectedTracks);
 
