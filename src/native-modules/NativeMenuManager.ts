@@ -1,4 +1,5 @@
 import { NativeEventEmitter, NativeModules, Platform } from "react-native";
+import { KeyCodes } from "@/systems/keyboard/KeyboardManager";
 
 // Get the native module
 const { MenuEvents } = NativeModules;
@@ -11,6 +12,11 @@ export interface MenuCommandEvent {
     commandId: string;
 }
 
+export interface MenuShortcut {
+    key: string;
+    modifiers?: number;
+}
+
 /**
  * MenuManager provides an interface to handle native menu events in macOS
  */
@@ -19,6 +25,8 @@ class MenuManager {
     private eventSubscriptions: { [key: string]: any } = {};
     private isNativeModuleAvailable: boolean;
     private commandListeners: Map<string, Array<() => void>> = new Map();
+    private readonly supportedModifierMask =
+        KeyCodes.MODIFIER_COMMAND | KeyCodes.MODIFIER_SHIFT | KeyCodes.MODIFIER_OPTION | KeyCodes.MODIFIER_CONTROL;
 
     constructor() {
         // Check if we're on macOS and if the native module is available
@@ -101,6 +109,20 @@ class MenuManager {
             MenuEvents.updateMenuItemTitle(commandId, title);
         } catch (error) {
             console.warn(`MenuManager: Failed to update title for ${commandId}`, error);
+        }
+    }
+
+    public setMenuItemShortcut(commandId: string, shortcut?: MenuShortcut | null) {
+        if (!this.isNativeModuleAvailable || typeof MenuEvents?.updateMenuItemShortcut !== "function") {
+            return;
+        }
+
+        try {
+            const modifiers = shortcut?.modifiers ?? 0;
+            const sanitizedModifiers = modifiers & this.supportedModifierMask;
+            MenuEvents.updateMenuItemShortcut(commandId, shortcut?.key ?? "", sanitizedModifiers);
+        } catch (error) {
+            console.warn(`MenuManager: Failed to update shortcut for ${commandId}`, error);
         }
     }
 }

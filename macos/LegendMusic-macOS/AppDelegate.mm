@@ -12,6 +12,42 @@
 static NSString *const kMenuCommandTriggeredNotification = @"MenuCommandTriggered";
 static NSString *const kMenuCommandUpdateNotification = @"MenuCommandUpdate";
 
+static inline NSEventModifierFlags LegendMenuSanitizedModifiers(NSNumber *value, NSString *keyEquivalent) {
+  if (!value) {
+    return 0;
+  }
+
+  NSEventModifierFlags allowed =
+    NSEventModifierFlagCommand |
+    NSEventModifierFlagShift |
+    NSEventModifierFlagOption |
+    NSEventModifierFlagControl;
+
+  NSEventModifierFlags mask = (NSEventModifierFlags)value.unsignedIntegerValue;
+  NSEventModifierFlags sanitized = mask & allowed;
+
+  // If we don't have a key equivalent, clear the modifiers to avoid showing placeholder glyphs
+  if (keyEquivalent.length == 0) {
+    return 0;
+  }
+
+  return sanitized;
+}
+
+static inline NSString *LegendMenuSanitizedKeyEquivalent(NSString *keyEquivalent) {
+  if (!keyEquivalent || keyEquivalent.length == 0) {
+    return @"";
+  }
+
+  if (keyEquivalent.length == 1) {
+    return [keyEquivalent lowercaseString];
+  }
+
+  // Only keep the first character to avoid invalid menu glyphs
+  unichar firstChar = [keyEquivalent characterAtIndex:0];
+  return [NSString stringWithCharacters:&firstChar length:1].lowercaseString;
+}
+
 static inline NSAppearance *LegendDarkAppearance() {
   if (@available(macOS 10.14, *)) {
     return [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua];
@@ -133,6 +169,19 @@ static inline NSAppearance *LegendDarkAppearance() {
 //   [self setupMenuCommand:@"checkForUpdates" itemTitle:@"Check for Updates..." inMenu:@"LegendPhotos"];
   [self setupMenuCommand:@"jump" itemTitle:@"Jump" inMenu:@"File"];
   [self setupPlaybackMenu];
+  [self normalizeMenuKeyEquivalents:mainMenu];
+}
+
+- (void)normalizeMenuKeyEquivalents:(NSMenu *)menu {
+  for (NSMenuItem *item in menu.itemArray) {
+    if (item.submenu) {
+      [self normalizeMenuKeyEquivalents:item.submenu];
+    }
+
+    if (item.keyEquivalent.length > 0 && item.keyEquivalentModifierMask == 0) {
+      item.keyEquivalentModifierMask = NSEventModifierFlagCommand;
+    }
+  }
 }
 
 - (SEL)selectorForCommandId:(NSString *)commandId {
@@ -304,6 +353,15 @@ static inline NSAppearance *LegendDarkAppearance() {
   NSString *title = userInfo[@"title"];
   if (title) {
     menuItem.title = title;
+  }
+
+  NSString *keyEquivalentRaw = userInfo[@"keyEquivalent"];
+  NSNumber *modifierMaskValue = userInfo[@"modifiers"];
+  if (keyEquivalentRaw || modifierMaskValue) {
+    NSString *keyEquivalent = LegendMenuSanitizedKeyEquivalent(keyEquivalentRaw ?: menuItem.keyEquivalent);
+    menuItem.keyEquivalent = keyEquivalent;
+    menuItem.keyEquivalentModifierMask =
+      LegendMenuSanitizedModifiers(modifierMaskValue ?: @(menuItem.keyEquivalentModifierMask), keyEquivalent);
   }
 }
 
