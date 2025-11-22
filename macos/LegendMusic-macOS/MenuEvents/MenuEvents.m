@@ -93,7 +93,9 @@ RCT_EXPORT_METHOD(updateMenuItemTitle:(NSString *)commandId title:(NSString *)ti
   [self postMenuUpdateWithUserInfo:@{ @"commandId": commandId, @"title": title }];
 }
 
-RCT_EXPORT_METHOD(updateMenuItemShortcut:(NSString *)commandId key:(NSString *)key modifiers:(NSNumber *)modifiers) {
+RCT_EXPORT_METHOD(updateMenuItemShortcut:(NSString *)commandId
+                  key:(NSString *)key
+                  modifiers:(nonnull NSNumber *)modifiers) {
   if (!commandId) {
     return;
   }
