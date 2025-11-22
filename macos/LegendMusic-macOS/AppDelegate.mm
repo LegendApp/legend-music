@@ -60,7 +60,9 @@ static inline NSAppearance *LegendDarkAppearance() {
                                                name:kMenuCommandUpdateNotification
                                              object:nil];
 
-  [self performSelector:@selector(setupMenuConnections) withObject:nil afterDelay:0.5];
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [self setupMenuConnections];
+  });
 
   [super applicationDidFinishLaunching:notification];
 
@@ -226,17 +228,32 @@ static inline NSAppearance *LegendDarkAppearance() {
     return;
   }
 
-  NSMenuItem *playbackMenuItem = [mainMenu itemWithTitle:@"Playback"];
+  NSInteger playbackIndex = [mainMenu indexOfItemWithTitle:@"Playback"];
+  BOOL playbackExists = playbackIndex >= 0;
+  NSMenuItem *playbackMenuItem = playbackExists ? [mainMenu itemAtIndex:playbackIndex] : nil;
   if (!playbackMenuItem) {
     playbackMenuItem = [[NSMenuItem alloc] initWithTitle:@"Playback" action:nil keyEquivalent:@""];
-    NSMenu *submenu = [[NSMenu alloc] initWithTitle:@"Playback"];
-    playbackMenuItem.submenu = submenu;
-    [mainMenu addItem:playbackMenuItem];
   }
 
   NSMenu *playbackMenu = [playbackMenuItem submenu];
   if (!playbackMenu) {
-    return;
+    playbackMenu = [[NSMenu alloc] initWithTitle:@"Playback"];
+    playbackMenuItem.submenu = playbackMenu;
+  }
+
+  NSInteger windowIndex = [mainMenu indexOfItemWithTitle:@"Window"];
+  NSInteger desiredIndex = windowIndex >= 0 ? windowIndex : [mainMenu numberOfItems];
+
+  if (!playbackExists || playbackIndex != desiredIndex) {
+    if (playbackExists) {
+      [mainMenu removeItemAtIndex:playbackIndex];
+      if (playbackIndex < desiredIndex) {
+        desiredIndex -= 1;
+      }
+    }
+
+    NSInteger boundedIndex = MIN(desiredIndex, [mainMenu numberOfItems]);
+    [mainMenu insertItem:playbackMenuItem atIndex:boundedIndex];
   }
 
   NSArray<NSString *> *playbackCommandKeys = @[
