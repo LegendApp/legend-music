@@ -63,7 +63,7 @@ export function CustomSlider({
     }, [isDragging, isHovered]);
 
     const updateValueFromLocation = useCallback(
-        (locationX: number, commit?: boolean) => {
+        (locationX: number) => {
             if (sliderWidth <= 0) {
                 return;
             }
@@ -81,7 +81,7 @@ export function CustomSlider({
 
             $value.set(newValue);
 
-            if (commit && newValue !== lastCommittedValueRef.current) {
+            if (newValue !== lastCommittedValueRef.current) {
                 onSlidingComplete?.(newValue);
                 lastCommittedValueRef.current = newValue;
             }
@@ -107,7 +107,7 @@ export function CustomSlider({
                     lastCommittedValueRef.current = null;
                     isDragging$.set(true);
                     onSlidingStart?.();
-                    updateValueFromLocation(event.nativeEvent.locationX, true);
+                    updateValueFromLocation(event.nativeEvent.locationX);
                 },
                 onPanResponderMove: (event: GestureResponderEvent) => {
                     if (isDisabled$.get() || !isDragging$.get()) {
@@ -120,7 +120,7 @@ export function CustomSlider({
                     perfLog("CustomSlider.panRelease", { disabled: isDisabled$.get() });
                     if (isDisabled$.get()) return;
 
-                    updateValueFromLocation(event.nativeEvent.locationX, true);
+                    updateValueFromLocation(event.nativeEvent.locationX);
                     isDragging$.set(false);
                     onSlidingEnd?.();
                 },
@@ -129,7 +129,7 @@ export function CustomSlider({
                     perfLog("CustomSlider.panTerminate", { disabled: isDisabled$.get() });
                     if (isDisabled$.get()) return;
 
-                    updateValueFromLocation(event.nativeEvent.locationX, true);
+                    updateValueFromLocation(event.nativeEvent.locationX);
                     isDragging$.set(false);
                     onSlidingEnd?.();
                 },
