@@ -344,7 +344,11 @@ async function loadTrackInternal(track: LocalTrack, autoPlay: boolean): Promise<
         }
 
         const thumbnailKey = track.thumbnailKey;
+        const thumbnailVersion = track.thumbnailVersion;
         const updates: Partial<QueuedTrack> = thumbnailKey ? { thumbnail, thumbnailKey } : { thumbnail };
+        if (thumbnailVersion !== undefined) {
+            updates.thumbnailVersion = thumbnailVersion;
+        }
 
         if (queueEntryId) {
             updateQueueEntry(queueEntryId, updates);
@@ -354,7 +358,9 @@ async function loadTrackInternal(track: LocalTrack, autoPlay: boolean): Promise<
         const isCurrentTrack = current && current.id === track.id;
         const hasNewThumbnail =
             current &&
-            (current.thumbnail !== thumbnail || (thumbnailKey && current.thumbnailKey !== thumbnailKey));
+            (current.thumbnail !== thumbnail ||
+                (thumbnailKey && current.thumbnailKey !== thumbnailKey) ||
+                (thumbnailVersion && current.thumbnailVersion !== thumbnailVersion));
 
         if (isCurrentTrack && hasNewThumbnail) {
             localPlayerState$.currentTrack.set({ ...current, ...updates });

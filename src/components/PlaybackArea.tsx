@@ -275,7 +275,12 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
             <View className="flex-row items-center">
                 {/* Album Art */}
                 <View className="mr-3">
-                    <AlbumArt uri={currentTrack?.thumbnail} size="large" fallbackIcon="♪" />
+                    <AlbumArt
+                        uri={currentTrack?.thumbnail}
+                        reloadKey={currentTrack?.thumbnailVersion}
+                        size="large"
+                        fallbackIcon="♪"
+                    />
                 </View>
 
                 {/* Song Info */}

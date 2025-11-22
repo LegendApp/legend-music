@@ -30,6 +30,7 @@ export interface LocalTrack {
     fileName: string;
     thumbnail?: string;
     thumbnailKey?: string;
+    thumbnailVersion?: number;
 }
 
 export interface LocalPlaylist {
@@ -255,6 +256,20 @@ function extractThumbnailKeyFromPersisted(track: PersistedLibraryTrack | undefin
     return undefined;
 }
 
+function isLocalFileUri(uri: string): boolean {
+    return uri.startsWith("file://") || uri.startsWith("/");
+}
+
+function thumbnailFileExists(uri: string): boolean {
+    try {
+        const thumbnailFile = new File(uri);
+        return thumbnailFile.exists;
+    } catch (error) {
+        console.warn(`ensureLocalTrackThumbnail: Failed to check thumbnail at ${uri}:`, error);
+        return false;
+    }
+}
+
 function buildCachedTrackIndex(normalizedRoots: string[]): {
     skipEntries: { rootIndex: number; relativePath: string }[];
     cachedTracksByRoot: Map<number, Map<string, PersistedLibraryTrack>>;
@@ -309,16 +324,29 @@ function buildCachedTrackIndex(normalizedRoots: string[]): {
 }
 
 export async function ensureLocalTrackThumbnail(track: LocalTrack): Promise<string | undefined> {
-    if (track.thumbnail?.length) {
-        return track.thumbnail;
+    const thumbnailUri = track.thumbnail;
+    const hasLocalThumbnail = thumbnailUri?.length && isLocalFileUri(thumbnailUri);
+    const missingLocalThumbnail = Boolean(
+        thumbnailUri?.length && hasLocalThumbnail && !thumbnailFileExists(thumbnailUri),
+    );
+
+    if (thumbnailUri?.length && !missingLocalThumbnail) {
+        return thumbnailUri;
+    }
+
+    if (missingLocalThumbnail) {
+        track.thumbnail = undefined;
     }
 
     const thumbnailsDir = getCacheDirectory("thumbnails");
     ensureCacheDirectory(thumbnailsDir);
 
     const fromKey = buildThumbnailUri(thumbnailsDir.uri, track.thumbnailKey);
-    if (fromKey) {
+    if (fromKey && thumbnailFileExists(fromKey)) {
         track.thumbnail = fromKey;
+        if (missingLocalThumbnail) {
+            track.thumbnailVersion = Date.now();
+        }
         return fromKey;
     }
 
@@ -329,6 +357,9 @@ export async function ensureLocalTrackThumbnail(track: LocalTrack): Promise<stri
         }
         if (metadata.thumbnail) {
             track.thumbnail = metadata.thumbnail;
+            if (missingLocalThumbnail && isLocalFileUri(metadata.thumbnail)) {
+                track.thumbnailVersion = Date.now();
+            }
         }
         return metadata.thumbnail;
     } catch (error) {
@@ -510,7 +541,9 @@ async function scanLibraryNative(
         }
 
         for (const nativeTrack of event.tracks) {
-            const relativePath = nativeTrack.relativePath?.length ? nativeTrack.relativePath : nativeTrack.fileName ?? "";
+            const relativePath = nativeTrack.relativePath?.length
+                ? nativeTrack.relativePath
+                : (nativeTrack.fileName ?? "");
 
             if (!relativePath) {
                 continue;
@@ -538,12 +571,14 @@ async function scanLibraryNative(
                     ? nativeTrack.durationSeconds
                     : undefined;
 
-            const thumbnailKey =
-                nativeTrack.artworkKey?.length ? nativeTrack.artworkKey : extractThumbnailKeyFromPersisted(cachedTrack);
+            const thumbnailKey = nativeTrack.artworkKey?.length
+                ? nativeTrack.artworkKey
+                : extractThumbnailKeyFromPersisted(cachedTrack);
             const thumbnailUri =
                 buildThumbnailUri(thumbnailsDirUri, thumbnailKey) ??
                 (nativeTrack.artworkUri?.length ? nativeTrack.artworkUri : cachedTrack?.thumbnail);
-            const duration = durationSeconds != null ? formatDuration(durationSeconds) : cachedTrack?.duration ?? "0:00";
+            const duration =
+                durationSeconds != null ? formatDuration(durationSeconds) : (cachedTrack?.duration ?? "0:00");
 
             tracks.push({
                 id: absolutePath,

@@ -9,6 +9,7 @@ interface AlbumArtProps extends Omit<ImageProps, "source"> {
     size?: "small" | "medium" | "large";
     fallbackIcon?: string;
     className?: string;
+    reloadKey?: string | number;
 }
 
 class ThumbnailCache {
@@ -131,7 +132,14 @@ class ThumbnailCache {
 
 const thumbnailCache = ThumbnailCache.getInstance();
 
-export function AlbumArt({ uri, size = "medium", fallbackIcon = "♪", className, ...imageProps }: AlbumArtProps) {
+export function AlbumArt({
+    uri,
+    size = "medium",
+    fallbackIcon = "♪",
+    className,
+    reloadKey,
+    ...imageProps
+}: AlbumArtProps) {
     // Initialize imageUri synchronously with cached thumbnail if available
     const getInitialImageUri = (uri: string | undefined): string | null => {
         if (!uri) return null;
@@ -193,7 +201,7 @@ export function AlbumArt({ uri, size = "medium", fallbackIcon = "♪", className
         return () => {
             isMounted = false;
         };
-    }, [uri]);
+    }, [uri, reloadKey]);
 
     const sizeClasses = {
         small: "size-6",
