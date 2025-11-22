@@ -13,6 +13,9 @@ import { useDragDrop } from "./DragDropContext";
 
 type DragDataResolver<T> = T | (() => T);
 
+const DRAG_ACTIVATION_DISTANCE = 8;
+const DRAG_ACTIVATION_DELAY_MS = 120;
+
 interface DraggableItemProps<T = any> {
     id: string;
     zoneId: string;
@@ -40,6 +43,8 @@ export const DraggableItem = <T,>({
     // State for tracking position and dimensions
     const [_layout, setLayout] = useState<LayoutRectangle | null>(null);
     const initialPositionRef = useRef({ pageX: 0, pageY: 0 });
+    const dragActivatedRef = useRef(false);
+    const dragStartTimeRef = useRef(0);
     const childMeasurementsRef = useRef<LayoutRectangle | null>(null);
 
     // Reference to the original view
@@ -85,7 +90,14 @@ export const DraggableItem = <T,>({
     const originalPanResponder = useRef(
         PanResponder.create({
             onStartShouldSetPanResponder: () => !disabled,
-            onMoveShouldSetPanResponder: () => !disabled,
+            onMoveShouldSetPanResponder: (_event, gestureState) => {
+                if (disabled) {
+                    return false;
+                }
+
+                const distance = Math.hypot(gestureState.dx, gestureState.dy);
+                return distance >= DRAG_ACTIVATION_DISTANCE;
+            },
 
             onPanResponderGrant: (e: GestureResponderEvent) => {
                 // Ensure clean state before starting a new drag
@@ -95,44 +107,59 @@ export const DraggableItem = <T,>({
                 globalPositionRef.current = { x: 0, y: 0 };
                 // Reset position ready state
                 setPositionReady(false);
+                dragActivatedRef.current = false;
+                dragStartTimeRef.current = Date.now();
 
                 // Save initial touch position
                 initialPositionRef.current = {
                     pageX: e.nativeEvent.pageX,
                     pageY: e.nativeEvent.pageY,
                 };
-
-                // Set dragging state first
-                setIsDragging(true);
-
-                // Clear any previous drop highlight
-                activeDropZone$.set(null);
-
-                // Trigger the drag start callback
-                onDragStart?.();
-
-                // Set the dragged item in the context
-                draggedItem$.set({
-                    id,
-                    data: resolveData(),
-                    sourceZoneId: zoneId,
-                });
-
-                // Find absolute position of the item for portal positioning
-                if (viewRef.current && childMeasurementsRef.current) {
-                    // More reliable positioning using element bounds and touch position
-                    viewRef.current.measure((_x, _y, _width, _height, pageX, pageY) => {
-                        setPortalPosition({
-                            left: pageX,
-                            top: pageY,
-                        });
-                        // Mark position as ready
-                        setPositionReady(true);
-                    });
-                }
             },
 
             onPanResponderMove: (_e: GestureResponderEvent, gestureState) => {
+                // Don't activate drag until the movement threshold is exceeded
+                if (!dragActivatedRef.current) {
+                    const distance = Math.hypot(gestureState.dx, gestureState.dy);
+                    const elapsed = Date.now() - dragStartTimeRef.current;
+                    if (distance < DRAG_ACTIVATION_DISTANCE || elapsed < DRAG_ACTIVATION_DELAY_MS) {
+                        return;
+                    }
+
+                    dragActivatedRef.current = true;
+                    // Clear any previous drop highlight
+                    activeDropZone$.set(null);
+                    // Trigger the drag start callback
+                    onDragStart?.();
+                    // Set the dragged item in the context
+                    draggedItem$.set({
+                        id,
+                        data: resolveData(),
+                        sourceZoneId: zoneId,
+                    });
+
+                    // Find absolute position of the item for portal positioning
+                    if (viewRef.current && childMeasurementsRef.current) {
+                        // More reliable positioning using element bounds and touch position
+                        viewRef.current.measure((_x, _y, _width, _height, pageX, pageY) => {
+                            setPortalPosition({
+                                left: pageX,
+                                top: pageY,
+                            });
+                            // Mark position as ready
+                            setPositionReady(true);
+                        });
+                    } else {
+                        setPositionReady(true);
+                    }
+
+                    setIsDragging(true);
+                }
+
+                if (!dragActivatedRef.current) {
+                    return;
+                }
+
                 // Update the position of the item
                 pan.setValue({
                     x: gestureState.dx,
@@ -161,6 +188,15 @@ export const DraggableItem = <T,>({
 
     // Shared function to handle drag end
     const handleDragEnd = () => {
+        if (!dragActivatedRef.current) {
+            activeDropZone$.set(null);
+            draggedItem$.set(null);
+            setIsDragging(false);
+            setPositionReady(false);
+            dragActivatedRef.current = false;
+            return;
+        }
+
         const activeDropZoneId = activeDropZone$.get();
         const dropZone = activeDropZoneId ? getDropZoneById(activeDropZoneId) : undefined;
         const draggedItemValue = draggedItem$.get();
@@ -171,6 +207,7 @@ export const DraggableItem = <T,>({
         }
 
         activeDropZone$.set(null);
+        dragActivatedRef.current = false;
 
         // Reset the drag state
         setIsDragging(false);

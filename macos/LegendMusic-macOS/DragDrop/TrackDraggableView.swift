@@ -16,6 +16,10 @@ class TrackDraggableView: NSView, NSDraggingSource {
     @objc var trackPayload: [[String: Any]] = []
     @objc var onDragStart: RCTDirectEventBlock?
 
+    private let dragActivationDistance: CGFloat = 8
+    private let dragActivationDelay: TimeInterval = 0.12
+    private var initialMouseDownLocation: NSPoint?
+    private var mouseDownTimestamp: TimeInterval?
     private var isDragging = false
 
     override init(frame frameRect: NSRect) {
@@ -32,11 +36,24 @@ class TrackDraggableView: NSView, NSDraggingSource {
         wantsLayer = true
     }
 
+    override func mouseDown(with event: NSEvent) {
+        initialMouseDownLocation = convert(event.locationInWindow, from: nil)
+        mouseDownTimestamp = event.timestamp
+        super.mouseDown(with: event)
+    }
+
     override func mouseDragged(with event: NSEvent) {
         super.mouseDragged(with: event)
 
         guard !isDragging else { return }
         guard !trackPayload.isEmpty else { return }
+
+        let startLocation = initialMouseDownLocation ?? convert(event.locationInWindow, from: nil)
+        let currentLocation = convert(event.locationInWindow, from: nil)
+        let distance = hypot(currentLocation.x - startLocation.x, currentLocation.y - startLocation.y)
+        let elapsed = event.timestamp - (mouseDownTimestamp ?? event.timestamp)
+
+        guard distance >= dragActivationDistance, elapsed >= dragActivationDelay else { return }
 
         isDragging = true
         onDragStart?([:])
@@ -46,6 +63,8 @@ class TrackDraggableView: NSView, NSDraggingSource {
     override func mouseUp(with event: NSEvent) {
         super.mouseUp(with: event)
         isDragging = false
+        initialMouseDownLocation = nil
+        mouseDownTimestamp = nil
     }
 
     private func beginDragSession(event: NSEvent) {
@@ -88,6 +107,8 @@ class TrackDraggableView: NSView, NSDraggingSource {
 
     func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {
         isDragging = false
+        initialMouseDownLocation = nil
+        mouseDownTimestamp = nil
     }
 
     func ignoreModifierKeys(for session: NSDraggingSession) -> Bool {
