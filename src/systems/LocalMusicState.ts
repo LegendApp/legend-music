@@ -13,6 +13,7 @@ import {
     type PersistedLibraryTrack,
 } from "@/systems/LibraryCache";
 import { hasCachedPlaylistData } from "@/systems/PlaylistCache";
+import { DEBUG_LOCAL_MUSIC_LOGS } from "@/systems/constants";
 import { stateSaved$ } from "@/systems/State";
 import { ensureCacheDirectory, getCacheDirectory } from "@/utils/cacheDirectories";
 import { createJSONManager } from "@/utils/JSONManager";
@@ -91,7 +92,6 @@ let removeLibraryWatcher: (() => void) | undefined;
 let libraryWatcherTimeout: ReturnType<typeof setTimeout> | undefined;
 let hasSubscribedToLibraryPathChanges = false;
 let lastLibraryPaths: string[] = [];
-const DEBUG_LOCAL_MUSIC_LOGS = false;
 const debugLocalMusicLog = (...args: unknown[]) => {
     if (DEBUG_LOCAL_MUSIC_LOGS) {
         console.log(...args);

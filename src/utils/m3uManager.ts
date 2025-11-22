@@ -1,10 +1,10 @@
 import { File } from "expo-file-system/next";
 import type { LocalTrack } from "@/systems/LocalMusicState";
+import { DEBUG_QUEUE_LOGS } from "@/systems/constants";
 import { getCacheDirectory } from "@/utils/cacheDirectories";
 import { formatSecondsToMmSs, type M3UTrack, parseDurationToSeconds, parseM3U, writeM3U } from "@/utils/m3u";
 
 const QUEUE_FILE_PATH = "queue.m3u";
-const DEBUG_QUEUE_LOGS = false;
 
 /**
  * Converts LocalTrack to M3UTrack

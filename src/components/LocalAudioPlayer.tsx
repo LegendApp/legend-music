@@ -7,6 +7,7 @@ import { ensureLocalTrackThumbnail } from "@/systems/LocalMusicState";
 import { playbackInteractionState$ } from "@/systems/PlaybackInteractionState";
 import type { PersistedQueuedTrack, PlaylistSnapshot } from "@/systems/PlaylistCache";
 import { getPlaylistCacheSnapshot, persistPlaylistSnapshot } from "@/systems/PlaylistCache";
+import { DEBUG_AUDIO_LOGS } from "@/systems/constants";
 import { type RepeatMode, settings$ } from "@/systems/Settings";
 import { clearQueueM3U, loadQueueFromM3U, saveQueueToM3U } from "@/utils/m3uManager";
 import { perfCount, perfDelta, perfLog } from "@/utils/perfLogger";
@@ -48,7 +49,6 @@ export const queue$ = observable<PlaybackQueueState>({
     tracks: [],
 });
 
-const DEBUG_AUDIO_LOGS = false;
 let queueEntryCounter = 0;
 
 function createQueueEntryId(seed: string): string {

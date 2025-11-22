@@ -25,6 +25,7 @@ import {
     scanLocalMusic,
     setCurrentPlaylist,
 } from "@/systems/LocalMusicState";
+import { DEBUG_PLAYLIST_LOGS } from "@/systems/constants";
 import { settings$ } from "@/systems/Settings";
 import { state$ } from "@/systems/State";
 import { cn } from "@/utils/cn";
@@ -55,7 +56,6 @@ type LegendListHandle = ElementRef<typeof LegendList> & {
     scrollIndexIntoView?: (params: { index: number; animated?: boolean }) => void;
     scrollToIndex?: (params: { index: number; animated?: boolean }) => void;
 };
-const DEBUG_PLAYLIST_LOGS = false;
 const debugPlaylistLog = (...args: unknown[]) => {
     if (DEBUG_PLAYLIST_LOGS) {
         console.log(...args);
