@@ -1,6 +1,8 @@
 import { observable } from "@legendapp/state";
 import { useEffect } from "react";
 import { View } from "react-native";
+import { File } from "expo-file-system/next";
+import { showToast } from "@/components/Toast";
 import { type NowPlayingInfoPayload, useAudioPlayer } from "@/native-modules/AudioPlayer";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import { ensureLocalTrackThumbnail } from "@/systems/LocalMusicState";
@@ -39,6 +41,7 @@ export const localPlayerState$ = observable<LocalPlayerState>({
 
 export interface QueuedTrack extends LocalTrack {
     queueEntryId: string;
+    isMissing?: boolean;
 }
 
 export interface PlaybackQueueState {
@@ -205,6 +208,46 @@ function updateQueueEntry(queueEntryId: string, updates: Partial<QueuedTrack>): 
     setQueueTracks(nextQueue);
 }
 
+const normalizeTrackPathForFs = (path: string): string => {
+    if (!path) {
+        return path;
+    }
+    return path.startsWith("file://") ? path.replace("file://", "") : path;
+};
+
+const trackFileExists = (filePath: string): boolean => {
+    try {
+        const file = new File(normalizeTrackPathForFs(filePath));
+        return file.exists;
+    } catch (error) {
+        console.warn("Failed to verify track existence", error);
+        return true;
+    }
+};
+
+const handleMissingTrackFile = (track: LocalTrack, queueEntryId?: string) => {
+    const label = track.title || track.fileName || track.filePath;
+    showToast(`Track not found: ${label}`, "error");
+    if (queueEntryId) {
+        updateQueueEntry(queueEntryId, { isMissing: true });
+    }
+    localPlayerState$.error.set("Track file not found");
+    localPlayerState$.isLoading.set(false);
+    localPlayerState$.isPlaying.set(false);
+};
+
+const handleTrackLoadFailure = (track: LocalTrack, queueEntryId: string | undefined, errorMessage: string) => {
+    const exists = trackFileExists(track.filePath);
+    if (!exists) {
+        handleMissingTrackFile(track, queueEntryId);
+        return;
+    }
+
+    localPlayerState$.error.set(errorMessage);
+    localPlayerState$.isLoading.set(false);
+    localPlayerState$.isPlaying.set(false);
+};
+
 function asArray(input: QueueInput): LocalTrack[] {
     return Array.isArray(input) ? input : [input];
 }
@@ -334,6 +377,12 @@ async function loadTrackInternal(track: LocalTrack, autoPlay: boolean): Promise<
     localPlayerState$.duration.set(0);
     localPlayerState$.isLoading.set(true);
     localPlayerState$.error.set(null);
+    const queueEntryId = isQueuedTrack(track) ? track.queueEntryId : undefined;
+
+    if (!trackFileExists(track.filePath)) {
+        handleMissingTrackFile(track, queueEntryId);
+        return;
+    }
 
     if (audioPlayer) {
         const nowPlayingUpdate: NowPlayingInfoPayload = {
@@ -350,7 +399,6 @@ async function loadTrackInternal(track: LocalTrack, autoPlay: boolean): Promise<
         audioPlayer.updateNowPlayingInfo(nowPlayingUpdate);
     }
 
-    const queueEntryId = isQueuedTrack(track) ? track.queueEntryId : undefined;
     void ensureLocalTrackThumbnail(track).then((thumbnail) => {
         if (!thumbnail) {
             return;
@@ -393,13 +441,12 @@ async function loadTrackInternal(track: LocalTrack, autoPlay: boolean): Promise<
         } else {
             const errorMessage = result.error || "Failed to load track";
             perfLog("LocalAudioControls.loadTrack.error", errorMessage);
-            localPlayerState$.error.set(errorMessage);
-            localPlayerState$.isLoading.set(false);
+            handleTrackLoadFailure(track, queueEntryId, errorMessage);
         }
     } catch (error) {
         console.error("Error loading track:", error);
-        localPlayerState$.error.set(error instanceof Error ? error.message : "Unknown error");
-        localPlayerState$.isLoading.set(false);
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        handleTrackLoadFailure(track, queueEntryId, errorMessage);
     }
 }
 

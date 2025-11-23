@@ -31,6 +31,7 @@ export interface LocalTrack {
     fileName: string;
     thumbnail?: string;
     thumbnailKey?: string;
+    isMissing?: boolean;
 }
 
 export interface LocalPlaylist {

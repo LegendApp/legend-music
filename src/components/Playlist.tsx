@@ -42,6 +42,7 @@ import {
     type PlaylistDragData,
 } from "./dnd";
 import { useDragDrop } from "./dnd/DragDropContext";
+import { showToast } from "@/components/Toast";
 
 type PlaylistTrackWithSuggestions = TrackData & {
     queueEntryId: string;
@@ -49,6 +50,7 @@ type PlaylistTrackWithSuggestions = TrackData & {
     isSeparator?: boolean;
     filePath: string;
     fileName: string;
+    isMissing?: boolean;
 };
 
 interface DropFeedback {
@@ -66,6 +68,14 @@ const debugPlaylistLog = (...args: unknown[]) => {
     }
 };
 
+const normalizeTrackPath = (path: string): string => {
+    if (!path) {
+        return "";
+    }
+    const withoutPrefix = path.startsWith("file://") ? path.slice("file://".length) : path;
+    return withoutPrefix.replace(/\/+$/, "").toLowerCase();
+};
+
 export function Playlist() {
     perfCount("Playlist.render");
     const localMusicState = use$(localMusicState$);
@@ -79,9 +89,17 @@ export function Playlist() {
     const hasConfiguredLibrary = libraryPaths.length > 0;
     const hasLibraryTracks = localMusicState.tracks.length > 0;
     const isDefaultPlaylistSelected = localMusicState.isLocalFilesSelected;
+    const existingTrackPathSet = useMemo(() => {
+        const set = new Set<string>();
+        for (const track of localMusicState.tracks) {
+            const normalized = normalizeTrackPath(track.filePath);
+            if (normalized) {
+                set.add(normalized);
+            }
+        }
+        return set;
+    }, [localMusicState.tracks]);
     const [isDragOver, setIsDragOver] = useState(false);
-    const [dropFeedback, setDropFeedback] = useState<DropFeedback | null>(null);
-    const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const skipClickRef = useRef(false);
     const skipBackgroundClearRef = useRef(false);
     const activeNativePlaylistDragRef = useRef<string | null>(null);
@@ -107,19 +125,26 @@ export function Playlist() {
     // Render the active playback queue
     const playlist: PlaylistTrackWithSuggestions[] = useMemo(
         () =>
-            queueTracks.map((track, index) => ({
-                id: track.id,
-                title: track.title,
-                artist: track.artist,
-                duration: track.duration,
-                thumbnail: track.thumbnail || "",
-                filePath: track.filePath,
-                fileName: track.fileName,
-                index,
-                isPlaying: index === currentTrackIndex && isPlayerActive,
-                queueEntryId: track.queueEntryId,
-            })),
-        [queueTracks, currentTrackIndex, isPlayerActive],
+            queueTracks.map((track, index) => {
+                const normalizedPath = normalizeTrackPath(track.filePath);
+                const isMissing =
+                    track.isMissing ||
+                    (hasLibraryTracks && normalizedPath ? !existingTrackPathSet.has(normalizedPath) : false);
+                return {
+                    id: track.id,
+                    title: track.title,
+                    artist: track.artist,
+                    duration: track.duration,
+                    thumbnail: track.thumbnail || "",
+                    filePath: track.filePath,
+                    fileName: track.fileName,
+                    index,
+                    isPlaying: index === currentTrackIndex && isPlayerActive,
+                    queueEntryId: track.queueEntryId,
+                    isMissing,
+                };
+            }),
+        [queueTracks, currentTrackIndex, isPlayerActive, hasLibraryTracks, existingTrackPathSet],
     );
 
     const playlistContextMenuItems = useMemo(
@@ -272,23 +297,7 @@ export function Playlist() {
 
     const showDropFeedback = useCallback(
         (feedback: DropFeedback) => {
-            setDropFeedback(feedback);
-            if (feedbackTimeoutRef.current) {
-                clearTimeout(feedbackTimeoutRef.current);
-            }
-            feedbackTimeoutRef.current = setTimeout(() => {
-                setDropFeedback(null);
-                feedbackTimeoutRef.current = null;
-            }, 3000);
-        },
-        [setDropFeedback],
-    );
-
-    useEffect(
-        () => () => {
-            if (feedbackTimeoutRef.current) {
-                clearTimeout(feedbackTimeoutRef.current);
-            }
+            showToast(feedback.message, feedback.type === "warning" ? "error" : "info");
         },
         [],
     );
@@ -819,27 +828,6 @@ export function Playlist() {
             }}
             allowedFileTypes={["mp3", "wav", "m4a", "aac", "flac"]}
         >
-            {dropFeedback ? (
-                <View className="pointer-events-none absolute bottom-2 left-0 right-0 z-20 items-center">
-                    <View
-                        className={cn(
-                            "px-3 py-2 rounded-lg border shadow-lg",
-                            dropFeedback.type === "warning"
-                                ? "bg-yellow-500/70 border-yellow-400/70"
-                                : "bg-emerald-500/70 border-emerald-400/60",
-                        )}
-                    >
-                        <Text
-                            className={cn(
-                                "text-xs font-medium",
-                                dropFeedback.type === "warning" ? "text-yellow-50" : "text-emerald-50",
-                            )}
-                        >
-                            {dropFeedback.message}
-                        </Text>
-                    </View>
-                </View>
-            ) : null}
             {emptyStateContent ? (
                 <View className="flex-1 items-center justify-center px-8 text-center">{emptyStateContent}</View>
             ) : (

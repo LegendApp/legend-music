@@ -20,6 +20,7 @@ export interface TrackData {
     isSeparator?: boolean;
     fromSuggestions?: boolean;
     queueEntryId?: string;
+    isMissing?: boolean;
 }
 
 interface TrackItemProps {
@@ -54,6 +55,7 @@ export const TrackItem = ({
 
     const trackIsPlayingFlag = track.isPlaying;
     const trackQueueEntryId = track.queueEntryId;
+    const isMissing = !!track.isMissing;
     const isPlaying = useSelector(() => {
         if (typeof trackIsPlayingFlag === "boolean") {
             return trackIsPlayingFlag;
@@ -105,13 +107,15 @@ export const TrackItem = ({
             variant: "compact",
             isActive: !suppressActiveState && isPlaying,
             isSelected,
-            isInteractive: !disableHover,
+            isInteractive: !disableHover && !isMissing,
         }),
         track.fromSuggestions ? "opacity-75" : "",
+        isMissing ? "opacity-50" : "",
         "w-full",
     );
-    const indexTone = track.fromSuggestions ? listItemStyles.text.muted : listItemStyles.text.secondary;
-    const primaryTone = track.fromSuggestions ? listItemStyles.text.secondary : listItemStyles.text.primary;
+    const indexTone = track.fromSuggestions || isMissing ? listItemStyles.text.muted : listItemStyles.text.secondary;
+    const primaryTone = track.fromSuggestions || isMissing ? listItemStyles.text.secondary : listItemStyles.text.primary;
+    const durationTone = track.fromSuggestions || isMissing ? listItemStyles.text.muted : "";
 
     return (
         <Button
@@ -135,7 +139,7 @@ export const TrackItem = ({
 
             <Text
                 className={listItemStyles.getMetaClassName({
-                    className: cn("text-xs ml-4", track.fromSuggestions ? listItemStyles.text.muted : ""),
+                    className: cn("text-xs ml-4", track.fromSuggestions ? listItemStyles.text.muted : "", durationTone),
                 })}
             >
                 {track.duration}

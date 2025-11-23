@@ -7,6 +7,7 @@ import { LogBox, StyleSheet, View } from "react-native";
 import { DragDropProvider } from "@/components/dnd";
 import { MainContainer } from "@/components/MainContainer";
 import { TitleBar } from "@/components/TitleBar";
+import { ToastProvider } from "@/components/Toast";
 import { TooltipProvider } from "@/components/TooltipProvider";
 import { MediaLibraryWindowManager } from "@/media-library/MediaLibraryWindowManager";
 import { CurrentSongOverlayController } from "@/overlay/CurrentSongOverlayController";
@@ -73,6 +74,7 @@ function App(): React.JSX.Element | null {
                 <VibrancyView blendingMode="behindWindow" material="sidebar" style={styles.vibrancy}>
                     <View className="flex-1 bg-background-primary/40">
                         <PortalProvider>
+                            <ToastProvider />
                             <TooltipProvider>
                                 <DragDropProvider>
                                     <MainContainer />
