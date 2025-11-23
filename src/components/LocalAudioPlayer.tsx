@@ -288,6 +288,19 @@ async function play(): Promise<void> {
     }
 
     try {
+        const duration = localPlayerState$.duration.peek();
+        const currentTime = localPlayerState$.currentTime.peek();
+        const shouldRestart = duration > 0 && duration - currentTime <= 2;
+
+        if (shouldRestart) {
+            localPlayerState$.currentTime.set(0);
+            try {
+                await audioPlayer.seek(0);
+            } catch (seekError) {
+                console.error("Error seeking to restart playback:", seekError);
+            }
+        }
+
         await audioPlayer.play();
     } catch (error) {
         console.error("Error playing:", error);
@@ -817,6 +830,8 @@ function playNext(): void {
     }
 
     if (nextIndex === -1) {
+        const duration = localPlayerState$.duration.peek();
+        localPlayerState$.currentTime.set(duration);
         localPlayerState$.isPlaying.set(false);
         return;
     }
@@ -981,6 +996,8 @@ export function LocalAudioPlayer() {
                         console.log("Track completed, playing next if available");
                     }
                 }
+                const duration = localPlayerState$.duration.peek();
+                localPlayerState$.currentTime.set(duration);
                 localPlayerState$.isPlaying.set(false);
                 localAudioControls.playNext();
             }),
