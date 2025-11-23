@@ -3,7 +3,6 @@ import { AnimatePresence, Motion } from "@legendapp/motion";
 import { observe } from "@legendapp/state";
 import { use$, useObserveEffect } from "@legendapp/state/react";
 import type { JSX } from "react";
-import { useEffect } from "react";
 import { Pressable } from "react-native";
 import WindowControls from "@/native-modules/WindowControls";
 import { settings$ } from "@/systems/Settings";
@@ -48,11 +47,10 @@ export function TitleBar() {
 
     return (
         <Pressable
-            className="absolute top-0 left-0 right-0 h-[28px] z-[1000]"
+            className="absolute top-0 left-0 right-0 h-[28px]"
             onPointerMove={onHover}
             onHoverIn={onHover}
             onHoverOut={onHoverLeave}
-            mouseDownCanMoveWindow
         >
             <AnimatePresence>
                 {isHovered ? (
@@ -76,22 +74,23 @@ export function TitleBar() {
     );
 }
 
-let isVisible: boolean | undefined;
+let areControlsVisible: boolean | undefined;
 observe(() => {
     perfCount("TitleBar.observe");
     const showOnHover = settings$.general.showTitleBarOnHover.get();
-    const show = !showOnHover || !state$.titleBarHovered.get();
-    perfLog("TitleBar.observe.state", { hide: show, showOnHover });
+    const shouldShowControls = showOnHover && state$.titleBarHovered.get();
+    const shouldHideControls = !shouldShowControls;
+    perfLog("TitleBar.observe.state", { hide: shouldHideControls, showOnHover });
 
-    if (isVisible === undefined || isVisible !== show) {
-        isVisible = show;
+    if (areControlsVisible === undefined || areControlsVisible !== shouldShowControls) {
+        areControlsVisible = shouldShowControls;
         setTimeout(() => {
-            if (show) {
-                WindowControls.showWindowControls();
-            } else {
+            if (shouldHideControls) {
                 WindowControls.hideWindowControls();
+            } else {
+                WindowControls.showWindowControls();
             }
-            perfLog("TitleBar.observe.timeout", { hide: show, showOnHover });
+            perfLog("TitleBar.observe.timeout", { hide: shouldHideControls, showOnHover });
         }, 100);
     }
 });
