@@ -127,6 +127,7 @@ static inline NSAppearance *LegendDarkAppearance() {
                                            styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskResizable | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable
                                              backing:NSBackingStoreBuffered
                                                defer:NO];
+  self.window.minSize = NSMakeSize(200, 300);
   self.window.title = self.moduleName;
   NSAppearance *darkAppearance = LegendDarkAppearance();
   if (darkAppearance) {
