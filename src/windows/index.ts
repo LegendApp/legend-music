@@ -33,7 +33,7 @@ const windowsConfig = {
             title: "",
             level: "status",
             transparentBackground: true,
-            hasShadow: true,
+            hasShadow: false,
             windowStyle: {
                 width: OVERLAY_WINDOW_WIDTH_COMPACT,
                 height: OVERLAY_WINDOW_HEIGHT_COMPACT,

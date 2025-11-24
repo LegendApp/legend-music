@@ -137,14 +137,10 @@ function CurrentSongOverlayWindow() {
         const windowOpen = currentSongOverlay$.isWindowOpen.peek();
 
         if (exiting) {
-            if (Platform.OS === "macos") {
-                void (async () => {
-                    try {
-                        await setWindowBlur(WINDOW_ID, OVERLAY_WINDOW_MAX_BLUR_RADIUS, OVERLAY_WINDOW_HIDE_DURATION_MS);
-                    } catch (error) {
-                        console.error("Failed to animate overlay blur on hide:", error);
-                    }
-                })();
+            try {
+                setWindowBlur(WINDOW_ID, OVERLAY_WINDOW_MAX_BLUR_RADIUS, OVERLAY_WINDOW_HIDE_DURATION_MS);
+            } catch (error) {
+                console.error("Failed to animate overlay blur on hide:", error);
             }
 
             opacity.value = withTiming(
