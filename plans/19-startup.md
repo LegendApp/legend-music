@@ -14,6 +14,6 @@ Trim startup latency by reducing duplicate persistence loads, deferring non-crit
 
 ## Steps
 - [x] Remove duplicate store preloads and ensure single instantiation paths.
-- [ ] Defer non-critical cache hydration and initial track loading until after first layout/interaction while keeping queue hydration ready for playlist rendering.
+- [x] Defer non-critical cache hydration and initial track loading until after first layout/interaction while keeping queue hydration ready for playlist rendering.
 - [ ] Add targeted perf marks (including `sinceStartMs` in persist logs) around queue hydration and first track load to validate improvements.
 - [ ] Audit native init (Skia/AudioPlayer) and file watcher auto-scan triggers to avoid synchronous work before UI is ready.

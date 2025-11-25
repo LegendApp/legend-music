@@ -12,8 +12,8 @@ import { getPlaylistCacheSnapshot, persistPlaylistSnapshot } from "@/systems/Pla
 import { DEBUG_AUDIO_LOGS } from "@/systems/constants";
 import { type RepeatMode, settings$ } from "@/systems/Settings";
 import { clearQueueM3U, loadQueueFromM3U, saveQueueToM3U } from "@/utils/m3uManager";
-import { perfCount, perfDelta, perfLog } from "@/utils/perfLogger";
-import { runAfterInteractions } from "@/utils/runAfterInteractions";
+import { perfCount, perfDelta, perfLog, perfMark } from "@/utils/perfLogger";
+import { runAfterInteractions, runAfterInteractionsWithLabel } from "@/utils/runAfterInteractions";
 import { resolveThumbnailFromFields } from "@/utils/thumbnails";
 
 export interface LocalPlayerState {
@@ -725,6 +725,10 @@ async function initializeQueueFromCache(): Promise<void> {
     } catch (error) {
         console.error("Failed to initialize queue from cache:", error);
     } finally {
+        const durationMs = typeof start === "number" ? Date.now() - start : undefined;
+        if (durationMs !== undefined) {
+            perfMark("Queue.initializeFromCache.end", { durationMs });
+        }
         queueInitialized = true;
     }
 }
@@ -939,7 +943,21 @@ async function restoreTrackFromSnapshotIfNeeded(): Promise<void> {
 
     const { track, autoPlay } = pendingInitialTrackRestore;
     pendingInitialTrackRestore = null;
-    await loadTrackInternal(track, autoPlay);
+
+    runAfterInteractionsWithLabel(() => {
+        const start = perfMark("LocalAudioPlayer.restoreTrackFromSnapshot.start", {
+            track: track.title,
+            filePath: track.filePath,
+        });
+        void loadTrackInternal(track, autoPlay).finally(() => {
+            if (start !== undefined) {
+                perfMark("LocalAudioPlayer.restoreTrackFromSnapshot.end", {
+                    track: track.title,
+                    durationMs: Date.now() - start,
+                });
+            }
+        });
+    }, "LocalAudioPlayer.restoreTrackFromSnapshot");
 }
 
 // Expose control methods for local audio

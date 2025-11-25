@@ -18,7 +18,7 @@ import { stateSaved$ } from "@/systems/State";
 import { ensureCacheDirectory, getCacheDirectory } from "@/utils/cacheDirectories";
 import { createJSONManager } from "@/utils/JSONManager";
 import { perfCount, perfLog } from "@/utils/perfLogger";
-import { runAfterInteractions } from "@/utils/runAfterInteractions";
+import { runAfterInteractions, runAfterInteractionsWithLabel } from "@/utils/runAfterInteractions";
 import { DEFAULT_LOCAL_PLAYLIST_ID } from "./localMusicConstants";
 
 export interface LocalTrack {
@@ -867,9 +867,11 @@ export function initializeLocalMusic(): void {
         }
     }
 
-    loadLocalPlaylists().catch((error) => {
-        console.error("Failed to load local playlists:", error);
-    });
+    runAfterInteractionsWithLabel(() => {
+        loadLocalPlaylists().catch((error) => {
+            console.error("Failed to load local playlists:", error);
+        });
+    }, "LocalMusic.loadLocalPlaylists");
 
     if (settings.autoScanOnStart) {
         const playlistCacheReady = hasCachedPlaylistData();
@@ -878,19 +880,20 @@ export function initializeLocalMusic(): void {
 
         perfLog("LocalMusic.autoScan.policy", { deferInitialScan, playlistCacheReady, libraryCacheReady });
 
-        if (deferInitialScan) {
-            debugLocalMusicLog("Deferring auto-scan of local music until idle (cache available)");
-            runAfterInteractions(() => {
-                debugLocalMusicLog("Auto-scanning local music during idle...");
-                scanLocalMusic().catch((error) => {
-                    console.error("Failed to auto-scan local music:", error);
-                });
-            });
-        } else {
-            debugLocalMusicLog("Auto-scanning local music on startup...");
+        const scheduleScan = () => {
+            debugLocalMusicLog("Auto-scanning local music during idle...");
             scanLocalMusic().catch((error) => {
                 console.error("Failed to auto-scan local music:", error);
             });
+        };
+
+        if (deferInitialScan) {
+            debugLocalMusicLog("Deferring auto-scan of local music until idle (cache available)");
+            runAfterInteractions(scheduleScan);
+            return;
         }
+
+        debugLocalMusicLog("Auto-scanning local music on startup after interactions...");
+        runAfterInteractionsWithLabel(scheduleScan, "LocalMusic.autoScanOnStart");
     }
 }
