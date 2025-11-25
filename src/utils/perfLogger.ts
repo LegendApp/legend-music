@@ -6,17 +6,44 @@ declare global {
     var __LEGEND_PERF_LOG__: boolean | undefined;
     // eslint-disable-next-line no-var
     var __LEGEND_PERF_LAST_MARKS__: Record<string, number> | undefined;
+    // eslint-disable-next-line no-var
+    var __LEGEND_PERF_START__: number | undefined;
 }
+
+globalThis.__LEGEND_PERF_LOG__ = true;
 
 const lastMarks = globalThis.__LEGEND_PERF_LAST_MARKS__ ?? {};
 globalThis.__LEGEND_PERF_LAST_MARKS__ = lastMarks;
+const startTime = globalThis.__LEGEND_PERF_START__ ?? Date.now();
+globalThis.__LEGEND_PERF_START__ = startTime;
 
 export const isPerfLoggingEnabled = (): boolean =>
     typeof globalThis.__LEGEND_PERF_LOG__ === "boolean" ? Boolean(globalThis.__LEGEND_PERF_LOG__) : false;
 
 export function perfLog(label: string, ...args: unknown[]): void {
     if (!isPerfLoggingEnabled()) return;
-    console.log(`[PERF:${label}]`, ...args);
+    console.log(`${Math.round(performance.now())} [PERF:${label}]`, ...args);
+}
+
+export function perfMark(label: string, data?: Record<string, unknown>): number | undefined {
+    if (!isPerfLoggingEnabled()) return undefined;
+    const now = Date.now();
+    const last = lastMarks[label];
+    lastMarks[label] = now;
+
+    const payload: Record<string, unknown> = {
+        ...data,
+    };
+
+    if (startTime) {
+        payload.sinceStartMs = now - startTime;
+    }
+    if (typeof last === "number") {
+        payload.sinceLastMs = now - last;
+    }
+
+    console.log(`[PERF:${label}]`, payload);
+    return now;
 }
 
 export function perfCount(label: string): void {

@@ -4,6 +4,12 @@ import type { ObservablePersistPlugin, ObservablePersistPluginOptions, PersistMe
 import * as FileSystemNext from "expo-file-system/next";
 import { ensureCacheDirectory, getCacheDirectory } from "@/utils/cacheDirectories";
 import { timeoutOnce } from "@/utils/timeoutOnce";
+import { isPerfLoggingEnabled, perfLog } from "@/utils/perfLogger";
+
+declare global {
+    // eslint-disable-next-line no-var
+    var __LEGEND_PERF_START__: number | undefined;
+}
 
 const MetadataSuffix = "__m";
 const { safeParse, safeStringify } = internal;
@@ -39,9 +45,15 @@ class ObservablePersistExpoFS implements ObservablePersistPlugin {
         this.extension = configuration.format === "m3u" ? "m3u" : "json";
     }
 
+    private getStartDelta(): number | undefined {
+        const start = globalThis.__LEGEND_PERF_START__;
+        return typeof start === "number" ? Date.now() - start : undefined;
+    }
+
     public initialize(_configOptions: ObservablePersistPluginOptions) {
         const storageConfig = this.configuration;
         let tables: string[] = [];
+        const shouldLogPerf = isPerfLoggingEnabled();
 
         try {
             // Ensure base directory exists
@@ -54,8 +66,16 @@ class ObservablePersistExpoFS implements ObservablePersistPlugin {
                 );
                 tables = [...storageConfig.preload, ...(metadataTables.filter(Boolean) as string[])];
 
+                if (shouldLogPerf && tables.length > 0) {
+                    perfLog("Persist.preload.start", { tables, sinceStartMs: this.getStartDelta() });
+                }
+
                 // Load all the preload tables
                 tables.map((table) => this.loadTable(table));
+
+                if (shouldLogPerf && tables.length > 0) {
+                    perfLog("Persist.preload.end", { tables, sinceStartMs: this.getStartDelta() });
+                }
             }
         } catch (e) {
             console.error("[legend-state] ObservablePersistReacExpoFS failed to initialize", e);
@@ -74,6 +94,7 @@ class ObservablePersistExpoFS implements ObservablePersistPlugin {
 
     public loadTable(table: string) {
         if (this.data[table] === undefined) {
+            const start = isPerfLoggingEnabled() ? Date.now() : undefined;
             try {
                 const mainTableFile = new FileSystemNext.File(this.directory, `${table}.${this.extension}`);
                 const metadataTableFile = new FileSystemNext.File(
@@ -92,6 +113,14 @@ class ObservablePersistExpoFS implements ObservablePersistPlugin {
                 }
             } catch (err) {
                 console.error("[legend-state] ObservablePersistReacExpoFS failed to load table", table, err);
+            } finally {
+                if (start !== undefined) {
+                    perfLog("Persist.loadTable", {
+                        table,
+                        durationMs: Date.now() - start,
+                        sinceStartMs: this.getStartDelta(),
+                    });
+                }
             }
         }
     }

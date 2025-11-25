@@ -86,7 +86,7 @@ const MAX_HISTORY_LENGTH = 100;
 if (snapshotFromCache.queue.length > 0) {
     const hydratedTracks = snapshotFromCache.queue.map(createQueuedTrackFromPersisted);
     queue$.tracks.set(hydratedTracks);
-    perfLog("Queue.hydrateFromPlaylistCache", { tracks: hydratedTracks.length });
+    perfMark("Queue.hydrateFromPlaylistCache", { tracks: hydratedTracks.length });
 
     const resolvedIndex =
         snapshotFromCache.currentIndex != null &&
@@ -709,8 +709,8 @@ async function initializeQueueFromCache(): Promise<void> {
         return;
     }
 
+    const start = perfMark("Queue.initializeFromCache.start");
     try {
-        perfLog("Queue.initializeFromCache");
         const savedTracks = await loadQueueFromM3U();
 
         if (savedTracks.length > 0) {
@@ -990,7 +990,7 @@ export function LocalAudioPlayer() {
 
     // Set global reference
     useEffect(() => {
-        perfLog("LocalAudioPlayer.useEffect[player]", { hasPlayer: !!player });
+        perfMark("LocalAudioPlayer.useEffect[player]", { hasPlayer: !!player });
         audioPlayer = player;
         void restoreTrackFromSnapshotIfNeeded();
         return () => {
