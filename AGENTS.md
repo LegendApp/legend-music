@@ -1,5 +1,7 @@
 # Repository Guidelines
 
+When executing any plan file, after completing each step: check it off in the plan and immediately make a commit for that step.
+
 ## Project Structure & Module Organization
 - `src/` holds all TypeScript sources; key subdirectories include `components/` for shared UI, `systems/` and `observables/` for domain logic, `legend-kit/` for design system primitives, and `native-modules/` for macOS bridges. `src/App.tsx` remains the single entry point.
 - `app/` and `app.json` drive Expo routing; `macos/` contains the Xcode project. Keep native edits isolated here and commit generated project changes intentionally.
