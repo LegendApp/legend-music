@@ -1,5 +1,4 @@
 import { createJSONManager } from "@/utils/JSONManager";
-import { deriveThumbnailKey, resolveThumbnailFromFields } from "@/utils/thumbnails";
 
 export interface PersistedQueuedTrack {
     filePath: string;
@@ -37,107 +36,30 @@ const playlistCache$ = createJSONManager<PlaylistSnapshot>({
     preload: false,
 });
 
-type LegacyQueuedTrack = {
-    id?: string;
-    title?: string;
-    artist?: string;
-    album?: string;
-    duration?: string;
-    filePath?: string;
-    fileName?: string;
-    queueEntryId?: string;
-    thumbnail?: string;
-    thumbnailKey?: string;
-    thumb?: string;
-};
-
-const getFileName = (filePath: string): string => {
-    const lastSlash = filePath.lastIndexOf("/");
-    return lastSlash === -1 ? filePath : filePath.slice(lastSlash + 1);
-};
-
-const sanitizeTrack = (input: LegacyQueuedTrack | PersistedQueuedTrack): PersistedQueuedTrack | null => {
-    const legacyInput = input as LegacyQueuedTrack;
-    const filePath =
-        typeof legacyInput.filePath === "string" && legacyInput.filePath
-            ? legacyInput.filePath
-            : "id" in legacyInput && typeof legacyInput.id === "string"
-              ? legacyInput.id
-              : "";
-
-    if (!filePath) {
-        return null;
-    }
-
-    const legacyThumbnailKey =
-        typeof legacyInput.thumbnailKey === "string" && legacyInput.thumbnailKey.length > 0
-            ? legacyInput.thumbnailKey
-            : typeof legacyInput.thumb === "string" && legacyInput.thumb.length > 0
-              ? legacyInput.thumb
-              : deriveThumbnailKey(legacyInput.thumbnail);
-
-    const thumbnailFields = resolveThumbnailFromFields({
-        thumbnail: typeof input.thumbnail === "string" && input.thumbnail.length > 0 ? input.thumbnail : undefined,
-        thumbnailKey: legacyThumbnailKey,
-    });
-
-    return {
-        filePath,
-        title: typeof input.title === "string" && input.title.length > 0 ? input.title : getFileName(filePath),
-        artist: typeof input.artist === "string" && input.artist.length > 0 ? input.artist : "Unknown Artist",
-        album: typeof input.album === "string" && input.album.length > 0 ? input.album : undefined,
-        duration: typeof input.duration === "string" && input.duration.length > 0 ? input.duration : "0:00",
-        thumbnail: thumbnailFields.thumbnail,
-        thumbnailKey: thumbnailFields.thumbnailKey,
-    };
-};
-
-const sanitizeSnapshot = (input: Partial<PlaylistSnapshot>): PlaylistSnapshot => {
-    const queue = Array.isArray(input.queue)
-        ? input.queue
-              .map((track) => sanitizeTrack(track))
-              .filter((track): track is PersistedQueuedTrack => Boolean(track))
-        : [];
-    const hasQueue = queue.length > 0;
-
-    const currentIndex =
-        typeof input.currentIndex === "number" && input.currentIndex >= 0 && input.currentIndex < queue.length
-            ? input.currentIndex
-            : hasQueue
-              ? Math.min(Math.max(input.currentIndex ?? 0, 0), queue.length - 1)
-              : -1;
-
-    return {
-        version: PLAYLIST_CACHE_VERSION,
-        updatedAt: typeof input.updatedAt === "number" ? input.updatedAt : Date.now(),
-        queue,
-        currentIndex,
-        isPlaying: Boolean(input.isPlaying && hasQueue),
-    };
-};
-
 export const getPlaylistCacheSnapshot = (): PlaylistSnapshot => {
     try {
         const snapshot = playlistCache$.get();
-        if (!snapshot) {
-            return defaultSnapshot;
+        if (!snapshot || !Array.isArray(snapshot.queue) || snapshot.version !== PLAYLIST_CACHE_VERSION) {
+            const resetSnapshot: PlaylistSnapshot = { ...defaultSnapshot, updatedAt: Date.now() };
+            playlistCache$.set(resetSnapshot);
+            return resetSnapshot;
         }
 
-        return sanitizeSnapshot(snapshot);
+        return snapshot;
     } catch (error) {
         console.error("Failed to read playlist cache; resetting to defaults", error);
-        playlistCache$.set(defaultSnapshot);
-        return defaultSnapshot;
+        const resetSnapshot: PlaylistSnapshot = { ...defaultSnapshot, updatedAt: Date.now() };
+        playlistCache$.set(resetSnapshot);
+        return resetSnapshot;
     }
 };
 
 export const persistPlaylistSnapshot = (snapshot: Omit<PlaylistSnapshot, "version" | "updatedAt">) => {
-    const sanitized = sanitizeSnapshot({
+    playlistCache$.set({
         ...snapshot,
+        version: PLAYLIST_CACHE_VERSION,
         updatedAt: Date.now(),
     });
-
-    playlistCache$.set(sanitized);
 };
 
 export const hasCachedPlaylistData = (): boolean => getPlaylistCacheSnapshot().queue.length > 0;

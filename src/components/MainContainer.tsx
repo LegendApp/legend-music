@@ -1,5 +1,5 @@
 import { View } from "react-native";
-import { LocalAudioPlayer, localAudioControls } from "@/components/LocalAudioPlayer";
+import { initializeLocalAudioPlayer, localAudioControls } from "@/components/LocalAudioPlayer";
 import { PlaybackArea } from "@/components/PlaybackArea";
 import { Playlist } from "@/components/Playlist";
 import { PlaylistSelector } from "@/components/PlaylistSelector";
@@ -7,6 +7,10 @@ import { Unregistered } from "@/components/Unregistered";
 import { SUPPORT_ACCOUNTS } from "@/systems/constants";
 import { useOnHotkeys } from "@/systems/keyboard/Keyboard";
 import { perfCount, perfLog } from "@/utils/perfLogger";
+import { preloadPersistence } from "@/utils/preloadPersistence";
+
+preloadPersistence();
+initializeLocalAudioPlayer();
 
 export function MainContainer() {
     perfCount("MainContainer.render");
@@ -35,7 +39,6 @@ export function MainContainer() {
                 <PlaylistSelector />
                 {SUPPORT_ACCOUNTS && <Unregistered />}
             </View>
-            <LocalAudioPlayer />
         </View>
     );
 }

@@ -1,9 +1,7 @@
 import { observable } from "@legendapp/state";
 import { File } from "expo-file-system/next";
-import { useEffect } from "react";
-import { View } from "react-native";
 import { showToast } from "@/components/Toast";
-import audioPlayerApi, { type NowPlayingInfoPayload, useAudioPlayer } from "@/native-modules/AudioPlayer";
+import audioPlayerApi, { type NowPlayingInfoPayload } from "@/native-modules/AudioPlayer";
 import { DEBUG_AUDIO_LOGS } from "@/systems/constants";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import { ensureLocalTrackThumbnail } from "@/systems/LocalMusicState";
@@ -182,7 +180,8 @@ interface QueueUpdateOptions {
 
 type QueueInput = LocalTrack | LocalTrack[];
 
-const audioPlayer: ReturnType<typeof useAudioPlayer> | null = audioPlayerApi;
+const audioPlayer: typeof audioPlayerApi | null = audioPlayerApi;
+let localAudioPlayerInitialized = false;
 
 function createQueuedTrack(track: LocalTrack): QueuedTrack {
     return {
@@ -1007,106 +1006,99 @@ export const localAudioControls = {
     queue: queueControls,
 };
 
-export function LocalAudioPlayer() {
-    const player = useAudioPlayer();
-    perfCount("LocalAudioPlayer.render");
+export function initializeLocalAudioPlayer(): void {
+    if (localAudioPlayerInitialized || !audioPlayer) {
+        return;
+    }
 
-    // Set up event listeners
-    useEffect(() => {
-        const listeners = [
-            player.addListener("onLoadSuccess", (data) => {
-                perfCount("LocalAudioPlayer.onLoadSuccess");
-                const delta = perfDelta("LocalAudioPlayer.onLoadSuccess");
-                perfLog("LocalAudioPlayer.onLoadSuccess", { delta, data });
-                if (__DEV__) {
-                    if (DEBUG_AUDIO_LOGS) {
-                        console.log("Audio loaded successfully:", data);
-                    }
-                }
-                localPlayerState$.duration.set(data.duration);
-                localPlayerState$.isLoading.set(false);
-                localPlayerState$.error.set(null);
-                player.updateNowPlayingInfo({ duration: data.duration });
-            }),
+    localAudioPlayerInitialized = true;
+    perfCount("LocalAudioPlayer.initialize");
 
-            player.addListener("onLoadError", (data) => {
-                perfCount("LocalAudioPlayer.onLoadError");
-                const delta = perfDelta("LocalAudioPlayer.onLoadError");
-                perfLog("LocalAudioPlayer.onLoadError", { delta, data });
-                console.error("Audio load error:", data.error);
-                localPlayerState$.error.set(data.error);
-                localPlayerState$.isLoading.set(false);
-                localPlayerState$.isPlaying.set(false);
-            }),
+    audioPlayer.addListener("onLoadSuccess", (data) => {
+        perfCount("LocalAudioPlayer.onLoadSuccess");
+        const delta = perfDelta("LocalAudioPlayer.onLoadSuccess");
+        perfLog("LocalAudioPlayer.onLoadSuccess", { delta, data });
+        if (__DEV__) {
+            if (DEBUG_AUDIO_LOGS) {
+                console.log("Audio loaded successfully:", data);
+            }
+        }
+        localPlayerState$.duration.set(data.duration);
+        localPlayerState$.isLoading.set(false);
+        localPlayerState$.error.set(null);
+        audioPlayer.updateNowPlayingInfo({ duration: data.duration });
+    });
 
-            player.addListener("onPlaybackStateChanged", (data) => {
-                perfCount("LocalAudioPlayer.onPlaybackStateChanged");
-                const delta = perfDelta("LocalAudioPlayer.onPlaybackStateChanged");
-                perfLog("LocalAudioPlayer.onPlaybackStateChanged", { delta, data });
-                if (__DEV__) {
-                    if (DEBUG_AUDIO_LOGS) {
-                        console.log("Playback state changed:", data.isPlaying);
-                    }
-                }
-                localPlayerState$.isPlaying.set(data.isPlaying);
-            }),
+    audioPlayer.addListener("onLoadError", (data) => {
+        perfCount("LocalAudioPlayer.onLoadError");
+        const delta = perfDelta("LocalAudioPlayer.onLoadError");
+        perfLog("LocalAudioPlayer.onLoadError", { delta, data });
+        console.error("Audio load error:", data.error);
+        localPlayerState$.error.set(data.error);
+        localPlayerState$.isLoading.set(false);
+        localPlayerState$.isPlaying.set(false);
+    });
 
-            player.addListener("onProgress", (data) => {
-                perfCount("LocalAudioPlayer.onProgress");
-                const delta = perfDelta("LocalAudioPlayer.onProgress");
-                perfLog("LocalAudioPlayer.onProgress", { delta, current: data.currentTime, duration: data.duration });
-                if (!playbackInteractionState$.isScrubbing.peek()) {
-                    localPlayerState$.currentTime.set(data.currentTime);
-                }
-                if (data.duration !== localPlayerState$.duration.peek()) {
-                    localPlayerState$.duration.set(data.duration);
-                }
-            }),
+    audioPlayer.addListener("onPlaybackStateChanged", (data) => {
+        perfCount("LocalAudioPlayer.onPlaybackStateChanged");
+        const delta = perfDelta("LocalAudioPlayer.onPlaybackStateChanged");
+        perfLog("LocalAudioPlayer.onPlaybackStateChanged", { delta, data });
+        if (__DEV__) {
+            if (DEBUG_AUDIO_LOGS) {
+                console.log("Playback state changed:", data.isPlaying);
+            }
+        }
+        localPlayerState$.isPlaying.set(data.isPlaying);
+    });
 
-            player.addListener("onCompletion", () => {
-                perfCount("LocalAudioPlayer.onCompletion");
-                const delta = perfDelta("LocalAudioPlayer.onCompletion");
-                perfLog("LocalAudioPlayer.onCompletion", { delta });
-                if (__DEV__) {
-                    if (DEBUG_AUDIO_LOGS) {
-                        console.log("Track completed, playing next if available");
-                    }
-                }
-                const duration = localPlayerState$.duration.peek();
-                localPlayerState$.currentTime.set(duration);
-                localPlayerState$.isPlaying.set(false);
-                localAudioControls.playNext();
-            }),
+    audioPlayer.addListener("onProgress", (data) => {
+        perfCount("LocalAudioPlayer.onProgress");
+        const delta = perfDelta("LocalAudioPlayer.onProgress");
+        perfLog("LocalAudioPlayer.onProgress", { delta, current: data.currentTime, duration: data.duration });
+        if (!playbackInteractionState$.isScrubbing.peek()) {
+            localPlayerState$.currentTime.set(data.currentTime);
+        }
+        if (data.duration !== localPlayerState$.duration.peek()) {
+            localPlayerState$.duration.set(data.duration);
+        }
+    });
 
-            player.addListener("onRemoteCommand", ({ command }) => {
-                perfCount("LocalAudioPlayer.onRemoteCommand");
-                perfLog("LocalAudioPlayer.onRemoteCommand", { command });
-                switch (command) {
-                    case "play":
-                        void play();
-                        break;
-                    case "pause":
-                        void pause();
-                        break;
-                    case "toggle":
-                        void togglePlayPause();
-                        break;
-                    case "next":
-                        void playNext();
-                        break;
-                    case "previous":
-                        void playPrevious();
-                        break;
-                    default:
-                        break;
-                }
-            }),
-        ];
+    audioPlayer.addListener("onCompletion", () => {
+        perfCount("LocalAudioPlayer.onCompletion");
+        const delta = perfDelta("LocalAudioPlayer.onCompletion");
+        perfLog("LocalAudioPlayer.onCompletion", { delta });
+        if (__DEV__) {
+            if (DEBUG_AUDIO_LOGS) {
+                console.log("Track completed, playing next if available");
+            }
+        }
+        const duration = localPlayerState$.duration.peek();
+        localPlayerState$.currentTime.set(duration);
+        localPlayerState$.isPlaying.set(false);
+        localAudioControls.playNext();
+    });
 
-        return () => {
-            listeners.forEach((listener) => listener.remove());
-        };
-    }, [player]);
-
-    return <View className="w-0 h-0 opacity-0 absolute" />;
+    audioPlayer.addListener("onRemoteCommand", ({ command }) => {
+        perfCount("LocalAudioPlayer.onRemoteCommand");
+        perfLog("LocalAudioPlayer.onRemoteCommand", { command });
+        switch (command) {
+            case "play":
+                void play();
+                break;
+            case "pause":
+                void pause();
+                break;
+            case "toggle":
+                void togglePlayPause();
+                break;
+            case "next":
+                void playNext();
+                break;
+            case "previous":
+                void playPrevious();
+                break;
+            default:
+                break;
+        }
+    });
 }
