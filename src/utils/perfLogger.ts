@@ -1,6 +1,8 @@
 // Basic instrumentation helpers to make it easy to trace CPU hotspots.
 // Enable/disable globally by setting `globalThis.__LEGEND_PERF_LOG__` at runtime.
 
+import { isString } from "@legendapp/state";
+
 declare global {
     // eslint-disable-next-line no-var
     var __LEGEND_PERF_LOG__: boolean | undefined;
@@ -20,29 +22,31 @@ globalThis.__LEGEND_PERF_START__ = startTime;
 export const isPerfLoggingEnabled = (): boolean =>
     typeof globalThis.__LEGEND_PERF_LOG__ === "boolean" ? Boolean(globalThis.__LEGEND_PERF_LOG__) : false;
 
-export function perfLog(label: string, ...args: unknown[]): void {
-    if (!isPerfLoggingEnabled()) return;
-    console.log(`${Math.round(performance.now())} [PERF:${label}]`, ...args);
+export function perfLog(label: string, data?: string | Record<string, unknown>, ...args: any[]): void {
+    perfMark(label, data, ...args);
+    // if (!isPerfLoggingEnabled()) return;
+    // console.log(`${Math.round(performance.now())} [PERF:${label}]`, ...args);
 }
 
-export function perfMark(label: string, data?: Record<string, unknown>): number | undefined {
+export function perfMark(label: string, data?: string | Record<string, unknown>, ...args: any[]): number | undefined {
     if (!isPerfLoggingEnabled()) return undefined;
     const now = Date.now();
     const last = lastMarks[label];
     lastMarks[label] = now;
 
-    const payload: Record<string, unknown> = {
-        ...data,
-    };
+    const payload: Record<string, unknown> = isString(data)
+        ? { data }
+        : {
+              ...data,
+          };
 
-    if (startTime) {
-        payload.sinceStartMs = now - startTime;
-    }
+    const sinceStartMs = now - startTime;
+
     if (typeof last === "number") {
         payload.sinceLastMs = now - last;
     }
 
-    console.log(`[PERF:${label}]`, payload);
+    console.log(`${sinceStartMs} [PERF:${label}]`, payload, ...args);
     return now;
 }
 

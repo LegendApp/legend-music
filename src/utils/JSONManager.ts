@@ -2,6 +2,7 @@ import { type Observable, observable } from "@legendapp/state";
 import { type SyncTransform, synced } from "@legendapp/state/sync";
 
 import { type ExpoFSPersistPluginOptions, observablePersistExpoFS } from "@/utils/ExpoFSPersistPlugin";
+import { perfLog } from "@/utils/perfLogger";
 
 /**
  * Creates a manager for a JSON file with observable state
@@ -46,11 +47,6 @@ export function createJSONManager<T extends object>(params: {
             },
         }),
     );
-
-    // Avoid forcing an extra read when preloading is enabled; rely on the persist plugin to load tables.
-    if (!shouldPreload) {
-        data$.get();
-    }
 
     if (saveDefaultToFile) {
         // TODO: save default to file

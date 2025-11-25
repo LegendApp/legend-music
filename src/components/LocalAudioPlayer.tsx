@@ -969,7 +969,7 @@ async function restoreTrackFromSnapshotIfNeeded({
             track: track.title,
             filePath: track.filePath,
         });
-        void loadTrackInternal(track)
+        loadTrackInternal(track)
             .then(() => {
                 if (playAfterLoad) {
                     return play();
