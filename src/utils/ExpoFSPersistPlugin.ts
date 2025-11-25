@@ -3,8 +3,8 @@ import { applyChanges, internal, isArray } from "@legendapp/state";
 import type { ObservablePersistPlugin, ObservablePersistPluginOptions, PersistMetadata } from "@legendapp/state/sync";
 import * as FileSystemNext from "expo-file-system/next";
 import { ensureCacheDirectory, getCacheDirectory } from "@/utils/cacheDirectories";
-import { timeoutOnce } from "@/utils/timeoutOnce";
 import { isPerfLoggingEnabled, perfLog } from "@/utils/perfLogger";
+import { timeoutOnce } from "@/utils/timeoutOnce";
 
 declare global {
     // eslint-disable-next-line no-var
@@ -181,12 +181,7 @@ class ObservablePersistExpoFS implements ObservablePersistPlugin {
         console.log("save debounced", table);
 
         if (v !== undefined && v !== null) {
-            const out =
-                this.configuration.format === "json"
-                    ? safeStringify(v)
-                    : typeof v === "string"
-                        ? v
-                        : String(v);
+            const out = this.configuration.format === "json" ? safeStringify(v) : typeof v === "string" ? v : String(v);
             return file.write(out);
         }
 

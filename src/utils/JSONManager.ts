@@ -29,6 +29,7 @@ export function createJSONManager<T extends object>(params: {
         saveTimeout = 300,
         transform,
     } = params;
+    const shouldPreload = preload !== false;
     // Create an observable with the initial value and make sure it has the correct type
     const data$ = observable<Record<string, any>>(
         synced({
@@ -46,7 +47,10 @@ export function createJSONManager<T extends object>(params: {
         }),
     );
 
-    data$.get();
+    // Avoid forcing an extra read when preloading is enabled; rely on the persist plugin to load tables.
+    if (!shouldPreload) {
+        data$.get();
+    }
 
     if (saveDefaultToFile) {
         // TODO: save default to file
