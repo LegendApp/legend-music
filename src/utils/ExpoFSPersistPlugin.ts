@@ -35,6 +35,7 @@ export interface ExpoFSPersistPluginOptions {
 
 class ObservablePersistExpoFS implements ObservablePersistPlugin {
     private data: Record<string, any> = {};
+    private tablesLoaded: Record<string, boolean> = {};
     private configuration: ExpoFSPersistPluginOptions;
     private directory: FileSystemNext.Directory;
     private extension: string;
@@ -93,7 +94,8 @@ class ObservablePersistExpoFS implements ObservablePersistPlugin {
     }
 
     public loadTable(table: string) {
-        if (this.data[table] === undefined) {
+        if (!this.tablesLoaded[table]) {
+            this.tablesLoaded[table] = true;
             const start = isPerfLoggingEnabled() ? Date.now() : undefined;
             try {
                 const mainTableFile = new FileSystemNext.File(this.directory, `${table}.${this.extension}`);
