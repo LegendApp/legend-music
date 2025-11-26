@@ -101,6 +101,7 @@ export interface AudioPlayerEvents {
     onLoadError: (data: { error: string }) => void;
     onPlaybackStateChanged: (data: { isPlaying: boolean }) => void;
     onProgress: (data: { currentTime: number; duration?: number }) => void;
+    onOcclusionChanged: (data: { isOccluded: boolean }) => void;
     onCompletion: () => void;
     onRemoteCommand: (data: { command: RemoteCommand }) => void;
     onVisualizerFrame: (data: VisualizerFrame) => void;

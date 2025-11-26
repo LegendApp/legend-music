@@ -54,7 +54,8 @@ let queueEntryCounter = 0;
 let jsProgressTimer: ReturnType<typeof setInterval> | null = null;
 let lastNativeProgressTime = 0;
 let lastNativeProgressTimestamp = 0;
-const JS_PROGRESS_INTERVAL_MS = 500;
+let isWindowOccluded = false;
+const JS_PROGRESS_INTERVAL_MS = 1000;
 
 function createQueueEntryId(seed: string): string {
     queueEntryCounter += 1;
@@ -192,6 +193,7 @@ function stopJsProgressTimer(): void {
         clearInterval(jsProgressTimer);
         jsProgressTimer = null;
     }
+    lastNativeProgressTimestamp = 0;
 }
 
 function anchorProgress(time: number): void {
@@ -200,7 +202,7 @@ function anchorProgress(time: number): void {
 }
 
 function tickJsProgress(): void {
-    if (!localPlayerState$.isPlaying.peek()) {
+    if (isWindowOccluded || !localPlayerState$.isPlaying.peek()) {
         stopJsProgressTimer();
         return;
     }
@@ -221,11 +223,22 @@ function tickJsProgress(): void {
 }
 
 function startJsProgressTimer(): void {
-    if (jsProgressTimer) {
+    if (jsProgressTimer || isWindowOccluded || !lastNativeProgressTimestamp) {
         return;
     }
 
     jsProgressTimer = setInterval(tickJsProgress, JS_PROGRESS_INTERVAL_MS);
+}
+
+function applyWindowOcclusionState(isOccluded: boolean): void {
+    if (isWindowOccluded === isOccluded) {
+        return;
+    }
+
+    isWindowOccluded = isOccluded;
+    if (isOccluded) {
+        stopJsProgressTimer();
+    }
 }
 
 function createQueuedTrack(track: LocalTrack): QueuedTrack {
@@ -1090,21 +1103,31 @@ export function initializeLocalAudioPlayer(): void {
         localPlayerState$.isPlaying.set(data.isPlaying);
         if (data.isPlaying) {
             anchorProgress(localPlayerState$.currentTime.peek());
-            startJsProgressTimer();
+            if (!isWindowOccluded) {
+                startJsProgressTimer();
+            }
         } else {
             stopJsProgressTimer();
         }
     });
 
+    audioPlayer.addListener("onOcclusionChanged", ({ isOccluded }) => {
+        applyWindowOcclusionState(isOccluded);
+    });
+
     audioPlayer.addListener("onProgress", (data) => {
         anchorProgress(data.currentTime);
-        if (!playbackInteractionState$.isScrubbing.peek()) {
+        if (!isWindowOccluded && !playbackInteractionState$.isScrubbing.peek()) {
             localPlayerState$.currentTime.set(data.currentTime);
         }
-        if (typeof data.duration === "number" && data.duration > 0 && data.duration !== localPlayerState$.duration.peek()) {
+        if (
+            typeof data.duration === "number" &&
+            data.duration > 0 &&
+            data.duration !== localPlayerState$.duration.peek()
+        ) {
             localPlayerState$.duration.set(data.duration);
         }
-        if (localPlayerState$.isPlaying.peek()) {
+        if (localPlayerState$.isPlaying.peek() && !isWindowOccluded) {
             startJsProgressTimer();
         }
     });

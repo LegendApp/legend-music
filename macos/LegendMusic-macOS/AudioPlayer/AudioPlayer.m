@@ -551,6 +551,7 @@ RCT_EXPORT_MODULE();
         @"onLoadError",
         @"onPlaybackStateChanged",
         @"onProgress",
+        @"onOcclusionChanged",
         @"onCompletion",
         @"onRemoteCommand",
         @"onVisualizerFrame",
@@ -639,6 +640,20 @@ RCT_EXPORT_MODULE();
     [self applyOcclusionStateForWindow:window];
 }
 
+- (void)emitOcclusionEventWithState:(BOOL)isOccluded
+{
+    if (!self.hasListeners) {
+        return;
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (!self.hasListeners) {
+            return;
+        }
+        [self sendEventWithName:@"onOcclusionChanged" body:@{ @"isOccluded": @(isOccluded) }];
+    });
+}
+
 - (void)applyOcclusionStateForWindow:(NSWindow *)window
 {
     if (!window) {
@@ -651,6 +666,7 @@ RCT_EXPORT_MODULE();
     self.isWindowOccluded = nextOccluded;
 
     if (changed) {
+        [self emitOcclusionEventWithState:nextOccluded];
         // Rebuild observer with the new cadence and emit a fresh tick so UI can snap back when visible.
         [self addTimeObserver];
         [self emitProgressEventWithTime:self.currentTime forceDuration:YES allowWhilePaused:YES];
@@ -1411,6 +1427,8 @@ RCT_EXPORT_MODULE();
 - (void)startObserving
 {
     self.hasListeners = YES;
+
+    [self emitOcclusionEventWithState:self.isWindowOccluded];
 
     // Resume progress updates if playback is active and we do not yet observe time
     if (self.isPlaying && self.player && !self.timeObserver) {
