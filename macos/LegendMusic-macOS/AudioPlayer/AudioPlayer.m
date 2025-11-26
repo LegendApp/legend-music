@@ -44,6 +44,8 @@ static const float kVisualizerMinDecibels = -75.0f;
 static const float kVisualizerMaxDecibels = -12.0f;
 static const float kVisualizerHighFrequencyEmphasisExponent = 0.45f;
 static const float kVisualizerResponseGamma = 0.85f;
+static const NSTimeInterval kProgressIntervalVisibleSeconds = 5.0;
+static const NSTimeInterval kProgressIntervalOccludedSeconds = 20.0;
 
 static NSString *LMHashStringSHA256(NSString *input) {
     if (!input) {
@@ -438,6 +440,8 @@ static NSDictionary *LMExtractMediaTags(NSURL *fileURL, NSString *cacheDirPath, 
 @property (atomic, assign) BOOL isMediaScanning;
 @property (atomic, assign) BOOL progressEventsEnabled;
 @property (atomic, assign) NSTimeInterval lastProgressDurationSent;
+@property (atomic, assign) BOOL isWindowOccluded;
+@property (nonatomic, weak) NSWindow *observedWindow;
 
 - (void)configureVisualizerDefaults;
 - (void)installVisualizerTapIfNeeded;
@@ -569,9 +573,12 @@ RCT_EXPORT_MODULE();
         _mediaScanQueue = dispatch_queue_create("com.legendmusic.audio.scanner", DISPATCH_QUEUE_SERIAL);
         _isMediaScanning = NO;
         _progressEventsEnabled = YES;
+        _isWindowOccluded = NO;
+        _observedWindow = nil;
         _lastProgressDurationSent = -1;
         [self configureVisualizerDefaults];
         [self setupRemoteCommands];
+        [self setupOcclusionObservers];
     }
     return self;
 }
@@ -605,6 +612,79 @@ RCT_EXPORT_MODULE();
                                              selector:@selector(playerItemFailedToPlay:)
                                                  name:AVPlayerItemFailedToPlayToEndTimeNotification
                                                object:nil];
+}
+
+- (NSTimeInterval)progressUpdateInterval
+{
+    return self.isWindowOccluded ? kProgressIntervalOccludedSeconds : kProgressIntervalVisibleSeconds;
+}
+
+- (void)setupOcclusionObservers
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
+        [center addObserver:self selector:@selector(handleWindowOcclusionChange:) name:NSWindowDidChangeOcclusionStateNotification object:nil];
+        [center addObserver:self selector:@selector(handleWindowDidBecomeKey:) name:NSWindowDidBecomeKeyNotification object:nil];
+        [center addObserver:self selector:@selector(handleWindowDidBecomeMain:) name:NSWindowDidBecomeMainNotification object:nil];
+        [self updateObservedWindow:NSApp.mainWindow ?: NSApp.keyWindow];
+    });
+}
+
+- (void)updateObservedWindow:(NSWindow *)window
+{
+    if (!window || window == self.observedWindow) {
+        return;
+    }
+    self.observedWindow = window;
+    [self applyOcclusionStateForWindow:window];
+}
+
+- (void)applyOcclusionStateForWindow:(NSWindow *)window
+{
+    if (!window) {
+        return;
+    }
+
+    BOOL visible = (window.occlusionState & NSWindowOcclusionStateVisible) == NSWindowOcclusionStateVisible;
+    BOOL nextOccluded = !visible;
+    BOOL changed = (nextOccluded != self.isWindowOccluded);
+    self.isWindowOccluded = nextOccluded;
+
+    if (changed) {
+        // Rebuild observer with the new cadence and emit a fresh tick so UI can snap back when visible.
+        [self addTimeObserver];
+        [self emitProgressEventWithTime:self.currentTime forceDuration:YES allowWhilePaused:YES];
+    }
+}
+
+- (void)handleWindowOcclusionChange:(NSNotification *)notification
+{
+    NSWindow *window = notification.object;
+    if (![window isKindOfClass:[NSWindow class]]) {
+        return;
+    }
+    if (self.observedWindow == nil) {
+        self.observedWindow = window;
+    }
+    if (window == self.observedWindow) {
+        [self applyOcclusionStateForWindow:window];
+    }
+}
+
+- (void)handleWindowDidBecomeKey:(NSNotification *)notification
+{
+    NSWindow *window = notification.object;
+    if ([window isKindOfClass:[NSWindow class]]) {
+        [self updateObservedWindow:window];
+    }
+}
+
+- (void)handleWindowDidBecomeMain:(NSNotification *)notification
+{
+    NSWindow *window = notification.object;
+    if ([window isKindOfClass:[NSWindow class]]) {
+        [self updateObservedWindow:window];
+    }
 }
 
 - (NSUInteger)validatedFFTSizeFromRequested:(NSUInteger)requested
@@ -1996,6 +2076,8 @@ RCT_EXPORT_METHOD(clearNowPlayingInfo)
 
             // Send success event
             [self sendEventWithName:@"onLoadSuccess" body:@{@"duration": @(self.duration)}];
+            self.lastProgressDurationSent = -1;
+            [self emitProgressEventWithTime:self.currentTime forceDuration:YES allowWhilePaused:YES];
             if (self.loadResolve) {
                 self.loadResolve(@{@"success": @YES});
                 self.loadResolve = nil;
@@ -2231,6 +2313,39 @@ RCT_EXPORT_METHOD(getCurrentState:(RCTPromiseResolveBlock)resolve
 
 #pragma mark - Time Observer
 
+- (void)emitProgressEventWithTime:(NSTimeInterval)time forceDuration:(BOOL)forceDuration allowWhilePaused:(BOOL)allowWhilePaused
+{
+    if (!self.progressEventsEnabled || !self.hasListeners) {
+        return;
+    }
+
+    if (!allowWhilePaused && !self.isPlaying) {
+        return;
+    }
+
+    NSTimeInterval duration = self.duration;
+    BOOL shouldIncludeDuration = forceDuration || fabs(duration - self.lastProgressDurationSent) >= 0.1;
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (!self.progressEventsEnabled || !self.hasListeners) {
+            return;
+        }
+        if (!allowWhilePaused && !self.isPlaying) {
+            return;
+        }
+
+        NSMutableDictionary *payload = [NSMutableDictionary dictionaryWithCapacity:shouldIncludeDuration ? 2 : 1];
+        payload[@"currentTime"] = @(time);
+
+        if (shouldIncludeDuration) {
+            payload[@"duration"] = @(duration);
+            self.lastProgressDurationSent = duration;
+        }
+
+        [self sendEventWithName:@"onProgress" body:payload];
+    });
+}
+
 - (void)addTimeObserver
 {
     [self removeTimeObserver];
@@ -2244,7 +2359,7 @@ RCT_EXPORT_METHOD(getCurrentState:(RCTPromiseResolveBlock)resolve
     __weak typeof(self) weakSelf = self;
     // Throttle updates: emit every 5s on a background queue to minimize CPU impact
     dispatch_queue_t backgroundQueue = dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0);
-    CMTime interval = CMTimeMakeWithSeconds(5.0, NSEC_PER_SEC);
+    CMTime interval = CMTimeMakeWithSeconds([self progressUpdateInterval], NSEC_PER_SEC);
     self.timeObserver = [self.player addPeriodicTimeObserverForInterval:interval
                                                                    queue:backgroundQueue
                                                               usingBlock:^(CMTime time) {
@@ -2257,18 +2372,7 @@ RCT_EXPORT_METHOD(getCurrentState:(RCTPromiseResolveBlock)resolve
                 strongSelf.currentTime = newTime;
                 [strongSelf updateNowPlayingElapsedTime:strongSelf.currentTime];
 
-                // Dispatch event sending back to main queue
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    NSMutableDictionary *payload = [NSMutableDictionary dictionaryWithCapacity:2];
-                    payload[@"currentTime"] = @(strongSelf.currentTime);
-
-                    if (fabs(strongSelf.duration - strongSelf.lastProgressDurationSent) >= 0.1) {
-                        payload[@"duration"] = @(strongSelf.duration);
-                        strongSelf.lastProgressDurationSent = strongSelf.duration;
-                    }
-
-                    [strongSelf sendEventWithName:@"onProgress" body:payload];
-                });
+                [strongSelf emitProgressEventWithTime:strongSelf.currentTime forceDuration:NO allowWhilePaused:NO];
             }
         }
     }];
