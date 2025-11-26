@@ -30,8 +30,6 @@ const DEFAULT_BOTTOM_BAR_BUTTONS: BottomBarControlId[] = [
 ];
 
 export function PlaylistSelector() {
-    return null;
-
     const localMusicState = useValue(localMusicState$);
     const library = useValue(library$);
     const queue = useValue(queue$);
