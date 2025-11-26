@@ -1,5 +1,5 @@
 import type { Observable } from "@legendapp/state";
-import { useSelector, useValue } from "@legendapp/state/react";
+import { useValue } from "@legendapp/state/react";
 import { Text, View } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 import { Button } from "@/components/Button";
@@ -56,7 +56,7 @@ export const TrackItem = ({
     const trackIsPlayingFlag = track.isPlaying;
     const trackQueueEntryId = track.queueEntryId;
     const isMissing = !!track.isMissing;
-    const isPlaying = useSelector(() => {
+    const isPlaying = useValue(() => {
         if (typeof trackIsPlayingFlag === "boolean") {
             return trackIsPlayingFlag;
         }
