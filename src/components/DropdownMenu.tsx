@@ -407,7 +407,6 @@ interface SubProps {
 function Sub({ children, className = "" }: SubProps) {
     const submenuId = useId();
     const [isOpen, setIsOpen] = useState(false);
-    const activeSubmenuId = useValue(state$.activeSubmenuId);
     const { level } = useContext(SubmenuContext);
     const subRef = useRef<View>(null);
 
@@ -491,7 +490,6 @@ function SubContent({
     directionalHint = "rightTopEdge",
 }: SubContentProps) {
     const [isOpen, setIsOpen] = useState(false);
-    const activeSubmenuId = useValue(state$.activeSubmenuId);
     const { parentRef, submenuId } = useContext(SubmenuContext);
     const contextValue = useDropdownContext();
 

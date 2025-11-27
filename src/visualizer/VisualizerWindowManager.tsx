@@ -1,5 +1,5 @@
 import { observable } from "@legendapp/state";
-import { useObserveEffect, useValue } from "@legendapp/state/react";
+import { useObserveEffect } from "@legendapp/state/react";
 import { useEffect } from "react";
 
 import { localPlayerState$ } from "@/components/LocalAudioPlayer";
@@ -23,9 +23,6 @@ export function toggleVisualizerWindow() {
 
 export const VisualizerWindowManager = () => {
     const windowManager = useWindowManager();
-    const isOpen = useValue(visualizerWindowState$.isOpen);
-    const autoClose = useValue(visualizerPreferences$.window.autoClose);
-    const isPlaying = useValue(localPlayerState$.isPlaying);
 
     useEffect(() => {
         const subscription = windowManager.onWindowClosed(({ identifier }) => {

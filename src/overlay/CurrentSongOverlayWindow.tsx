@@ -1,7 +1,7 @@
 import "@/../global.css";
 import { VibrancyView } from "@fluentui-react-native/vibrancy-view";
 import { PortalProvider } from "@gorhom/portal";
-import { useObserveEffect, useValue } from "@legendapp/state/react";
+import { useObserveEffect } from "@legendapp/state/react";
 import { useCallback, useEffect, useState } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import Animated, {
@@ -88,7 +88,6 @@ const styles = StyleSheet.create({
 function CurrentSongOverlayWindow() {
     const opacity = useSharedValue(0);
     const scale = useSharedValue(1);
-    const isOverlayExiting = useValue(currentSongOverlay$.isExiting);
 
     const springConfig = {
         damping: OVERLAY_WINDOW_SPRING_DAMPING,
