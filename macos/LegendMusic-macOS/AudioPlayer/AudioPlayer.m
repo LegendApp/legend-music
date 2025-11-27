@@ -38,11 +38,6 @@
 
 @class LMID3TagsResult;
 @class LMID3TagEditorBridge;
-@class LMSupportedAudioFormats;
-
-@interface LMSupportedAudioFormats (AudioPlayerExposure)
-+ (NSArray<NSString *> *)supportedExtensions;
-@end
 
 typedef struct {
     __unsafe_unretained AudioPlayer *audioPlayer;
@@ -126,32 +121,21 @@ static BOOL LMIsMP3URL(NSURL *fileURL) {
     return [extension isEqualToString:@"mp3"];
 }
 
+static NSArray<NSString *> *LMDefaultAudioExtensions(void) {
+    return @[ @"mp3", @"wav", @"m4a", @"aac", @"flac", @"aif", @"aiff", @"aifc", @"caf" ];
+}
+
 static NSSet<NSString *> *LMSupportedAudioExtensions(void) {
     static NSSet<NSString *> *extensions = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        NSArray<NSString *> *swiftExtensions = nil;
-        @try {
-            swiftExtensions = [LMSupportedAudioFormats supportedExtensions];
-        } @catch (NSException *exception) {
-            swiftExtensions = nil;
-        }
-
-        if (![swiftExtensions isKindOfClass:[NSArray class]] || swiftExtensions.count == 0) {
-            swiftExtensions = @[ @"mp3", @"wav", @"m4a", @"aac", @"flac", @"aif", @"aiff", @"aifc", @"caf" ];
-        }
-
-        NSMutableSet<NSString *> *normalized = [NSMutableSet setWithCapacity:swiftExtensions.count];
-        for (id value in swiftExtensions) {
-            if (![value isKindOfClass:[NSString class]]) {
-                continue;
-            }
-            NSString *lowercase = [(NSString *)value lowercaseString];
+        NSMutableSet<NSString *> *normalized = [NSMutableSet setWithCapacity:LMDefaultAudioExtensions().count];
+        for (NSString *value in LMDefaultAudioExtensions()) {
+            NSString *lowercase = [value lowercaseString];
             if (lowercase.length > 0) {
                 [normalized addObject:lowercase];
             }
         }
-
         extensions = [normalized copy];
     });
 
