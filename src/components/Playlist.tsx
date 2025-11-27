@@ -9,6 +9,7 @@ import { showToast } from "@/components/Toast";
 import { type TrackData, TrackItem } from "@/components/TrackItem";
 import { usePlaylistSelection } from "@/hooks/usePlaylistSelection";
 import { showContextMenu } from "@/native-modules/ContextMenu";
+import { SUPPORTED_AUDIO_EXTENSIONS } from "@/systems/audioFormats";
 import {
     DragDropView,
     type NativeDragTrack,
@@ -822,7 +823,7 @@ export function Playlist() {
             onLayout={() => {
                 requestAnimationFrame(updateDropAreaWindowRect);
             }}
-            allowedFileTypes={["mp3", "wav", "m4a", "aac", "flac"]}
+            allowedFileTypes={SUPPORTED_AUDIO_EXTENSIONS}
         >
             {emptyStateContent ? (
                 <View className="flex-1 items-center justify-center px-8 text-center">{emptyStateContent}</View>

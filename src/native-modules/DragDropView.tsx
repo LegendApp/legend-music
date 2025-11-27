@@ -2,6 +2,7 @@ import { cssInterop } from "nativewind";
 import { forwardRef, type ReactNode } from "react";
 import { type NativeSyntheticEvent, requireNativeComponent, type ViewProps } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
+import { SUPPORTED_AUDIO_EXTENSIONS } from "@/systems/audioFormats";
 
 interface DragDropEvent {
     files: string[];
@@ -34,7 +35,7 @@ export interface NativeDragTrack {
 
 interface DragDropViewProps extends ViewProps {
     children?: ReactNode;
-    allowedFileTypes?: string[];
+    allowedFileTypes?: readonly string[];
     onDragEnter?: () => void;
     onDragLeave?: () => void;
     onDrop?: (event: { nativeEvent: DragDropEvent }) => void;
@@ -58,7 +59,7 @@ export const DragDropView = forwardRef<DragDropViewHandle, DragDropViewProps>(
     (
         {
             children,
-            allowedFileTypes = ["mp3", "wav", "m4a", "aac", "flac"],
+            allowedFileTypes = SUPPORTED_AUDIO_EXTENSIONS,
             onDragEnter,
             onDragLeave,
             onDrop,

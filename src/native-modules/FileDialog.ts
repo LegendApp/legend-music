@@ -1,5 +1,6 @@
 import * as FileSystem from "expo-file-system/next";
 import { NativeModules, Platform } from "react-native";
+import { SUPPORTED_AUDIO_EXTENSIONS } from "@/systems/audioFormats";
 
 type DirectoryLike = string | { uri?: string } | null | undefined;
 
@@ -14,12 +15,13 @@ type NativeFileDialogOpenOptions = {
     canChooseDirectories?: boolean;
     allowsMultipleSelection?: boolean;
     directoryURL?: string | null;
+    allowedFileTypes?: readonly string[];
 };
 
 type NativeFileDialogSaveOptions = {
     defaultName?: string;
     directory?: string;
-    allowedFileTypes?: string[];
+    allowedFileTypes?: readonly string[];
 };
 
 const { FileDialog: NativeFileDialog = {} as NativeFileDialogModule } = NativeModules;
@@ -29,12 +31,13 @@ export interface FileDialogOpenOptions {
     canChooseDirectories?: boolean;
     allowsMultipleSelection?: boolean;
     directoryURL?: DirectoryLike;
+    allowedFileTypes?: readonly string[];
 }
 
 export interface FileDialogSaveOptions {
     defaultName?: string;
     directory?: string;
-    allowedFileTypes?: string[];
+    allowedFileTypes?: readonly string[];
 }
 
 export const defaultDirectoryUri = FileSystem.Paths.document?.uri ?? null;
@@ -80,6 +83,19 @@ function fileUriToPath(uri: string): string {
     return uri;
 }
 
+function resolveAllowedFileTypes(options: FileDialogOpenOptions): readonly string[] | undefined {
+    if (options.allowedFileTypes && options.allowedFileTypes.length > 0) {
+        return options.allowedFileTypes;
+    }
+
+    const allowsDirectoriesOnly = options.canChooseDirectories === true && options.canChooseFiles === false;
+    if (allowsDirectoriesOnly) {
+        return undefined;
+    }
+
+    return SUPPORTED_AUDIO_EXTENSIONS;
+}
+
 function ensureModuleAvailable<T>(method: T | undefined, methodName: string): method is T {
     if (typeof method === "function") {
         return true;
@@ -103,6 +119,7 @@ export async function openFileDialog(options: FileDialogOpenOptions = {}): Promi
     }
 
     const directoryURL = resolveDirectory(options.directoryURL);
+    const allowedFileTypes = resolveAllowedFileTypes(options);
 
     try {
         return await openMethod({
@@ -110,6 +127,7 @@ export async function openFileDialog(options: FileDialogOpenOptions = {}): Promi
             canChooseDirectories: options.canChooseDirectories,
             allowsMultipleSelection: options.allowsMultipleSelection,
             directoryURL,
+            allowedFileTypes,
         });
     } catch (error) {
         console.error("Failed to open file dialog", error);

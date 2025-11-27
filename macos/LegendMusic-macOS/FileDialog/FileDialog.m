@@ -57,12 +57,18 @@ RCT_EXPORT_METHOD(open:(NSDictionary *)options
       NSNumber *canChooseDirectories = options[@"canChooseDirectories"] ?: @(NO);
       NSNumber *allowsMultipleSelection = options[@"allowsMultipleSelection"] ?: @(NO);
       id directoryURLValue = options[@"directoryURL"];
+      NSArray *allowedFileTypes = [options objectForKey:@"allowedFileTypes"];
 
       panel.canChooseFiles = [canChooseFiles boolValue];
       panel.canChooseDirectories = [canChooseDirectories boolValue];
       panel.allowsMultipleSelection = [allowsMultipleSelection boolValue];
       panel.resolvesAliases = YES;
       panel.treatsFilePackagesAsDirectories = YES;
+
+      if ([allowedFileTypes isKindOfClass:[NSArray class]] && allowedFileTypes.count > 0 && panel.canChooseFiles) {
+        panel.allowedFileTypes = allowedFileTypes;
+        panel.allowsOtherFileTypes = NO;
+      }
 
       NSURL *directoryURL = [self urlFromString:directoryURLValue];
       if (directoryURL) {
