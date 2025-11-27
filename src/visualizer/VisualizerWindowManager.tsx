@@ -1,5 +1,5 @@
 import { observable } from "@legendapp/state";
-import { useValue } from "@legendapp/state/react";
+import { useObserveEffect, useValue } from "@legendapp/state/react";
 import { useEffect } from "react";
 
 import { localPlayerState$ } from "@/components/LocalAudioPlayer";
@@ -39,8 +39,8 @@ export const VisualizerWindowManager = () => {
         };
     }, [windowManager]);
 
-    useEffect(() => {
-        if (isOpen) {
+    useObserveEffect(() => {
+        if (visualizerWindowState$.isOpen.get()) {
             (async () => {
                 const { window } = visualizerPreferences$.get();
                 const width = Math.max(480, Math.floor(window.width) || 780);
@@ -67,13 +67,13 @@ export const VisualizerWindowManager = () => {
                 }
             })();
         }
-    }, [isOpen]);
+    });
 
-    useEffect(() => {
-        if (!isPlaying && autoClose && visualizerWindowState$.isOpen.get()) {
+    useObserveEffect(() => {
+        if (!localPlayerState$.isPlaying.get() && visualizerPreferences$.window.autoClose.get()) {
             visualizerWindowState$.isOpen.set(false);
         }
-    }, [autoClose, isPlaying]);
+    });
 
     return null;
 };

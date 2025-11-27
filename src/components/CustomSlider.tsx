@@ -1,6 +1,6 @@
 import type { Observable } from "@legendapp/state";
 import { useObservable, useObserveEffect, useValue } from "@legendapp/state/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { GestureResponderEvent, LayoutChangeEvent } from "react-native";
 import { PanResponder, Pressable, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
@@ -58,9 +58,11 @@ export function CustomSlider({
     const thumbHeight = useSharedValue(1);
 
     // Animate thumb height based on hover state
-    useEffect(() => {
-        thumbHeight.set(withTiming(isHovered || isDragging ? 12 : 1, { duration: 150 }));
-    }, [isDragging, isHovered]);
+    useObserveEffect(() => {
+        const hovered = isHovered$.get();
+        const dragging = isDragging$.get();
+        thumbHeight.set(withTiming(hovered || dragging ? 12 : 1, { duration: 150 }));
+    });
 
     const updateValueFromLocation = useCallback(
         (locationX: number) => {

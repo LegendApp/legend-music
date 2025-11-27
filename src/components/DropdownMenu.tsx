@@ -1,6 +1,6 @@
 import { Callout } from "@fluentui-react-native/callout";
 import type { Observable } from "@legendapp/state";
-import { useMount, useObservable, useValue } from "@legendapp/state/react";
+import { useMount, useObservable, useObserveEffect, useValue } from "@legendapp/state/react";
 import type { Component, ReactNode } from "react";
 import {
     cloneElement,
@@ -411,11 +411,12 @@ function Sub({ children, className = "" }: SubProps) {
     const { level } = useContext(SubmenuContext);
     const subRef = useRef<View>(null);
 
-    useEffect(() => {
+    useObserveEffect(() => {
+        const activeSubmenuId = state$.activeSubmenuId.get();
         if (activeSubmenuId !== null && activeSubmenuId !== submenuId && isOpen) {
             setIsOpen(false);
         }
-    }, [activeSubmenuId, submenuId, isOpen]);
+    });
 
     useMount(() => {
         const unsubscribe = state$.isDropdownOpen.onChange(() => {
@@ -494,13 +495,10 @@ function SubContent({
     const { parentRef, submenuId } = useContext(SubmenuContext);
     const contextValue = useDropdownContext();
 
-    useEffect(() => {
-        if (activeSubmenuId === submenuId) {
-            setIsOpen(true);
-        } else {
-            setIsOpen(false);
-        }
-    }, [activeSubmenuId, submenuId]);
+    useObserveEffect(() => {
+        const activeSubmenuId = state$.activeSubmenuId.get();
+        setIsOpen(activeSubmenuId === submenuId);
+    });
 
     if (!isOpen || !parentRef) {
         return null;

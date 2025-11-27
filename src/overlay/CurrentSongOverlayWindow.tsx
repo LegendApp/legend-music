@@ -121,8 +121,8 @@ function CurrentSongOverlayWindow() {
         resetCurrentSongOverlayTimer();
     }, []);
 
-    useEffect(() => {
-        if (isOverlayExiting) {
+    useObserveEffect(() => {
+        if (currentSongOverlay$.isExiting.get()) {
             return;
         }
 
@@ -130,7 +130,7 @@ function CurrentSongOverlayWindow() {
         const targetWidth = isHovered ? OVERLAY_WINDOW_WIDTH_EXPANDED : OVERLAY_WINDOW_WIDTH_COMPACT;
         // setCurrentSongOverlayWindowHeight(targetHeight);
         // setCurrentSongOverlayWindowWidth(targetWidth);
-    }, [isHovered, isOverlayExiting]);
+    }, [isHovered]);
 
     useObserveEffect(async () => {
         const exiting = currentSongOverlay$.isExiting.get();

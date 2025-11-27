@@ -1,4 +1,5 @@
-import { Fragment, useEffect, useMemo } from "react";
+import { Fragment, useMemo } from "react";
+import { useObserveEffect } from "@legendapp/state/react";
 import { Text, View } from "react-native";
 
 import { DragDropProvider, DraggableItem, DroppableZone } from "@/components/dnd";
@@ -105,13 +106,13 @@ export function CustomizeUISettings() {
     const playbackLayout = usePlaybackControlLayout();
     const bottomBarLayout = useBottomBarControlLayout();
 
-    useEffect(() => {
-        ensureLayoutCompleteness("playback", playbackLayout, PLAYBACK_CONTROL_DEFINITIONS);
-    }, [playbackLayout]);
+    useObserveEffect(() => {
+        ensureLayoutCompleteness("playback", settings$.ui.playback.get(), PLAYBACK_CONTROL_DEFINITIONS);
+    });
 
-    useEffect(() => {
-        ensureLayoutCompleteness("bottomBar", bottomBarLayout, BOTTOM_BAR_CONTROL_DEFINITIONS);
-    }, [bottomBarLayout]);
+    useObserveEffect(() => {
+        ensureLayoutCompleteness("bottomBar", settings$.ui.bottomBar.get(), BOTTOM_BAR_CONTROL_DEFINITIONS);
+    });
 
     const normalizedPlaybackLayout = useNormalizedLayout(playbackLayout, PLAYBACK_CONTROL_DEFINITIONS);
     const normalizedBottomBarLayout = useNormalizedLayout(bottomBarLayout, BOTTOM_BAR_CONTROL_DEFINITIONS);

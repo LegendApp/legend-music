@@ -1,5 +1,5 @@
 import type { Observable } from "@legendapp/state";
-import { useValue } from "@legendapp/state/react";
+import { useObserveEffect, useValue } from "@legendapp/state/react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { NativeMouseEvent } from "react-native-macos";
 
@@ -104,9 +104,22 @@ export function useLibraryTrackList(searchQuery: string): UseLibraryTrackListRes
         items: trackItems,
     });
 
+    const clearSelectionRef = useRef(clearSelection);
     useEffect(() => {
-        clearSelection();
-    }, [clearSelection, selectedItem?.id, trackItems.length]);
+        clearSelectionRef.current = clearSelection;
+    }, [clearSelection]);
+
+    useObserveEffect(() => {
+        const selectedItemId = libraryUI$.selectedItem.get()?.id;
+        const trackCount = library$.tracks.get().length;
+        if (selectedItemId || trackCount >= 0) {
+            clearSelectionRef.current();
+        }
+    });
+
+    useEffect(() => {
+        clearSelectionRef.current();
+    }, [trackItems.length]);
 
     const handleTrackAction = useCallback(
         (index: number, action: QueueAction) => {

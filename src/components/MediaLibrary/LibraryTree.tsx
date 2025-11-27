@@ -1,6 +1,6 @@
 import { LegendList } from "@legendapp/list";
-import { useValue } from "@legendapp/state/react";
-import { useCallback, useEffect, useMemo } from "react";
+import { useObserveEffect, useValue } from "@legendapp/state/react";
+import { useCallback, useMemo } from "react";
 import { Text, View } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 import { Button } from "@/components/Button";
@@ -142,12 +142,28 @@ export function LibraryTree({ searchQuery }: LibraryTreeProps) {
         [computeCollectionItems, selectedCollection],
     );
 
-    useEffect(() => {
+    useObserveEffect(() => {
         const collectionTypeMap: Record<string, LibraryItem["type"][]> = {
             artists: ["artist"],
             albums: ["album"],
             playlists: ["playlist"],
         };
+
+        const selectedCollection = libraryUI$.selectedCollection.get();
+        const selectedItem = libraryUI$.selectedItem.get();
+        const { artists, albums, playlists, tracks } = library$.get();
+        const allSongsItem = {
+            id: "all-songs",
+            type: "playlist" as const,
+            name: "All Songs",
+            trackCount: tracks.length,
+        };
+        const collectionItems =
+            selectedCollection === "albums"
+                ? albums
+                : selectedCollection === "playlists"
+                  ? [allSongsItem, ...playlists]
+                  : artists;
 
         const allowedTypes = collectionTypeMap[selectedCollection] ?? [];
         if (!selectedItem || !allowedTypes.includes(selectedItem.type)) {
@@ -157,7 +173,7 @@ export function LibraryTree({ searchQuery }: LibraryTreeProps) {
                 libraryUI$.selectedItem.set(null);
             }
         }
-    }, [collectionItems, selectedCollection, selectedItem]);
+    });
 
     return (
         <View className="flex-1">

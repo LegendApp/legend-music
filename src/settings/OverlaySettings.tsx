@@ -1,5 +1,5 @@
-import { useValue } from "@legendapp/state/react";
-import { useEffect, useState } from "react";
+import { useObserveEffect, useValue } from "@legendapp/state/react";
+import { useState } from "react";
 import { TextInput, View } from "react-native";
 
 import { Checkbox } from "@/components/Checkbox";
@@ -28,9 +28,9 @@ export const OverlaySettings = function OverlaySettings() {
     const overlayEnabled = useValue(settings$.overlay.enabled);
     const [durationDraft, setDurationDraft] = useState(String(durationSeconds));
 
-    useEffect(() => {
-        setDurationDraft(String(durationSeconds));
-    }, [durationSeconds]);
+    useObserveEffect(() => {
+        setDurationDraft(String(settings$.overlay.displayDurationSeconds.get()));
+    });
 
     const handleDurationChange = (text: string) => {
         const sanitized = text.replace(/[^0-9]/g, "");

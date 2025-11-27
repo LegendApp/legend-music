@@ -1,5 +1,5 @@
 import { LegendList } from "@legendapp/list";
-import { useValue } from "@legendapp/state/react";
+import { useObserveEffect, useValue } from "@legendapp/state/react";
 import { type ElementRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { findNodeHandle, type NativeSyntheticEvent, Platform, StyleSheet, Text, UIManager, View } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
@@ -9,7 +9,6 @@ import { showToast } from "@/components/Toast";
 import { type TrackData, TrackItem } from "@/components/TrackItem";
 import { usePlaylistSelection } from "@/hooks/usePlaylistSelection";
 import { showContextMenu } from "@/native-modules/ContextMenu";
-import { isSupportedAudioFile, SUPPORTED_AUDIO_EXTENSIONS } from "@/systems/audioFormats";
 import {
     DragDropView,
     type NativeDragTrack,
@@ -17,6 +16,7 @@ import {
     type TrackDragEvent,
 } from "@/native-modules/DragDropView";
 import { TrackDragSource } from "@/native-modules/TrackDragSource";
+import { isSupportedAudioFile, SUPPORTED_AUDIO_EXTENSIONS } from "@/systems/audioFormats";
 import { DEBUG_PLAYLIST_LOGS } from "@/systems/constants";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import {
@@ -154,14 +154,6 @@ export function Playlist() {
             }),
         [],
     );
-
-    useEffect(() => {
-        perfLog("Playlist.useMemo", {
-            length: playlist.length,
-            currentTrackIndex,
-            isPlayerActive,
-        });
-    }, [playlist.length, currentTrackIndex, isPlayerActive, playlist]);
 
     const handleDeleteSelection = useCallback((indices: number[]) => {
         if (indices.length === 0) {
@@ -314,17 +306,16 @@ export function Playlist() {
         };
     }, []);
 
-    useEffect(() => {
-        updateDropAreaWindowRect();
-    }, [updateDropAreaWindowRect, playlist.length]);
-
-    useEffect(() => {
+    useObserveEffect(() => {
+        const queueLength = queue$.tracks.get().length;
         lastDropIndexRef.current = Math.min(lastDropIndexRef.current, queueLength);
-    }, [queueLength]);
+        updateDropAreaWindowRect();
+    });
 
-    useEffect(() => {
-        const nextIndex = typeof currentTrackIndex === "number" ? currentTrackIndex : -1;
-        const queueEntryId = currentTrackQueueEntryId;
+    useObserveEffect(() => {
+        const nextIndex = localPlayerState$.currentIndex.get();
+        const queueEntryId =
+            (localPlayerState$.currentTrack.get() as Partial<QueuedTrack> | null)?.queueEntryId ?? null;
         const previous = previousScrolledTrackRef.current;
         const trackChanged =
             queueEntryId != null
@@ -349,14 +340,15 @@ export function Playlist() {
         if (previous.index !== nextIndex || previous.queueEntryId !== queueEntryId) {
             previousScrolledTrackRef.current = { index: nextIndex, queueEntryId };
         }
-    }, [clearSelection, currentTrackIndex, currentTrackQueueEntryId]);
+    });
 
-    useEffect(() => {
+    useObserveEffect(() => {
+        const isPlayerActive = localPlayerState$.isPlaying.get();
         if (isPlayerActive && !wasPlayingRef.current) {
             clearSelection();
         }
         wasPlayingRef.current = isPlayerActive;
-    }, [clearSelection, isPlayerActive]);
+    });
 
     const allowPlaylistDrop = useCallback((item: DraggedItem<DragData>) => {
         if (item.data?.type === "playlist-track") {

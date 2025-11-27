@@ -1,4 +1,4 @@
-import { useValue } from "@legendapp/state/react";
+import { useObserveEffect, useValue } from "@legendapp/state/react";
 import { useCallback, useEffect } from "react";
 import { Dimensions } from "react-native";
 
@@ -52,7 +52,8 @@ export const MediaLibraryWindowManager = () => {
         };
     }, [windowManager]);
 
-    useEffect(() => {
+    useObserveEffect(() => {
+        const isOpen = stateSaved$.libraryIsOpen.get();
         perfLog("MediaLibraryWindowManager.isOpenEffect", { isOpen });
         if (isOpen) {
             (async () => {
@@ -100,7 +101,7 @@ export const MediaLibraryWindowManager = () => {
                 }
             })();
         }
-    }, [isOpen, windowManager]);
+    });
 
     return null;
 };

@@ -1,4 +1,4 @@
-import { useValue } from "@legendapp/state/react";
+import { useObserveEffect, useValue } from "@legendapp/state/react";
 import { useEffect, useRef } from "react";
 import { Dimensions } from "react-native";
 
@@ -51,7 +51,15 @@ export const CurrentSongOverlayWindowManager = () => {
         };
     }, [windowManager]);
 
-    useEffect(() => {
+    useObserveEffect(() => {
+        const isWindowOpen = currentSongOverlay$.isWindowOpen.get();
+        const isOverlayExiting = currentSongOverlay$.isExiting.get();
+        const overlayPosition = settings$.overlay.position.get();
+        const windowHeight = currentSongOverlay$.windowHeight.get() ?? OVERLAY_WINDOW_HEIGHT_COMPACT;
+        const windowWidth = currentSongOverlay$.windowWidth.get() ?? OVERLAY_WINDOW_WIDTH_COMPACT;
+        const horizontalPosition = overlayPosition?.horizontal ?? "center";
+        const verticalPosition = overlayPosition?.vertical ?? "top";
+
         perfLog("CurrentSongOverlayWindowManager.isOpenEffect", { isWindowOpen, isOverlayExiting });
         if (!isWindowOpen) {
             void (async () => {
@@ -134,7 +142,7 @@ export const CurrentSongOverlayWindowManager = () => {
                 perfLog("CurrentSongOverlayWindowManager.openWindow.error", error);
             }
         })();
-    }, [isWindowOpen, isOverlayExiting, horizontalPosition, verticalPosition, windowHeight, windowWidth]);
+    });
 
     return null;
 };
