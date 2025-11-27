@@ -94,6 +94,7 @@ export interface MediaScanOptions {
     includeHidden?: boolean;
     skip?: { rootIndex: number; relativePath: string }[];
     includeArtwork?: boolean;
+    allowedExtensions?: readonly string[];
 }
 
 export interface AudioPlayerEvents {

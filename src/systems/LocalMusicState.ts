@@ -6,6 +6,7 @@ import AudioPlayer, {
     type MediaScanResult,
 } from "@/native-modules/AudioPlayer";
 import { addChangeListener, setWatchedDirectories } from "@/native-modules/FileSystemWatcher";
+import { isSupportedAudioFile, stripSupportedAudioExtension, SUPPORTED_AUDIO_EXTENSIONS } from "@/systems/audioFormats";
 import { DEBUG_LOCAL_MUSIC_LOGS } from "@/systems/constants";
 import {
     clearLibraryCache,
@@ -417,7 +418,7 @@ function parseFilenameOnly(fileName: string): {
     artist: string;
 } {
     // Remove extension
-    let name = fileName.replace(/\.mp3$/i, "");
+    let name = stripSupportedAudioExtension(fileName);
 
     // Decode URL-encoded characters (like %20 for spaces)
     try {
@@ -457,6 +458,10 @@ function formatDuration(seconds: number): string {
  */
 export async function createLocalTrackFromFile(filePath: string): Promise<LocalTrack> {
     const fileName = fileNameFromPath(filePath);
+
+    if (!isSupportedAudioFile(filePath)) {
+        throw new Error(`Unsupported audio format for ${fileName}`);
+    }
 
     try {
         const metadata = await extractId3Metadata(filePath, fileName);
@@ -525,6 +530,10 @@ async function scanLibraryNative(paths: string[]): Promise<{ tracks: LocalTrack[
             const absolutePath = relativePath.startsWith("/")
                 ? relativePath
                 : buildAbsolutePath(rootPath, relativePath);
+
+            if (!isSupportedAudioFile(absolutePath)) {
+                continue;
+            }
 
             if (seenPaths.has(absolutePath)) {
                 continue;
@@ -596,6 +605,7 @@ async function scanLibraryNative(paths: string[]): Promise<{ tracks: LocalTrack[
             batchSize: 100,
             skip: skipEntries,
             includeArtwork: false,
+            allowedExtensions: SUPPORTED_AUDIO_EXTENSIONS,
         });
         const totalRoots = result.totalRoots && result.totalRoots > 0 ? result.totalRoots : normalizedRoots.length;
         const totalTracks = result.totalTracks ?? localMusicState$.scanTrackTotal.get();
@@ -689,7 +699,7 @@ export async function scanLocalMusic(): Promise<void> {
             );
         }
 
-        debugLocalMusicLog(`Scan complete: Found ${dedupedTracks.length} total MP3 files`);
+        debugLocalMusicLog(`Scan complete: Found ${dedupedTracks.length} total audio files`);
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
         localMusicState$.error.set(`Scan failed: ${errorMessage}`);

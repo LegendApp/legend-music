@@ -9,7 +9,7 @@ import { showToast } from "@/components/Toast";
 import { type TrackData, TrackItem } from "@/components/TrackItem";
 import { usePlaylistSelection } from "@/hooks/usePlaylistSelection";
 import { showContextMenu } from "@/native-modules/ContextMenu";
-import { SUPPORTED_AUDIO_EXTENSIONS } from "@/systems/audioFormats";
+import { isSupportedAudioFile, SUPPORTED_AUDIO_EXTENSIONS } from "@/systems/audioFormats";
 import {
     DragDropView,
     type NativeDragTrack,
@@ -645,15 +645,24 @@ export function Playlist() {
 
     const handleFileDrop = useCallback(
         async (files: string[]) => {
-            perfLog("Playlist.handleFileDrop", { fileCount: files.length });
+            const supportedFiles = files.filter((filePath) => isSupportedAudioFile(filePath));
+            const unsupportedCount = files.length - supportedFiles.length;
+            perfLog("Playlist.handleFileDrop", {
+                fileCount: files.length,
+                supportedCount: supportedFiles.length,
+            });
 
-            if (files.length === 0) {
-                debugPlaylistLog("No files to add to queue");
+            if (supportedFiles.length === 0) {
+                debugPlaylistLog("No supported files to add to queue");
+                showDropFeedback({
+                    type: "warning",
+                    message: "No supported audio files to add to the queue.",
+                });
                 return;
             }
 
             try {
-                const trackPromises = files.map((filePath) =>
+                const trackPromises = supportedFiles.map((filePath) =>
                     createLocalTrackFromFile(filePath).catch((error) => {
                         console.error(`Failed to load metadata for dropped file ${filePath}:`, error);
                         return null;
@@ -662,7 +671,8 @@ export function Playlist() {
 
                 const resolvedTracks = await Promise.all(trackPromises);
                 const tracksToAdd = resolvedTracks.filter((track): track is LocalTrack => track !== null);
-                const skipped = files.length - tracksToAdd.length;
+                const skippedMetadata = supportedFiles.length - tracksToAdd.length;
+                const skipped = unsupportedCount + skippedMetadata;
 
                 if (tracksToAdd.length === 0) {
                     showDropFeedback({
@@ -687,9 +697,12 @@ export function Playlist() {
                     : " Add a library folder in Settings to keep them around next time.";
 
                 if (skipped > 0) {
+                    const skippedFilesSummary = formatTrackCount(skipped);
                     showDropFeedback({
                         type: "warning",
-                        message: `${additionSummary} (skipped ${formatTrackCount(skipped)}).${persistenceHint}`,
+                        message:
+                            `${additionSummary} (skipped ${skippedFilesSummary} unsupported or unreadable files).` +
+                            `${persistenceHint}`,
                     });
                 } else {
                     showDropFeedback({
