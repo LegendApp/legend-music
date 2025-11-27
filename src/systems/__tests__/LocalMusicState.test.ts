@@ -1,6 +1,13 @@
 import { clearLibraryCache } from "@/systems/LibraryCache";
 import type { LocalTrack } from "@/systems/LocalMusicState";
-import { initializeLocalMusic, librarySettings$, localMusicState$, scanLocalMusic } from "@/systems/LocalMusicState";
+import {
+    createLocalTrackFromFile,
+    initializeLocalMusic,
+    librarySettings$,
+    localMusicState$,
+    scanLocalMusic,
+} from "@/systems/LocalMusicState";
+import { SUPPORTED_AUDIO_EXTENSIONS } from "@/systems/audioFormats";
 
 jest.mock("expo-file-system", () => {
     const pathExists = new Map<string, boolean>();
@@ -287,8 +294,22 @@ describe("scanLocalMusic", () => {
         }
     };
 
+    const getAudioPlayerMock = () =>
+        require("@/native-modules/AudioPlayer").default as {
+            scanMediaLibrary: jest.Mock;
+            addListener: jest.Mock;
+            __emit: (event: string, payload: any) => void;
+        };
+
+    let mockScanTracks: Array<{ relativePath: string; fileName?: string }>;
+
     beforeEach(() => {
         jest.useFakeTimers();
+        mockScanTracks = [
+            { relativePath: "root.mp3", fileName: "root.mp3" },
+            { relativePath: "sub/nested.mp3", fileName: "nested.mp3" },
+            { relativePath: "sub/deeper/deep.mp3", fileName: "deep.mp3" },
+        ];
         resetPathExists();
         getMockFsSetter()({
             "/music": {
@@ -307,6 +328,24 @@ describe("scanLocalMusic", () => {
 
         librarySettings$.paths.set(() => ["/music"]);
         localMusicState$.tracks.set([]);
+        localMusicState$.error.set(null);
+
+        const audioPlayer = getAudioPlayerMock();
+        audioPlayer.scanMediaLibrary.mockReset();
+        audioPlayer.scanMediaLibrary.mockImplementation(async (_paths: string[], _cacheDir: string, options?: any) => {
+            if (options?.allowedExtensions) {
+                expect(options.allowedExtensions).toEqual(SUPPORTED_AUDIO_EXTENSIONS);
+            }
+
+            audioPlayer.__emit("onMediaScanBatch", { rootIndex: 0, tracks: mockScanTracks });
+            audioPlayer.__emit("onMediaScanComplete", {
+                totalTracks: mockScanTracks.length,
+                totalRoots: 1,
+                errors: [],
+            });
+
+            return { totalTracks: mockScanTracks.length, totalRoots: 1, errors: [] };
+        });
     });
 
     afterEach(() => {
@@ -355,10 +394,6 @@ describe("scanLocalMusic", () => {
     it("skips missing library folders without crashing", async () => {
         const setFs = getMockFsSetter();
         setFs({
-            "/music": {
-                files: ["root.mp3"],
-                directories: [],
-            },
             "/other": {
                 files: ["alt.mp3"],
                 directories: [],
@@ -367,6 +402,7 @@ describe("scanLocalMusic", () => {
         setPathExists("/music", false);
         setPathExists("/other", true);
         librarySettings$.paths.set(() => ["/music", "/other"]);
+        mockScanTracks = [{ relativePath: "alt.mp3", fileName: "alt.mp3" }];
 
         await scanLocalMusic();
         jest.runOnlyPendingTimers();
@@ -378,12 +414,36 @@ describe("scanLocalMusic", () => {
         expect(localMusicState$.error.get()).toContain("Skipping missing folders");
     });
 
+    it("filters scan results to supported extensions", async () => {
+        const audioPlayer = getAudioPlayerMock();
+
+        audioPlayer.scanMediaLibrary.mockImplementationOnce(async (_paths: string[], _cacheDir: string, options?: any) => {
+            expect(options?.allowedExtensions).toEqual(SUPPORTED_AUDIO_EXTENSIONS);
+
+            audioPlayer.__emit("onMediaScanBatch", {
+                rootIndex: 0,
+                tracks: [
+                    { relativePath: "keep.flac", fileName: "keep.flac" },
+                    { relativePath: "skip.ogg", fileName: "skip.ogg" },
+                ],
+            });
+            audioPlayer.__emit("onMediaScanComplete", { totalTracks: 2, totalRoots: 1, errors: [] });
+
+            return { totalTracks: 2, totalRoots: 1, errors: [] };
+        });
+
+        await scanLocalMusic();
+        jest.runOnlyPendingTimers();
+        await Promise.resolve();
+
+        const tracks: LocalTrack[] = localMusicState$.tracks.get();
+        expect(tracks).toHaveLength(1);
+        expect(tracks[0]?.fileName).toBe("keep.flac");
+        expect(tracks[0]?.filePath).toContain("/music/keep.flac");
+    });
+
     it("deduplicates duplicate native scan results by path", async () => {
-        const audioPlayer = require("@/native-modules/AudioPlayer").default as {
-            scanMediaLibrary: jest.Mock;
-            addListener: jest.Mock;
-            __emit: (event: string, payload: any) => void;
-        };
+        const audioPlayer = getAudioPlayerMock();
 
         audioPlayer.scanMediaLibrary.mockImplementationOnce(async () => {
             audioPlayer.__emit("onMediaScanBatch", {
@@ -404,5 +464,11 @@ describe("scanLocalMusic", () => {
         const tracks: LocalTrack[] = localMusicState$.tracks.get();
         expect(tracks).toHaveLength(1);
         expect(tracks[0]?.fileName).toBe("dup.mp3");
+    });
+});
+
+describe("createLocalTrackFromFile", () => {
+    it("rejects unsupported audio formats", async () => {
+        await expect(createLocalTrackFromFile("/music/track.ogg")).rejects.toThrow("Unsupported audio format");
     });
 });
