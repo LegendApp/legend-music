@@ -16,5 +16,5 @@ Centralize supported audio formats across JavaScript and macOS native code so dr
 ## Steps
 - [x] Establish shared audio format constants for JS, document AVFoundation support, and use them for drag/drop + dialog defaults.
 - [x] Update JS library ingestion (LocalMusicState, playlist drop/import) to rely on shared formats and avoid mp3-only parsing.
-- [ ] Align macOS native drag/drop and media scanning to the shared format list; ensure metadata extraction uses it.
+- [x] Align macOS native drag/drop and media scanning to the shared format list; ensure metadata extraction uses it.
 - [ ] Add or adjust tests and sanity checks covering filtering across the supported formats.

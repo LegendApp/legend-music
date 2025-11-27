@@ -26,6 +26,13 @@
 + (nullable LMID3TagsResult *)readTagsForURL:(NSURL *)url error:(NSError * _Nullable * _Nullable)error;
 + (nullable NSNumber *)writeTagsForURL:(NSURL *)url fields:(NSDictionary *)fields error:(NSError * _Nullable * _Nullable)error;
 @end
+
+@interface LMSupportedAudioFormats : NSObject
++ (NSArray<NSString *> *)supportedExtensions;
++ (NSArray<NSString *> *)avFoundationAdditionalExtensions;
++ (BOOL)isSupportedExtension:(NSString *)extensionString;
++ (BOOL)isSupportedFileURL:(NSURL *)url;
+@end
 #endif
 #import <math.h>
 
@@ -112,6 +119,79 @@ static BOOL LMIsMP3URL(NSURL *fileURL) {
     }
     NSString *extension = [[fileURL pathExtension] lowercaseString];
     return [extension isEqualToString:@"mp3"];
+}
+
+static NSSet<NSString *> *LMSupportedAudioExtensions(void) {
+    static NSSet<NSString *> *extensions = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        NSArray<NSString *> *swiftExtensions = nil;
+        @try {
+            swiftExtensions = [LMSupportedAudioFormats supportedExtensions];
+        } @catch (NSException *exception) {
+            swiftExtensions = nil;
+        }
+
+        if (![swiftExtensions isKindOfClass:[NSArray class]] || swiftExtensions.count == 0) {
+            swiftExtensions = @[ @"mp3", @"wav", @"m4a", @"aac", @"flac" ];
+        }
+
+        NSMutableSet<NSString *> *normalized = [NSMutableSet setWithCapacity:swiftExtensions.count];
+        for (id value in swiftExtensions) {
+            if (![value isKindOfClass:[NSString class]]) {
+                continue;
+            }
+            NSString *lowercase = [(NSString *)value lowercaseString];
+            if (lowercase.length > 0) {
+                [normalized addObject:lowercase];
+            }
+        }
+
+        extensions = [normalized copy];
+    });
+
+    return extensions;
+}
+
+static NSSet<NSString *> *LMExtensionsFromOption(NSArray<NSString *> *options) {
+    if (![options isKindOfClass:[NSArray class]] || options.count == 0) {
+        return LMSupportedAudioExtensions();
+    }
+
+    NSMutableSet<NSString *> *normalized = [NSMutableSet setWithCapacity:options.count];
+    for (id value in options) {
+        if (![value isKindOfClass:[NSString class]]) {
+            continue;
+        }
+        NSString *lowercase = [(NSString *)value lowercaseString];
+        if (lowercase.length > 0) {
+            [normalized addObject:lowercase];
+        }
+    }
+
+    return normalized.count > 0 ? [normalized copy] : LMSupportedAudioExtensions();
+}
+
+static BOOL LMIsSupportedAudioExtensionString(NSString *extension, NSSet<NSString *> *allowedExtensions) {
+    if (!extension || extension.length == 0) {
+        return NO;
+    }
+
+    NSSet<NSString *> *extensions = allowedExtensions ?: LMSupportedAudioExtensions();
+    return [extensions containsObject:[extension lowercaseString]];
+}
+
+static BOOL LMIsSupportedAudioURLWithSet(NSURL *fileURL, NSSet<NSString *> *allowedExtensions) {
+    if (!fileURL) {
+        return NO;
+    }
+
+    NSString *extension = [[fileURL pathExtension] lowercaseString];
+    return LMIsSupportedAudioExtensionString(extension, allowedExtensions);
+}
+
+static BOOL LMIsSupportedAudioURL(NSURL *fileURL) {
+    return LMIsSupportedAudioURLWithSet(fileURL, LMSupportedAudioExtensions());
 }
 
 static NSNumber *LMMediaDurationProbe(NSURL *fileURL) {
@@ -393,8 +473,13 @@ static NSDictionary *LMExtractID3MediaTags(NSURL *fileURL, NSString *cacheDirPat
     return result;
 }
 
-static NSDictionary *LMExtractMediaTags(NSURL *fileURL, NSString *cacheDirPath, BOOL includeArtwork) {
+static NSDictionary *LMExtractMediaTags(NSURL *fileURL, NSString *cacheDirPath, BOOL includeArtwork, NSSet<NSString *> *allowedExtensions) {
     if (!fileURL) {
+        return @{};
+    }
+
+    NSSet<NSString *> *extensions = allowedExtensions ?: LMSupportedAudioExtensions();
+    if (!LMIsSupportedAudioURLWithSet(fileURL, extensions)) {
         return @{};
     }
 
@@ -1566,8 +1651,13 @@ RCT_EXPORT_METHOD(getMediaTags:(NSString *)filePath
                 return;
             }
 
+            if (!LMIsSupportedAudioURL(fileURL)) {
+                reject(@"UNSUPPORTED_FORMAT", @"Audio format is not supported", nil);
+                return;
+            }
+
             NSString *normalizedCacheDir = cacheDir ? LMNormalizePathString(cacheDir) : @"";
-            NSDictionary *result = LMExtractMediaTags(fileURL, normalizedCacheDir, YES);
+            NSDictionary *result = LMExtractMediaTags(fileURL, normalizedCacheDir, YES, LMSupportedAudioExtensions());
             resolve(result ?: @{});
         }
     });
@@ -1666,6 +1756,8 @@ RCT_EXPORT_METHOD(scanMediaLibrary:(NSArray<NSString *> *)paths
             BOOL includeHidden = [[options objectForKey:@"includeHidden"] boolValue];
             BOOL includeArtwork = [[options objectForKey:@"includeArtwork"] boolValue];
             NSString *normalizedCacheDir = (includeArtwork && cacheDir) ? LMNormalizePathString(cacheDir) : @"";
+            NSArray<NSString *> *allowedExtensionsOption = [options objectForKey:@"allowedExtensions"];
+            NSSet<NSString *> *allowedExtensions = LMExtensionsFromOption(allowedExtensionsOption);
 
             NSMutableDictionary<NSNumber *, NSMutableSet<NSString *> *> *skipLookup = [NSMutableDictionary dictionary];
             NSArray *skipEntries = [options objectForKey:@"skip"];
@@ -1779,7 +1871,7 @@ RCT_EXPORT_METHOD(scanMediaLibrary:(NSArray<NSString *> *)paths
                         }
 
                         NSString *extension = [[fileURL pathExtension] lowercaseString];
-                        if (![extension isEqualToString:@"mp3"]) {
+                        if (!LMIsSupportedAudioExtensionString(extension, allowedExtensions)) {
                             continue;
                         }
 
@@ -1811,7 +1903,7 @@ RCT_EXPORT_METHOD(scanMediaLibrary:(NSArray<NSString *> *)paths
                             continue;
                         }
 
-                        NSDictionary *tags = LMExtractMediaTags(fileURL, normalizedCacheDir, includeArtwork);
+                        NSDictionary *tags = LMExtractMediaTags(fileURL, normalizedCacheDir, includeArtwork, allowedExtensions);
 
                         NSMutableDictionary *track = [@{
                             @"rootIndex": @(rootIndex),

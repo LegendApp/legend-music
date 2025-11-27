@@ -2,6 +2,29 @@ import Foundation
 import AppKit
 import React
 
+@objcMembers
+class LMSupportedAudioFormats: NSObject {
+    static let supportedExtensions: [String] = ["mp3", "wav", "m4a", "aac", "flac"]
+    // Additional formats AVFoundation can decode; not enabled for import yet.
+    static let avFoundationAdditionalExtensions: [String] = ["aif", "aiff", "aifc", "caf"]
+
+    static func isSupportedExtension(_ extensionString: String?) -> Bool {
+        guard let extensionString, !extensionString.isEmpty else {
+            return false
+        }
+
+        return supportedExtensions.contains(extensionString.lowercased())
+    }
+
+    static func isSupportedFileURL(_ url: URL?) -> Bool {
+        guard let url else {
+            return false
+        }
+
+        return isSupportedExtension(url.pathExtension)
+    }
+}
+
 @objc(RNDragDrop)
 class RNDragDrop: RCTViewManager {
     override func view() -> NSView! {
@@ -21,7 +44,7 @@ class DragDropView: NSView {
     @objc var onTrackDragLeave: RCTDirectEventBlock?
     @objc var onTrackDragHover: RCTDirectEventBlock?
     @objc var onTrackDrop: RCTDirectEventBlock?
-    @objc var allowedFileTypes: [String] = ["mp3", "wav", "m4a", "aac", "flac"]
+    @objc var allowedFileTypes: [String] = LMSupportedAudioFormats.supportedExtensions
 
     private enum DragContentType {
         case files
@@ -38,6 +61,7 @@ class DragDropView: NSView {
     private func extractFilesAndDirectories(from urls: [URL]) -> (files: [URL], directories: [URL]) {
         var audioFiles: [URL] = []
         var directoryUrls: [URL] = []
+        let permittedExtensions = allowedFileTypes.isEmpty ? LMSupportedAudioFormats.supportedExtensions : allowedFileTypes
 
         for url in urls {
             if let values = try? url.resourceValues(forKeys: [.isDirectoryKey]), values.isDirectory == true {
@@ -46,7 +70,7 @@ class DragDropView: NSView {
             }
 
             let fileExtension = url.pathExtension.lowercased()
-            if allowedFileTypes.contains(fileExtension) {
+            if permittedExtensions.contains(fileExtension) {
                 audioFiles.append(url)
             }
         }
