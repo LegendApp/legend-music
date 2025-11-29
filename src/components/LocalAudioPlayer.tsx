@@ -51,11 +51,10 @@ export const queue$ = observable<PlaybackQueueState>({
 });
 
 let queueEntryCounter = 0;
-let jsProgressTimer: ReturnType<typeof setInterval> | null = null;
+let jsProgressTimer: ReturnType<typeof setTimeout> | null = null;
 let lastNativeProgressTime = 0;
 let lastNativeProgressTimestamp = 0;
 let isWindowOccluded = false;
-const JS_PROGRESS_INTERVAL_MS = 800;
 
 function createQueueEntryId(seed: string): string {
     queueEntryCounter += 1;
@@ -190,7 +189,7 @@ let localAudioPlayerInitialized = false;
 
 function stopJsProgressTimer(): void {
     if (jsProgressTimer) {
-        clearInterval(jsProgressTimer);
+        clearTimeout(jsProgressTimer);
         jsProgressTimer = null;
     }
     lastNativeProgressTimestamp = 0;
@@ -199,6 +198,23 @@ function stopJsProgressTimer(): void {
 function anchorProgress(time: number): void {
     lastNativeProgressTime = time;
     lastNativeProgressTimestamp = Date.now();
+}
+
+function getMsUntilNextProgressSecond(): number {
+    if (!lastNativeProgressTimestamp) {
+        return 0;
+    }
+
+    const elapsedMs = Date.now() - lastNativeProgressTimestamp;
+    const msIntoSecond = elapsedMs % 1000;
+
+    // When we're exactly on the boundary, fire immediately, otherwise wait until the next second boundary
+    return msIntoSecond === 0 ? 0 : 1000 - msIntoSecond;
+}
+
+function scheduleJsProgressTick(): void {
+    const delay = getMsUntilNextProgressSecond();
+    jsProgressTimer = setTimeout(tickJsProgress, delay);
 }
 
 function tickJsProgress(): void {
@@ -220,14 +236,18 @@ function tickJsProgress(): void {
     if (!playbackInteractionState$.isScrubbing.peek() && Math.abs(target - current) >= 0.05) {
         localPlayerState$.currentTime.set(target);
     }
+
+    // Schedule next tick aligned to second boundaries from the last native progress anchor
+    scheduleJsProgressTick();
 }
 
 function startJsProgressTimer(): void {
-    if (jsProgressTimer || isWindowOccluded || !lastNativeProgressTimestamp) {
+    if (jsProgressTimer || !lastNativeProgressTimestamp) {
         return;
     }
 
-    jsProgressTimer = setInterval(tickJsProgress, JS_PROGRESS_INTERVAL_MS);
+    // Schedule first tick aligned to the last native progress timestamp
+    scheduleJsProgressTick();
 }
 
 function applyWindowOcclusionState(isOccluded: boolean): void {
@@ -1103,9 +1123,7 @@ export function initializeLocalAudioPlayer(): void {
         localPlayerState$.isPlaying.set(data.isPlaying);
         if (data.isPlaying) {
             anchorProgress(localPlayerState$.currentTime.peek());
-            if (!isWindowOccluded) {
-                startJsProgressTimer();
-            }
+            startJsProgressTimer();
         } else {
             stopJsProgressTimer();
         }
