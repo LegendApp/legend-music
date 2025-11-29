@@ -1,8 +1,6 @@
 import { observable } from "@legendapp/state";
-import { useObserveEffect } from "@legendapp/state/react";
-import { useEffect } from "react";
+import { useMount, useObserveEffect } from "@legendapp/state/react";
 
-import { localPlayerState$ } from "@/components/LocalAudioPlayer";
 import { useWindowManager } from "@/native-modules/WindowManager";
 import { perfLog } from "@/utils/perfLogger";
 import { visualizerPreferences$ } from "@/visualizer/preferences";
@@ -24,7 +22,7 @@ export function toggleVisualizerWindow() {
 export const VisualizerWindowManager = () => {
     const windowManager = useWindowManager();
 
-    useEffect(() => {
+    useMount(() => {
         const subscription = windowManager.onWindowClosed(({ identifier }) => {
             if (identifier === VISUALIZER_WINDOW_ID) {
                 visualizerWindowState$.isOpen.set(false);
@@ -34,7 +32,7 @@ export const VisualizerWindowManager = () => {
         return () => {
             subscription.remove();
         };
-    }, [windowManager]);
+    });
 
     useObserveEffect(() => {
         if (visualizerWindowState$.isOpen.get()) {
@@ -63,12 +61,6 @@ export const VisualizerWindowManager = () => {
                     perfLog("VisualizerWindowManager.close.error", error);
                 }
             })();
-        }
-    });
-
-    useObserveEffect(() => {
-        if (!localPlayerState$.isPlaying.get() && visualizerPreferences$.window.autoClose.get()) {
-            visualizerWindowState$.isOpen.set(false);
         }
     });
 

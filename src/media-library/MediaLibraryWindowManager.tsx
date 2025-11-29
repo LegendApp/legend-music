@@ -1,5 +1,5 @@
-import { useObserveEffect } from "@legendapp/state/react";
-import { useCallback, useEffect } from "react";
+import { useMount, useObserveEffect } from "@legendapp/state/react";
+import { useCallback } from "react";
 import { Dimensions } from "react-native";
 
 import { mediaLibraryPreferences$ } from "@/media-library/preferences";
@@ -38,7 +38,7 @@ export const MediaLibraryWindowManager = () => {
         ToggleLibrary: toggleLibrary,
     });
 
-    useEffect(() => {
+    useMount(() => {
         perfLog("MediaLibraryWindowManager.windowClosedEffect");
         const subscription = windowManager.onWindowClosed(({ identifier }) => {
             if (identifier === MEDIA_LIBRARY_WINDOW_ID) {
@@ -49,56 +49,67 @@ export const MediaLibraryWindowManager = () => {
         return () => {
             subscription.remove();
         };
-    }, [windowManager]);
+    });
 
-    useObserveEffect(() => {
+    useObserveEffect(async () => {
         const isOpen = stateSaved$.libraryIsOpen.get();
         perfLog("MediaLibraryWindowManager.isOpenEffect", { isOpen });
         if (isOpen) {
-            (async () => {
-                try {
-                    perfLog("MediaLibraryWindowManager.openWindow.start");
-                    const mainFrame = await windowManager.getMainWindowFrame();
-                    const screen = Dimensions.get("screen");
-                    const storedSize = mediaLibraryPreferences$.window.get();
-                    const preferredWidth = storedSize.width > 0 ? storedSize.width : MEDIA_LIBRARY_WIDTH;
-                    const preferredHeight =
-                        storedSize.height > 0
-                            ? storedSize.height
-                            : Math.max(mainFrame.height, MEDIA_LIBRARY_DEFAULT_HEIGHT);
-                    const maxWidth = Math.max(screen.width - WINDOW_GAP, MEDIA_LIBRARY_MIN_WIDTH);
-                    const maxHeight = Math.max(screen.height - WINDOW_GAP, MEDIA_LIBRARY_MIN_HEIGHT);
-                    const width = clamp(Math.floor(preferredWidth), MEDIA_LIBRARY_MIN_WIDTH, maxWidth);
-                    const height = clamp(Math.floor(preferredHeight), MEDIA_LIBRARY_MIN_HEIGHT, maxHeight);
-                    const fitsOnRight = mainFrame.x + mainFrame.width + WINDOW_GAP + width <= screen.width;
-                    const x = fitsOnRight
-                        ? mainFrame.x + mainFrame.width + WINDOW_GAP
-                        : Math.max(mainFrame.x - WINDOW_GAP - width, 0);
-                    const y = Math.max(mainFrame.y + (mainFrame.height - height), 0);
+            try {
+                perfLog("MediaLibraryWindowManager.openWindow.start");
+                const mainFrame = await windowManager.getMainWindowFrame();
+                const screen = Dimensions.get("screen");
+                const storedSize = mediaLibraryPreferences$.window.get();
 
-                    await WindowsNavigator.open(MEDIA_LIBRARY_WINDOW_KEY, {
-                        x,
-                        y,
-                        windowStyle: {
-                            width,
-                            height,
-                        },
-                    });
-                } catch (error) {
-                    console.error("Failed to open media library window:", error);
-                    perfLog("MediaLibraryWindowManager.openWindow.error", error);
+                let preferredWidth: number;
+                if (storedSize.width > 0) {
+                    preferredWidth = storedSize.width;
+                } else {
+                    preferredWidth = MEDIA_LIBRARY_WIDTH;
                 }
-            })();
+
+                let preferredHeight: number;
+                if (storedSize.height > 0) {
+                    preferredHeight = storedSize.height;
+                } else {
+                    preferredHeight = Math.max(mainFrame.height, MEDIA_LIBRARY_DEFAULT_HEIGHT);
+                }
+
+                const maxWidth = Math.max(screen.width - WINDOW_GAP, MEDIA_LIBRARY_MIN_WIDTH);
+                const maxHeight = Math.max(screen.height - WINDOW_GAP, MEDIA_LIBRARY_MIN_HEIGHT);
+                const width = clamp(Math.floor(preferredWidth), MEDIA_LIBRARY_MIN_WIDTH, maxWidth);
+                const height = clamp(Math.floor(preferredHeight), MEDIA_LIBRARY_MIN_HEIGHT, maxHeight);
+                const fitsOnRight = mainFrame.x + mainFrame.width + WINDOW_GAP + width <= screen.width;
+
+                let x: number;
+                if (fitsOnRight) {
+                    x = mainFrame.x + mainFrame.width + WINDOW_GAP;
+                } else {
+                    x = Math.max(mainFrame.x - WINDOW_GAP - width, 0);
+                }
+
+                const y = Math.max(mainFrame.y + (mainFrame.height - height), 0);
+
+                await WindowsNavigator.open(MEDIA_LIBRARY_WINDOW_KEY, {
+                    x,
+                    y,
+                    windowStyle: {
+                        width,
+                        height,
+                    },
+                });
+            } catch (error) {
+                console.error("Failed to open media library window:", error);
+                perfLog("MediaLibraryWindowManager.openWindow.error", error);
+            }
         } else {
-            (async () => {
-                try {
-                    perfLog("MediaLibraryWindowManager.closeWindow.start");
-                    await WindowsNavigator.close(MEDIA_LIBRARY_WINDOW_KEY);
-                } catch (error) {
-                    console.error("Failed to close media library window:", error);
-                    perfLog("MediaLibraryWindowManager.closeWindow.error", error);
-                }
-            })();
+            try {
+                perfLog("MediaLibraryWindowManager.closeWindow.start");
+                await WindowsNavigator.close(MEDIA_LIBRARY_WINDOW_KEY);
+            } catch (error) {
+                console.error("Failed to close media library window:", error);
+                perfLog("MediaLibraryWindowManager.closeWindow.error", error);
+            }
         }
     });
 

@@ -1,14 +1,13 @@
-import { useEffect, useRef } from "react";
-
+import { useMount } from "@legendapp/state/react";
+import { useRef } from "react";
 import { useWindowManager } from "@/native-modules/WindowManager";
-
 import { useWindowId } from "./WindowProvider";
 
 export function useWindowFocusEffect(callback: () => void) {
     const windowId = useWindowId();
     const windowManagerRef = useRef(useWindowManager());
 
-    useEffect(() => {
+    useMount(() => {
         if (!windowId) {
             return;
         }
@@ -22,5 +21,5 @@ export function useWindowFocusEffect(callback: () => void) {
         return () => {
             subscription.remove();
         };
-    }, [callback, windowId]);
+    });
 }

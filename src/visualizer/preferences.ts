@@ -4,7 +4,6 @@ export interface VisualizerPreferences {
     window: {
         width: number;
         height: number;
-        autoClose: boolean;
     };
     visualizer: {
         selectedPresetId: string;
@@ -19,7 +18,6 @@ export const visualizerPreferences$ = createJSONManager<VisualizerPreferences>({
         window: {
             width: 780,
             height: 420,
-            autoClose: true,
         },
         visualizer: {
             selectedPresetId: "classic",

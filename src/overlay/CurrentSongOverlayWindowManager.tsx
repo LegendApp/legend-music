@@ -1,5 +1,5 @@
-import { useObserveEffect } from "@legendapp/state/react";
-import { useEffect, useRef } from "react";
+import { useMount, useObserveEffect } from "@legendapp/state/react";
+import { useRef } from "react";
 import { Dimensions } from "react-native";
 
 import { useWindowManager, WindowStyleMask } from "@/native-modules/WindowManager";
@@ -32,7 +32,7 @@ export const CurrentSongOverlayWindowManager = () => {
     const windowManager = useWindowManager();
     const previousDimensionsRef = useRef<{ width: number; height: number } | null>(null);
 
-    useEffect(() => {
+    useMount(() => {
         const subscription = windowManager.onWindowClosed(({ identifier }) => {
             if (identifier === OVERLAY_WINDOW_ID) {
                 finalizeCurrentSongOverlayDismissal();
@@ -42,7 +42,7 @@ export const CurrentSongOverlayWindowManager = () => {
         return () => {
             subscription.remove();
         };
-    }, [windowManager]);
+    });
 
     useObserveEffect(async () => {
         const isWindowOpen = currentSongOverlay$.isWindowOpen.get();
