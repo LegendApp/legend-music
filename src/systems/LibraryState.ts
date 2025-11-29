@@ -3,7 +3,6 @@ import type { LibrarySnapshot, PersistedLibraryTrack } from "@/systems/LibraryCa
 import { getLibrarySnapshot, persistLibrarySnapshot } from "@/systems/LibraryCache";
 import { type LocalTrack, librarySettings$, localMusicState$ } from "@/systems/LocalMusicState";
 import { getCacheDirectory } from "@/utils/cacheDirectories";
-import { createJSONManager } from "@/utils/JSONManager";
 import { perfCount, perfLog, perfTime } from "@/utils/perfLogger";
 import { runAfterInteractions } from "@/utils/runAfterInteractions";
 
@@ -29,14 +28,10 @@ export interface LibraryUIState {
 }
 
 // Library UI state (persistent)
-export const libraryUI$ = createJSONManager<LibraryUIState>({
-    filename: "libraryUI",
-    initialValue: {
-        selectedItem: null,
-        searchQuery: "",
-        selectedCollection: "artists",
-    },
-    preload: false,
+export const libraryUI$ = observable<LibraryUIState>({
+    selectedItem: null,
+    searchQuery: "",
+    selectedCollection: "artists",
 });
 
 // Library data derived from local music state

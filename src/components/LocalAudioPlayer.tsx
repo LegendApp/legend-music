@@ -115,15 +115,18 @@ if (snapshotFromCache.queue.length > 0) {
     queueHydratedFromSnapshot = true;
 }
 
-const serializeQueuedTrack = (track: QueuedTrack): PersistedQueuedTrack => ({
-    title: track.title,
-    artist: track.artist,
-    album: track.album,
-    duration: track.duration,
-    filePath: track.filePath,
-    thumbnail: track.thumbnail,
-    thumbnailKey: track.thumbnailKey,
-});
+const serializeQueuedTrack = (track: QueuedTrack): PersistedQueuedTrack => {
+    const { thumbnailKey } = resolveThumbnailFromFields(track);
+
+    return {
+        title: track.title,
+        artist: track.artist,
+        album: track.album,
+        duration: track.duration,
+        filePath: track.filePath,
+        thumbnailKey,
+    };
+};
 
 type PlaylistSnapshotPayload = Omit<PlaylistSnapshot, "version" | "updatedAt">;
 

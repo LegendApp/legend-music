@@ -6,7 +6,6 @@ export interface PersistedQueuedTrack {
     artist: string;
     album?: string;
     duration: string;
-    thumbnail?: string;
     thumbnailKey?: string;
 }
 

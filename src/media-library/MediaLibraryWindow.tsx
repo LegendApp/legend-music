@@ -7,8 +7,8 @@ import { StyleSheet, View } from "react-native";
 import { DragDropProvider } from "@/components/dnd";
 import { MediaLibraryView } from "@/components/MediaLibrary";
 import { TooltipProvider } from "@/components/TooltipProvider";
-import { mediaLibraryPreferences$ } from "@/media-library/preferences";
 import { HiddenTextInput } from "@/systems/keyboard/HookKeyboard";
+import { stateSaved$ } from "@/systems/State";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 import { WindowProvider } from "@/windows";
 
@@ -18,8 +18,7 @@ export default function MediaLibraryWindow() {
     const handleLayout = useCallback((event: LayoutChangeEvent) => {
         const { width, height } = event.nativeEvent.layout;
         if (width > 0 && height > 0) {
-            mediaLibraryPreferences$.window.width.set(Math.round(width));
-            mediaLibraryPreferences$.window.height.set(Math.round(height));
+            stateSaved$.libraryWindowSize.set({ width: Math.round(width), height: Math.round(height) });
         }
     }, []);
 

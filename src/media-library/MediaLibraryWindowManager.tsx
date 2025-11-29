@@ -2,7 +2,6 @@ import { useMount, useObserveEffect } from "@legendapp/state/react";
 import { useCallback } from "react";
 import { Dimensions } from "react-native";
 
-import { mediaLibraryPreferences$ } from "@/media-library/preferences";
 import { useWindowManager } from "@/native-modules/WindowManager";
 import { useOnHotkeys } from "@/systems/keyboard/Keyboard";
 import { stateSaved$ } from "@/systems/State";
@@ -59,7 +58,7 @@ export const MediaLibraryWindowManager = () => {
                 perfLog("MediaLibraryWindowManager.openWindow.start");
                 const mainFrame = await windowManager.getMainWindowFrame();
                 const screen = Dimensions.get("screen");
-                const storedSize = mediaLibraryPreferences$.window.get();
+                const storedSize = stateSaved$.libraryWindowSize.get?.() ?? undefined;
 
                 let preferredWidth: number;
                 if (storedSize.width > 0) {
