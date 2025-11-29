@@ -60,7 +60,7 @@ https://github.com/user-attachments/assets/061cae41-c47a-4977-b095-27d007b9d0e9
 ### Playback, queue, and drag-and-drop
 
 - Playback runs through the `AudioPlayer` native module. It maintains Now Playing metadata, media key hooks, and emits FFT frames for the visualizer.
-- The queue (`queue$.tracks`) is persisted via `PlaylistCache` both as JSON and as an `.m3u` so the session survives restarts and can be exported.
+- The queue (`queue$.tracks`) is persisted to `queue.m3u`, and the current index/time live in `stateSaved$`, so sessions survive restarts and the queue stays exportable.
 - Drag files or folders from Finder into the playlist region or onto the window chrome via `DragDropView`. Internal drag-and-drop uses `DraggableItem`/`DroppableZone` to reorder or send tracks to playlists.
 - Customize the playback toolbar and the bottom bar shortcuts under **Settings → Customize UI**. Layouts are stored in `settings$.ui`.
 
@@ -115,7 +115,7 @@ Hotkeys are defined in `src/systems/hotkeys.ts` and persisted to `Cache/hotkeys.
 
 ## Persistence & caches
 
-- All observable stores (`LibraryCache`, `PlaylistCache`, `settings$` incl. library paths, hotkeys$, visualizer preferences) write to `~/Library/Caches/LegendMusic/data/*.json` (with queue exports saved as `.m3u`).
+- All observable stores (`LibraryCache`, `settings$`, `stateSaved$` incl. queue index/time, hotkeys$, visualizer preferences) write to `~/Library/Caches/LegendMusic/data/*.json` (with queue exports saved as `.m3u`).
 - Queue exports and imports use M3U via `saveQueueToM3U`/`loadQueueFromM3U`. Clear `queue.m3u` if you need to reset the session.
 - Album art is cached under `~/Library/Caches/LegendMusic/artwork/<hash>.<ext>` with versioning handled in `LocalMusicState`.
 - Removing the cache directory is the fastest way to reset the app without touching Git.

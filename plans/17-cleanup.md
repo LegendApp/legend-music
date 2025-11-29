@@ -7,7 +7,7 @@ Prune unused surface area, tighten duplicated logic, align styling with Tailwind
 - Delete unused utilities (`ShadowDropdown`, color utils, array helpers, m3u validation, openUrl, pickPaths, formatRelativeDate/decodeTextEntities) or move them behind a documented consumer.
 
 ## Playback/Cache Consistency
-- Consolidate playlist thumbnail key/URI derivation so PlaylistCache and LocalAudioPlayer share a single helper.
+- Consolidate playlist thumbnail key/URI derivation so queue persistence and LocalAudioPlayer share a single helper.
 - Keep playlist and library cache sanitizers lean with clear defaults and tests for legacy data shapes.
 
 ## Styling Alignment

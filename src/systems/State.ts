@@ -19,6 +19,8 @@ type SavedState = {
     playlistType: "file" | "url";
     libraryIsOpen: boolean;
     libraryWindowSize: { width: number; height: number };
+    playbackIndex: number;
+    playbackTime: number;
 };
 
 export const stateSaved$ = createJSONManager<SavedState>({
@@ -28,5 +30,7 @@ export const stateSaved$ = createJSONManager<SavedState>({
         playlistType: "file" as const,
         libraryIsOpen: false,
         libraryWindowSize: { width: 0, height: 0 },
+        playbackIndex: -1,
+        playbackTime: 0,
     },
 });

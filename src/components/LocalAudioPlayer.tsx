@@ -6,13 +6,11 @@ import { DEBUG_AUDIO_LOGS } from "@/systems/constants";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import { ensureLocalTrackThumbnail } from "@/systems/LocalMusicState";
 import { playbackInteractionState$ } from "@/systems/PlaybackInteractionState";
-import type { PersistedQueuedTrack, PlaylistSnapshot } from "@/systems/PlaylistCache";
-import { getPlaylistCacheSnapshot, persistPlaylistSnapshot } from "@/systems/PlaylistCache";
 import { type RepeatMode, settings$ } from "@/systems/Settings";
+import { stateSaved$ } from "@/systems/State";
 import { clearQueueM3U, loadQueueFromM3U, saveQueueToM3U } from "@/utils/m3uManager";
 import { perfCount, perfDelta, perfLog, perfMark } from "@/utils/perfLogger";
-import { runAfterInteractions, runAfterInteractionsWithLabel } from "@/utils/runAfterInteractions";
-import { resolveThumbnailFromFields } from "@/utils/thumbnails";
+import { runAfterInteractionsWithLabel } from "@/utils/runAfterInteractions";
 
 export interface LocalPlayerState {
     isPlaying: boolean;
@@ -55,126 +53,22 @@ let jsProgressTimer: ReturnType<typeof setTimeout> | null = null;
 let lastNativeProgressTime = 0;
 let lastNativeProgressTimestamp = 0;
 let isWindowOccluded = false;
+const PLAYBACK_TIME_SAVE_DEBOUNCE_MS = 1000;
+let playbackTimeSaveHandle: ReturnType<typeof setTimeout> | null = null;
+let pendingPlaybackTime: number | null = null;
 
 function createQueueEntryId(seed: string): string {
     queueEntryCounter += 1;
     return `${seed}-${Date.now()}-${queueEntryCounter}`;
 }
 
-const createQueuedTrackFromPersisted = (track: PersistedQueuedTrack): QueuedTrack => {
-    const { thumbnail } = resolveThumbnailFromFields(track);
-    const fileName = track.filePath.split("/").pop() || track.title || track.filePath;
-    return {
-        id: track.filePath,
-        title: track.title,
-        artist: track.artist,
-        album: track.album,
-        duration: track.duration,
-        filePath: track.filePath,
-        fileName,
-        thumbnail,
-        queueEntryId: createQueueEntryId(track.filePath),
-    };
-};
-
-const snapshotFromCache = getPlaylistCacheSnapshot();
-let queueHydratedFromSnapshot = false;
-let pendingInitialTrackRestore: { track: QueuedTrack } | null = null;
+let pendingInitialTrackRestore: { track: QueuedTrack; playbackTime: number } | null = null;
 
 const playbackHistory: number[] = [];
 const MAX_HISTORY_LENGTH = 100;
 
-if (snapshotFromCache.queue.length > 0) {
-    const hydratedTracks = snapshotFromCache.queue.map(createQueuedTrackFromPersisted);
-    queue$.tracks.set(hydratedTracks);
-    perfMark("Queue.hydrateFromPlaylistCache", { tracks: hydratedTracks.length });
-
-    const resolvedIndex =
-        snapshotFromCache.currentIndex != null &&
-        snapshotFromCache.currentIndex >= 0 &&
-        snapshotFromCache.currentIndex < hydratedTracks.length
-            ? snapshotFromCache.currentIndex
-            : -1;
-
-    if (resolvedIndex >= 0) {
-        const currentTrack = hydratedTracks[resolvedIndex];
-        localPlayerState$.currentTrack.set(currentTrack);
-        localPlayerState$.currentIndex.set(resolvedIndex);
-        pendingInitialTrackRestore = {
-            track: currentTrack,
-        };
-    } else {
-        localPlayerState$.currentTrack.set(null);
-        localPlayerState$.currentIndex.set(-1);
-        pendingInitialTrackRestore = null;
-    }
-
-    localPlayerState$.isPlaying.set(false);
-    localPlayerState$.isLoading.set(false);
-    queueHydratedFromSnapshot = true;
-}
-
-const serializeQueuedTrack = (track: QueuedTrack): PersistedQueuedTrack => {
-    return {
-        title: track.title,
-        artist: track.artist,
-        album: track.album,
-        duration: track.duration,
-        filePath: track.filePath,
-    };
-};
-
-type PlaylistSnapshotPayload = Omit<PlaylistSnapshot, "version" | "updatedAt">;
-
-type PlaylistSnapshotSignature = {
-    queueRef: QueuedTrack[];
-    queueLength: number;
-    currentIndex: number;
-    isPlaying: boolean;
-};
-
-const makePlaylistSnapshotSignature = (): PlaylistSnapshotSignature => {
-    const queueRef = queue$.tracks.peek();
-    const queueLength = queueRef.length;
-    const currentIndex = queueLength ? clampIndex(localPlayerState$.currentIndex.peek(), queueLength) : -1;
-
-    return {
-        queueRef,
-        queueLength,
-        currentIndex,
-        isPlaying: localPlayerState$.isPlaying.peek() && queueLength > 0,
-    };
-};
-
-const buildPlaylistSnapshot = (signature: PlaylistSnapshotSignature): PlaylistSnapshotPayload => ({
-    queue: signature.queueRef.map(serializeQueuedTrack),
-    currentIndex: signature.currentIndex,
-    isPlaying: signature.isPlaying,
-});
-
-let lastPlaylistSnapshotSignature: PlaylistSnapshotSignature | null = null;
-
-const schedulePlaylistSnapshotPersist = () => {
-    runAfterInteractions(() => {
-        const signature = makePlaylistSnapshotSignature();
-        if (
-            lastPlaylistSnapshotSignature &&
-            lastPlaylistSnapshotSignature.queueRef === signature.queueRef &&
-            lastPlaylistSnapshotSignature.queueLength === signature.queueLength &&
-            lastPlaylistSnapshotSignature.currentIndex === signature.currentIndex &&
-            lastPlaylistSnapshotSignature.isPlaying === signature.isPlaying
-        ) {
-            return;
-        }
-
-        const snapshot = buildPlaylistSnapshot(signature);
-        persistPlaylistSnapshot(snapshot);
-        lastPlaylistSnapshotSignature = signature;
-    });
-};
-
 // Flag to track if queue has been loaded from cache
-let queueInitialized = queueHydratedFromSnapshot;
+let queueInitialized = false;
 
 interface QueueUpdateOptions {
     playImmediately?: boolean;
@@ -300,6 +194,38 @@ const trackFileExists = (filePath: string): boolean => {
     }
 };
 
+function persistPlaybackIndex(index: number): void {
+    const queueLength = queue$.tracks.peek().length;
+    const clampedIndex = queueLength ? clampIndex(index, queueLength) : -1;
+    stateSaved$.playbackIndex.set(clampedIndex);
+    if (clampedIndex === -1) {
+        stateSaved$.playbackTime.set(0);
+    }
+}
+
+function schedulePersistPlaybackTime(time: number): void {
+    pendingPlaybackTime = time;
+    if (playbackTimeSaveHandle) {
+        return;
+    }
+    playbackTimeSaveHandle = setTimeout(() => {
+        if (pendingPlaybackTime != null) {
+            stateSaved$.playbackTime.set(Math.max(0, pendingPlaybackTime));
+        }
+        playbackTimeSaveHandle = null;
+        pendingPlaybackTime = null;
+    }, PLAYBACK_TIME_SAVE_DEBOUNCE_MS);
+}
+
+function resetSavedPlaybackState(): void {
+    if (playbackTimeSaveHandle) {
+        clearTimeout(playbackTimeSaveHandle);
+        playbackTimeSaveHandle = null;
+    }
+    pendingPlaybackTime = null;
+    stateSaved$.assign({ playbackIndex: -1, playbackTime: 0 });
+}
+
 const handleMissingTrackFile = (track: LocalTrack, queueEntryId?: string) => {
     const label = track.title || track.fileName || track.filePath;
     showToast(`Track not found: ${label}`, "error");
@@ -338,9 +264,11 @@ function getQueueSnapshot(): QueuedTrack[] {
     return queue$.tracks.peek();
 }
 
-function setQueueTracks(tracks: QueuedTrack[]): void {
+function setQueueTracks(tracks: QueuedTrack[], options: { skipPersistence?: boolean } = {}): void {
     queue$.tracks.set(tracks);
-    schedulePlaylistSnapshotPersist();
+    if (!options.skipPersistence) {
+        persistPlaybackIndex(localPlayerState$.currentIndex.peek());
+    }
 
     // Save to M3U file when queue changes (but not during initial load)
     if (queueInitialized) {
@@ -374,19 +302,22 @@ function getPlaybackSettings() {
     };
 }
 
-localPlayerState$.currentIndex.onChange(() => {
-    schedulePlaylistSnapshotPersist();
+localPlayerState$.currentIndex.onChange(({ value }) => {
+    persistPlaybackIndex(typeof value === "number" ? value : -1);
 });
 
-localPlayerState$.currentTrack.onChange(() => {
-    schedulePlaylistSnapshotPersist();
+localPlayerState$.currentTime.onChange(({ value }) => {
+    schedulePersistPlaybackTime(typeof value === "number" ? value : 0);
 });
 
-localPlayerState$.isPlaying.onChange(() => {
-    schedulePlaylistSnapshotPersist();
+localPlayerState$.isPlaying.onChange(({ value }) => {
+    if (!value) {
+        stateSaved$.playbackTime.set(localPlayerState$.currentTime.peek());
+    }
 });
 
 function resetPlayerForEmptyQueue(): void {
+    resetSavedPlaybackState();
     localPlayerState$.currentTrack.set(null);
     localPlayerState$.currentIndex.set(-1);
     localPlayerState$.currentTime.set(0);
@@ -780,11 +711,11 @@ function initializeQueueFromCache(): void {
         return;
     }
 
-    if (queueHydratedFromSnapshot) {
-        queueInitialized = true;
-        return;
-    }
-
+    const savedPlaybackState = stateSaved$.get();
+    const savedPlaybackIndex =
+        savedPlaybackState?.playbackIndex != null ? Number(savedPlaybackState.playbackIndex) : -1;
+    const savedPlaybackTime =
+        savedPlaybackState?.playbackTime != null ? Number(savedPlaybackState.playbackTime) : 0;
     const start = perfMark("Queue.initializeQueueFromCache.start");
     try {
         const savedTracks = loadQueueFromM3U();
@@ -793,10 +724,37 @@ function initializeQueueFromCache(): void {
             // Convert to queued tracks without triggering save
             clearHistory();
             const queuedTracks = savedTracks.map(createQueuedTrack);
-            queue$.tracks.set(queuedTracks);
+            setQueueTracks(queuedTracks, { skipPersistence: true });
+
+            const resolvedIndex =
+                savedPlaybackIndex >= 0 && savedPlaybackIndex < queuedTracks.length ? savedPlaybackIndex : -1;
+
+            if (resolvedIndex >= 0) {
+                const currentTrack = queuedTracks[resolvedIndex];
+                localPlayerState$.currentTrack.set(currentTrack);
+                localPlayerState$.currentIndex.set(resolvedIndex);
+                if (savedPlaybackTime > 0) {
+                    localPlayerState$.currentTime.set(savedPlaybackTime);
+                }
+                pendingInitialTrackRestore = {
+                    track: currentTrack,
+                    playbackTime: savedPlaybackTime > 0 ? savedPlaybackTime : 0,
+                };
+            } else {
+                localPlayerState$.currentTrack.set(null);
+                localPlayerState$.currentIndex.set(-1);
+                pendingInitialTrackRestore = null;
+            }
+
             if (DEBUG_AUDIO_LOGS) {
                 console.log(`Restored queue with ${queuedTracks.length} tracks from cache`);
             }
+            persistPlaybackIndex(resolvedIndex);
+            if (savedPlaybackTime > 0) {
+                stateSaved$.playbackTime.set(savedPlaybackTime);
+            }
+        } else {
+            resetSavedPlaybackState();
         }
     } catch (error) {
         console.error("Failed to initialize queue from cache:", error);
@@ -806,6 +764,7 @@ function initializeQueueFromCache(): void {
             perfMark("Queue.initializeQueueFromCache.end", { durationMs });
         }
         queueInitialized = true;
+        localPlayerState$.isLoading.set(false);
     }
 }
 
@@ -1039,28 +998,36 @@ async function restoreTrackFromSnapshotIfNeeded({
 
     const snapshot = pendingInitialTrackRestore;
     pendingInitialTrackRestore = null;
-    const { track } = snapshot;
+    const { track, playbackTime } = snapshot;
 
     runAfterInteractionsWithLabel(() => {
         const start = perfMark("LocalAudioPlayer.restoreTrackFromSnapshot.start", {
             track: track.title,
             filePath: track.filePath,
         });
-        loadTrackInternal(track)
-            .then(() => {
-                if (playAfterLoad) {
-                    return play();
+        void (async () => {
+            try {
+                await loadTrackInternal(track);
+                if (playbackTime > 0) {
+                    try {
+                        await seek(playbackTime);
+                        localPlayerState$.currentTime.set(playbackTime);
+                    } catch (seekError) {
+                        console.error("Failed to restore playback position", seekError);
+                    }
                 }
-                return undefined;
-            })
-            .finally(() => {
+                if (playAfterLoad) {
+                    await play();
+                }
+            } finally {
                 if (start !== undefined) {
                     perfMark("LocalAudioPlayer.restoreTrackFromSnapshot.end", {
                         track: track.title,
                         durationMs: Date.now() - start,
                     });
                 }
-            });
+            }
+        })();
     }, "LocalAudioPlayer.restoreTrackFromSnapshot");
 }
 

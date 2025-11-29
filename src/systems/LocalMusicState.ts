@@ -14,10 +14,10 @@ import {
     hasCachedLibraryData,
     type PersistedLibraryTrack,
 } from "@/systems/LibraryCache";
-import { hasCachedPlaylistData } from "@/systems/PlaylistCache";
 import { settings$ } from "@/systems/Settings";
 import { stateSaved$ } from "@/systems/State";
 import { ensureCacheDirectory, getCacheDirectory } from "@/utils/cacheDirectories";
+import { loadQueueFromM3U } from "@/utils/m3uManager";
 import { perfCount, perfLog } from "@/utils/perfLogger";
 import { runAfterInteractions, runAfterInteractionsWithLabel } from "@/utils/runAfterInteractions";
 import { DEFAULT_LOCAL_PLAYLIST_ID } from "./localMusicConstants";
@@ -836,11 +836,11 @@ export function initializeLocalMusic(): void {
         }, "LocalMusic.loadLocalPlaylists");
 
         if (settings.autoScanOnStart) {
-            const playlistCacheReady = hasCachedPlaylistData();
+            const queueCacheReady = loadQueueFromM3U().length > 0;
             const libraryCacheReady = hasCachedLibraryData();
-            const deferInitialScan = playlistCacheReady || libraryCacheReady;
+            const deferInitialScan = queueCacheReady || libraryCacheReady;
 
-            perfLog("LocalMusic.autoScan.policy", { deferInitialScan, playlistCacheReady, libraryCacheReady });
+            perfLog("LocalMusic.autoScan.policy", { deferInitialScan, queueCacheReady, libraryCacheReady });
 
             const scheduleScan = () => {
                 debugLocalMusicLog("Auto-scanning local music during idle...");
