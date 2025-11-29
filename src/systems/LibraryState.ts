@@ -2,9 +2,9 @@ import { observable } from "@legendapp/state";
 import type { LibrarySnapshot, PersistedLibraryTrack } from "@/systems/LibraryCache";
 import { getLibrarySnapshot, persistLibrarySnapshot } from "@/systems/LibraryCache";
 import { type LocalTrack, librarySettings$, localMusicState$ } from "@/systems/LocalMusicState";
-import { getCacheDirectory } from "@/utils/cacheDirectories";
 import { perfCount, perfLog, perfTime } from "@/utils/perfLogger";
 import { runAfterInteractions } from "@/utils/runAfterInteractions";
+import { resolveThumbnailFromFields } from "@/utils/thumbnails";
 
 export interface LibraryItem {
     id: string;
@@ -60,17 +60,6 @@ const fileNameFromPath = (path: string): string => {
     return lastSlash === -1 ? path : path.slice(lastSlash + 1);
 };
 
-const deriveThumbnailKey = (thumbnail: string | undefined): string | undefined => {
-    if (!thumbnail) {
-        return undefined;
-    }
-
-    const lastSlash = thumbnail.lastIndexOf("/");
-    const fileName = lastSlash === -1 ? thumbnail : thumbnail.slice(lastSlash + 1);
-    const [baseName] = fileName.split(".");
-    return baseName && baseName.length > 0 ? baseName : undefined;
-};
-
 const resolveRelativePathForTrack = (
     track: LocalTrack,
     roots: string[],
@@ -96,7 +85,6 @@ const resolveRelativePathForTrack = (
 
 const buildPersistedTrack = (track: LocalTrack, roots: string[]): PersistedLibraryTrack => {
     const { rootIndex, relativePath } = resolveRelativePathForTrack(track, roots);
-    const thumbnailKey = track.thumbnailKey ?? deriveThumbnailKey(track.thumbnail);
 
     return {
         root: rootIndex,
@@ -105,7 +93,6 @@ const buildPersistedTrack = (track: LocalTrack, roots: string[]): PersistedLibra
         artist: track.artist,
         album: track.album,
         duration: track.duration,
-        thumb: thumbnailKey,
     };
 };
 
@@ -124,15 +111,6 @@ const buildFilePathFromPersisted = (track: PersistedLibraryTrack, roots: string[
     }
 
     return track.rel;
-};
-
-const buildThumbnailUri = (baseUri: string, key: string | undefined): string | undefined => {
-    if (!key || !baseUri) {
-        return undefined;
-    }
-
-    const normalizedBase = baseUri.endsWith("/") ? baseUri.slice(0, -1) : baseUri;
-    return `${normalizedBase}/${key}.png`;
 };
 
 const collectLibrarySnapshot = (sourceTracks: LibraryTrack[]): LibrarySnapshotPayload => {
@@ -339,12 +317,14 @@ export const hydrateLibraryFromCache = (): boolean => {
         return false;
     }
 
-    const thumbnailsDir = getCacheDirectory("thumbnails");
-    const thumbnailBaseUri = thumbnailsDir.uri;
     const roots = Array.isArray(snapshot.roots) ? snapshot.roots.map((root) => normalizeRootPath(root)) : [];
 
     const tracks = snapshot.tracks.map((track) => {
         const filePath = buildFilePathFromPersisted(track, roots);
+        const resolvedThumbnail = resolveThumbnailFromFields({
+            thumbnail: track.thumbnail,
+            thumbnailKey: track.thumb,
+        });
 
         return {
             id: filePath,
@@ -354,8 +334,8 @@ export const hydrateLibraryFromCache = (): boolean => {
             duration: track.duration,
             filePath,
             fileName: fileNameFromPath(filePath),
-            thumbnailKey: track.thumb,
-            thumbnail: buildThumbnailUri(thumbnailBaseUri, track.thumb) ?? track.thumbnail,
+            thumbnail: resolvedThumbnail.thumbnail,
+            thumbnailKey: resolvedThumbnail.thumbnailKey,
         };
     });
 

@@ -116,15 +116,12 @@ if (snapshotFromCache.queue.length > 0) {
 }
 
 const serializeQueuedTrack = (track: QueuedTrack): PersistedQueuedTrack => {
-    const { thumbnailKey } = resolveThumbnailFromFields(track);
-
     return {
         title: track.title,
         artist: track.artist,
         album: track.album,
         duration: track.duration,
         filePath: track.filePath,
-        thumbnailKey,
     };
 };
 

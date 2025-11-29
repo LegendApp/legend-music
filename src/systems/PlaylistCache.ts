@@ -6,7 +6,6 @@ export interface PersistedQueuedTrack {
     artist: string;
     album?: string;
     duration: string;
-    thumbnailKey?: string;
 }
 
 export interface PlaylistSnapshot {
