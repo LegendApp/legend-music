@@ -1,5 +1,6 @@
 import { isString } from "@legendapp/state";
-import { type PropsWithChildren, useEffect, useRef } from "react";
+import { useMount } from "@legendapp/state/react";
+import { type PropsWithChildren, useRef } from "react";
 import { type GestureResponderEvent, Pressable, type PressableProps, Text } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 import { Icon } from "@/systems/Icon";
@@ -60,7 +61,7 @@ export function Button({
         }
     };
 
-    useEffect(() => () => clearTooltipTimeout(), []);
+    useMount(() => () => clearTooltipTimeout());
 
     const handleClick = (event: GestureResponderEvent) => {
         const nativeEvent = event.nativeEvent as unknown as NativeMouseEvent;

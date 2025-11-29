@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useMount } from "@legendapp/state/react";
+import { useRef } from "react";
 import { AppState, type AppStateStatus, TextInput } from "react-native";
 import { useWindowManager } from "@/native-modules/WindowManager";
 import { activeWindowId$, useHookKeyboard, useOnHotkeys } from "@/systems/keyboard/Keyboard";
@@ -18,7 +19,7 @@ export function HookKeyboard() {
         { global: true },
     );
 
-    useEffect(() => {
+    useMount(() => {
         activeWindowId$.set("main");
 
         const subscription = windowManagerRef.current.onWindowFocused(({ identifier }) => {
@@ -29,7 +30,7 @@ export function HookKeyboard() {
         return () => {
             subscription.remove();
         };
-    }, []);
+    });
 
     return <HiddenTextInput />;
 }
@@ -39,7 +40,7 @@ export function HiddenTextInput() {
     const inputRef = useRef<TextInput>(null);
     const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
-    useEffect(() => {
+    useMount(() => {
         const tryFocus = () => {
             if (appStateRef.current === "active") {
                 inputRef.current?.focus();
@@ -63,7 +64,7 @@ export function HiddenTextInput() {
             clearTimeout(focusTimeout);
             subscription.remove();
         };
-    }, []);
+    });
 
     return (
         <TextInput

@@ -1,8 +1,9 @@
 import "@/../global.css";
 import { VibrancyView } from "@fluentui-react-native/vibrancy-view";
 import { PortalProvider } from "@gorhom/portal";
+import { useMount } from "@legendapp/state/react";
 import type React from "react";
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { LogBox, StyleSheet, View } from "react-native";
 import { DragDropProvider } from "@/components/dnd";
 import { MainContainer } from "@/components/MainContainer";
@@ -34,7 +35,7 @@ function App(): React.JSX.Element | null {
     const hasLoggedFirstLayout = useRef(false);
 
     perfMark("App.render");
-    useEffect(() => {
+    useMount(() => {
         perfMark("App.useEffect");
         const initializeHandle = runAfterInteractionsWithLabel(() => {
             perfMark("App.initializeMenuManager");
@@ -76,7 +77,7 @@ function App(): React.JSX.Element | null {
             hydrateHandle.cancel();
             prefetchHandle.cancel();
         };
-    }, []);
+    });
 
     const handleFirstLayout = () => {
         if (hasLoggedFirstLayout.current) {
