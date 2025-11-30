@@ -2,7 +2,9 @@ import { type Observable, observable } from "@legendapp/state";
 import { type SyncTransform, synced } from "@legendapp/state/sync";
 
 import { type ExpoFSPersistPluginOptions, observablePersistExpoFS } from "@/utils/ExpoFSPersistPlugin";
-import { perfLog } from "@/utils/perfLogger";
+
+type PersistPlugin = ReturnType<typeof observablePersistExpoFS>;
+const observablePersistPlugins = new WeakMap<Observable<unknown>, PersistPlugin>();
 
 /**
  * Creates a manager for a JSON file with observable state
@@ -30,19 +32,19 @@ export function createJSONManager<T extends object>(params: {
         saveTimeout = 300,
         transform,
     } = params;
-    const shouldPreload = preload !== false;
+    const plugin = observablePersistExpoFS({
+        basePath,
+        preload: preload === false ? undefined : Array.isArray(preload) ? preload : [filename],
+        saveTimeout,
+        format,
+    });
     // Create an observable with the initial value and make sure it has the correct type
     const data$ = observable<Record<string, any>>(
         synced({
             initial: initialValue,
             persist: {
                 name: filename,
-                plugin: observablePersistExpoFS({
-                    basePath,
-                    preload: preload === false ? undefined : Array.isArray(preload) ? preload : [filename],
-                    saveTimeout,
-                    format,
-                }),
+                plugin,
                 transform,
             },
         }),
@@ -53,5 +55,11 @@ export function createJSONManager<T extends object>(params: {
         // Need a feature in Legend State first
     }
 
+    observablePersistPlugins.set(data$ as unknown as Observable<unknown>, plugin);
+
     return data$ as unknown as Observable<T>;
+}
+
+export function getPersistPlugin(obs$: Observable<unknown>): PersistPlugin | undefined {
+    return observablePersistPlugins.get(obs$);
 }

@@ -4,7 +4,7 @@ import type { ObservablePersistPlugin, ObservablePersistPluginOptions, PersistMe
 import * as FileSystemNext from "expo-file-system/next";
 import { ensureCacheDirectory, getCacheDirectory } from "@/utils/cacheDirectories";
 import { isPerfLoggingEnabled, perfLog } from "@/utils/perfLogger";
-import { timeoutOnce } from "@/utils/timeoutOnce";
+import { flushTimeoutOnce, timeoutOnce } from "@/utils/timeoutOnce";
 
 declare global {
     // eslint-disable-next-line no-var
@@ -39,11 +39,13 @@ class ObservablePersistExpoFS implements ObservablePersistPlugin {
     private configuration: ExpoFSPersistPluginOptions;
     private directory: FileSystemNext.Directory;
     private extension: string;
+    private readonly timeoutPrefix: string;
 
     constructor(configuration: ExpoFSPersistPluginOptions) {
         this.configuration = configuration;
         this.directory = getCacheDirectory("data");
         this.extension = configuration.format === "m3u" ? "m3u" : "json";
+        this.timeoutPrefix = `save_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     }
 
     private getStartDelta(): number | undefined {
@@ -171,7 +173,15 @@ class ObservablePersistExpoFS implements ObservablePersistPlugin {
     private async save(table: string) {
         console.log("save", table);
 
-        timeoutOnce(`save_${table}`, () => this.saveDebounced(table), this.configuration.saveTimeout || 100);
+        timeoutOnce(this.getTimeoutName(table), () => this.saveDebounced(table), this.configuration.saveTimeout || 100);
+    }
+
+    private getTimeoutName(table: string): string {
+        return `${this.timeoutPrefix}_${table}`;
+    }
+
+    public async flush(): Promise<void> {
+        await flushTimeoutOnce((name) => name.startsWith(this.timeoutPrefix));
     }
 
     private async saveDebounced(table: string) {

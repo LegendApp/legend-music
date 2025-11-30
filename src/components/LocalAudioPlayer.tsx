@@ -2,12 +2,14 @@ import { observable } from "@legendapp/state";
 import { File } from "expo-file-system/next";
 import { showToast } from "@/components/Toast";
 import audioPlayerApi, { type NowPlayingInfoPayload } from "@/native-modules/AudioPlayer";
+import { appState$ } from "@/observables/appState";
 import { DEBUG_AUDIO_LOGS } from "@/systems/constants";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import { ensureLocalTrackThumbnail } from "@/systems/LocalMusicState";
 import { playbackInteractionState$ } from "@/systems/PlaybackInteractionState";
 import { type RepeatMode, settings$ } from "@/systems/Settings";
 import { stateSaved$ } from "@/systems/State";
+import { getPersistPlugin } from "@/utils/JSONManager";
 import { parseDurationToSeconds } from "@/utils/m3u";
 import { clearQueueM3U, loadQueueFromM3U, saveQueueToM3U } from "@/utils/m3uManager";
 import { perfCount, perfDelta, perfLog, perfMark } from "@/utils/perfLogger";
@@ -54,9 +56,8 @@ let jsProgressTimer: ReturnType<typeof setTimeout> | null = null;
 let lastNativeProgressTime = 0;
 let lastNativeProgressTimestamp = 0;
 let isWindowOccluded = false;
-const PLAYBACK_TIME_SAVE_DEBOUNCE_MS = 1000;
-let playbackTimeSaveHandle: ReturnType<typeof setTimeout> | null = null;
-let pendingPlaybackTime: number | null = null;
+let latestPlaybackTime = 0;
+const stateSavedPersistPlugin = getPersistPlugin(stateSaved$);
 
 function createQueueEntryId(seed: string): string {
     queueEntryCounter += 1;
@@ -204,26 +205,18 @@ function persistPlaybackIndex(index: number): void {
     }
 }
 
-function schedulePersistPlaybackTime(time: number): void {
-    pendingPlaybackTime = time;
-    if (playbackTimeSaveHandle) {
-        return;
+async function persistPlaybackTimeNow(): Promise<void> {
+    const timeToPersist = Math.max(0, latestPlaybackTime);
+    try {
+        stateSaved$.playbackTime.set(timeToPersist);
+        await stateSavedPersistPlugin?.flush();
+    } catch (error) {
+        console.error("Failed to flush playback time", error);
     }
-    playbackTimeSaveHandle = setTimeout(() => {
-        if (pendingPlaybackTime != null) {
-            stateSaved$.playbackTime.set(Math.max(0, pendingPlaybackTime));
-        }
-        playbackTimeSaveHandle = null;
-        pendingPlaybackTime = null;
-    }, PLAYBACK_TIME_SAVE_DEBOUNCE_MS);
 }
 
 function resetSavedPlaybackState(): void {
-    if (playbackTimeSaveHandle) {
-        clearTimeout(playbackTimeSaveHandle);
-        playbackTimeSaveHandle = null;
-    }
-    pendingPlaybackTime = null;
+    latestPlaybackTime = 0;
     stateSaved$.assign({ playbackIndex: -1, playbackTime: 0 });
 }
 
@@ -333,12 +326,18 @@ localPlayerState$.currentIndex.onChange(({ value }) => {
 });
 
 localPlayerState$.currentTime.onChange(({ value }) => {
-    schedulePersistPlaybackTime(typeof value === "number" ? value : 0);
+    latestPlaybackTime = Math.max(0, typeof value === "number" ? value : 0);
 });
 
 localPlayerState$.isPlaying.onChange(({ value }) => {
     if (!value) {
-        stateSaved$.playbackTime.set(localPlayerState$.currentTime.peek());
+        latestPlaybackTime = Math.max(0, localPlayerState$.currentTime.peek());
+    }
+});
+
+appState$.state.onChange(({ value }) => {
+    if (value !== "active") {
+        persistPlaybackTimeNow();
     }
 });
 
@@ -740,8 +739,7 @@ function initializeQueueFromCache(): void {
     const savedPlaybackState = stateSaved$.get();
     const savedPlaybackIndex =
         savedPlaybackState?.playbackIndex != null ? Number(savedPlaybackState.playbackIndex) : -1;
-    const savedPlaybackTime =
-        savedPlaybackState?.playbackTime != null ? Number(savedPlaybackState.playbackTime) : 0;
+    const savedPlaybackTime = savedPlaybackState?.playbackTime != null ? Number(savedPlaybackState.playbackTime) : 0;
     const start = perfMark("Queue.initializeQueueFromCache.start");
     try {
         const savedTracks = loadQueueFromM3U();
