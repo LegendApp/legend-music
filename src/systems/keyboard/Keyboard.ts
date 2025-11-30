@@ -153,6 +153,8 @@ export function onHotkeys(hotkeyCallbacks: HotkeyCallbacks, options: HotkeyScope
     const repeatActions = new Set<string[]>();
     const targetWindowId = options.global ? undefined : (options.windowId ?? "main");
 
+    const shouldBlockForUI = () => state$.isDropdownOpen.get();
+
     // Process each combination and its callback
     for (const name of Object.keys(hotkeyCallbacks) as HotkeyBindingName[]) {
         const action = hotkeyCallbacks[name];
@@ -205,8 +207,7 @@ export function onHotkeys(hotkeyCallbacks: HotkeyCallbacks, options: HotkeyScope
     }
 
     const checkHotkeys = () => {
-        if (state$.showSettings.get() || state$.isDropdownOpen.get()) {
-            // Disable hotkeys when settings or dropdowns are open
+        if (shouldBlockForUI()) {
             return;
         }
         if (targetWindowId && activeWindowId$.get() !== targetWindowId) {
@@ -225,8 +226,7 @@ export function onHotkeys(hotkeyCallbacks: HotkeyCallbacks, options: HotkeyScope
     };
 
     const checkRepeatHotkeys = () => {
-        if (state$.showSettings.get() || state$.isDropdownOpen.get()) {
-            // Disable hotkeys when settings or dropdowns are open
+        if (shouldBlockForUI()) {
             return;
         }
         if (targetWindowId && activeWindowId$.get() !== targetWindowId) {
