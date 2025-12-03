@@ -1,6 +1,7 @@
 # Repository Guidelines
 
-When executing any plan file, after completing each step: check it off in the plan and immediately make a commit for that step. The first commit should add the plan, and each additional commit should check off one step.
+## Plans
+When I ask you to execute a plan file, after completing each step: check it off in the plan and immediately make a commit for that step. The first commit should add the plan, and each additional commit should check off one step.
 
 ## Project Structure & Module Organization
 - `src/` holds all TypeScript sources; key subdirectories include `components/` for shared UI, `systems/` and `observables/` for domain logic, `legend-kit/` for design system primitives, and `native-modules/` for macOS bridges. `src/App.tsx` remains the single entry point.
