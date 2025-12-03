@@ -144,13 +144,6 @@ export function OpenSourceSettings() {
                     </View>
                 ))}
             </SettingsSection>
-
-            <SettingsSection title="Acknowledgements" contentClassName="flex flex-col">
-                <Text className="text-center text-sm leading-relaxed text-text-secondary">
-                    We're grateful to all the maintainers and contributors of these projects. Open source software makes
-                    applications like Legend Music possible.
-                </Text>
-            </SettingsSection>
         </SettingsPage>
     );
 }

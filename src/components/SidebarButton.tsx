@@ -23,9 +23,9 @@ export function SidebarButton({ text, value, selectedItem$, indentLevel = 0 }: S
     return (
         <Button
             className={cn(
-                "py-2 rounded-md mx-1",
-                isSelected && "bg-white/20",
-                !isSelected && !isDropdownOpen && "hover:bg-white/20",
+                "py-2 rounded-md mx-1 my-0.5",
+                isSelected && "bg-white/10",
+                !isSelected && !isDropdownOpen && "hover:bg-white/10",
             )}
             onClick={(e: NativeMouseEvent) => {
                 if (e.button === 2) {
