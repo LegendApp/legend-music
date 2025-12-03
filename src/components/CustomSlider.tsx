@@ -164,7 +164,7 @@ export function CustomSlider({
         const height = thumbHeight.value;
         return {
             height: height,
-            top: -height / 2, // Center the line by moving it up by half its height
+            top: -height / 4, // Center the line by moving it up by 1/4 its height
             left: `${progress$.value * 100}%`,
         };
     });
@@ -193,12 +193,12 @@ export function CustomSlider({
                     <Animated.View className="h-full rounded-full" style={trackAnimatedStyle} />
                     {/* Vertical line thumb */}
                     <Animated.View
-                        className="absolute w-0.5 bg-white"
+                        className="absolute w-1 bg-white rounded-full"
                         style={[
                             thumbAnimatedStyle,
                             {
-                                marginTop: 2,
-                                marginLeft: -1, // Half of line width
+                                // marginTop: 3,
+                                marginLeft: -4, // Half of line width
                                 opacity: isDisabled ? 0.5 : isHovered || isDragging ? 1 : 0,
                             },
                         ]}

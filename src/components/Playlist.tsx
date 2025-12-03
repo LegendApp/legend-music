@@ -868,7 +868,6 @@ export function Playlist() {
                         keyExtractor={(item, index) => `queue-${item.queueEntryId ?? item.id ?? index}`}
                         contentContainerStyle={styles.container}
                         waitForInitialLayout={false}
-                        estimatedItemSize={playlistStyle === "compact" ? 32 : 50}
                         getFixedItemSize={getFixedItemSize}
                         ListHeaderComponent={
                             <PlaylistDropZone
