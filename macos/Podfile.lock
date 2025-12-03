@@ -1311,6 +1311,51 @@ PODS:
     - React-jsiexecutor
     - React-RCTFBReactNativeSpec
     - ReactCommon/turbomodule/core
+  - react-native-bottom-tabs (1.0.5):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.11.18.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - react-native-bottom-tabs/common (= 1.0.5)
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - SwiftUIIntrospect (~> 1.0)
+    - Yoga
+  - react-native-bottom-tabs/common (1.0.5):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.11.18.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - SwiftUIIntrospect (~> 1.0)
+    - Yoga
   - react-native-skia (2.3.7):
     - DoubleConversion
     - glog
@@ -1742,6 +1787,7 @@ PODS:
     - Yoga
   - SocketRocket (0.7.1)
   - Sparkle (2.5.2)
+  - SwiftUIIntrospect (1.3.0)
   - Yoga (0.0.0)
 
 DEPENDENCIES:
@@ -1789,6 +1835,7 @@ DEPENDENCIES:
   - React-logger (from `../node_modules/react-native-macos/ReactCommon/logger`)
   - React-Mapbuffer (from `../node_modules/react-native-macos/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native-macos/ReactCommon/react/nativemodule/microtasks`)
+  - react-native-bottom-tabs (from `../node_modules/react-native-bottom-tabs`)
   - "react-native-skia (from `../node_modules/@shopify/react-native-skia`)"
   - React-NativeModulesApple (from `../node_modules/react-native-macos/ReactCommon/react/nativemodule/core/platform/ios`)
   - React-perflogger (from `../node_modules/react-native-macos/ReactCommon/reactperflogger`)
@@ -1826,6 +1873,7 @@ DEPENDENCIES:
 SPEC REPOS:
   trunk:
     - Sparkle
+    - SwiftUIIntrospect
 
 EXTERNAL SOURCES:
   boost:
@@ -1913,6 +1961,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-macos/ReactCommon"
   React-microtasksnativemodule:
     :path: "../node_modules/react-native-macos/ReactCommon/react/nativemodule/microtasks"
+  react-native-bottom-tabs:
+    :path: "../node_modules/react-native-bottom-tabs"
   react-native-skia:
     :path: "../node_modules/@shopify/react-native-skia"
   React-NativeModulesApple:
@@ -2021,6 +2071,7 @@ SPEC CHECKSUMS:
   React-logger: 403502d548fbc097ab2c5a783ca98f5e84390bad
   React-Mapbuffer: 3815edc6553967769cdd5e9127284926416270f0
   React-microtasksnativemodule: e6cb4584ab49af3ecb0c13b5909c9fe0ce969ea9
+  react-native-bottom-tabs: b5f2543665c62bb1f0b600fd6cb90fff2777c322
   react-native-skia: 3f78a1ad5b84a32fd0bc20d8b21cb5d2caf21b9c
   React-NativeModulesApple: f3c2e2ce112c5f1cc4f163176924418d446a6e6a
   React-perflogger: 3756bfe3ff8cc8fffed3c51dce34cef861d4b82a
@@ -2053,6 +2104,7 @@ SPEC CHECKSUMS:
   RNReanimated: 76e3bdba62bb728ea8d8d23b451e8070e6c2c2bc
   SocketRocket: 03f7111df1a343b162bf5b06ead333be808e1e0a
   Sparkle: 0e335e5c704ac28dbea18cc0383e15a3927c28dc
+  SwiftUIIntrospect: fee9aa07293ee280373a591e1824e8ddc869ba5d
   Yoga: f89a870053f1a8fbee8c98e35a1b9eff44ce2015
 
 PODFILE CHECKSUM: 0045acf9765e623aacaa242d9d82b967aac8952b

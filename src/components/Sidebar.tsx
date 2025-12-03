@@ -1,52 +1,85 @@
-import { VibrancyView } from "@fluentui-react-native/vibrancy-view";
 import type { Observable } from "@legendapp/state";
-import { type Animated, ScrollView, StyleSheet, View } from "react-native";
+import { useValue } from "@legendapp/state/react";
+import { type ComponentType, useEffect, useMemo, useState } from "react";
+import TabView, { SceneMap } from "react-native-bottom-tabs";
 
-import { SidebarButton } from "@/components/SidebarButton";
-import { cn } from "@/utils/cn";
-
-export interface SidebarHeadingT {
-    type: "heading";
+export interface SidebarItem {
     id: string;
-    heading: string;
+    name: string;
 }
 
-export interface SidebarItemT {
-    type: "item";
-    id: string;
-    text: string;
-}
-
-interface SidebarCommonProps {
-    items: { id: string; name: string }[];
+interface SidebarProps {
+    items: SidebarItem[];
+    scenes: Record<string, ComponentType>;
     selectedItem$: Observable<string>;
-    width?: number | Animated.Value;
-    className?: string;
-    children?: React.ReactNode;
 }
 
-export function Sidebar({ items, selectedItem$, width, className, children }: SidebarCommonProps) {
-    const renderItems = () => {
-        return items.map((item) => {
-            return <SidebarButton key={item.id} text={item.name} value={item.id} selectedItem$={selectedItem$} />;
-        });
+export function Sidebar({ items, scenes, selectedItem$ }: SidebarProps) {
+    const selectedItem = useValue(selectedItem$);
+    const routes = useMemo(
+        () =>
+            items.map((item) => ({
+                key: item.id,
+                title: item.name,
+            })),
+        [items],
+    );
+
+    const [index, setIndex] = useState(() =>
+        Math.max(
+            routes.findIndex((route) => route.key === selectedItem),
+            0,
+        ),
+    );
+
+    useEffect(() => {
+        const matchedIndex = routes.findIndex((route) => route.key === selectedItem);
+        if (matchedIndex === -1 && routes[0] && selectedItem !== routes[0].key) {
+            selectedItem$.set(routes[0].key);
+            setIndex(0);
+            return;
+        }
+
+        if (matchedIndex !== -1 && matchedIndex !== index) {
+            setIndex(matchedIndex);
+        }
+    }, [index, routes, selectedItem, selectedItem$]);
+
+    const renderScene = useMemo(
+        () =>
+            SceneMap(
+                items.reduce(
+                    (acc, item) => {
+                        const SceneComponent = scenes[item.id];
+                        acc[item.id] = SceneComponent ? () => <SceneComponent /> : () => null;
+                        return acc;
+                    },
+                    {} as Record<string, ComponentType>,
+                ),
+            ),
+        [items, scenes],
+    );
+
+    const handleIndexChange = (nextIndex: number) => {
+        setIndex(nextIndex);
+        const nextRoute = routes[nextIndex];
+        if (nextRoute) {
+            selectedItem$.set(nextRoute.key);
+        }
     };
 
-    const sidebarStyle = width !== undefined ? { width } : { flex: 1 };
+    if (routes.length === 0) {
+        return null;
+    }
 
     return (
-        <View className="h-full" style={sidebarStyle}>
-            <VibrancyView blendingMode="behindWindow" material="sidebar" style={styles.vibrancy}>
-                <View className={cn("flex-1", className)}>
-                    <ScrollView showsVerticalScrollIndicator={false}>{children ?? renderItems()}</ScrollView>
-                </View>
-            </VibrancyView>
-        </View>
+        <TabView
+            style={{ flex: 1 }}
+            navigationState={{ index, routes }}
+            renderScene={renderScene}
+            onIndexChange={handleIndexChange}
+            labeled
+            sidebarAdaptable
+        />
     );
 }
-
-const styles = StyleSheet.create({
-    vibrancy: {
-        flex: 1,
-    },
-});

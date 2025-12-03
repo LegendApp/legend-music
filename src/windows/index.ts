@@ -1,9 +1,10 @@
 import { OVERLAY_WINDOW_HEIGHT_COMPACT, OVERLAY_WINDOW_WIDTH_COMPACT } from "@/overlay/OverlayConstants";
+import SettingsContainer from "@/settings/SettingsContainer";
 import { createWindowsNavigator, WindowStyleMask, type WindowsConfig } from "./api";
 
 const windowsConfig = {
     SettingsWindow: {
-        loadComponent: () => import("@/settings/SettingsContainer"),
+        loadComponent: () => SettingsContainer,
         identifier: "settings",
         options: {
             title: "Settings",

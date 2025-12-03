@@ -28,6 +28,7 @@
     "nativewind": "^4.1.23",
     "react": "19.0.0",
     "react-native": "0.78.2",
+    "react-native-bottom-tabs": "^1.0.5",
     "react-native-macos": "^0.78.3",
     "react-native-reanimated": "^3.18.0",
     "tailwind-merge": "^3.4.0",

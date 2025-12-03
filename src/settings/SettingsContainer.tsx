@@ -1,9 +1,8 @@
 import { VibrancyView } from "@fluentui-react-native/vibrancy-view";
 import { PortalProvider } from "@gorhom/portal";
-import type { Observable } from "@legendapp/state";
 import { useObservable, useValue } from "@legendapp/state/react";
-import { useMemo } from "react";
-import { StyleSheet, View } from "react-native";
+import type { ComponentType } from "react";
+import { StyleSheet } from "react-native";
 import { Sidebar } from "@/components/Sidebar";
 import { TooltipProvider } from "@/components/TooltipProvider";
 import { AccountSettings } from "@/settings/AccountSettings";
@@ -19,36 +18,24 @@ import { ax } from "@/utils/ax";
 
 export type SettingsPage = "general" | "library" | "overlay" | "ui-customize" | "account" | "open-source";
 
-// Define the categories for settings
-const SETTING_PAGES: { id: SettingsPage; name: string }[] = ax([
-    { id: "general", name: "General" },
-    { id: "library", name: "Library" },
-    { id: "overlay", name: "Overlay" },
-    { id: "ui-customize", name: "Customize UI" },
-    SUPPORT_ACCOUNTS && { id: "account", name: "Account" },
-    { id: "open-source", name: "Open Source" },
+type SettingsRoute = { id: SettingsPage; name: string; component: ComponentType };
+
+const SETTINGS_ROUTES: SettingsRoute[] = ax([
+    { id: "general", name: "General", component: GeneralSettings },
+    { id: "library", name: "Library", component: LibrarySettings },
+    { id: "overlay", name: "Overlay", component: OverlaySettings },
+    { id: "ui-customize", name: "Customize UI", component: CustomizeUISettings },
+    SUPPORT_ACCOUNTS && { id: "account", name: "Account", component: AccountSettings },
+    { id: "open-source", name: "Open Source", component: OpenSourceSettings },
 ]);
 
-function Content({ selectedItem$ }: { selectedItem$: Observable<SettingsPage> }) {
-    const selectedItem = useValue(selectedItem$);
-
-    switch (selectedItem) {
-        case "general":
-            return <GeneralSettings />;
-        case "library":
-            return <LibrarySettings />;
-        case "overlay":
-            return <OverlaySettings />;
-        case "ui-customize":
-            return <CustomizeUISettings />;
-        case "open-source":
-            return <OpenSourceSettings />;
-        case "account":
-            return <AccountSettings />;
-        default:
-            return null;
-    }
-}
+const SETTINGS_SCENES = SETTINGS_ROUTES.reduce(
+    (acc, route) => {
+        acc[route.id] = route.component;
+        return acc;
+    },
+    {} as Record<string, ComponentType>,
+);
 
 export default function SettingsContainer() {
     const showSettingsPage = useValue(state$.showSettingsPage);
@@ -59,12 +46,7 @@ export default function SettingsContainer() {
             <ThemeProvider>
                 <PortalProvider>
                     <TooltipProvider>
-                        <View className="flex flex-1 flex-row">
-                            <Sidebar items={SETTING_PAGES} selectedItem$={selectedItem$} width={140} className="py-2" />
-                            <View className="flex-1 bg-background-primary">
-                                <Content selectedItem$={selectedItem$} />
-                            </View>
-                        </View>
+                        <Sidebar items={SETTINGS_ROUTES} scenes={SETTINGS_SCENES} selectedItem$={selectedItem$} />
                     </TooltipProvider>
                 </PortalProvider>
             </ThemeProvider>
