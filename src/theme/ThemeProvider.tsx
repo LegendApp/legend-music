@@ -36,7 +36,7 @@ export const themeState$ = createJSONManager<ThemeSettings>({
 });
 
 // Create theme variables for each theme
-const getThemes = (theme$: typeof themeState$) => {
+const useThemeStyle = (theme$: typeof themeState$) => {
     const { dark } = useValue(theme$.customColors);
     return {
         dark: vars({
@@ -62,7 +62,7 @@ const ThemeContext = createContext<ThemeContextType>(undefined as any);
 // Theme provider component
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     const currentTheme = useValue(themeState$.currentTheme);
-    const style = getThemes(themeState$).dark;
+    const style = useThemeStyle(themeState$).dark;
 
     if (currentTheme !== "dark") {
         themeState$.currentTheme.set("dark");
