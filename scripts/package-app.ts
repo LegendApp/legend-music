@@ -295,7 +295,8 @@ function replaceSpacesInAppcast(distDir: string, appName: string) {
         const oldPath = join(distDir, deltaFile.replace(/(%20)+/g, " "));
         const newPath = join(distDir, deltaFile.replace(/(%20)+/g, "-"));
 
-        if (existsSync(oldPath)) {
+        if (oldPath !== newPath && existsSync(oldPath)) {
+            console.log(`Copying ${oldPath} to ${newPath}`);
             cpSync(oldPath, newPath, { force: true });
             rmSync(oldPath, { force: true });
         }

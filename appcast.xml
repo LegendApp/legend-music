@@ -3,28 +3,23 @@
     <channel>
         <title>LegendMusic</title>
         <item>
+            <title>0.0.5</title>
+            <pubDate>Thu, 04 Dec 2025 22:31:57 +0100</pubDate>
+            <sparkle:version>005</sparkle:version>
+            <sparkle:shortVersionString>0.0.5</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/LegendApp/legend-music/releases/download/v0.0.5/LegendMusic-0.0.5.zip" length="12448594" type="application/octet-stream" sparkle:edSignature="3PMe0WNCZbzNoBqrsfjIhanT6UN73YCFQAKyxCb5F2eQhHXr8RnJgO16WDcviW0R7AXFgJWqkGlUcYjK1A3lAA=="/>
+            <sparkle:deltas>
+                <enclosure url="https://github.com/LegendApp/legend-music/releases/download/v0.0.5/LegendMusic005-004.delta" sparkle:deltaFrom="004" length="828234" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="438848" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,en" sparkle:edSignature="gH+aYPvVgFHvdvN+i3/F4ftBQrFWCmsV0YiQ+aGJkh+6nZApsqB38kd92/5egSPP4lgwTCNWZwJ87AXpX9zTDQ=="/>
+            </sparkle:deltas>
+        </item>
+        <item>
             <title>0.0.4</title>
             <pubDate>Mon, 01 Dec 2025 22:28:00 +0100</pubDate>
             <sparkle:version>004</sparkle:version>
             <sparkle:shortVersionString>0.0.4</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/LegendApp/legend-music/releases/download/v0.0.4/LegendMusic-0.0.4.zip" length="12445016" type="application/octet-stream" sparkle:edSignature="iaLtq605nZ0YhD5wTLwHXn2m9VNAefoAwEtwyfSOTS0GBJxwhbvLJ0WbqwKTKTUhLaDKSMNkvS+6cpaSrq+IBQ=="/>
-        </item>
-        <item>
-            <title>0.0.3</title>
-            <pubDate>Mon, 01 Dec 2025 22:28:00 +0100</pubDate>
-            <sparkle:version>003</sparkle:version>
-            <sparkle:shortVersionString>0.0.3</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/LegendApp/legend-music/releases/download/v0.0.4/LegendMusic-0.0.4.zip" length="12444972" type="application/octet-stream" sparkle:edSignature="pipoLy5hGh8FCUneSZvKkXyI5SXvBzOqGlfD/Lge3qq881pOTUkfysTMnL//T3a0ScPGaylaaBNO/SIPCa99Cw=="/>
-        </item>
-        <item>
-            <title>1.0</title>
-            <pubDate>Mon, 03 Nov 2025 01:18:20 +0100</pubDate>
-            <sparkle:version>1</sparkle:version>
-            <sparkle:shortVersionString>1.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/LegendApp/legend-music/releases/download/v0.0.4/LegendMusic-0.0.3.zip" length="11382471" type="application/octet-stream"/>
+            <enclosure url="https://github.com/LegendApp/legend-music/releases/download/v0.0.5/LegendMusic-0.0.4.zip" length="12445016" type="application/octet-stream" sparkle:edSignature="iaLtq605nZ0YhD5wTLwHXn2m9VNAefoAwEtwyfSOTS0GBJxwhbvLJ0WbqwKTKTUhLaDKSMNkvS+6cpaSrq+IBQ=="/>
         </item>
     </channel>
 </rss>
