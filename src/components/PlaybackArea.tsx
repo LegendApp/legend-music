@@ -1,5 +1,5 @@
 import { useValue } from "@legendapp/state/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 import { type LayoutChangeEvent, Text, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import { AlbumArt } from "@/components/AlbumArt";
@@ -21,7 +21,7 @@ import { type PlaybackControlId, settings$ } from "@/systems/Settings";
 import { cn } from "@/utils/cn";
 import { perfCount } from "@/utils/perfLogger";
 
-type OverlayPlaybackMode = {
+export type OverlayPlaybackMode = {
     enabled: boolean;
     showControls: boolean;
 };
@@ -198,6 +198,7 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
                 localAudioControls.seek(value);
             }}
             onSlidingEnd={handleSlidingEnd}
+            overlayMode={overlayMode}
         />
     );
 
