@@ -25,7 +25,7 @@ type SavedState = {
 };
 
 export const stateSaved$ = createJSONManager<SavedState>({
-    filename: "stateSaved",
+    filename: "state",
     initialValue: {
         playlist: undefined as string | undefined,
         playlistType: "file" as const,

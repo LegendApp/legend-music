@@ -1,4 +1,5 @@
 import { useValue } from "@legendapp/state/react";
+import { useMemo } from "react";
 import { Text, View } from "react-native";
 
 import { Button } from "@/components/Button";
@@ -12,6 +13,17 @@ import {
     scanLocalMusic,
 } from "@/systems/LocalMusicState";
 import type { SFSymbols } from "@/types/SFSymbols";
+
+const normalizeLibraryPath = (path: string): string => {
+    // TODO: This might not be necessary? These paths should be normalized at a higher level?
+    if (!path) {
+        return "";
+    }
+
+    const withoutPrefix = path.startsWith("file://") ? path.replace("file://", "") : path;
+    const trimmed = withoutPrefix.replace(/\/+$/, "");
+    return trimmed.length > 0 ? trimmed : withoutPrefix;
+};
 
 export const LibrarySettings = function LibrarySettings() {
     const librarySettings = useValue(librarySettings$);
@@ -29,6 +41,36 @@ export const LibrarySettings = function LibrarySettings() {
 
     const folderProgressText =
         localMusicState.scanTotal > 0 ? `${localMusicState.scanProgress}/${localMusicState.scanTotal} folders` : null;
+
+    const trackCountByPath = useMemo(() => {
+        const counts = new Map<string, number>();
+        const normalizedPaths = Array.from(
+            new Set(
+                librarySettings.paths
+                    .map((path) => normalizeLibraryPath(path))
+                    .filter((path): path is string => Boolean(path)),
+            ),
+        );
+
+        for (const path of normalizedPaths) {
+            counts.set(path, 0);
+        }
+
+        for (const track of localMusicState.tracks) {
+            const trackPath = normalizeLibraryPath(track.filePath);
+            if (!trackPath) {
+                continue;
+            }
+
+            for (const root of normalizedPaths) {
+                if (trackPath === root || trackPath.startsWith(`${root}/`)) {
+                    counts.set(root, (counts.get(root) ?? 0) + 1);
+                }
+            }
+        }
+
+        return counts;
+    }, [librarySettings.paths, localMusicState.tracks]);
 
     const handleRemoveLibraryPath = (index: number) => {
         markLibraryChangeUserInitiated();
@@ -70,23 +112,32 @@ export const LibrarySettings = function LibrarySettings() {
             <SettingsSection title="Library Paths">
                 {librarySettings.paths.length > 0 ? (
                     <View className="flex flex-col gap-2">
-                        {librarySettings.paths.map((path, index) => (
-                            <View
-                                key={index}
-                                className="bg-background-tertiary rounded-md border border-border-primary px-3 py-2 flex-row items-center gap-3"
-                            >
-                                <Text className="text-text-secondary text-sm font-mono break-all flex-1">{path}</Text>
+                        {librarySettings.paths.map((path, index) => {
+                            const normalizedPath = normalizeLibraryPath(path);
+                            const trackCount = trackCountByPath.get(normalizedPath) ?? 0;
+                            const trackCountLabel = `${trackCount} ${trackCount === 1 ? "track" : "tracks"}`;
 
-                                <Button
-                                    icon="trash"
-                                    variant="icon"
-                                    size="medium"
-                                    tooltip="Remove path"
-                                    iconMarginTop={-1}
-                                    onClick={() => handleRemoveLibraryPath(index)}
-                                />
-                            </View>
-                        ))}
+                            return (
+                                <View
+                                    key={index}
+                                    className="bg-background-tertiary rounded-md border border-border-primary px-3 py-2 flex-row items-center gap-3"
+                                >
+                                    <View className="flex-1">
+                                        <Text className="text-text-secondary text-sm font-mono break-all">{path}</Text>
+                                        <Text className="text-text-tertiary text-xs mt-1">{trackCountLabel}</Text>
+                                    </View>
+
+                                    <Button
+                                        icon="trash"
+                                        variant="icon"
+                                        size="medium"
+                                        tooltip="Remove path"
+                                        iconMarginTop={-1}
+                                        onClick={() => handleRemoveLibraryPath(index)}
+                                    />
+                                </View>
+                            );
+                        })}
                     </View>
                 ) : (
                     <View className="bg-background-tertiary rounded-md p-4 border border-border-primary border-dashed">
