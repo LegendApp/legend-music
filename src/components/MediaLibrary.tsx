@@ -5,21 +5,22 @@ import { Text, View } from "react-native";
 import { Button } from "@/components/Button";
 import { Panel, PanelGroup, ResizeHandle } from "@/components/ResizablePanels";
 import type { TextInputSearchRef } from "@/components/TextInputSearch";
+import { SUPPORT_PLAYLISTS } from "@/systems/constants";
 import { libraryUI$ } from "@/systems/LibraryState";
 import { settings$ } from "@/systems/Settings";
 import type { SFSymbols } from "@/types/SFSymbols";
+import { ax } from "@/utils/ax";
 import { cn } from "@/utils/cn";
 import { perfCount } from "@/utils/perfLogger";
-
 import { LibraryTree } from "./MediaLibrary/LibraryTree";
 import { MediaLibrarySearchBar } from "./MediaLibrary/SearchBar";
 import { TrackList } from "./MediaLibrary/TrackList";
 
-const collectionTabs = [
+const collectionTabs = ax([
     { id: "artists", label: "Artists", icon: "person.crop.square" as SFSymbols, marginTop: -7 },
     { id: "albums", label: "Albums", icon: "rectangle.stack.person.crop" as SFSymbols, marginTop: -9 },
-    { id: "playlists", label: "Playlists", icon: "music.note.list" as SFSymbols, marginTop: -7 },
-] as const;
+    SUPPORT_PLAYLISTS && { id: "playlists", label: "Playlists", icon: "music.note.list" as SFSymbols, marginTop: -7 },
+] as const);
 
 function LibraryCollectionTabs() {
     const selectedCollection = useValue(libraryUI$.selectedCollection);

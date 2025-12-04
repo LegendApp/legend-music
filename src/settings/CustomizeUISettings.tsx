@@ -1,13 +1,15 @@
-import { Fragment, useMemo } from "react";
 import { useObserveEffect } from "@legendapp/state/react";
+import { Fragment, useMemo } from "react";
 import { Text, View } from "react-native";
 
 import { DragDropProvider, DraggableItem, DroppableZone } from "@/components/dnd";
 import { useBottomBarControlLayout, usePlaybackControlLayout } from "@/hooks/useUIControls";
 import { SettingsPage, SettingsSection } from "@/settings/components";
+import { SUPPORT_PLAYLISTS } from "@/systems/constants";
 import { Icon } from "@/systems/Icon";
 import { type BottomBarControlId, type PlaybackControlId, settings$, type UIControlLayout } from "@/systems/Settings";
 import type { SFSymbols } from "@/types/SFSymbols";
+import { ax } from "@/utils/ax";
 import { cn } from "@/utils/cn";
 
 type ControlGroup = "shown" | "hidden";
@@ -64,14 +66,14 @@ const PLAYBACK_CONTROL_DEFINITIONS: ControlDefinition<PlaybackControlId>[] = [
     },
 ];
 
-const BOTTOM_BAR_CONTROL_DEFINITIONS: ControlDefinition<BottomBarControlId>[] = [
+const BOTTOM_BAR_CONTROL_DEFINITIONS: ControlDefinition<BottomBarControlId>[] = ax([
     {
         id: "search",
         label: "Search",
         // description: "Open the search dialog",
         icon: "magnifyingglass",
     },
-    {
+    SUPPORT_PLAYLISTS && {
         id: "savePlaylist",
         label: "Save Playlist",
         // description: "Export the current queue",
@@ -89,7 +91,7 @@ const BOTTOM_BAR_CONTROL_DEFINITIONS: ControlDefinition<BottomBarControlId>[] = 
         // description: "Open or close the media library",
         icon: "sidebar.right",
     },
-];
+]);
 
 const PLAYBACK_CONTROL_MAP = Object.fromEntries(
     PLAYBACK_CONTROL_DEFINITIONS.map((definition) => [definition.id, definition]),

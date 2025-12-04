@@ -8,6 +8,7 @@ import { queue$ } from "@/components/LocalAudioPlayer";
 import { PlaylistSelectorSearchDropdown } from "@/components/PlaylistSelectorSearchDropdown";
 import { SelectLegendList } from "@/components/SelectLegendList";
 import { useBottomBarControlLayout } from "@/hooks/useUIControls";
+import { SUPPORT_PLAYLISTS } from "@/systems/constants";
 import { useOnHotkeys } from "@/systems/keyboard/Keyboard";
 import { library$ } from "@/systems/LibraryState";
 import { DEFAULT_LOCAL_PLAYLIST_NAME, localMusicState$ } from "@/systems/LocalMusicState";
@@ -154,21 +155,21 @@ export function PlaylistSelector() {
                                     dropdownWidth={dropdownWidth}
                                 />
                             );
-                        // case "savePlaylist":
-                        //     return (
-                        //         <Button
-                        //             key="savePlaylist"
-                        //             icon="square.and.arrow.down"
-                        //             variant="icon"
-                        //             size="small"
-                        //             iconSize={14}
-                        //             iconMarginTop={-4}
-                        //             onClick={handleSavePlaylist}
-                        //             className="ml-2 hover:bg-white/10"
-                        //             disabled={queue.tracks.length === 0}
-                        //             tooltip="Save playlist"
-                        //         />
-                        //     );
+                        case "savePlaylist":
+                            return SUPPORT_PLAYLISTS ? (
+                                <Button
+                                    key="savePlaylist"
+                                    icon="square.and.arrow.down"
+                                    variant="icon"
+                                    size="small"
+                                    iconSize={14}
+                                    iconMarginTop={-4}
+                                    onClick={handleSavePlaylist}
+                                    className="ml-2 hover:bg-white/10"
+                                    disabled={queue.tracks.length === 0}
+                                    tooltip="Save playlist"
+                                />
+                            ) : null;
                         case "toggleVisualizer":
                             return (
                                 <Button

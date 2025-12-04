@@ -1,7 +1,7 @@
 export const SUPPORT_ACCOUNTS = false;
+export const SUPPORT_PLAYLISTS = false;
 
 export const DEBUG_ALL = false;
-
 const DEBUG_AUDIO_LOGS_DEFAULT = false;
 const DEBUG_HOTKEY_LOGS_DEFAULT = false;
 const DEBUG_LOCAL_MUSIC_LOGS_DEFAULT = false;
