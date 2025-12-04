@@ -78,7 +78,7 @@ const TextOnHover = memo(function SkiaTextOnHover({
                         },
                     }}
                 >
-                    <Text className="text-[11px]" style={{ fontVariant: ["tabular-nums"] }}>
+                    <Text className="text-[11px] text-text-secondary" style={{ fontVariant: ["tabular-nums"] }}>
                         <Memo>{text$}</Memo>
                     </Text>
                 </Motion.View>

@@ -114,7 +114,7 @@ export function PlaylistSelector() {
     );
 
     return (
-        <View className="px-1 border-t border-white/10" onLayout={handleLayout}>
+        <View className="px-3 border-t border-white/10" onLayout={handleLayout}>
             <View className="flex-row items-center">
                 <View className="flex-1" />
                 {/* <View className="flex-1">
@@ -170,33 +170,41 @@ export function PlaylistSelector() {
                                     tooltip="Save playlist"
                                 />
                             ) : null;
-                        case "toggleVisualizer":
+                        case "toggleVisualizer": {
+                            const icon = isVisualizerOpen ? "waveform.circle.fill" : "waveform";
+                            const iconSize = isVisualizerOpen ? 23 : 16;
                             return (
                                 <Button
                                     key="toggleVisualizer"
-                                    icon="waveform"
+                                    icon={icon}
                                     variant="icon"
                                     size="small"
-                                    iconSize={14}
+                                    iconSize={iconSize}
                                     iconMarginTop={-1}
                                     onClick={toggleVisualizer}
                                     className={cn("ml-2 hover:bg-white/10", isVisualizerOpen && "bg-white/15")}
                                     tooltip={isVisualizerOpen ? "Hide visualizer" : "Show visualizer"}
                                 />
                             );
-                        case "toggleLibrary":
+                        }
+                        case "toggleLibrary": {
+                            const icon = isLibraryOpen ? "play.square.stack.fill" : "play.square.stack";
+                            const iconSize = isLibraryOpen ? 18 : 18;
+
                             return (
                                 <Button
                                     key="toggleLibrary"
-                                    icon={isLibraryOpen ? "sidebar.right" : "sidebar.right"}
+                                    icon={icon}
                                     variant="icon"
                                     size="small"
-                                    iconSize={14}
+                                    iconSize={iconSize}
+                                    iconMarginTop={-4}
                                     onClick={toggleLibraryWindow}
                                     className={cn("ml-2 hover:bg-white/10", isLibraryOpen && "bg-white/15")}
                                     tooltip={isLibraryOpen ? "Hide library" : "Show library"}
                                 />
                             );
+                        }
                         default:
                             return null;
                     }

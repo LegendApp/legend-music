@@ -26,6 +26,7 @@ interface ControlDefinition<T extends string> {
     label: string;
     // description: string;
     icon: SFSymbols;
+    iconMarginTop?: number;
 }
 
 interface NormalizedUIControlLayout<T extends string> {
@@ -50,27 +51,33 @@ const PLAYBACK_CONTROL_DEFINITIONS: ControlDefinition<PlaybackControlId>[] = [
         id: "next",
         label: "Next",
         // description: "Advance to the next track",
+        iconMarginTop: -1,
         icon: "forward.end.fill",
     },
     {
         id: "shuffle",
         label: "Shuffle",
         // description: "Toggle shuffle mode",
+        iconMarginTop: -2,
         icon: "shuffle",
     },
     {
         id: "repeat",
         label: "Repeat",
         // description: "Cycle repeat modes",
+        iconMarginTop: -2,
         icon: "repeat",
     },
 ];
 
-const BOTTOM_BAR_CONTROL_DEFINITIONS: ControlDefinition<BottomBarControlId>[] = ax([
+const BOTTOM_BAR_CONTROL_DEFINITIONS: ControlDefinition<BottomBarControlId>[] = ax<
+    ControlDefinition<BottomBarControlId>
+>([
     {
         id: "search",
         label: "Search",
         // description: "Open the search dialog",
+        iconMarginTop: -2,
         icon: "magnifyingglass",
     },
     SUPPORT_PLAYLISTS && {
@@ -83,12 +90,14 @@ const BOTTOM_BAR_CONTROL_DEFINITIONS: ControlDefinition<BottomBarControlId>[] = 
         id: "toggleVisualizer",
         label: "Visualizer",
         // description: "Show or hide the visualizer",
+        iconMarginTop: -4,
         icon: "waveform",
     },
     {
         id: "toggleLibrary",
         label: "Library",
         // description: "Open or close the media library",
+        iconMarginTop: -2,
         icon: "sidebar.right",
     },
 ]);
@@ -368,7 +377,7 @@ function ControlChip<T extends string>({ definition }: ControlChipProps<T>) {
     return (
         <View className="flex-row items-center gap-3 rounded-xl border border-white/10 bg-black/40 px-3 py-2">
             <View className="rounded-lg bg-white/10 p-2 pointer-events-none">
-                <Icon name={definition.icon} size={14} color="#fff" />
+                <Icon name={definition.icon} size={14} color="#fff" marginTop={definition.iconMarginTop} />
             </View>
             <View className="flex-col max-w-[160px]">
                 <Text className="text-xs font-semibold text-text-primary" numberOfLines={1} ellipsizeMode="tail">

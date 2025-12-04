@@ -85,7 +85,7 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
     });
 
     const playbackControlsNode = (
-        <View className="flex-row items-center ml-1 -mr-1">
+        <View className="flex-row items-center ml-1 -mr-1 gap-0.5">
             {(
                 (playbackControlsLayout?.shown?.length
                     ? playbackControlsLayout.shown
@@ -102,10 +102,9 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
                                     variant="icon"
                                     iconSize={16}
                                     size="small"
-                                    iconMarginTop={-1}
+                                    iconMarginTop={1}
                                     onClick={localAudioControls.playPrevious}
                                     tooltip="Previous"
-                                    className="mx-0.5"
                                 />
                             );
                         case "playPause":
@@ -116,10 +115,9 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
                                     variant="icon"
                                     iconSize={16}
                                     size="small"
-                                    iconMarginTop={-1}
+                                    iconMarginTop={1}
                                     onClick={localAudioControls.togglePlayPause}
                                     tooltip={isPlaying ? "Pause" : "Play"}
-                                    className="mx-0.5"
                                 />
                             );
                         case "next":
@@ -130,28 +128,37 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
                                     variant="icon"
                                     iconSize={16}
                                     size="small"
-                                    iconMarginTop={-1}
+                                    iconMarginTop={1}
                                     onClick={localAudioControls.playNext}
                                     tooltip="Next"
-                                    className="mx-0.5"
                                 />
                             );
-                        case "shuffle":
+                        case "shuffle": {
+                            const shuffleIcon = shuffleEnabled ? "shuffle.circle.fill" : "shuffle";
+                            const shuffleSize = shuffleEnabled ? 25 : 18;
+
                             return (
                                 <Button
                                     key="shuffle"
-                                    icon="shuffle"
+                                    icon={shuffleIcon}
                                     variant="icon"
-                                    iconSize={16}
+                                    iconSize={shuffleSize}
                                     size="small"
-                                    iconMarginTop={-1}
+                                    iconMarginTop={shuffleEnabled ? 0 : 2}
                                     onClick={localAudioControls.toggleShuffle}
                                     tooltip={shuffleEnabled ? "Disable shuffle" : "Enable shuffle"}
-                                    className={cn("mx-0.5", shuffleEnabled && "bg-white/15")}
+                                    active={shuffleEnabled}
                                 />
                             );
+                        }
                         case "repeat": {
-                            const repeatIcon = repeatMode === "one" ? "repeat.1" : "repeat";
+                            const repeatIcon =
+                                repeatMode === "off"
+                                    ? "repeat"
+                                    : repeatMode === "one"
+                                      ? "repeat.1.circle.fill"
+                                      : "repeat.circle.fill";
+                            const repeatSize = repeatMode === "off" ? 18 : 25;
                             const repeatTooltip =
                                 repeatMode === "off"
                                     ? "Enable repeat"
@@ -164,12 +171,12 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
                                     key="repeat"
                                     icon={repeatIcon}
                                     variant="icon"
-                                    iconSize={16}
+                                    iconSize={repeatSize}
                                     size="small"
-                                    iconMarginTop={-1}
+                                    iconMarginTop={repeatMode === "off" ? 1 : 0}
                                     onClick={localAudioControls.cycleRepeatMode}
                                     tooltip={repeatTooltip}
-                                    className={cn("mx-0.5", repeatMode !== "off" && "bg-white/15")}
+                                    active={repeatMode !== "off"}
                                 />
                             );
                         }

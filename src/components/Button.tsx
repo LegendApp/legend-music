@@ -21,6 +21,7 @@ export interface ButtonProps
     iconSize?: number;
     iconMarginTop?: number;
     tooltip?: string;
+    active?: boolean;
     onClick?: (event: NativeMouseEvent) => void;
     onMouseDown?: (event: NativeMouseEvent) => void;
     onMouseUp?: (event: NativeMouseEvent) => void;
@@ -36,6 +37,7 @@ export function Button({
     size,
     iconSize: iconSizeProp,
     iconMarginTop,
+    active,
     onClick,
     onMouseDown,
     onMouseUp,
@@ -151,6 +153,7 @@ export function Button({
             className={cn(
                 icon && children && "flex-row items-center gap-2",
                 icon && !children && "items-center justify-center",
+                icon && !children && active && "text-blue-500",
                 size === "small" && isIcon && "size-7 pb-1.5",
                 size === "medium" && isIcon && "size-9 pb-1.5",
                 size === "large" && isIcon && "p-4",
