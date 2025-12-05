@@ -1,7 +1,7 @@
 <?xml version="1.0" standalone="yes"?>
 <rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
     <channel>
-        <title>Legend Music</title>
+        <title>LegendMusic</title>
         <item>
             <title>0.0.5</title>
             <pubDate>Thu, 04 Dec 2025 22:31:57 +0100</pubDate>

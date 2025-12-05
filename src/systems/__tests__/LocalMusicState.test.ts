@@ -1,3 +1,4 @@
+import { SUPPORTED_AUDIO_EXTENSIONS } from "@/systems/audioFormats";
 import { clearLibraryCache } from "@/systems/LibraryCache";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import {
@@ -7,7 +8,6 @@ import {
     localMusicState$,
     scanLocalMusic,
 } from "@/systems/LocalMusicState";
-import { SUPPORTED_AUDIO_EXTENSIONS } from "@/systems/audioFormats";
 
 jest.mock("expo-file-system", () => {
     const pathExists = new Map<string, boolean>();
@@ -174,7 +174,7 @@ jest.mock("@/utils/cacheDirectories", () => {
 
     return {
         getCacheDirectory(subdirectory: string) {
-            return new FileSystem.Directory("/tmp/cache", "LegendMusic", subdirectory);
+            return new FileSystem.Directory("/tmp/cache", "Legend Music", subdirectory);
         },
         ensureCacheDirectory: jest.fn(),
         deleteCacheFiles: jest.fn(),
@@ -417,20 +417,22 @@ describe("scanLocalMusic", () => {
     it("filters scan results to supported extensions", async () => {
         const audioPlayer = getAudioPlayerMock();
 
-        audioPlayer.scanMediaLibrary.mockImplementationOnce(async (_paths: string[], _cacheDir: string, options?: any) => {
-            expect(options?.allowedExtensions).toEqual(SUPPORTED_AUDIO_EXTENSIONS);
+        audioPlayer.scanMediaLibrary.mockImplementationOnce(
+            async (_paths: string[], _cacheDir: string, options?: any) => {
+                expect(options?.allowedExtensions).toEqual(SUPPORTED_AUDIO_EXTENSIONS);
 
-            audioPlayer.__emit("onMediaScanBatch", {
-                rootIndex: 0,
-                tracks: [
-                    { relativePath: "keep.flac", fileName: "keep.flac" },
-                    { relativePath: "skip.ogg", fileName: "skip.ogg" },
-                ],
-            });
-            audioPlayer.__emit("onMediaScanComplete", { totalTracks: 2, totalRoots: 1, errors: [] });
+                audioPlayer.__emit("onMediaScanBatch", {
+                    rootIndex: 0,
+                    tracks: [
+                        { relativePath: "keep.flac", fileName: "keep.flac" },
+                        { relativePath: "skip.ogg", fileName: "skip.ogg" },
+                    ],
+                });
+                audioPlayer.__emit("onMediaScanComplete", { totalTracks: 2, totalRoots: 1, errors: [] });
 
-            return { totalTracks: 2, totalRoots: 1, errors: [] };
-        });
+                return { totalTracks: 2, totalRoots: 1, errors: [] };
+            },
+        );
 
         await scanLocalMusic();
         jest.runOnlyPendingTimers();

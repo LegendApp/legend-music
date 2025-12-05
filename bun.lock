@@ -3,7 +3,7 @@
   "configVersion": 0,
   "workspaces": {
     "": {
-      "name": "LegendMusic",
+      "name": "Legend Music",
       "dependencies": {
         "@fluentui-react-native/callout": "^0.27.3",
         "@fluentui-react-native/vibrancy-view": "^0.3.0",

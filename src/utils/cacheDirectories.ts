@@ -5,7 +5,7 @@ import * as FileSystem from "expo-file-system/next";
  * All cache directories will be under cache/LegendMusic/
  */
 export function getCacheDirectory(subdirectory: string): FileSystem.Directory {
-    const legendMusicCacheDir = new FileSystem.Directory(FileSystem.Paths.cache, "LegendMusic");
+    const legendMusicCacheDir = new FileSystem.Directory(FileSystem.Paths.cache, "Legend Music");
     return new FileSystem.Directory(legendMusicCacheDir, subdirectory);
 }
 
