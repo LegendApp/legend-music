@@ -226,7 +226,7 @@ export function useLibraryTrackList(searchQuery: string): UseLibraryTrackListRes
                 return;
             }
 
-            const action = getQueueAction({ event, fallbackAction: "enqueue" });
+            const action = getQueueAction({ event });
             handleTrackAction(index, action);
         },
         [handleSelectionClick, handleTrackAction],

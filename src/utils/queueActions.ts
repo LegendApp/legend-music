@@ -97,19 +97,19 @@ function hasModifier(
 }
 
 export function getQueueAction(options: GetQueueActionOptions = {}): QueueAction {
-    const { event, modifierState, fallbackAction = "play-now" } = options;
+    const { event, modifierState } = options;
 
     if (
         hasModifier("alt", event, modifierState) ||
         hasModifier("option", event, modifierState) ||
         hasModifier("ctrl", event, modifierState)
     ) {
-        return "enqueue";
+        return "play-now";
     }
 
     if (hasModifier("shift", event, modifierState)) {
         return "play-next";
     }
 
-    return fallbackAction;
+    return "enqueue";
 }

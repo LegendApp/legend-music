@@ -210,7 +210,6 @@ export function useDropdownKeyboardNavigation({
             if (event.keyCode === KeyCodes.KEY_RETURN && resultsLength > 0) {
                 const action = getQueueAction({
                     modifierState: modifierStateRef.current,
-                    fallbackAction: "play-now",
                 });
                 const index = highlightedIndex >= 0 ? highlightedIndex : 0;
                 onSubmit(index, action);
