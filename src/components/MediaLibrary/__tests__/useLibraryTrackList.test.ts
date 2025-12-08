@@ -85,4 +85,32 @@ describe("buildTrackItems", () => {
 
         expect(result.trackItems[0].duration).toBe("2:00");
     });
+
+    it("matches tracks when normalized artist names align", () => {
+        const variantTracks: LibraryTrack[] = [
+            {
+                id: "mashd-1",
+                title: "On My Mind",
+                artist: "Mashd 'N Kutcher",
+                album: "Single",
+                duration: "180",
+                filePath: "/music/mashd-1.mp3",
+                fileName: "mashd-1.mp3",
+            },
+        ];
+
+        const artistItem: LibraryItem = {
+            id: "artist-mashd",
+            type: "artist",
+            name: "Mashd N Kutcher",
+        };
+
+        const result = buildTrackItems({
+            tracks: variantTracks,
+            selectedItem: artistItem,
+            searchQuery: "",
+        });
+
+        expect(result.sourceTracks.map((track) => track.id)).toEqual(["mashd-1"]);
+    });
 });

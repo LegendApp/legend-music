@@ -8,8 +8,7 @@ import { localAudioControls } from "@/components/LocalAudioPlayer";
 import type { TrackData } from "@/components/TrackItem";
 import { usePlaylistSelection } from "@/hooks/usePlaylistSelection";
 import { showContextMenu } from "@/native-modules/ContextMenu";
-import type { LibraryItem, LibraryTrack } from "@/systems/LibraryState";
-import { library$, libraryUI$ } from "@/systems/LibraryState";
+import { getArtistKey, library$, libraryUI$, type LibraryItem, type LibraryTrack } from "@/systems/LibraryState";
 import { getQueueAction, type QueueAction } from "@/utils/queueActions";
 import { buildTrackContextMenuItems, handleTrackContextMenuSelection } from "@/utils/trackContextMenu";
 
@@ -35,6 +34,7 @@ interface BuildTrackItemsInput {
 
 export function buildTrackItems({ tracks, selectedItem, searchQuery }: BuildTrackItemsInput) {
     const normalizedQuery = searchQuery.trim().toLowerCase();
+    const selectedArtistKey = selectedItem?.type === "artist" ? getArtistKey(selectedItem.name) : null;
 
     if (!selectedItem && !normalizedQuery) {
         return {
@@ -47,7 +47,14 @@ export function buildTrackItems({ tracks, selectedItem, searchQuery }: BuildTrac
     if (normalizedQuery) {
         filteredTracks = tracks;
     } else if (selectedItem?.type === "artist") {
-        filteredTracks = tracks.filter((track) => track.artist === selectedItem.name);
+        filteredTracks = tracks.filter((track) => {
+            const trackArtistKey = getArtistKey(track.artist);
+            if (selectedArtistKey) {
+                return trackArtistKey === selectedArtistKey;
+            }
+
+            return track.artist === selectedItem.name;
+        });
     } else if (selectedItem?.type === "album") {
         const albumName = selectedItem.album ?? selectedItem.name;
         filteredTracks = tracks.filter((track) => (track.album ?? "Unknown Album") === albumName);

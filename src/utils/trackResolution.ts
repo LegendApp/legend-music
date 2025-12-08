@@ -1,4 +1,4 @@
-import type { LibraryItem, LibraryTrack } from "@/systems/LibraryState";
+import { getArtistKey, type LibraryItem, type LibraryTrack } from "@/systems/LibraryState";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import { DEFAULT_LOCAL_PLAYLIST_ID } from "@/systems/localMusicConstants";
 
@@ -72,7 +72,11 @@ export function getTracksForLibraryItem(
 
     switch (item.type) {
         case "artist":
-            return tracks.filter((track) => track.artist === item.name);
+            return tracks.filter((track) => {
+                const targetArtistKey = getArtistKey(item.name);
+                const trackArtistKey = getArtistKey(track.artist);
+                return trackArtistKey === targetArtistKey;
+            });
         case "album": {
             const albumName = item.album ?? item.name ?? "Unknown Album";
             return tracks.filter((track) => (track.album ?? "Unknown Album") === albumName);

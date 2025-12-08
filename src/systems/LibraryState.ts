@@ -18,7 +18,6 @@ export interface LibraryItem {
 }
 
 export interface LibraryTrack extends LocalTrack {
-    // LibraryTrack extends LocalTrack which already has album?: string
 }
 
 export interface LibraryUIState {
@@ -148,6 +147,9 @@ const makeLibrarySnapshotSignature = (
 });
 
 let lastLibrarySnapshotSignature: LibrarySnapshotSignature | null = null;
+// Cache artist display names and keys to avoid repeated allocations
+const artistDisplayCache = new Map<string, string>();
+const artistKeyCache = new Map<string, string>();
 
 const scheduleLibrarySnapshotPersist = () => {
     runAfterInteractions(() => {
@@ -179,7 +181,8 @@ function buildArtistItems(tracks: LibraryTrack[]): LibraryItem[] {
     const artistMap = new Map<string, { name: string; count: number }>();
 
     for (const track of tracks) {
-        const { key, name } = normalizeArtistName(track.artist);
+        const name = normalizeArtistName(track.artist);
+        const key = getArtistKey(track.artist);
         const entry = artistMap.get(key);
         if (entry) {
             entry.count += 1;
@@ -251,16 +254,38 @@ function slugify(value: string): string {
     return slug || "unknown";
 }
 
-function normalizeArtistName(name: string): { key: string; name: string } {
+export function normalizeArtistName(name: string): string {
+    const cached = artistDisplayCache.get(name);
+    if (cached) {
+        return cached;
+    }
+
     const trimmedName = name?.trim() || "";
     const displayName = trimmedName.length > 0 ? trimmedName : "Unknown Artist";
-    const key = slugify(displayName);
+    artistDisplayCache.set(name, displayName);
+    return displayName;
+}
 
-    return { key, name: displayName };
+export function getArtistKey(name: string, existingKey?: string): string {
+    if (existingKey) {
+        return existingKey;
+    }
+
+    const cached = artistKeyCache.get(name);
+    if (cached) {
+        return cached;
+    }
+
+    const displayName = normalizeArtistName(name);
+    const key = slugify(displayName);
+    artistKeyCache.set(name, key);
+    return key;
 }
 
 function syncLibraryFromLocalState(): void {
     perfLog("LibraryState.sync.start");
+    artistDisplayCache.clear();
+    artistKeyCache.clear();
     const localTracks = localMusicState$.tracks.get();
     const normalizedTracks = normalizeTracks(localTracks);
 
@@ -317,6 +342,8 @@ export const hydrateLibraryFromCache = (): boolean => {
         return false;
     }
 
+    artistDisplayCache.clear();
+    artistKeyCache.clear();
     const roots = Array.isArray(snapshot.roots) ? snapshot.roots.map((root) => normalizeRootPath(root)) : [];
 
     const tracks = snapshot.tracks.map((track) => {
@@ -325,11 +352,12 @@ export const hydrateLibraryFromCache = (): boolean => {
             thumbnail: track.thumbnail,
             thumbnailKey: track.thumb,
         });
+        const artistName = normalizeArtistName(track.artist);
 
         return {
             id: filePath,
             title: track.title,
-            artist: track.artist,
+            artist: artistName,
             album: track.album,
             duration: track.duration,
             filePath,

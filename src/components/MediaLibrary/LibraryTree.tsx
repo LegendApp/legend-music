@@ -218,7 +218,7 @@ function LibraryTreeRow({ item, listItemStyles, onSelect, onContextMenu, onDoubl
         <Button
             onClick={() => onSelect(item)}
             onMouseDown={(event) => {
-                void onContextMenu(item, event);
+                onContextMenu(item, event);
             }}
             onDoubleClick={(event) => onDoubleClick(item, event)}
             className={listItemStyles.getRowClassName({
