@@ -1,6 +1,6 @@
 {
-  "name": "LegendMusic",
-  "version": "0.0.5",
+  "name": "Legend Music",
+  "version": "0.0.6",
   "private": true,
   "scripts": {
     "bootstrap": "bun i && cd macos && pod install",
