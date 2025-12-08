@@ -34,33 +34,29 @@ export const VisualizerWindowManager = () => {
         };
     });
 
-    useObserveEffect(() => {
+    useObserveEffect(async () => {
         if (visualizerWindowState$.isOpen.get()) {
-            (async () => {
-                const { window } = visualizerPreferences$.get();
-                const width = Math.max(480, Math.floor(window.width) || 780);
-                const height = Math.max(320, Math.floor(window.height) || 420);
+            const { window } = visualizerPreferences$.peek();
+            const width = Math.max(480, Math.floor(window.width) || 780);
+            const height = Math.max(320, Math.floor(window.height) || 420);
 
-                try {
-                    await WindowsNavigator.open(VISUALIZER_WINDOW_KEY, {
-                        windowStyle: {
-                            width,
-                            height,
-                        },
-                    });
-                } catch (error) {
-                    console.error("Failed to open visualizer window:", error);
-                    visualizerWindowState$.isOpen.set(false);
-                }
-            })();
+            try {
+                await WindowsNavigator.open(VISUALIZER_WINDOW_KEY, {
+                    windowStyle: {
+                        width,
+                        height,
+                    },
+                });
+            } catch (error) {
+                console.error("Failed to open visualizer window:", error);
+                visualizerWindowState$.isOpen.set(false);
+            }
         } else {
-            (async () => {
-                try {
-                    await WindowsNavigator.close(VISUALIZER_WINDOW_KEY);
-                } catch (error) {
-                    perfLog("VisualizerWindowManager.close.error", error);
-                }
-            })();
+            try {
+                await WindowsNavigator.close(VISUALIZER_WINDOW_KEY);
+            } catch (error) {
+                perfLog("VisualizerWindowManager.close.error", error);
+            }
         }
     });
 

@@ -66,8 +66,10 @@ export default function VisualizerWindow() {
     const handleLayout = useCallback((event: LayoutChangeEvent) => {
         const { width, height } = event.nativeEvent.layout;
         if (width > 0 && height > 0) {
-            visualizerPreferences$.window.width.set(Math.round(width));
-            visualizerPreferences$.window.height.set(Math.round(height));
+            visualizerPreferences$.window.assign({
+                width: Math.round(width),
+                height: Math.round(height),
+            });
         }
     }, []);
 
