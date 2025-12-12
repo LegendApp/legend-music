@@ -20,10 +20,6 @@ import { useLibraryTrackList } from "./useLibraryTrackList";
 interface TrackListProps {
 }
 
-function getFixedItemSize() {
-    return 32;
-}
-
 export function TrackList(_props: TrackListProps) {
     const {
         tracks,
@@ -50,20 +46,26 @@ export function TrackList(_props: TrackListProps) {
     );
 
     const renderTrack = useCallback(
-        ({ item, index }: { item: TrackData; index: number }) => (
-            <LibraryTrackRow
-                track={item}
-                index={index}
-                columns={columns}
-                onClick={handleTrackClick}
-                onDoubleClick={handleTrackDoubleClick}
-                onRightClick={handleTrackContextMenu}
-                onMenuAction={handleTrackQueueAction}
-                selectedIndices$={selectedIndices$}
-                buildDragData={buildDragData}
-                onNativeDragStart={handleNativeDragStart}
-            />
-        ),
+        ({ item, index }: { item: TrackData; index: number }) => {
+            if (item.isSeparator) {
+                return <LibrarySeparatorRow title={item.title} />;
+            }
+
+            return (
+                <LibraryTrackRow
+                    track={item}
+                    index={index}
+                    columns={columns}
+                    onClick={handleTrackClick}
+                    onDoubleClick={handleTrackDoubleClick}
+                    onRightClick={handleTrackContextMenu}
+                    onMenuAction={handleTrackQueueAction}
+                    selectedIndices$={selectedIndices$}
+                    buildDragData={buildDragData}
+                    onNativeDragStart={handleNativeDragStart}
+                />
+            );
+        },
         [
             buildDragData,
             handleTrackClick,
@@ -83,7 +85,6 @@ export function TrackList(_props: TrackListProps) {
                     data={tracks}
                     keyExtractor={keyExtractor}
                     renderItem={renderTrack}
-                    getFixedItemSize={getFixedItemSize}
                     style={{ flex: 1 }}
                     contentContainerStyle={
                         tracks.length
@@ -97,7 +98,7 @@ export function TrackList(_props: TrackListProps) {
                               }
                     }
                     waitForInitialLayout={false}
-                    estimatedItemSize={64}
+                    estimatedItemSize={36}
                     recycleItems
                     ListEmptyComponent={
                         <View className="items-start justify-center py-4 px-2.5">
@@ -106,6 +107,18 @@ export function TrackList(_props: TrackListProps) {
                     }
                 />
             </Table>
+        </View>
+    );
+}
+
+function LibrarySeparatorRow({ title }: { title: string }) {
+    return (
+        <View className="flex-row items-center px-4 py-4 mt-6 mb-2">
+            <View className="flex-1 h-px bg-white/15" />
+            <Text className="text-white/90 text-xs font-semibold tracking-wider uppercase mx-4 bg-white/5 px-3 py-1.5 rounded-full border border-white/15">
+                {title.replace(/^— (.+) —$/, "$1")}
+            </Text>
+            <View className="flex-1 h-px bg-white/15" />
         </View>
     );
 }
@@ -148,6 +161,7 @@ function LibraryTrackRow({
         const currentTrack = localPlayerState$.currentTrack.get();
         return currentTrack ? currentTrack.id === track.id : false;
     });
+    const displayIndex = (track.index ?? index) + 1;
 
     const handleMenuClick = useCallback(
         async (event: NativeMouseEvent) => {
@@ -176,7 +190,7 @@ function LibraryTrackRow({
             onRightClick={(event) => onRightClick(index, event)}
         >
             <TableCell column={columns[0]}>
-                <Text className={cn("text-xs tabular-nums", listItemStyles.text.muted)}>{index + 1}</Text>
+                <Text className={cn("text-xs tabular-nums", listItemStyles.text.muted)}>{displayIndex}</Text>
             </TableCell>
             <TableCell column={columns[1]}>
                 <Text className={cn("text-sm font-medium truncate", listItemStyles.text.primary)} numberOfLines={1}>

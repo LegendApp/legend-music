@@ -171,7 +171,7 @@ Upgrade the media library UI to a two-pane, local-first experience: a left sideb
 - [x] Add new sidebar UI and `libraryUI$` selection model; remove top tabs.
 - [x] Build reusable Table primitives under `src/components/`.
 - [x] Refactor MediaLibrary track list into a 5-column table with per-row menu and enqueue on double click.
-- [ ] Implement Artists/Albums grouping with separators and make search switch to global results.
+- [x] Implement Artists/Albums grouping with separators and make search switch to global results.
 - [ ] Integrate local playlists into the sidebar; implement inline create + focus naming flow.
 - [ ] Implement playlist track resolution, drag-and-drop reorder, remove, and persist `.m3u` in cache `data`.
 - [ ] Update tests and do a manual macOS UI pass.

@@ -8,11 +8,19 @@ import { localAudioControls } from "@/components/LocalAudioPlayer";
 import type { TrackData } from "@/components/TrackItem";
 import { usePlaylistSelection } from "@/hooks/usePlaylistSelection";
 import { showContextMenu } from "@/native-modules/ContextMenu";
-import { library$, libraryUI$, type LibraryTrack, type LibraryView } from "@/systems/LibraryState";
+import {
+    getArtistKey,
+    library$,
+    libraryUI$,
+    normalizeArtistName,
+    type LibraryTrack,
+    type LibraryView,
+} from "@/systems/LibraryState";
 import { getQueueAction, type QueueAction } from "@/utils/queueActions";
 import { buildTrackContextMenuItems, handleTrackContextMenuSelection } from "@/utils/trackContextMenu";
 
 type TrackListItem = TrackData;
+type LibraryTrackListItem = TrackData & { sourceTrack?: LibraryTrack };
 
 interface UseLibraryTrackListResult {
     tracks: TrackData[];
@@ -37,14 +45,25 @@ export function buildTrackItems({ tracks, selectedView, selectedPlaylistId, sear
     const normalizedQuery = searchQuery.trim().toLowerCase();
     void selectedPlaylistId;
 
-    let filteredTracks = tracks;
+    const toTrackItem = (track: LibraryTrack, viewIndex: number): LibraryTrackListItem => ({
+        id: track.id,
+        title: track.title,
+        artist: track.artist,
+        album: track.album,
+        duration: formatDuration(track.duration),
+        thumbnail: track.thumbnail,
+        index: viewIndex,
+        sourceTrack: track,
+    });
 
     if (selectedView === "starred") {
-        filteredTracks = [];
+        return {
+            trackItems: [] as LibraryTrackListItem[],
+        };
     }
 
     if (normalizedQuery) {
-        filteredTracks = filteredTracks.filter((track) => {
+        const filteredTracks = tracks.filter((track) => {
             const title = track.title?.toLowerCase() ?? "";
             const artist = track.artist?.toLowerCase() ?? "";
             const album = track.album?.toLowerCase() ?? "";
@@ -52,22 +71,93 @@ export function buildTrackItems({ tracks, selectedView, selectedPlaylistId, sear
                 title.includes(normalizedQuery) || artist.includes(normalizedQuery) || album.includes(normalizedQuery)
             );
         });
+
+        return {
+            trackItems: filteredTracks.map((track, index) => toTrackItem(track, index)),
+        };
+    }
+
+    if (selectedView === "artists") {
+        const sortedTracks = [...tracks].sort((a, b) => {
+            const keyA = getArtistKey(a.artist);
+            const keyB = getArtistKey(b.artist);
+            if (keyA !== keyB) {
+                return keyA.localeCompare(keyB);
+            }
+
+            return (a.title ?? "").localeCompare(b.title ?? "");
+        });
+
+        const trackItems: LibraryTrackListItem[] = [];
+        let lastArtistKey: string | null = null;
+
+        let viewIndex = 0;
+        for (const track of sortedTracks) {
+            const artistKey = getArtistKey(track.artist);
+            if (artistKey !== lastArtistKey) {
+                const displayName = normalizeArtistName(track.artist);
+                trackItems.push({
+                    id: `sep-artist-${artistKey}`,
+                    title: `— ${displayName} —`,
+                    artist: "",
+                    album: "",
+                    duration: "",
+                    isSeparator: true,
+                });
+                lastArtistKey = artistKey;
+            }
+
+            trackItems.push(toTrackItem(track, viewIndex));
+            viewIndex += 1;
+        }
+
+        return { trackItems };
+    }
+
+    if (selectedView === "albums") {
+        const sortedTracks = [...tracks].sort((a, b) => {
+            const albumA = a.album?.trim() || "Unknown Album";
+            const albumB = b.album?.trim() || "Unknown Album";
+            const keyA = albumA.toLowerCase();
+            const keyB = albumB.toLowerCase();
+            if (keyA !== keyB) {
+                return keyA.localeCompare(keyB);
+            }
+
+            return (a.title ?? "").localeCompare(b.title ?? "");
+        });
+
+        const trackItems: LibraryTrackListItem[] = [];
+        let lastAlbumKey: string | null = null;
+
+        let viewIndex = 0;
+        for (const track of sortedTracks) {
+            const albumName = track.album?.trim() || "Unknown Album";
+            const albumKey = albumName.toLowerCase();
+            if (albumKey !== lastAlbumKey) {
+                trackItems.push({
+                    id: `sep-album-${albumKey}`,
+                    title: `— ${albumName} —`,
+                    artist: "",
+                    album: "",
+                    duration: "",
+                    isSeparator: true,
+                });
+                lastAlbumKey = albumKey;
+            }
+
+            trackItems.push(toTrackItem(track, viewIndex));
+            viewIndex += 1;
+        }
+
+        return { trackItems };
     }
 
     return {
-        sourceTracks: filteredTracks,
-        trackItems: filteredTracks.map((track) => ({
-            id: track.id,
-            title: track.title,
-            artist: track.artist,
-            album: track.album,
-            duration: formatDuration(track.duration),
-            thumbnail: track.thumbnail,
-        })),
+        trackItems: tracks.map((track, index) => toTrackItem(track, index)),
     };
 }
 
-export function useLibraryTrackList(searchQuery: string): UseLibraryTrackListResult {
 export function useLibraryTrackList(): UseLibraryTrackListResult {
     const selectedView = useValue(libraryUI$.selectedView);
     const selectedPlaylistId = useValue(libraryUI$.selectedPlaylistId);
@@ -75,7 +165,7 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
     const allTracks = useValue(library$.tracks);
     const skipClickRef = useRef(false);
 
-    const { sourceTracks, trackItems } = useMemo(
+    const { trackItems } = useMemo(
         () =>
             buildTrackItems({
                 tracks: allTracks,
@@ -107,7 +197,7 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
 
     const handleTrackAction = useCallback(
         (index: number, action: QueueAction) => {
-            const track = sourceTracks[index];
+            const track = trackItems[index]?.sourceTrack;
             if (!track) {
                 return;
             }
@@ -124,7 +214,7 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
                     break;
             }
         },
-        [sourceTracks],
+        [trackItems],
     );
 
     const trackContextMenuItems = useMemo(
@@ -145,13 +235,13 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
 
             await handleTrackContextMenuSelection({
                 selection,
-                filePath: sourceTracks[index]?.filePath,
+                filePath: trackItems[index]?.sourceTrack?.filePath,
                 onQueueAction: (action) => {
                     handleTrackAction(index, action === "play-next" ? "play-next" : "enqueue");
                 },
             });
         },
-        [handleTrackAction, sourceTracks, trackContextMenuItems],
+        [handleTrackAction, trackItems, trackContextMenuItems],
     );
 
     const handleNativeDragStart = useCallback(() => {
@@ -174,12 +264,13 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
         (activeIndex: number): MediaLibraryDragData => {
             const indices = getSelectionIndicesForDrag(activeIndex);
             const tracksToInclude = indices
-                .map((trackIndex) => sourceTracks[trackIndex])
+                .map((trackIndex) => trackItems[trackIndex]?.sourceTrack)
                 .filter((track): track is LibraryTrack => Boolean(track))
                 .map((track) => ({ ...track }));
 
-            if (tracksToInclude.length === 0 && sourceTracks[activeIndex]) {
-                tracksToInclude.push({ ...sourceTracks[activeIndex] });
+            const activeTrack = trackItems[activeIndex]?.sourceTrack;
+            if (tracksToInclude.length === 0 && activeTrack) {
+                tracksToInclude.push({ ...activeTrack });
             }
 
             return {
@@ -187,7 +278,7 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
                 tracks: tracksToInclude,
             };
         },
-        [getSelectionIndicesForDrag, sourceTracks],
+        [getSelectionIndicesForDrag, trackItems],
     );
 
     const handleTrackClick = useCallback(
