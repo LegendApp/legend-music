@@ -8,7 +8,8 @@ import { localAudioControls } from "@/components/LocalAudioPlayer";
 import { showToast } from "@/components/Toast";
 import type { TrackData } from "@/components/TrackItem";
 import { usePlaylistSelection } from "@/hooks/usePlaylistSelection";
-import { showContextMenu } from "@/native-modules/ContextMenu";
+import { showContextMenu, type ContextMenuItem } from "@/native-modules/ContextMenu";
+import { addTracksToPlaylist } from "@/systems/LocalPlaylists";
 import { localMusicState$, saveLocalPlaylistTracks, type LocalPlaylist } from "@/systems/LocalMusicState";
 import {
     getArtistKey,
@@ -24,6 +25,8 @@ import { buildTrackContextMenuItems, handleTrackContextMenuSelection } from "@/u
 
 type TrackListItem = TrackData;
 type LibraryTrackListItem = TrackData & { sourceTrack?: LibraryTrack };
+
+const ADD_TO_PLAYLIST_MENU_ITEM: ContextMenuItem = { id: "add-to-playlist", title: "Add to Playlist…" };
 
 interface UseLibraryTrackListResult {
     tracks: TrackData[];
@@ -311,6 +314,7 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
             buildTrackContextMenuItems({
                 includeQueueActions: true,
                 includeFinder: true,
+                extraItems: [ADD_TO_PLAYLIST_MENU_ITEM],
             }),
         [],
     );
@@ -328,9 +332,80 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
                 onQueueAction: (action) => {
                     handleTrackAction(index, action === "play-next" ? "play-next" : "enqueue");
                 },
+                onCustomSelect: async (customSelection) => {
+                    if (customSelection !== ADD_TO_PLAYLIST_MENU_ITEM.id) {
+                        return;
+                    }
+
+                    const selectablePlaylists = playlists.filter(
+                        (playlist) => playlist.source === "cache" && Boolean(playlist.filePath),
+                    );
+                    if (selectablePlaylists.length === 0) {
+                        showToast("No editable playlists available", "error");
+                        return;
+                    }
+
+                    const playlistSelectionItems: ContextMenuItem[] = playlists.map((playlist) => ({
+                        id: `playlist:${playlist.id}`,
+                        title: playlist.name,
+                        enabled: playlist.source === "cache" && Boolean(playlist.filePath),
+                    }));
+                    const playlistSelection = await showContextMenu(playlistSelectionItems, { x, y });
+                    if (!playlistSelection?.startsWith("playlist:")) {
+                        return;
+                    }
+
+                    const playlistId = playlistSelection.replace(/^playlist:/, "");
+                    const currentSelection = selectedIndices$.get();
+                    const indicesToAdd =
+                        currentSelection.size > 0 && currentSelection.has(index)
+                            ? Array.from(currentSelection).sort((a, b) => a - b)
+                            : [index];
+
+                    const trackPaths = indicesToAdd
+                        .map((trackIndex) => trackItems[trackIndex]?.sourceTrack?.filePath)
+                        .filter((path): path is string => Boolean(path));
+                    if (trackPaths.length === 0) {
+                        return;
+                    }
+
+                    try {
+                        const { addedPaths, playlist } = await addTracksToPlaylist(playlistId, trackPaths);
+                        const addedCount = addedPaths.length;
+                        if (addedCount <= 0) {
+                            showToast("No new tracks to add", "info");
+                            return;
+                        }
+
+                        showToast(
+                            `Added ${addedCount} ${addedCount === 1 ? "track" : "tracks"} to ${playlist.name}`,
+                            "info",
+                            {
+                                label: "Undo",
+                                onPress: () => {
+                                    const latestPlaylist =
+                                        localMusicState$.playlists.peek().find((pl) => pl.id === playlist.id) ??
+                                        null;
+                                    if (!latestPlaylist) {
+                                        return;
+                                    }
+
+                                    const addedKeys = new Set(addedPaths.map((path) => path.toLowerCase()));
+                                    const nextPaths = latestPlaylist.trackPaths.filter(
+                                        (path) => !addedKeys.has(path.toLowerCase()),
+                                    );
+                                    saveLocalPlaylistTracks(latestPlaylist, nextPaths);
+                                },
+                            },
+                        );
+                    } catch (error) {
+                        const message = error instanceof Error ? error.message : "Failed to add tracks to playlist";
+                        showToast(message, "error");
+                    }
+                },
             });
         },
-        [handleTrackAction, trackItems, trackContextMenuItems],
+        [handleTrackAction, playlists, selectedIndices$, trackItems, trackContextMenuItems],
     );
 
     const handleNativeDragStart = useCallback(() => {

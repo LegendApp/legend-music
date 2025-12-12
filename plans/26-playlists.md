@@ -242,7 +242,7 @@ Add a small header above the table in playlist view:
 - [x] Add playlist mutation helpers: add, rename, delete, export, duplicate/import (+ collision handling).
 - [x] Add action-capable toast and wire undo for add/remove (and optionally delete).
 - [x] Implement sidebar drop-to-add (internal DnD + macOS native drop) with highlight.
-- [ ] Implement track “Add to Playlist…” (two-stage menu, selection-aware).
+- [x] Implement track “Add to Playlist…” (two-stage menu, selection-aware).
 - [ ] Implement playlist row context menu rename/delete/reveal/export/import.
 - [ ] Add playlist metadata header and sorting controls (disable reorder while filtered/sorted).
 - [ ] Update/add tests and do a manual macOS UI pass.
