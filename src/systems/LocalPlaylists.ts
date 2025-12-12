@@ -12,12 +12,48 @@ import {
 import { ensureCacheDirectory, getCacheDirectory } from "@/utils/cacheDirectories";
 import { writeM3U } from "@/utils/m3u";
 
-const toFilePath = (value: string): string => (value.startsWith("file://") ? new URL(value).pathname : value);
+const toFilePath = (value: string): string => {
+    if (!value.startsWith("file://")) {
+        return value;
+    }
+
+    try {
+        const url = new URL(value);
+        if (url.protocol === "file:") {
+            return decodeURI(url.pathname);
+        }
+    } catch {
+        // Ignore parse errors and fall through to returning the original string.
+    }
+
+    return value;
+};
+
+const decodeIfUriEncoded = (value: string): string => {
+    if (!/%[0-9A-Fa-f]{2}/.test(value)) {
+        return value;
+    }
+
+    try {
+        return decodeURI(value);
+    } catch {
+        return value;
+    }
+};
 
 const isEditablePlaylist = (playlist: LocalPlaylist): boolean => playlist.source === "cache" && Boolean(playlist.filePath);
 
 const getPlaylistOrThrow = (playlistId: string): LocalPlaylist => {
-    const playlist = localMusicState$.playlists.peek().find((pl) => pl.id === playlistId) ?? null;
+    const normalize = (value: string) => {
+        try {
+            return decodeURI(value);
+        } catch {
+            return value;
+        }
+    };
+    const normalizedId = normalize(playlistId);
+    const playlist =
+        localMusicState$.playlists.peek().find((pl) => normalize(pl.id) === normalizedId) ?? null;
     if (!playlist) {
         throw new Error("Playlist not found");
     }
@@ -100,7 +136,7 @@ export async function renamePlaylist(
         return null;
     }
 
-    const currentFile = new File(playlist.filePath);
+    const currentFile = new File(decodeIfUriEncoded(playlist.filePath));
     if (!currentFile.exists) {
         throw new Error("Playlist file not found");
     }
@@ -138,7 +174,7 @@ export async function deletePlaylist(playlistId: string): Promise<void> {
         throw new Error("Playlist is read-only");
     }
 
-    const file = new File(playlist.filePath);
+    const file = new File(decodeIfUriEncoded(playlist.filePath));
     if (file.exists) {
         file.delete();
     }
@@ -184,4 +220,3 @@ export async function duplicatePlaylistToCache(
 
     return getPlaylistOrThrow(nextPlaylist.id);
 }
-

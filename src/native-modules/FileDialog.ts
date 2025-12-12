@@ -169,7 +169,17 @@ export async function showInFinder(path?: string | null): Promise<boolean> {
         return false;
     }
 
-    const resolvedPath = path.startsWith("file://") ? fileUriToPath(path) : path;
+    const resolvedPath = (() => {
+        const rawPath = path.startsWith("file://") ? fileUriToPath(path) : path;
+        if (!/%[0-9A-Fa-f]{2}/.test(rawPath)) {
+            return rawPath;
+        }
+        try {
+            return decodeURI(rawPath);
+        } catch {
+            return rawPath;
+        }
+    })();
 
     try {
         const result = await revealInFinderMethod(resolvedPath);

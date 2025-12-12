@@ -880,7 +880,34 @@ export function markLibraryChangeUserInitiated(): void {
     pendingUserInitiatedLibraryChange = true;
 }
 
-const toFilePath = (value: string): string => (value.startsWith("file://") ? new URL(value).pathname : value);
+const toFilePath = (value: string): string => {
+    if (!value.startsWith("file://")) {
+        return value;
+    }
+
+    try {
+        const url = new URL(value);
+        if (url.protocol === "file:") {
+            return decodeURI(url.pathname);
+        }
+    } catch {
+        // Ignore parse errors and fall through to returning the original string.
+    }
+
+    return value;
+};
+
+const decodeIfUriEncoded = (value: string): string => {
+    if (!/%[0-9A-Fa-f]{2}/.test(value)) {
+        return value;
+    }
+
+    try {
+        return decodeURI(value);
+    } catch {
+        return value;
+    }
+};
 
 export const sanitizePlaylistFileName = (name: string): string => {
     const trimmed = name.trim();
@@ -1135,7 +1162,7 @@ export async function saveLocalPlaylistTracks(playlist: LocalPlaylist, trackPath
         }));
         const m3uContent = writeM3U({ songs: m3uTracks, suggestions: [] });
 
-        const file = new File(playlist.filePath);
+        const file = new File(decodeIfUriEncoded(playlist.filePath));
         file.write(m3uContent);
 
         const nextPlaylists = localMusicState$.playlists.peek().map((pl) =>
