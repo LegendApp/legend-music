@@ -34,6 +34,17 @@ NativeModules.KeyboardManager = {
     removeAllListeners: jest.fn(),
     removeListener: jest.fn(),
 };
+NativeModules.AppExit = {
+    addListener: jest.fn(() => ({ remove: jest.fn() })),
+    removeListeners: jest.fn(),
+    completeExit: jest.fn(),
+};
+NativeModules.FileSystemWatcher = {
+    addListener: jest.fn(() => ({ remove: jest.fn() })),
+    removeListeners: jest.fn(),
+    setWatchedDirectories: jest.fn(),
+    isWatchingDirectory: jest.fn(async () => false),
+};
 NativeModules.WindowControls = {
     minimize: jest.fn(),
     maximize: jest.fn(),
@@ -68,6 +79,32 @@ jest.mock("@/native-modules/WindowControls", () => ({
 jest.mock("@/native-modules/WindowManager", () => ({
     __esModule: true,
     default: mockWindowManager,
+    useWindowManager: () => ({
+        openWindow: jest.fn(async () => ({ success: true })),
+        closeWindow: jest.fn(async () => ({ success: true })),
+        closeFrontmostWindow: jest.fn(async () => ({ success: true })),
+        getMainWindowFrame: jest.fn(async () => ({ x: 0, y: 0, width: 0, height: 0 })),
+        setMainWindowFrame: jest.fn(async () => ({ success: true })),
+        setWindowBlur: jest.fn(async () => ({ success: true })),
+        onWindowClosed: jest.fn(() => ({ remove: jest.fn() })),
+        onWindowFocused: jest.fn(() => ({ remove: jest.fn() })),
+    }),
+    openWindow: jest.fn(async () => ({ success: true })),
+    closeWindow: jest.fn(async () => ({ success: true })),
+    closeFrontmostWindow: jest.fn(async () => ({ success: true })),
+    WindowStyleMask: {
+        Borderless: "Borderless",
+        Titled: "Titled",
+        Closable: "Closable",
+        Miniaturizable: "Miniaturizable",
+        Resizable: "Resizable",
+        UnifiedTitleAndToolbar: "UnifiedTitleAndToolbar",
+        FullScreen: "FullScreen",
+        FullSizeContentView: "FullSizeContentView",
+        UtilityWindow: "UtilityWindow",
+        DocModalWindow: "DocModalWindow",
+        NonactivatingPanel: "NonactivatingPanel",
+    },
 }));
 
 jest.mock("expo-file-system", () => ({
@@ -76,51 +113,142 @@ jest.mock("expo-file-system", () => ({
 }));
 
 jest.mock("expo-file-system/next", () => {
-    const Paths = {
-        cache: "/tmp/cache",
+    const fileContents = new Map();
+    const directories = new Set();
+
+    const normalizePath = (input) => {
+        if (!input) {
+            return "/";
+        }
+        const withoutProtocol = String(input).startsWith("file://") ? String(input).replace("file://", "") : String(input);
+        const collapsed = withoutProtocol.replace(/\/+/g, "/");
+        if (collapsed === "/") {
+            return "/";
+        }
+        const trimmed = collapsed.endsWith("/") ? collapsed.slice(0, -1) : collapsed;
+        return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+    };
+
+    const resolvePath = (base, name = "") => {
+        const basePath = base && typeof base === "object" && "path" in base ? base.path : base;
+        const resolved = [basePath, name].filter(Boolean).join("/");
+        return normalizePath(resolved);
+    };
+
+    const parentPath = (path) => {
+        const normalized = normalizePath(path);
+        if (normalized === "/") {
+            return "/";
+        }
+        const parts = normalized.split("/").filter(Boolean);
+        return parts.length <= 1 ? "/" : `/${parts.slice(0, -1).join("/")}`;
     };
 
     class MockDirectory {
         constructor(base = "", name = "") {
-            this.path = [typeof base === "string" ? base : base.path, name].filter(Boolean).join("/");
-            this.exists = true;
-        }
-
-        get parentDirectory() {
-            return this;
-        }
-
-        list() {
-            return [];
-        }
-    }
-
-    class MockFile extends MockDirectory {
-        constructor(base, name = "") {
-            super(base, name);
-            this.name = name;
+            this.path = resolvePath(base, name);
+            this.uri = `file://${this.path}`;
+            this.name = this.path === "/" ? "/" : this.path.split("/").pop();
         }
 
         get exists() {
-            return true;
+            return directories.has(this.path);
+        }
+
+        get parentDirectory() {
+            return new MockDirectory(parentPath(this.path));
+        }
+
+        create() {
+            directories.add(this.path);
+        }
+
+        list() {
+            const dirPath = this.path;
+            const entries = [];
+
+            for (const dir of directories) {
+                if (dir !== dirPath && parentPath(dir) === dirPath) {
+                    entries.push(new MockDirectory(dir));
+                }
+            }
+
+            for (const filePath of fileContents.keys()) {
+                if (parentPath(filePath) === dirPath) {
+                    entries.push(new MockFile(filePath));
+                }
+            }
+
+            return entries;
+        }
+    }
+
+    class MockFile {
+        constructor(base = "", name = "") {
+            if (name) {
+                this.path = resolvePath(base, name);
+            } else {
+                this.path = normalizePath(base);
+            }
+
+            this.uri = `file://${this.path}`;
+            this.name = this.path.split("/").pop();
+        }
+
+        get exists() {
+            return fileContents.has(this.path);
+        }
+
+        get parentDirectory() {
+            return new MockDirectory(parentPath(this.path));
+        }
+
+        create() {
+            this.parentDirectory.create();
+            fileContents.set(this.path, fileContents.get(this.path) ?? "");
+        }
+
+        write(content = "") {
+            this.parentDirectory.create();
+            fileContents.set(this.path, String(content));
         }
 
         text() {
-            return "";
+            return fileContents.get(this.path) ?? "";
         }
 
         bytes() {
             return new Uint8Array();
         }
 
-        delete() {}
+        delete() {
+            fileContents.delete(this.path);
+        }
     }
+
+    const cacheDirectory = new MockDirectory("/tmp/cache");
+    cacheDirectory.create();
+    const documentDirectory = new MockDirectory("/tmp/document");
+    documentDirectory.create();
 
     return {
         __esModule: true,
         Directory: MockDirectory,
         File: MockFile,
-        Paths,
+        Paths: {
+            cache: cacheDirectory,
+            document: documentDirectory,
+        },
+        __setMockFile(path, content) {
+            const normalized = normalizePath(path);
+            new MockFile(normalized).write(content);
+        },
+        __resetMockFileSystem() {
+            fileContents.clear();
+            directories.clear();
+            cacheDirectory.create();
+            documentDirectory.create();
+        },
     };
 });
 
@@ -147,5 +275,43 @@ jest.mock("@legendapp/motion", () => ({
     AnimatePresence: ({ children }) => children,
     Motion: {
         View: () => null,
+    },
+}));
+
+jest.mock("@/utils/ExpoFSPersistPlugin", () => {
+    const plugin = {
+        initialize: jest.fn(),
+        getTable: (_table, init) => init ?? {},
+        getMetadata: () => ({}),
+        set: jest.fn(async () => {}),
+        setMetadata: jest.fn(async () => {}),
+        deleteTable: jest.fn(),
+        deleteMetadata: jest.fn(),
+        flush: jest.fn(async () => {}),
+    };
+
+    return {
+        __esModule: true,
+        observablePersistExpoFS: jest.fn(() => plugin),
+    };
+});
+
+jest.mock("@legendapp/list", () => {
+    const React = require("react");
+    return {
+        __esModule: true,
+        LegendList: React.forwardRef(() => null),
+    };
+});
+
+jest.mock("@shopify/react-native-skia", () => ({
+    __esModule: true,
+    Canvas: () => null,
+    Rect: () => null,
+    Shader: () => null,
+    Skia: {
+        RuntimeEffect: {
+            Make: () => null,
+        },
     },
 }));

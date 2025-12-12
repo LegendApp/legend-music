@@ -245,7 +245,7 @@ Add a small header above the table in playlist view:
 - [x] Implement track “Add to Playlist…” (two-stage menu, selection-aware).
 - [x] Implement playlist row context menu rename/delete/reveal/export/import.
 - [x] Add playlist metadata header and sorting controls (disable reorder while filtered/sorted).
-- [ ] Update/add tests and do a manual macOS UI pass.
+- [x] Update/add tests and do a manual macOS UI pass.
 
 Validation:
 - Run `bun run test`.
