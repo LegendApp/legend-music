@@ -1,4 +1,5 @@
-import type { LibraryItem, LibraryTrack } from "@/systems/LibraryState";
+import type { LibraryTrack } from "@/systems/LibraryState";
+import type { LocalPlaylist } from "@/systems/LocalMusicState";
 import { buildTrackItems } from "../useLibraryTrackList";
 
 const mockTracks: LibraryTrack[] = [
@@ -32,85 +33,103 @@ const mockTracks: LibraryTrack[] = [
 ];
 
 describe("buildTrackItems", () => {
-    it("returns empty arrays when nothing is selected and no search query", () => {
+    it("songs view returns all tracks in order", () => {
         const result = buildTrackItems({
             tracks: mockTracks,
-            selectedItem: null,
+            playlists: [],
+            selectedView: "songs",
+            selectedPlaylistId: null,
             searchQuery: "",
         });
 
-        expect(result.sourceTracks).toHaveLength(0);
-        expect(result.trackItems).toHaveLength(0);
+        expect(result.trackItems.map((track) => track.id)).toEqual(["1", "2", "3"]);
     });
 
-    it("filters tracks by selected artist", () => {
-        const artistItem: LibraryItem = {
-            id: "artist-1",
-            type: "artist",
-            name: "Artist 1",
-        };
-
+    it("artists view inserts separators and groups by artist", () => {
         const result = buildTrackItems({
             tracks: mockTracks,
-            selectedItem: artistItem,
+            playlists: [],
+            selectedView: "artists",
+            selectedPlaylistId: null,
             searchQuery: "",
         });
 
-        expect(result.sourceTracks.map((track) => track.id)).toEqual(["1", "3"]);
-        expect(result.trackItems.map((track) => track.title)).toEqual(["Song A", "Another Song"]);
+        expect(result.trackItems.map((item) => item.title)).toEqual([
+            "— Artist 1 —",
+            "Another Song",
+            "Song A",
+            "— Artist 2 —",
+            "Song B",
+        ]);
+        expect(result.trackItems.filter((item) => item.isSeparator).length).toBe(2);
     });
 
-    it("applies search query across title, artist, and album", () => {
+    it("albums view inserts separators and groups by album", () => {
         const result = buildTrackItems({
             tracks: mockTracks,
-            selectedItem: null,
+            playlists: [],
+            selectedView: "albums",
+            selectedPlaylistId: null,
+            searchQuery: "",
+        });
+
+        expect(result.trackItems.map((item) => item.title)).toEqual([
+            "— Album X —",
+            "Song A",
+            "— Album Y —",
+            "Song B",
+            "— Album Z —",
+            "Another Song",
+        ]);
+        expect(result.trackItems.filter((item) => item.isSeparator).length).toBe(3);
+    });
+
+    it("search filters globally and ignores view", () => {
+        const result = buildTrackItems({
+            tracks: mockTracks,
+            playlists: [],
+            selectedView: "artists",
+            selectedPlaylistId: null,
             searchQuery: "album y",
         });
 
-        expect(result.sourceTracks.map((track) => track.id)).toEqual(["2"]);
-        expect(result.trackItems[0]).toMatchObject({
-            id: "2",
-            title: "Song B",
-            artist: "Artist 2",
-            album: "Album Y",
+        expect(result.trackItems.map((track) => track.id)).toEqual(["2"]);
+        expect(result.trackItems.some((item) => item.isSeparator)).toBe(false);
+    });
+
+    it("playlist view preserves order and flags missing tracks", () => {
+        const playlists: LocalPlaylist[] = [
+            {
+                id: "/cache/data/test.m3u",
+                name: "Test",
+                filePath: "/cache/data/test.m3u",
+                trackPaths: ["/music/song-b.mp3", "/music/missing.mp3", "/music/song-a.mp3"],
+                trackCount: 3,
+            },
+        ];
+
+        const result = buildTrackItems({
+            tracks: mockTracks,
+            playlists,
+            selectedView: "playlist",
+            selectedPlaylistId: playlists[0].id,
+            searchQuery: "",
         });
+
+        expect(result.trackItems.map((item) => item.id)).toEqual(["2", "/music/missing.mp3", "1"]);
+        expect(result.trackItems[1]).toMatchObject({ isMissing: true, title: "missing.mp3" });
     });
 
     it("formats numeric durations into minutes and seconds", () => {
         const result = buildTrackItems({
             tracks: mockTracks,
-            selectedItem: null,
-            searchQuery: "Song A",
-        });
-
-        expect(result.trackItems[0].duration).toBe("2:00");
-    });
-
-    it("matches tracks when normalized artist names align", () => {
-        const variantTracks: LibraryTrack[] = [
-            {
-                id: "mashd-1",
-                title: "On My Mind",
-                artist: "Mashd 'N Kutcher",
-                album: "Single",
-                duration: "180",
-                filePath: "/music/mashd-1.mp3",
-                fileName: "mashd-1.mp3",
-            },
-        ];
-
-        const artistItem: LibraryItem = {
-            id: "artist-mashd",
-            type: "artist",
-            name: "Mashd N Kutcher",
-        };
-
-        const result = buildTrackItems({
-            tracks: variantTracks,
-            selectedItem: artistItem,
+            playlists: [],
+            selectedView: "songs",
+            selectedPlaylistId: null,
             searchQuery: "",
         });
 
-        expect(result.sourceTracks.map((track) => track.id)).toEqual(["mashd-1"]);
+        const songA = result.trackItems.find((track) => track.id === "1");
+        expect(songA?.duration).toBe("2:00");
     });
 });

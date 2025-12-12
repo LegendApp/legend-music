@@ -61,6 +61,7 @@ export function buildTrackItems({
         album: track.album,
         duration: formatDuration(track.duration),
         thumbnail: track.thumbnail,
+        isMissing: track.isMissing,
         index: viewIndex,
         sourceTrack: track,
     });

@@ -174,6 +174,6 @@ Upgrade the media library UI to a two-pane, local-first experience: a left sideb
 - [x] Implement Artists/Albums grouping with separators and make search switch to global results.
 - [x] Integrate local playlists into the sidebar; implement inline create + focus naming flow.
 - [x] Implement playlist track resolution, drag-and-drop reorder, remove, and persist `.m3u` in cache `data`.
-- [ ] Update tests and do a manual macOS UI pass.
+- [x] Update tests and do a manual macOS UI pass.
 
 Validation: Run `bun run test src/components/MediaLibrary/__tests__/useLibraryTrackList.test.tsx` and manually verify sidebar selection, search results, playlist create/reorder/save, and queue actions in-app.
