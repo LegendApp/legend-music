@@ -3,13 +3,20 @@ import { useObserveEffect, useValue } from "@legendapp/state/react";
 import { useRef } from "react";
 import { Animated, Easing, Text, View } from "react-native";
 
+import { Button } from "@/components/Button";
 import { cn } from "@/utils/cn";
 
 type ToastType = "info" | "error";
 
+export type ToastAction = {
+    label: string;
+    onPress: () => void;
+};
+
 type ToastState = {
     message: string;
     type: ToastType;
+    action: ToastAction | null;
     visible: boolean;
     id: number;
 };
@@ -17,11 +24,12 @@ type ToastState = {
 const toast$ = observable<ToastState>({
     message: "",
     type: "info",
+    action: null,
     visible: false,
     id: 0,
 });
 
-export function showToast(message: string, type: ToastType = "info") {
+export function showToast(message: string, type: ToastType = "info", action?: ToastAction) {
     if (!message) {
         return;
     }
@@ -29,6 +37,7 @@ export function showToast(message: string, type: ToastType = "info") {
     toast$.set({
         message,
         type,
+        action: action ?? null,
         visible: true,
         id: nextId,
     });
@@ -41,7 +50,7 @@ export function ToastProvider() {
     const hideTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useObserveEffect(() => {
-        const { visible } = toast$.get();
+        const { visible, action } = toast$.get();
         if (visible) {
             if (hideTimeout.current) {
                 clearTimeout(hideTimeout.current);
@@ -64,7 +73,7 @@ export function ToastProvider() {
 
             hideTimeout.current = setTimeout(() => {
                 toast$.visible.set(false);
-            }, 3000);
+            }, action ? 5000 : 3000);
 
             return () => {
                 if (hideTimeout.current) {
@@ -100,20 +109,43 @@ export function ToastProvider() {
     );
 
     return (
-        <View pointerEvents="none" className="absolute bottom-4 left-0 right-0 items-center z-50">
+        <View pointerEvents="box-none" className="absolute bottom-4 left-0 right-0 items-center z-50">
             <Animated.View
                 style={{
                     opacity,
                     transform: [{ translateY }],
                 }}
                 className={containerClass}
+                pointerEvents="auto"
             >
-                <Text
-                    className={cn("text-xs font-medium", toast.type === "error" ? "text-red-50" : "text-emerald-50")}
-                    numberOfLines={2}
-                >
-                    {toast.message}
-                </Text>
+                <View className="flex-row items-center gap-3">
+                    <Text
+                        className={cn(
+                            "text-xs font-medium flex-1",
+                            toast.type === "error" ? "text-red-50" : "text-emerald-50",
+                        )}
+                        numberOfLines={2}
+                    >
+                        {toast.message}
+                    </Text>
+                    {toast.action ? (
+                        <Button
+                            size="small"
+                            className="rounded-md bg-white/15 hover:bg-white/25"
+                            accessibilityLabel={toast.action.label}
+                            onClick={() => {
+                                if (hideTimeout.current) {
+                                    clearTimeout(hideTimeout.current);
+                                    hideTimeout.current = null;
+                                }
+                                toast$.visible.set(false);
+                                toast.action?.onPress();
+                            }}
+                        >
+                            <Text className="text-white text-xs font-semibold">{toast.action.label}</Text>
+                        </Button>
+                    ) : null}
+                </View>
             </Animated.View>
         </View>
     );

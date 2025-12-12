@@ -5,6 +5,7 @@ import type { NativeMouseEvent } from "react-native-macos";
 
 import type { MediaLibraryDragData } from "@/components/dnd";
 import { localAudioControls } from "@/components/LocalAudioPlayer";
+import { showToast } from "@/components/Toast";
 import type { TrackData } from "@/components/TrackItem";
 import { usePlaylistSelection } from "@/hooks/usePlaylistSelection";
 import { showContextMenu } from "@/native-modules/ContextMenu";
@@ -234,8 +235,28 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
             }
 
             const indicesToRemove = new Set(indices);
-            const nextPaths = selectedPlaylist.trackPaths.filter((_path, index) => !indicesToRemove.has(index));
+            const previousPaths = [...selectedPlaylist.trackPaths];
+            const nextPaths = previousPaths.filter((_path, index) => !indicesToRemove.has(index));
+            const removedCount = previousPaths.length - nextPaths.length;
+            if (removedCount <= 0) {
+                return;
+            }
+
             saveLocalPlaylistTracks(selectedPlaylist, nextPaths);
+
+            showToast(
+                `Removed ${removedCount} ${removedCount === 1 ? "track" : "tracks"} from ${selectedPlaylist.name}`,
+                "info",
+                {
+                    label: "Undo",
+                    onPress: () => {
+                        const latestPlaylist =
+                            localMusicState$.playlists.peek().find((pl) => pl.id === selectedPlaylist.id) ??
+                            selectedPlaylist;
+                        saveLocalPlaylistTracks(latestPlaylist, previousPaths);
+                    },
+                },
+            );
         },
         [isSearchActive, selectedPlaylist, selectedView],
     );

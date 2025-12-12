@@ -240,7 +240,7 @@ Add a small header above the table in playlist view:
 - [x] Change search to filter current view; remove “search” view.
 - [x] Add playlist discovery in library roots and merge into `localMusicState$.playlists`.
 - [x] Add playlist mutation helpers: add, rename, delete, export, duplicate/import (+ collision handling).
-- [ ] Add action-capable toast and wire undo for add/remove (and optionally delete).
+- [x] Add action-capable toast and wire undo for add/remove (and optionally delete).
 - [x] Implement sidebar drop-to-add (internal DnD + macOS native drop) with highlight.
 - [ ] Implement track “Add to Playlist…” (two-stage menu, selection-aware).
 - [ ] Implement playlist row context menu rename/delete/reveal/export/import.
