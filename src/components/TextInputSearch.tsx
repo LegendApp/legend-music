@@ -1,4 +1,4 @@
-import type { Observable } from "@legendapp/state";
+import { type Observable, observable } from "@legendapp/state";
 import { useValue } from "@legendapp/state/react";
 import { forwardRef, memo, useCallback, useImperativeHandle, useRef } from "react";
 import {
@@ -35,7 +35,10 @@ export const TextInputSearch = memo(
         { value$, value, defaultValue, onChangeText, ...rest },
         ref,
     ) {
-        const defaultText = defaultValue ?? (value$ ? useValue(value$) : value) ?? "";
+        const fallbackValue$ = useRef(observable("")).current;
+        const observedText = useValue(value$ ?? fallbackValue$);
+        const resolvedText = value$ ? observedText : (value ?? "");
+        const defaultText = defaultValue ?? resolvedText;
         const nativeRef = useRef<any>(null);
 
         useImperativeHandle(
@@ -54,7 +57,6 @@ export const TextInputSearch = memo(
         const handleChangeText = useCallback(
             (event: NativeSyntheticEvent<{ text: string }>) => {
                 const text = event.nativeEvent.text;
-                console.log("TextInputSearch.handleChangeText", text);
                 if (value$) {
                     value$.set(text);
                 }
@@ -67,6 +69,7 @@ export const TextInputSearch = memo(
             <TextInputSearchNative
                 ref={nativeRef}
                 defaultText={defaultText}
+                text={resolvedText}
                 onChangeText={handleChangeText}
                 style={{ minHeight: 16 }}
                 {...rest}
