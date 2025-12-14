@@ -28,6 +28,7 @@ const nativeHotkeyMap = {
     Down: [KeyCodes.KEY_DOWN],
     Enter: [KeyCodes.KEY_RETURN],
     Space: [KeyCodes.KEY_SPACE],
+    Escape: [KeyCodes.KEY_ESCAPE],
     Delete: [KeyCodes.KEY_DELETE],
     ForwardDelete: [KeyCodes.KEY_FORWARD_DELETE],
     Backspace: [KeyCodes.KEY_DELETE],
@@ -163,6 +164,9 @@ export function onHotkeys(hotkeyCallbacks: HotkeyCallbacks, options: HotkeyScope
                 const mapping = nativeHotkeyMap[name];
                 const keys = mapping.map((code) => code.toString());
                 hotkeyMap.set(keys, action);
+                if (name === "Escape") {
+                    keysToPreventDefault.add(mapping[mapping.length - 1]);
+                }
                 continue;
             }
 

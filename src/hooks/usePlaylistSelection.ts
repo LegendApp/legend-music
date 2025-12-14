@@ -334,6 +334,14 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
         setAnchorAndFocus(selectableIndices[0], selectableIndices[selectableIndices.length - 1]);
     });
 
+    const handleEscapeHotkey = useStableCallback(() => {
+        if (!shouldHandleHotkeys()) {
+            return;
+        }
+
+        clearSelection();
+    });
+
     const deleteHotkey = onDeleteSelection ? handleDeleteHotkey : undefined;
 
     useOnHotkeys({
@@ -345,6 +353,7 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
         Backspace: deleteHotkey,
         ForwardDelete: deleteHotkey,
         SelectAll: selectAllItems,
+        Escape: handleEscapeHotkey,
     });
 
     return {
