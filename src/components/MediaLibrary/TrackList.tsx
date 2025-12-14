@@ -20,10 +20,12 @@ import { localPlayerState$ } from "@/components/LocalAudioPlayer";
 import type { TrackData } from "@/components/TrackItem";
 import { Table, TableCell, TableHeader, TableRow, type TableColumnSpec } from "@/components/Table";
 import { useListItemStyles } from "@/hooks/useListItemStyles";
+import { Icon } from "@/systems/Icon";
 import { type ContextMenuItem, showContextMenu } from "@/native-modules/ContextMenu";
 import { type NativeDragTrack, TrackDragSource } from "@/native-modules/TrackDragSource";
 import { libraryUI$ } from "@/systems/LibraryState";
 import { localMusicState$, saveLocalPlaylistTracks } from "@/systems/LocalMusicState";
+import { themeState$ } from "@/theme/ThemeProvider";
 import type { QueueAction } from "@/utils/queueActions";
 import { cn } from "@/utils/cn";
 import { useLibraryTrackList } from "./useLibraryTrackList";
@@ -390,6 +392,7 @@ function LibraryTrackRow({
         const currentTrack = localPlayerState$.currentTrack.get();
         return currentTrack ? currentTrack.id === track.id : false;
     });
+    const accentColor = useValue(() => themeState$.customColors.dark.accent.primary.get());
     const displayIndex = (track.index ?? index) + 1;
 
     const handleMenuClick = useCallback(
@@ -419,7 +422,11 @@ function LibraryTrackRow({
             onRightClick={(event) => onRightClick(index, event)}
         >
             <TableCell column={columns[0]}>
-                <Text className={cn("text-xs tabular-nums", listItemStyles.text.muted)}>{displayIndex}</Text>
+                {isPlaying ? (
+                    <Icon name="play.fill" size={12} color={accentColor} />
+                ) : (
+                    <Text className={cn("text-xs tabular-nums", listItemStyles.text.muted)}>{displayIndex}</Text>
+                )}
             </TableCell>
             <TableCell column={columns[1]}>
                 <Text className={cn("text-sm font-medium truncate", listItemStyles.text.primary)} numberOfLines={1}>

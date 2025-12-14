@@ -33,13 +33,13 @@ export interface ListItemStyles {
 
 export function useListItemStyles(): ListItemStyles {
     return useMemo(() => {
-        const baseRow = "flex-row items-center px-3 border border-transparent";
+        const baseRow = "relative flex-row items-center px-3 border border-transparent";
         const rowVariants: Record<ListItemVariant, string> = {
             default: "min-h-11",
             compact: "h-8",
         };
         const hoverRow = "hover:bg-white/10 active:bg-white/15 hover:border-white/10";
-        const activeRow = "bg-blue-500/20 border-blue-400/30";
+        const activeRow = "";
         const selectedRow = "bg-white/10";
 
         const textPalette: ListItemTextPalette = {

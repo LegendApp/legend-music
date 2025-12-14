@@ -329,7 +329,6 @@ export function Playlist() {
                   : nextIndex !== previous.index;
 
         if (nextIndex >= 0 && trackChanged) {
-            clearSelection();
             requestAnimationFrame(() => {
                 const list = listRef.current;
 
@@ -348,9 +347,6 @@ export function Playlist() {
 
     useObserveEffect(() => {
         const isPlayerActive = localPlayerState$.isPlaying.get();
-        if (isPlayerActive && !wasPlayingRef.current) {
-            clearSelection();
-        }
         wasPlayingRef.current = isPlayerActive;
     });
 
@@ -576,7 +572,6 @@ export function Playlist() {
         }
         handleTrackClickBase(index);
         localAudioControls.playTrackAtIndex(index);
-        clearSelection();
     };
 
     const handleDirectoryDrop = useCallback(

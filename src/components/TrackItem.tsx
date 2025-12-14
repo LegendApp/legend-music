@@ -4,7 +4,10 @@ import { Text, View } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 import { Button } from "@/components/Button";
 import { localPlayerState$ } from "@/components/LocalAudioPlayer";
+import { PlaybackIndicator } from "@/components/PlaybackIndicator";
 import { useListItemStyles } from "@/hooks/useListItemStyles";
+import { Icon } from "@/systems/Icon";
+import { themeState$ } from "@/theme/ThemeProvider";
 import { cn } from "@/utils/cn";
 import { perfCount } from "@/utils/perfLogger";
 
@@ -52,6 +55,7 @@ export const TrackItem = ({
 }: TrackItemProps) => {
     perfCount("TrackItem.render");
     const listItemStyles = useListItemStyles();
+    const accentColor = useValue(() => themeState$.customColors.dark.accent.primary.get());
 
     const trackIsPlayingFlag = track.isPlaying;
     const trackQueueEntryId = track.queueEntryId;
@@ -117,6 +121,8 @@ export const TrackItem = ({
     const primaryTone =
         track.fromSuggestions || isMissing ? listItemStyles.text.secondary : listItemStyles.text.primary;
     const durationTone = track.fromSuggestions || isMissing ? listItemStyles.text.muted : "";
+    const trackIndex = track.index ?? index;
+    const showDisplayIndex = trackIndex >= 0;
 
     return (
         <Button
@@ -126,22 +132,49 @@ export const TrackItem = ({
             onRightClick={handleRightClick}
             onMouseDown={onMouseDown ? (event) => onMouseDown(index, event) : undefined}
         >
+            {isPlaying ? <PlaybackIndicator /> : null}
             {showIndex && (
                 <View className="min-w-7">
-                    <Text className={cn("tabular-nums text-xs", indexTone)}>
-                        {(track.index ?? index) >= 0 ? `${(track.index ?? index) + 1}.  ` : ""}
-                    </Text>
+                    {showDisplayIndex ? (
+                        <Text className={cn("tabular-nums text-xs", indexTone, isPlaying && "text-accent-primary")}>
+                            {trackIndex + 1}.
+                        </Text>
+                    ) : null}
                 </View>
             )}
             <Text className={cn("flex-1 tabular-nums text-sm", primaryTone)} numberOfLines={1}>
-                <Text className={cn("text-sm font-medium", listItemStyles.text.primary)}>{track.artist}</Text>
-                <Text className={cn("text-sm", listItemStyles.text.secondary)}> - {track.title}</Text>
+                <Text
+                    className={cn(
+                        "text-sm font-medium",
+                        listItemStyles.text.primary,
+                        isPlaying && "text-accent-primary",
+                    )}
+                >
+                    {track.artist}
+                </Text>
+                <Text
+                    className={cn(
+                        "text-sm",
+                        listItemStyles.text.secondary,
+                        isPlaying && "text-accent-primary opacity-90",
+                    )}
+                >
+                    {" "}
+                    - {track.title}
+                </Text>
             </Text>
 
             <Text
-                className={listItemStyles.getMetaClassName({
-                    className: cn("text-xs ml-4", track.fromSuggestions ? listItemStyles.text.muted : "", durationTone),
-                })}
+                className={cn(
+                    listItemStyles.getMetaClassName({
+                        className: cn(
+                            "text-xs ml-4",
+                            track.fromSuggestions ? listItemStyles.text.muted : "",
+                            durationTone,
+                        ),
+                    }),
+                    isPlaying && "text-accent-primary",
+                )}
             >
                 {track.duration}
             </Text>

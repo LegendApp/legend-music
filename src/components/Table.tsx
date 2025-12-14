@@ -3,6 +3,7 @@ import { Text, View, type ViewStyle } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 
 import { Button } from "@/components/Button";
+import { PlaybackIndicator } from "@/components/PlaybackIndicator";
 import { useListItemStyles } from "@/hooks/useListItemStyles";
 import { cn } from "@/utils/cn";
 
@@ -104,6 +105,9 @@ export function TableRow({
                 className,
             )}
         >
+            {isActive ? (
+                <PlaybackIndicator />
+            ) : null}
             {children}
         </Button>
     );
@@ -153,4 +157,3 @@ export function TableCell({
         </View>
     );
 }
-
