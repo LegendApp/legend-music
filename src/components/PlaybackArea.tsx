@@ -1,4 +1,5 @@
 import { useValue } from "@legendapp/state/react";
+import { VibrancyView } from "@fluentui-react-native/vibrancy-view";
 import { useCallback, useEffect, useState } from "react";
 import { type LayoutChangeEvent, Text, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
@@ -51,6 +52,7 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
     const [isHovered, setIsHovered] = useState(false);
     const handleHoverIn = useCallback(() => setIsHovered(true), []);
     const handleHoverOut = useCallback(() => setIsHovered(false), []);
+    const hoverContentVisible = isHovered && overlayControlsVisible;
 
     useEffect(() => {
         if (!overlayModeEnabled) {
@@ -88,7 +90,7 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
     });
 
     const playbackControlsNode = (
-        <View className="flex-row items-center ml-1 -mr-1 gap-0.5">
+        <View className="flex-row items-center gap-1">
             {(
                 (playbackControlsLayout?.shown?.length
                     ? playbackControlsLayout.shown
@@ -231,6 +233,18 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
                         size="large"
                         fallbackIcon="♪"
                     />
+                    {hoverContentVisible ? (
+                        <View className="absolute inset-0 items-center justify-center" pointerEvents="box-none">
+                            <Button
+                                icon={isPlaying ? "pause.fill" : "play.fill"}
+                                variant="icon-bg"
+                                size="medium"
+                                iconSize={20}
+                                onClick={localAudioControls.togglePlayPause}
+                                tooltip={isPlaying ? "Pause" : "Play"}
+                            />
+                        </View>
+                    ) : null}
                 </View>
 
                 {/* Song Info */}
@@ -238,13 +252,38 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
                     className={cn("relative flex-1 flex-col gap-2 overflow-hidden")}
                     style={{ maxWidth: overlayModeEnabled ? OVERLAY_WINDOW_WIDTH_COMPACT - 148 : undefined }}
                 >
-                    <View className="flex-col gap-0.5">
+                    <View className="relative flex-col gap-0.5">
                         <Text className="text-white/70 text-sm" numberOfLines={1}>
                             {currentTrack?.artist || " "}
                         </Text>
                         <Text className="text-white text-sm font-semibold" numberOfLines={1}>
                             {currentTrack?.title || " "}
                         </Text>
+                        {hoverContentVisible ? (
+                            <Animated.View
+                                className="absolute inset-x-0 top-0 z-10 flex-row justify-end"
+                                pointerEvents="box-none"
+                                style={controlsAnimatedStyle}
+                            >
+                                <View className="overflow-hidden rounded-lg" pointerEvents="auto">
+                                    <VibrancyView
+                                        blendingMode="withinWindow"
+                                        state="active"
+                                        material="popover"
+                                        style={{
+                                            position: "absolute",
+                                            top: 0,
+                                            right: 0,
+                                            bottom: 0,
+                                            left: 0,
+                                        }}
+                                    />
+                                    <View className="flex-row items-center gap-1 px-2 py-1">
+                                        {playbackControlsNode}
+                                    </View>
+                                </View>
+                            </Animated.View>
+                        ) : null}
                     </View>
                     {overlayModeEnabled ? (
                         <Animated.View
@@ -255,19 +294,6 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
                         </Animated.View>
                     ) : (
                         sliderRowNode
-                    )}
-                </View>
-
-                <View className="flex-row items-start">
-                    {overlayModeEnabled ? (
-                        <Animated.View
-                            pointerEvents={overlayControlsVisible ? "auto" : "none"}
-                            style={controlsAnimatedStyle}
-                        >
-                            {playbackControlsNode}
-                        </Animated.View>
-                    ) : (
-                        playbackControlsNode
                     )}
                 </View>
             </View>
