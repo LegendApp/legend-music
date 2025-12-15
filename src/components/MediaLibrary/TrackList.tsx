@@ -234,7 +234,7 @@ export function TrackList(_props: TrackListProps) {
     }, []);
 
     const getFixedItemSize = useCallback((_: number, item: TrackData, type: string | undefined) => {
-        return item.isSeparator ? 81 : 32;
+        return item.isSeparator ? 72 : 32;
     }, []);
 
     return (
@@ -311,8 +311,8 @@ export function TrackList(_props: TrackListProps) {
 
 function LibrarySeparatorRow({ title }: { title: string }) {
     return (
-        <View className="flex items-center pt-8 pb-1 mb-1 border-b border-white/15">
-            <Text className="text-white/90 text-xl font-semibold mx-4 px-3 py-1.5 rounded-lg" numberOfLines={1}>
+        <View className="flex items-center pt-6 pb-2 border-b border-white/10">
+            <Text className="text-white/90 text-xl font-semibold" numberOfLines={1}>
                 {title.replace(/^— (.+) —$/, "$1")}
             </Text>
         </View>
