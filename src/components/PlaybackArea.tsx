@@ -7,6 +7,7 @@ import { AlbumArt } from "@/components/AlbumArt";
 import { Button } from "@/components/Button";
 import { localAudioControls, localPlayerState$ } from "@/components/LocalAudioPlayer";
 import { PlaybackTimeline } from "@/components/PlaybackTimeline";
+import { PlaylistSelector } from "@/components/PlaylistSelector";
 import { usePlaybackControlLayout } from "@/hooks/useUIControls";
 import {
     OVERLAY_CONTENT_SPRING_DAMPING,
@@ -224,6 +225,26 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
             onHoverOut={handleHoverOut}
             data-hovered={isHovered ? "true" : undefined}
         >
+            {hoverContentVisible ? (
+                <View className="absolute right-3 top-3" pointerEvents="box-none">
+                    <View className="overflow-hidden rounded-xl border border-white/10" pointerEvents="auto">
+                        <VibrancyView
+                            blendingMode="withinWindow"
+                            state="active"
+                            material="popover"
+                            pointerEvents="none"
+                            style={{
+                                position: "absolute",
+                                top: 0,
+                                right: 0,
+                                bottom: 0,
+                                left: 0,
+                            }}
+                        />
+                        <PlaylistSelector variant="overlay" />
+                    </View>
+                </View>
+            ) : null}
             <View className="flex-row items-start gap-3">
                 {/* Album Art */}
                 <View className="relative shrink-0">
@@ -270,6 +291,7 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
                                         blendingMode="withinWindow"
                                         state="active"
                                         material="popover"
+                                        pointerEvents="none"
                                         style={{
                                             position: "absolute",
                                             top: 0,

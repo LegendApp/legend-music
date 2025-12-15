@@ -2,7 +2,6 @@ import { View } from "react-native";
 import { initializeLocalAudioPlayer, localAudioControls } from "@/components/LocalAudioPlayer";
 import { PlaybackArea } from "@/components/PlaybackArea";
 import { Playlist } from "@/components/Playlist";
-import { PlaylistSelector } from "@/components/PlaylistSelector";
 import { Unregistered } from "@/components/Unregistered";
 import { SUPPORT_ACCOUNTS } from "@/systems/constants";
 import { useOnHotkeys } from "@/systems/keyboard/Keyboard";
@@ -41,7 +40,6 @@ export function MainContainer() {
             <View className="flex-1">
                 <PlaybackArea />
                 <Playlist />
-                <PlaylistSelector />
                 {SUPPORT_ACCOUNTS && <Unregistered />}
             </View>
         </View>

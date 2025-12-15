@@ -30,7 +30,12 @@ const DEFAULT_BOTTOM_BAR_BUTTONS: BottomBarControlId[] = [
     "toggleLibrary",
 ];
 
-export function PlaylistSelector() {
+type PlaylistSelectorProps = {
+    variant?: "default" | "overlay";
+    className?: string;
+};
+
+export function PlaylistSelector({ variant = "default", className }: PlaylistSelectorProps = {}) {
     const localMusicState = useValue(localMusicState$);
     const library = useValue(library$);
     const queue = useValue(queue$);
@@ -69,6 +74,12 @@ export function PlaylistSelector() {
         (bottomBarLayout?.shown?.length ? bottomBarLayout.shown : DEFAULT_BOTTOM_BAR_BUTTONS) as BottomBarControlId[]
     ).filter((controlId, index, array) => array.indexOf(controlId) === index);
     const hasSearchControl = bottomBarControls.includes("search");
+    const isOverlayVariant = variant === "overlay";
+    const containerClassName = cn(
+        isOverlayVariant ? "px-2 py-1" : "px-3 border-t border-white/10",
+        className,
+    );
+    const rowClassName = cn("flex-row items-center", isOverlayVariant && "justify-end gap-2");
 
     useOnHotkeys(
         hasSearchControl
@@ -114,9 +125,9 @@ export function PlaylistSelector() {
     );
 
     return (
-        <View className="px-3 border-t border-white/10" onLayout={handleLayout}>
-            <View className="flex-row items-center">
-                <View className="flex-1" />
+        <View className={containerClassName} onLayout={handleLayout}>
+            <View className={rowClassName}>
+                {!isOverlayVariant && <View className="flex-1" />}
                 {/* <View className="flex-1">
                     <SelectLegendList
                         items={availablePlaylistIds}
