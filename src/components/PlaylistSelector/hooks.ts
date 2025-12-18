@@ -1,19 +1,22 @@
 import { useValue } from "@legendapp/state/react";
-import { File } from "expo-file-system/next";
 import { useCallback, useMemo } from "react";
+import { Alert } from "react-native";
 
 import { localAudioControls } from "@/components/LocalAudioPlayer";
+import { showToast } from "@/components/Toast";
 import { useOnHotkeys } from "@/systems/keyboard/Keyboard";
 import type { LibraryItem, LibraryTrack } from "@/systems/LibraryState";
 import type { LocalMusicState, LocalPlaylist, LocalTrack } from "@/systems/LocalMusicState";
 import {
+    createLocalPlaylist,
     DEFAULT_LOCAL_PLAYLIST_ID,
     DEFAULT_LOCAL_PLAYLIST_NAME,
     loadLocalPlaylists,
+    localMusicState$,
     setCurrentPlaylist,
+    saveLocalPlaylistTracks,
 } from "@/systems/LocalMusicState";
 import { stateSaved$ } from "@/systems/State";
-import { ensureCacheDirectory, getCacheDirectory } from "@/utils/cacheDirectories";
 import { perfLog } from "@/utils/perfLogger";
 import type { QueueAction } from "@/utils/queueActions";
 import { buildTrackLookup, getTracksForLibraryItem, resolvePlaylistTracks } from "@/utils/trackResolution";
@@ -240,34 +243,71 @@ interface QueueExporterArgs {
 }
 
 export function useQueueExporter({ queueTracks }: QueueExporterArgs) {
-    const handleSavePlaylist = useCallback(async () => {
-        perfLog("PlaylistSelector.handleSavePlaylist");
+    const confirmOverwrite = useCallback(async (playlistName: string): Promise<boolean> => {
+        return await new Promise((resolve) => {
+            Alert.alert(
+                "Overwrite playlist?",
+                `A playlist named “${playlistName}” already exists. Overwrite it?`,
+                [
+                    { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+                    { text: "Overwrite", style: "destructive", onPress: () => resolve(true) },
+                ],
+                { cancelable: true, onDismiss: () => resolve(false) },
+            );
+        });
+    }, []);
 
-        if (queueTracks.length === 0) {
-            console.log("No tracks in queue to save");
-            return;
-        }
+    const handleSavePlaylist = useCallback(
+        async (playlistName: string): Promise<boolean> => {
+            perfLog("PlaylistSelector.handleSavePlaylist", { playlistName });
 
-        try {
-            const m3uContent = generateM3UPlaylist(queueTracks);
-            const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-            const filename = `Queue-${timestamp}.m3u`;
+            const trimmedName = playlistName.trim();
+            if (!trimmedName) {
+                return false;
+            }
 
-            const playlistDirectory = getCacheDirectory("data");
-            ensureCacheDirectory(playlistDirectory);
+            if (queueTracks.length === 0) {
+                showToast("No tracks to save", "error");
+                return false;
+            }
 
-            const file = new File(playlistDirectory, filename);
-            file.create({ overwrite: true, intermediates: true });
-            file.write(m3uContent);
+            const normalizedName = trimmedName.toLowerCase();
+            const playlists = localMusicState$.playlists.peek();
+            const existing = playlists.find((playlist) => playlist.name.trim().toLowerCase() === normalizedName) ?? null;
+            const trackPaths = queueTracks.map((track) => track.filePath);
 
-            await loadLocalPlaylists();
+            try {
+                if (existing) {
+                    const isEditable = existing.source === "cache" && Boolean(existing.filePath);
+                    if (!isEditable || existing.id === DEFAULT_LOCAL_PLAYLIST_ID) {
+                        showToast("That playlist is read-only", "error");
+                        return false;
+                    }
 
-            console.log(`Playlist saved to cache: ${file.uri}`);
-            console.log(`Saved ${queueTracks.length} tracks to playlist`);
-        } catch (error) {
-            console.error("Failed to save playlist to cache directory:", error);
-        }
-    }, [queueTracks]);
+                    const confirmed = await confirmOverwrite(existing.name);
+                    if (!confirmed) {
+                        return false;
+                    }
+
+                    await saveLocalPlaylistTracks(existing, trackPaths);
+                    await loadLocalPlaylists();
+                    showToast(`${existing.name} was saved`, "info");
+                    return true;
+                }
+
+                const playlist = await createLocalPlaylist(trimmedName);
+                await saveLocalPlaylistTracks(playlist, trackPaths);
+                await loadLocalPlaylists();
+                showToast(`${playlist.name} was saved`, "info");
+                return true;
+            } catch (error) {
+                const message = error instanceof Error ? error.message : "Failed to save playlist";
+                showToast(message, "error");
+                return false;
+            }
+        },
+        [confirmOverwrite, queueTracks],
+    );
 
     return { handleSavePlaylist };
 }

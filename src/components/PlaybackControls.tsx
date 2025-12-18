@@ -193,7 +193,7 @@ export function PlaybackControls({ className }: PlaybackControlsProps = {}) {
                             <SavePlaylistDropdown
                                 key="savePlaylist"
                                 disabled={queue.tracks.length === 0}
-                                onSave={(_playlistName) => handleSavePlaylist()}
+                                onSave={handleSavePlaylist}
                             />
                         ) : null;
                     case "toggleVisualizer": {

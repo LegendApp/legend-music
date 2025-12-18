@@ -1,5 +1,5 @@
 import { useObservable, useValue } from "@legendapp/state/react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Text, View } from "react-native";
 
 import { Button } from "@/components/Button";
@@ -10,7 +10,7 @@ import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
 
 type SavePlaylistDropdownProps = {
     disabled?: boolean;
-    onSave: (playlistName: string) => void;
+    onSave: (playlistName: string) => Promise<boolean> | boolean;
 };
 
 export function SavePlaylistDropdown({ disabled = false, onSave }: SavePlaylistDropdownProps) {
@@ -18,25 +18,37 @@ export function SavePlaylistDropdown({ disabled = false, onSave }: SavePlaylistD
     const isOpen = useValue(isOpen$);
     const playlistName$ = useObservable("");
     const textInputRef = useRef<TextInputSearchRef>(null);
+    const [isSaving, setIsSaving] = useState(false);
 
     const close = useCallback(() => {
         isOpen$.set(false);
     }, [isOpen$]);
 
     const canSave = useCallback(() => {
-        if (disabled) {
+        if (disabled || isSaving) {
             return false;
         }
         return playlistName$.peek().trim().length > 0;
-    }, [disabled, playlistName$]);
+    }, [disabled, isSaving, playlistName$]);
 
-    const handleSave = useCallback(() => {
+    const handleSave = useCallback(async () => {
         if (!canSave()) {
             return;
         }
         const name = playlistName$.peek().trim();
-        onSave(name);
-        close();
+        setIsSaving(true);
+        try {
+            const didSave = await onSave(name);
+            if (didSave) {
+                close();
+            } else {
+                setTimeout(() => {
+                    textInputRef.current?.focus();
+                }, 0);
+            }
+        } finally {
+            setIsSaving(false);
+        }
     }, [canSave, close, onSave, playlistName$]);
 
     useEffect(() => {
@@ -55,21 +67,21 @@ export function SavePlaylistDropdown({ disabled = false, onSave }: SavePlaylistD
             return;
         }
 
-        return KeyboardManager.addKeyDownListener((event) => {
-            if (event.keyCode === KeyCodes.KEY_ESCAPE) {
-                close();
-                return true;
-            }
-
-            if (event.keyCode === KeyCodes.KEY_RETURN) {
-                if (canSave()) {
-                    handleSave();
+            return KeyboardManager.addKeyDownListener((event) => {
+                if (event.keyCode === KeyCodes.KEY_ESCAPE) {
+                    close();
                     return true;
                 }
-            }
 
-            return false;
-        });
+                if (event.keyCode === KeyCodes.KEY_RETURN) {
+                    if (canSave()) {
+                        void handleSave();
+                        return true;
+                    }
+                }
+
+                return false;
+            });
     }, [canSave, close, handleSave, isOpen]);
 
     return (
@@ -100,7 +112,7 @@ export function SavePlaylistDropdown({ disabled = false, onSave }: SavePlaylistD
                         <Button variant="secondary" size="small" onClick={close}>
                             <Text className="text-white text-sm">Cancel</Text>
                         </Button>
-                        <Button variant="primary" size="small" onClick={handleSave} disabled={!canSave()}>
+                        <Button variant="primary" size="small" onClick={() => void handleSave()} disabled={!canSave()}>
                             <Text className="text-white text-sm font-medium">Save</Text>
                         </Button>
                     </View>
@@ -109,4 +121,3 @@ export function SavePlaylistDropdown({ disabled = false, onSave }: SavePlaylistD
         </DropdownMenu.Root>
     );
 }
-
