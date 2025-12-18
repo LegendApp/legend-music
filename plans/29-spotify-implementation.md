@@ -16,7 +16,7 @@ Implement Spotify as the first streaming provider via a plugin architecture, inc
 
 ## Steps
 - [x] Add Spotify auth module: PKCE flow, token exchange/refresh, secure refresh-token storage, and in-memory access token manager with expiry.
-- [ ] Build Spotify provider contract implementation: provider registry, provider metadata/capabilities, provider-aware track/playlist models with `provider` + URI, and persistence hooks for provider selection and cached metadata.
+- [x] Build Spotify provider contract implementation: provider registry, provider metadata/capabilities, provider-aware track/playlist models with `provider` + URI, and persistence hooks for provider selection and cached metadata.
 - [ ] Implement hidden webview player host: HTML + SDK loader, postMessage bridge for commands/events, device readiness handshake, and activation gesture support.
 - [ ] Wire queue/playback integration: route Spotify queue items to provider play/pause/seek/volume, handle device transfer, error states, and fallback/skip logic when provider unavailable.
 - [ ] Add UI surfaces: settings/login/logout + Premium messaging, provider selector/badge, and provider-scoped search/library views with basic result rendering and queue actions.
@@ -31,9 +31,9 @@ Implement Spotify as the first streaming provider via a plugin architecture, inc
 
 **Provider contract + data model**
 - Provider registry keyed by `provider` string; capabilities flags (`supportsSearch`, `supportsLibrary`, `supportsPlayback`, `requiresPremium`, `requiresWebView`).
-- Track model fields for Spotify: `provider: "spotify"`, `uri` (`spotify:track:...`), `id` (base62), `name`, `artists[]`, `album`, `durationMs`, `isExplicit`, `thumbnail`, `marketRestrictions`.
-- Playlist model: `provider`, `uri`, `id`, `name`, `owner`, `trackCount`, `images[]`, `tracks` (lazy/paginated), `isEditable: false`.
-- Persist active provider selection and lightweight caches (search results, playlists) via JSON manager with TTL; store auth state separately in secure storage.
+- Track model fields for Spotify: `provider: "spotify"`, `uri` (`spotify:track:...`), `id` (base62), `name`, `artists[]`, `album`, `durationMs`, `isExplicit`, `thumbnail`, `marketRestrictions`. Defined in `src/providers/types.ts`.
+- Playlist model: `provider`, `uri`, `id`, `name`, `owner`, `trackCount`, `images[]`, `tracks` (lazy/paginated), `isEditable: false`. Defined in `src/providers/types.ts`.
+- Persist active provider selection and lightweight caches (search results, playlists) via JSON manager with TTL; store auth state separately in secure storage. Implemented via `provider-settings.json` and `spotify-cache.json`.
 - Events: playback state, auth errors, provider availability changes; expose `initialize`, `teardown`, `onForeground/background`.
 
 **Hidden webview host**
