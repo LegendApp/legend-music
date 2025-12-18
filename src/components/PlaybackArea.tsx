@@ -108,6 +108,11 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
                         <Text className="text-white/70 text-sm" numberOfLines={1}>
                             {currentTrack?.artist || " "}
                         </Text>
+                        {currentTrack?.provider && currentTrack.provider !== "local" ? (
+                            <Text className="text-xs text-white/60" numberOfLines={1}>
+                                {currentTrack.provider.toUpperCase()} • Streaming
+                            </Text>
+                        ) : null}
                         {sliderRowNode}
                     </View>
                 </View>
