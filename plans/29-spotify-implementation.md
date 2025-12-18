@@ -15,7 +15,7 @@ Implement Spotify as the first streaming provider via a plugin architecture, inc
 - Local playback remains unchanged; Spotify failures degrade gracefully (skipped items, actionable errors).
 
 ## Steps
-- [ ] Add Spotify auth module: PKCE flow, token exchange/refresh, secure refresh-token storage, and in-memory access token manager with expiry.
+- [x] Add Spotify auth module: PKCE flow, token exchange/refresh, secure refresh-token storage, and in-memory access token manager with expiry.
 - [ ] Build Spotify provider contract implementation: provider registry, provider metadata/capabilities, provider-aware track/playlist models with `provider` + URI, and persistence hooks for provider selection and cached metadata.
 - [ ] Implement hidden webview player host: HTML + SDK loader, postMessage bridge for commands/events, device readiness handshake, and activation gesture support.
 - [ ] Wire queue/playback integration: route Spotify queue items to provider play/pause/seek/volume, handle device transfer, error states, and fallback/skip logic when provider unavailable.
@@ -25,7 +25,7 @@ Implement Spotify as the first streaming provider via a plugin architecture, inc
 
 **Auth module (PKCE)**
 - Generate verifier/challenge; open `https://accounts.spotify.com/authorize` with scopes: `streaming user-read-email user-read-private user-read-playback-state user-modify-playback-state user-library-read playlist-read-private` (add write scopes later).
-- Exchange code at `https://accounts.spotify.com/api/token` with client ID + code + redirect + verifier; persist refresh token in secure storage; keep access token + expiry in memory and auto-refresh on expiry/401.
+- Exchange code at `https://accounts.spotify.com/api/token` with client ID + code + redirect + verifier; persist refresh token in secure storage; keep access token + expiry in memory and auto-refresh on expiry/401. Implemented in `src/providers/spotify/auth.ts` with storage in `spotify-auth.json`.
 - Include `market` selection (from `user.country` or device) for catalog calls; handle 429 `Retry-After` backoff; expose auth state (`isAuthenticated`, `userProfile`, `expiresAt`), `login`, `logout`, `refresh`.
 - On logout, clear webview token cache and device ID; wipe refresh token; broadcast provider-unavailable state.
 
