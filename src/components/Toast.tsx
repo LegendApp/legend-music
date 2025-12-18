@@ -71,9 +71,12 @@ export function ToastProvider() {
                 }),
             ]).start();
 
-            hideTimeout.current = setTimeout(() => {
-                toast$.visible.set(false);
-            }, action ? 5000 : 3000);
+            hideTimeout.current = setTimeout(
+                () => {
+                    toast$.visible.set(false);
+                },
+                action ? 5000 : 3000,
+            );
 
             return () => {
                 if (hideTimeout.current) {
@@ -121,7 +124,7 @@ export function ToastProvider() {
                 <View className="flex-row items-center gap-3">
                     <Text
                         className={cn(
-                            "text-xs font-medium flex-1",
+                            "text-xs font-medium flex-shrink",
                             toast.type === "error" ? "text-red-50" : "text-emerald-50",
                         )}
                         numberOfLines={2}
