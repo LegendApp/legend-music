@@ -1,12 +1,14 @@
-import { localAudioControls, localPlayerState$ } from "@/components/LocalAudioPlayer";
+import { localAudioControls, localPlayerState$, queue$ } from "@/components/LocalAudioPlayer";
 import { AutoUpdaterModule } from "@/native-modules/AutoUpdater";
 import { menuManager, type MenuShortcut } from "@/native-modules/NativeMenuManager";
+import { savePlaylistUI$ } from "@/state/savePlaylistUIState";
 import { type RepeatMode, settings$ } from "@/systems/Settings";
-import { state$ } from "@/systems/State";
+import { state$, stateSaved$ } from "@/systems/State";
 import { hotkeys$ } from "@/systems/hotkeys";
 import type { KeyboardEventCodeHotkey } from "@/systems/keyboard/Keyboard";
 import { KeyCodes, KeyText } from "@/systems/keyboard/KeyboardManager";
 import { perfCount, perfLog } from "@/utils/perfLogger";
+import { toggleVisualizerWindow, visualizerWindowState$ } from "@/visualizer/VisualizerWindowManager";
 
 let isInitialized = false;
 
@@ -129,6 +131,15 @@ function updatePlayPauseMenu(isPlaying: boolean) {
     menuManager.setMenuItemTitle("playbackPlayPause", isPlaying ? "Pause" : "Play");
 }
 
+function updateWindowToggleMenus() {
+    menuManager.setMenuItemState("toggleLibrary", !!stateSaved$.libraryIsOpen.get());
+    menuManager.setMenuItemState("toggleVisualizer", !!visualizerWindowState$.isOpen.get());
+}
+
+function updateSavePlaylistMenuEnabled() {
+    menuManager.setMenuItemEnabled("savePlaylist", queue$.tracks.get().length > 0);
+}
+
 function updatePlaybackMenuShortcuts() {
     const hotkeys = hotkeys$.get();
 
@@ -159,6 +170,19 @@ export function initializeMenuManager() {
             case "jump":
                 perfLog("MenuManager.jumpCommand");
                 break;
+            case "savePlaylist":
+                if (queue$.tracks.get().length > 0) {
+                    savePlaylistUI$.isOpen.set(true);
+                }
+                break;
+            case "toggleLibrary": {
+                const current = stateSaved$.libraryIsOpen.get();
+                stateSaved$.libraryIsOpen.set(!current);
+                break;
+            }
+            case "toggleVisualizer":
+                toggleVisualizerWindow();
+                break;
             case "playbackPrevious":
                 localAudioControls.playPrevious();
                 break;
@@ -185,6 +209,8 @@ export function initializeMenuManager() {
     updateShuffleMenu(settings$.playback.shuffle.get());
     updateRepeatMenu(settings$.playback.repeatMode.get());
     updatePlayPauseMenu(localPlayerState$.isPlaying.get());
+    updateWindowToggleMenus();
+    updateSavePlaylistMenuEnabled();
     updatePlaybackMenuShortcuts();
 
     settings$.playback.shuffle.onChange(({ value }) => {
@@ -195,6 +221,15 @@ export function initializeMenuManager() {
     });
     localPlayerState$.isPlaying.onChange(({ value }) => {
         updatePlayPauseMenu(!!value);
+    });
+    stateSaved$.libraryIsOpen.onChange(() => {
+        updateWindowToggleMenus();
+    });
+    visualizerWindowState$.isOpen.onChange(() => {
+        updateWindowToggleMenus();
+    });
+    queue$.tracks.onChange(() => {
+        updateSavePlaylistMenuEnabled();
     });
     hotkeys$.onChange(() => {
         updatePlaybackMenuShortcuts();

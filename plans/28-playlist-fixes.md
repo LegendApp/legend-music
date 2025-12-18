@@ -24,7 +24,7 @@ Tighten up playlist saving (name prompt + toast), ensure playlist track IDs stay
 - [x] Add a Save Playlist dropdown UI (input + Save button) anchored to the existing save control, including Enter-to-save and Escape-to-close behavior.
 - [x] Refactor `useQueueExporter` to accept an explicit playlist name, confirm overwrite on conflicts, save via `createLocalPlaylist`/`saveLocalPlaylistTracks`, and show a success toast after `loadLocalPlaylists()`.
 - [x] Make playlist/queue track IDs unique when duplicates exist (preserve `filePath`, but generate stable unique `id` values by suffixing).
-- [ ] Add `File > Save Playlist`, `View > Media Library`, and `View > Visualizer` menu items in `Main.storyboard`, wire them in `AppDelegate.mm`, and handle command IDs in `src/systems/MenuManager.ts` (including enabled/checked state where applicable).
+- [x] Add `File > Save Playlist`, `View > Media Library`, and `View > Visualizer` menu items in `Main.storyboard`, wire them in `AppDelegate.mm`, and handle command IDs in `src/systems/MenuManager.ts` (including enabled/checked state where applicable).
 
 ## Validation
 - Manual: Save Playlist opens a naming dropdown; Save persists a new playlist and shows a toast with the chosen name; saving an existing name produces a unique name rather than overwriting unexpectedly.

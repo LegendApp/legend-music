@@ -66,6 +66,10 @@
                                 <modifierMask key="keyEquivalentModifierMask"/>
                                 <menu key="submenu" title="File" id="bib-Uj-vzu">
                                     <items>
+                                        <menuItem title="Save Playlist" keyEquivalent="s" id="q0V-0T-gac">
+                                            <modifierMask key="keyEquivalentModifierMask" command="YES"/>
+                                        </menuItem>
+                                        <menuItem isSeparatorItem="YES" id="xKZ-3u-Zpr"/>
                                         <menuItem title="Jump" keyEquivalent="j" id="Was-JA-tGl">
                                             <modifierMask key="keyEquivalentModifierMask" command="YES"/>
                                         </menuItem>
@@ -308,7 +312,12 @@
                                 <modifierMask key="keyEquivalentModifierMask"/>
                                 <menu key="submenu" title="View" autoenablesItems="NO" id="HyV-fh-RgO">
                                     <items>
-
+                                        <menuItem title="Media Library" id="aJ0-xg-Dk9">
+                                            <modifierMask key="keyEquivalentModifierMask"/>
+                                        </menuItem>
+                                        <menuItem title="Visualizer" id="bVh-Gc-s2Y">
+                                            <modifierMask key="keyEquivalentModifierMask"/>
+                                        </menuItem>
                                     </items>
                                 </menu>
                             </menuItem>

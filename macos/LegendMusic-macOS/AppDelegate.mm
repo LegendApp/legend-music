@@ -261,6 +261,9 @@ static inline NSAppearance *LegendDarkAppearance() {
   [self setupMenuCommand:@"settings" itemTitle:@"Settings…" inMenu:kLegendAppName];
   [self setupMenuCommand:@"checkForUpdates" itemTitle:@"Check for Updates..." inMenu:kLegendAppName];
   [self setupMenuCommand:@"jump" itemTitle:@"Jump" inMenu:@"File"];
+  [self setupMenuCommand:@"savePlaylist" itemTitle:@"Save Playlist" inMenu:@"File"];
+  [self setupMenuCommand:@"toggleLibrary" itemTitle:@"Media Library" inMenu:@"View"];
+  [self setupMenuCommand:@"toggleVisualizer" itemTitle:@"Visualizer" inMenu:@"View"];
   [self setupPlaybackMenu];
   [self normalizeMenuKeyEquivalents:mainMenu];
 }
