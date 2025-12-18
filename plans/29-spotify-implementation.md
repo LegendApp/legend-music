@@ -17,7 +17,7 @@ Implement Spotify as the first streaming provider via a plugin architecture, inc
 ## Steps
 - [x] Add Spotify auth module: PKCE flow, token exchange/refresh, secure refresh-token storage, and in-memory access token manager with expiry.
 - [x] Build Spotify provider contract implementation: provider registry, provider metadata/capabilities, provider-aware track/playlist models with `provider` + URI, and persistence hooks for provider selection and cached metadata.
-- [ ] Implement hidden webview player host: HTML + SDK loader, postMessage bridge for commands/events, device readiness handshake, and activation gesture support.
+- [x] Implement hidden webview player host: HTML + SDK loader, postMessage bridge for commands/events, device readiness handshake, and activation gesture support.
 - [ ] Wire queue/playback integration: route Spotify queue items to provider play/pause/seek/volume, handle device transfer, error states, and fallback/skip logic when provider unavailable.
 - [ ] Add UI surfaces: settings/login/logout + Premium messaging, provider selector/badge, and provider-scoped search/library views with basic result rendering and queue actions.
 
@@ -37,10 +37,10 @@ Implement Spotify as the first streaming provider via a plugin architecture, inc
 - Events: playback state, auth errors, provider availability changes; expose `initialize`, `teardown`, `onForeground/background`.
 
 **Hidden webview host**
-- Local HTML that loads `https://sdk.scdn.co/spotify-player.js`, builds `Spotify.Player({ name, getOAuthToken })`, and posts messages to RN (`ready`, `not_ready`, `player_state_changed`, `initialization_error`, `authentication_error`, `account_error`, `playback_error`).
-- Accept RN commands via `window.onmessage`: `setToken`, `activate`, `connect`, `play(uris/context_uri, position_ms)`, `pause`, `resume`, `seek`, `setVolume`.
+- Local HTML that loads `https://sdk.scdn.co/spotify-player.js`, builds `Spotify.Player({ name, getOAuthToken })`, and posts messages to RN (`ready`, `not_ready`, `player_state_changed`, `initialization_error`, `authentication_error`, `account_error`, `playback_error`). Implemented in `SpotifyWebPlayerHost`.
+- Accept RN commands via `window.onmessage`: `setToken`, `activate`, `connect`, `pause`, `resume`, `seek`, `setVolume`. Implemented with postMessage bridge and forwardRef commands.
 - Handle user gesture: expose `activate` to call `player.activateElement()` after user presses play.
-- On `ready`, send `device_id` to RN; on `not_ready`, request reconnect; keep volume state mirrored.
+- On `ready`, send `device_id` to RN; on `not_ready`, request reconnect; keep volume state mirrored. Player state and errors mirrored into `spotifyWebPlayerState$` via `SpotifyWebPlayerBridge`.
 
 **Queue/playback integration**
 - Queue items include provider + `uri`; when enqueuing Spotify items, avoid resolving to file paths—defer to provider `play`.
