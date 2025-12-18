@@ -13,6 +13,7 @@ import { TooltipProvider } from "@/components/TooltipProvider";
 import { MediaLibraryWindowManager } from "@/media-library/MediaLibraryWindowManager";
 import { CurrentSongOverlayController } from "@/overlay/CurrentSongOverlayController";
 import { CurrentSongOverlayWindowManager } from "@/overlay/CurrentSongOverlayWindowManager";
+import { SpotifyWebPlayerBridge } from "@/providers/spotify/SpotifyWebPlayerBridge";
 import { SettingsWindowManager } from "@/settings/SettingsWindowManager";
 import { IS_TAHOE } from "@/systems/constants";
 import { HookKeyboard } from "@/systems/keyboard/HookKeyboard";
@@ -98,6 +99,7 @@ function App(): React.JSX.Element | null {
                         <MainContainer />
                     </DragDropProvider>
                 </TooltipProvider>
+                <SpotifyWebPlayerBridge />
             </PortalProvider>
         </View>
     );

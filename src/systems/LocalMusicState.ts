@@ -23,6 +23,7 @@ import { loadQueueFromM3U } from "@/utils/m3uManager";
 import { perfCount, perfLog } from "@/utils/perfLogger";
 import { runAfterInteractions, runAfterInteractionsWithLabel } from "@/utils/runAfterInteractions";
 import { DEFAULT_LOCAL_PLAYLIST_ID } from "./localMusicConstants";
+import type { ProviderId } from "@/providers/types";
 
 export interface LocalTrack {
     id: string;
@@ -36,6 +37,9 @@ export interface LocalTrack {
     thumbnail?: string;
     thumbnailKey?: string;
     isMissing?: boolean;
+    provider?: ProviderId;
+    uri?: string;
+    durationMs?: number;
 }
 
 export interface LocalPlaylist {

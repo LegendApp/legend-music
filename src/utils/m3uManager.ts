@@ -9,7 +9,11 @@ const QUEUE_FILE_PATH = "queue.m3u";
 /**
  * Converts LocalTrack to M3UTrack
  */
-function localTrackToM3UTrack(track: LocalTrack): M3UTrack {
+function localTrackToM3UTrack(track: LocalTrack): M3UTrack | null {
+    if (track.provider && track.provider !== "local") {
+        return null;
+    }
+
     // Convert duration from "mm:ss" format to seconds
     const durationSeconds = parseDurationToSeconds(track.duration);
 
@@ -47,7 +51,9 @@ function m3uTrackToLocalTrack(track: M3UTrack): LocalTrack {
  */
 export async function saveQueueToM3U(tracks: LocalTrack[]): Promise<void> {
     try {
-        const m3uTracks = tracks.map(localTrackToM3UTrack);
+        const m3uTracks = tracks
+            .map(localTrackToM3UTrack)
+            .filter((track): track is M3UTrack => track !== null);
         const playlist = { songs: m3uTracks, suggestions: [] };
         const m3uContent = writeM3U(playlist);
 

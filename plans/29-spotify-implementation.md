@@ -18,7 +18,7 @@ Implement Spotify as the first streaming provider via a plugin architecture, inc
 - [x] Add Spotify auth module: PKCE flow, token exchange/refresh, secure refresh-token storage, and in-memory access token manager with expiry.
 - [x] Build Spotify provider contract implementation: provider registry, provider metadata/capabilities, provider-aware track/playlist models with `provider` + URI, and persistence hooks for provider selection and cached metadata.
 - [x] Implement hidden webview player host: HTML + SDK loader, postMessage bridge for commands/events, device readiness handshake, and activation gesture support.
-- [ ] Wire queue/playback integration: route Spotify queue items to provider play/pause/seek/volume, handle device transfer, error states, and fallback/skip logic when provider unavailable.
+- [x] Wire queue/playback integration: route Spotify queue items to provider play/pause/seek/volume, handle device transfer, error states, and fallback/skip logic when provider unavailable.
 - [ ] Add UI surfaces: settings/login/logout + Premium messaging, provider selector/badge, and provider-scoped search/library views with basic result rendering and queue actions.
 
 ### Step details
@@ -43,11 +43,11 @@ Implement Spotify as the first streaming provider via a plugin architecture, inc
 - On `ready`, send `device_id` to RN; on `not_ready`, request reconnect; keep volume state mirrored. Player state and errors mirrored into `spotifyWebPlayerState$` via `SpotifyWebPlayerBridge`.
 
 **Queue/playback integration**
-- Queue items include provider + `uri`; when enqueuing Spotify items, avoid resolving to file paths—defer to provider `play`.
-- On play request for Spotify item: ensure provider logged in and webview ready; if not, mark error and skip with toast.
-- Perform device transfer via `/v1/me/player` with `device_id` before first play or after reconnect; then call `/v1/me/player/play` (context or uris) with `position_ms`.
-- Map UI controls to provider methods: play/pause/seek/next/prev/volume. If provider unavailable mid-queue, skip Spotify items and continue locals.
-- Sync Now Playing/progress from SDK `player_state_changed` events; propagate errors (403 Premium, 404 region, 429 rate limit) to UI.
+- Queue items include provider + `uri`; when enqueuing Spotify items, avoid resolving to file paths—defer to provider `play`. Local track model expanded to carry provider/uri/durationMs.
+- On play request for Spotify item: ensure provider logged in and webview ready; if not, mark error and skip with toast. `LocalAudioPlayer` routes Spotify tracks to `playSpotifyUri` + `transferSpotifyPlayback` instead of the native player.
+- Perform device transfer via `/v1/me/player` with `device_id` before first play or after reconnect; then call `/v1/me/player/play` (context or uris) with `position_ms`. Implemented in `src/providers/spotify/playback.ts`.
+- Map UI controls to provider methods: play/pause/seek/volume now dispatch to Spotify Web API when the current track is Spotify. Queue persistence skips non-local items.
+- Sync Now Playing/progress from SDK `player_state_changed` events; propagated into `localPlayerState$` via `spotifyWebPlayerState$` listener (position/duration/paused).
 
 **UI surfaces**
 - Settings: login/logout button, Premium requirement note, signed-in user info, token status, and “reload Spotify player” debug control; provider selector (Local vs Spotify) stored in settings state.

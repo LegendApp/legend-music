@@ -1,6 +1,15 @@
 import { observable } from "@legendapp/state";
 import { File } from "expo-file-system/next";
 import { showToast } from "@/components/Toast";
+import {
+    pauseSpotify,
+    playSpotifyUri,
+    resumeSpotify,
+    seekSpotify,
+    setSpotifyVolume,
+    transferSpotifyPlayback,
+} from "@/providers/spotify/playback";
+import { spotifyWebPlayerState$ } from "@/providers/spotify/webPlayerState";
 import appExit from "@/native-modules/AppExit";
 import audioPlayerApi, { type NowPlayingInfoPayload } from "@/native-modules/AudioPlayer";
 import { appState$ } from "@/observables/appState";
@@ -78,6 +87,17 @@ interface QueueUpdateOptions {
     playImmediately?: boolean;
     startIndex?: number;
 }
+
+const isSpotifyTrack = (track: LocalTrack | null | undefined): track is LocalTrack & { provider: "spotify" } =>
+    Boolean(track && track.provider === "spotify");
+
+const getDurationSeconds = (track: LocalTrack): number => {
+    if (typeof track.durationMs === "number") {
+        return track.durationMs / 1000;
+    }
+    const parsed = parseDurationToSeconds(track.duration);
+    return Number.isFinite(parsed) ? parsed : 0;
+};
 
 type QueueInput = LocalTrack | LocalTrack[];
 
@@ -224,7 +244,7 @@ function resetSavedPlaybackState(): void {
 }
 
 function applyDurationFromTrack(track: LocalTrack): void {
-    const seconds = parseDurationToSeconds(track.duration);
+    const seconds = getDurationSeconds(track);
     if (seconds > 0) {
         localPlayerState$.duration.set(seconds);
     }
@@ -260,10 +280,12 @@ const handleMissingTrackFile = (track: LocalTrack, queueEntryId?: string) => {
 };
 
 const handleTrackLoadFailure = (track: LocalTrack, queueEntryId: string | undefined, errorMessage: string) => {
-    const exists = trackFileExists(track.filePath);
-    if (!exists) {
-        handleMissingTrackFile(track, queueEntryId);
-        return;
+    if (!track.provider || track.provider === "local") {
+        const exists = trackFileExists(track.filePath);
+        if (!exists) {
+            handleMissingTrackFile(track, queueEntryId);
+            return;
+        }
     }
 
     localPlayerState$.error.set(errorMessage);
@@ -338,6 +360,23 @@ localPlayerState$.isPlaying.onChange(({ value }) => {
     }
 });
 
+spotifyWebPlayerState$.lastState.onChange(({ value }) => {
+    const current = localPlayerState$.currentTrack.peek();
+    if (!isSpotifyTrack(current) || !value) {
+        return;
+    }
+    const state = value as { position?: number; duration?: number; paused?: boolean };
+    if (typeof state.duration === "number") {
+        localPlayerState$.duration.set(state.duration / 1000);
+    }
+    if (typeof state.position === "number" && !playbackInteractionState$.isScrubbing.peek()) {
+        localPlayerState$.currentTime.set(state.position / 1000);
+    }
+    if (typeof state.paused === "boolean") {
+        localPlayerState$.isPlaying.set(!state.paused);
+    }
+});
+
 function initializeAppExitHandler(): void {
     if (appExitSubscription) {
         return;
@@ -370,6 +409,18 @@ function resetPlayerForEmptyQueue(): void {
 
 async function play(): Promise<void> {
     perfLog("LocalAudioControls.play");
+    const currentTrack = localPlayerState$.currentTrack.peek();
+    if (isSpotifyTrack(currentTrack)) {
+        try {
+            await resumeSpotify();
+            localPlayerState$.isPlaying.set(true);
+        } catch (error) {
+            console.error("Error resuming Spotify playback:", error);
+            showToast(error instanceof Error ? error.message : "Spotify playback failed", "error");
+        }
+        return;
+    }
+
     if (!audioPlayer) {
         return;
     }
@@ -397,6 +448,18 @@ async function play(): Promise<void> {
 
 async function pause(): Promise<void> {
     perfLog("LocalAudioControls.pause");
+    const currentTrack = localPlayerState$.currentTrack.peek();
+    if (isSpotifyTrack(currentTrack)) {
+        try {
+            await pauseSpotify();
+            localPlayerState$.isPlaying.set(false);
+        } catch (error) {
+            console.error("Error pausing Spotify:", error);
+        }
+        stopJsProgressTimer();
+        return;
+    }
+
     if (!audioPlayer) {
         return;
     }
@@ -410,7 +473,7 @@ async function pause(): Promise<void> {
     stopJsProgressTimer();
 }
 
-async function loadTrackInternal(track: LocalTrack): Promise<void> {
+async function loadTrackInternal(track: LocalTrack): Promise<boolean> {
     perfLog("LocalAudioControls.loadTrack", { id: track.id, filePath: track.filePath });
     if (__DEV__) {
         if (DEBUG_AUDIO_LOGS) {
@@ -427,9 +490,29 @@ async function loadTrackInternal(track: LocalTrack): Promise<void> {
     localPlayerState$.error.set(null);
     const queueEntryId = isQueuedTrack(track) ? track.queueEntryId : undefined;
 
+    if (isSpotifyTrack(track)) {
+        try {
+            const uri = track.uri || track.id;
+            if (!uri) {
+                throw new Error("Missing Spotify URI");
+            }
+            await transferSpotifyPlayback();
+            await playSpotifyUri({ uri, positionMs: 0 });
+            localPlayerState$.duration.set(getDurationSeconds(track));
+            localPlayerState$.isLoading.set(false);
+            localPlayerState$.isPlaying.set(true);
+            return false;
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Spotify playback failed";
+            showToast(message, "error");
+            handleTrackLoadFailure(track, queueEntryId, message);
+            return false;
+        }
+    }
+
     if (!trackFileExists(track.filePath)) {
         handleMissingTrackFile(track, queueEntryId);
-        return;
+        return false;
     }
 
     if (audioPlayer) {
@@ -473,7 +556,7 @@ async function loadTrackInternal(track: LocalTrack): Promise<void> {
 
     if (!audioPlayer) {
         localPlayerState$.isLoading.set(false);
-        return;
+        return false;
     }
 
     try {
@@ -490,6 +573,8 @@ async function loadTrackInternal(track: LocalTrack): Promise<void> {
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
         handleTrackLoadFailure(track, queueEntryId, errorMessage);
     }
+
+    return true;
 }
 
 interface PlayTrackFromQueueOptions extends QueueUpdateOptions {
@@ -512,8 +597,8 @@ function playTrackFromQueue(index: number, options: PlayTrackFromQueueOptions = 
 
     const track = tracks[targetIndex];
     localPlayerState$.currentIndex.set(targetIndex);
-    void loadTrackInternal(track).then(() => {
-        if (options.playImmediately ?? true) {
+    void loadTrackInternal(track).then((shouldPlayLocal) => {
+        if (shouldPlayLocal && (options.playImmediately ?? true)) {
             void play();
         }
     });
@@ -995,6 +1080,16 @@ async function setVolume(volume: number): Promise<void> {
     perfLog("LocalAudioControls.setVolume", { volume });
     const clampedVolume = Math.max(0, Math.min(1, volume));
     localPlayerState$.volume.set(clampedVolume);
+    const currentTrack = localPlayerState$.currentTrack.peek();
+    if (isSpotifyTrack(currentTrack)) {
+        try {
+            await setSpotifyVolume(clampedVolume);
+        } catch (error) {
+            console.error("Error setting Spotify volume:", error);
+        }
+        return;
+    }
+
     if (!audioPlayer) {
         return;
     }
@@ -1008,6 +1103,17 @@ async function setVolume(volume: number): Promise<void> {
 
 async function seek(seconds: number): Promise<void> {
     perfLog("LocalAudioControls.seek", { seconds });
+    const currentTrack = localPlayerState$.currentTrack.peek();
+    if (isSpotifyTrack(currentTrack)) {
+        try {
+            await seekSpotify(seconds * 1000);
+            localPlayerState$.currentTime.set(seconds);
+        } catch (error) {
+            console.error("Error seeking Spotify:", error);
+        }
+        return;
+    }
+
     if (!audioPlayer) {
         return;
     }
