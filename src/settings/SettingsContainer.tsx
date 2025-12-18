@@ -15,18 +15,20 @@ import { GeneralSettings } from "@/settings/GeneralSettings";
 import { LibrarySettings } from "@/settings/LibrarySettings";
 import { OpenSourceSettings } from "@/settings/OpenSourceSettings";
 import { OverlaySettings } from "@/settings/OverlaySettings";
+import { StreamingSettings } from "@/settings/StreamingSettings";
 import { SUPPORT_ACCOUNTS } from "@/systems/constants";
 import { state$ } from "@/systems/State";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 import { ax } from "@/utils/ax";
 
-export type SettingsPage = "general" | "library" | "overlay" | "ui-customize" | "account" | "open-source";
+export type SettingsPage = "general" | "library" | "overlay" | "ui-customize" | "streaming" | "account" | "open-source";
 
 // Define the categories for settings
 const SETTING_PAGES: { id: SettingsPage; name: string }[] = ax([
     { id: "general", name: "General" },
     { id: "library", name: "Library" },
     { id: "overlay", name: "Overlay" },
+    { id: "streaming", name: "Streaming" },
     { id: "ui-customize", name: "Customize UI" },
     SUPPORT_ACCOUNTS && { id: "account", name: "Account" },
     { id: "open-source", name: "Open Source" },
@@ -42,6 +44,8 @@ function Content({ selectedItem$ }: { selectedItem$: Observable<SettingsPage> })
             return <LibrarySettings />;
         case "overlay":
             return <OverlaySettings />;
+        case "streaming":
+            return <StreamingSettings />;
         case "ui-customize":
             return <CustomizeUISettings />;
         case "open-source":

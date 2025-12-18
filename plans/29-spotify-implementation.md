@@ -19,7 +19,7 @@ Implement Spotify as the first streaming provider via a plugin architecture, inc
 - [x] Build Spotify provider contract implementation: provider registry, provider metadata/capabilities, provider-aware track/playlist models with `provider` + URI, and persistence hooks for provider selection and cached metadata.
 - [x] Implement hidden webview player host: HTML + SDK loader, postMessage bridge for commands/events, device readiness handshake, and activation gesture support.
 - [x] Wire queue/playback integration: route Spotify queue items to provider play/pause/seek/volume, handle device transfer, error states, and fallback/skip logic when provider unavailable.
-- [ ] Add UI surfaces: settings/login/logout + Premium messaging, provider selector/badge, and provider-scoped search/library views with basic result rendering and queue actions.
+- [x] Add UI surfaces: settings/login/logout + Premium messaging, provider selector/badge, and provider-scoped search/library views with basic result rendering and queue actions.
 
 ### Step details
 
@@ -50,10 +50,10 @@ Implement Spotify as the first streaming provider via a plugin architecture, inc
 - Sync Now Playing/progress from SDK `player_state_changed` events; propagated into `localPlayerState$` via `spotifyWebPlayerState$` listener (position/duration/paused).
 
 **UI surfaces**
-- Settings: login/logout button, Premium requirement note, signed-in user info, token status, and “reload Spotify player” debug control; provider selector (Local vs Spotify) stored in settings state.
-- Library/Search: provider tabs or filter; Spotify tab shows search + user playlists/library via provider client. Queue buttons add items with provider badge.
-- Playback UI: show provider badge near Now Playing; show loading/reconnect states when SDK not ready; prompt user gesture if activation required.
-- Error UX: toasts/tooltips when Spotify item blocked (not logged in/Premium/offline/region); graceful skip for blocked items; re-auth prompt on 401/invalid token.
+- Settings: login/logout button, Premium requirement note, signed-in user info, token status, and “reload Spotify player” debug control; provider selector (Local vs Spotify) stored in settings state. Implemented as Streaming settings page with provider selector and status.
+- Library/Search: provider tabs or filter; Spotify tab shows search + user playlists/library via provider client. Queue buttons add items with provider badge. Implemented basic Spotify search + queue action in settings.
+- Playback UI: show provider badge near Now Playing; show loading/reconnect states when SDK not ready; prompt user gesture if activation required. Now Playing displays provider badge when streaming.
+- Error UX: toasts/tooltips when Spotify item blocked (not logged in/Premium/offline/region); graceful skip for blocked items; re-auth prompt on 401/invalid token. Errors surfaced via toasts during login/search/playback attempts.
 
 ## Validation
 - Manual: Login succeeds with PKCE; refresh token persists across relaunch; expired access token refreshes automatically.
