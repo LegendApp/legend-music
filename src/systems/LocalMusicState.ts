@@ -24,6 +24,7 @@ import { perfCount, perfLog } from "@/utils/perfLogger";
 import { runAfterInteractions, runAfterInteractionsWithLabel } from "@/utils/runAfterInteractions";
 import { buildThumbnailUri } from "@/utils/thumbnails";
 import { DEFAULT_LOCAL_PLAYLIST_ID } from "./localMusicConstants";
+import type { ProviderId } from "@/providers/types";
 
 export interface LocalTrack {
     id: string;
@@ -38,6 +39,9 @@ export interface LocalTrack {
     thumbnailKey?: string;
     addedAt?: number;
     isMissing?: boolean;
+    provider?: ProviderId;
+    uri?: string;
+    durationMs?: number;
 }
 
 export interface LocalPlaylist {

@@ -3,4 +3,8 @@ export * from "./authState";
 export * from "./constants";
 export * from "./pkce";
 export * from "./provider";
+export * from "./playback";
+export * from "./SpotifyWebPlayerHost";
+export * from "./SpotifyWebPlayerBridge";
 export * from "./types";
+export * from "./webPlayerState";
