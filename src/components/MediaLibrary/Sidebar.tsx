@@ -4,6 +4,7 @@ import { Alert, Platform, ScrollView, Text, TextInput, View } from "react-native
 import type { NativeMouseEvent } from "react-native-macos";
 
 import { Button } from "@/components/Button";
+import { localAudioControls } from "@/components/LocalAudioPlayer";
 import {
     DroppableZone,
     MEDIA_LIBRARY_DRAG_ZONE_ID,
@@ -33,6 +34,8 @@ import {
 import { createLocalPlaylist, localMusicState$, type LocalPlaylist } from "@/systems/LocalMusicState";
 import { cn } from "@/utils/cn";
 import { perfCount } from "@/utils/perfLogger";
+import { getQueueAction } from "@/utils/queueActions";
+import { buildTrackLookup, resolvePlaylistTracks } from "@/utils/trackResolution";
 import { MediaLibrarySearchBar } from "./SearchBar";
 
 const LIBRARY_VIEWS: { id: LibraryView; label: string; disabled?: boolean }[] = [
@@ -137,6 +140,49 @@ export function MediaLibrarySidebar() {
             showToast(message, "error");
         }
     }, [cancelRename, editingPlaylistId, editingPlaylistName]);
+
+    const handlePlaylistDoubleClick = useCallback((playlist: LocalPlaylist, event?: NativeMouseEvent) => {
+        const allTracks = localMusicState$.tracks.peek();
+        if (allTracks.length === 0) {
+            return;
+        }
+
+        const { tracks: resolvedTracks, missingPaths } = resolvePlaylistTracks(
+            {
+                id: playlist.id,
+                name: playlist.name,
+                type: playlist.source,
+                trackPaths: playlist.trackPaths,
+            },
+            allTracks,
+            buildTrackLookup(allTracks),
+        );
+
+        if (missingPaths.length > 0) {
+            console.warn(`Playlist ${playlist.name} is missing ${missingPaths.length} tracks from the library`);
+        }
+
+        if (resolvedTracks.length === 0) {
+            showToast(`No tracks found in ${playlist.name}`, "info");
+            return;
+        }
+
+        const action = getQueueAction({ event });
+        switch (action) {
+            case "play-now":
+                localAudioControls.queue.insertNext(resolvedTracks, { playImmediately: true });
+                break;
+            case "play-next":
+                localAudioControls.queue.insertNext(resolvedTracks);
+                break;
+            default:
+                localAudioControls.queue.append(resolvedTracks);
+                break;
+        }
+
+        const addedLabel = resolvedTracks.length === 1 ? "track" : "tracks";
+        showToast(`Added ${resolvedTracks.length} ${addedLabel} from ${playlist.name} to queue`, "info");
+    }, []);
 
     const handleAddTracks = useCallback(async (playlistId: string, trackPaths: string[]) => {
         try {
@@ -365,6 +411,7 @@ export function MediaLibrarySidebar() {
                                             className,
                                         )}
                                         onClick={() => selectLibraryPlaylist(playlist.id)}
+                                        onDoubleClick={(event) => handlePlaylistDoubleClick(playlist, event)}
                                         onRightClick={(event) => handlePlaylistContextMenu(playlist, event)}
                                     >
                                         <View className="flex-1 flex-row items-center justify-between overflow-hidden">
