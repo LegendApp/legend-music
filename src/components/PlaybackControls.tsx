@@ -7,6 +7,7 @@ import { Button } from "@/components/Button";
 import type { DropdownMenuRootRef } from "@/components/DropdownMenu";
 import { localAudioControls, localPlayerState$, queue$ } from "@/components/LocalAudioPlayer";
 import { PlaylistSelectorSearchDropdown } from "@/components/PlaylistSelectorSearchDropdown";
+import { SavePlaylistDropdown } from "@/components/SavePlaylistDropdown";
 import { usePlaybackControlLayout } from "@/hooks/useUIControls";
 import { SUPPORT_PLAYLISTS } from "@/systems/constants";
 import { useOnHotkeys } from "@/systems/keyboard/Keyboard";
@@ -189,16 +190,10 @@ export function PlaybackControls({ className }: PlaybackControlsProps = {}) {
                         );
                     case "savePlaylist":
                         return SUPPORT_PLAYLISTS ? (
-                            <Button
+                            <SavePlaylistDropdown
                                 key="savePlaylist"
-                                icon="square.and.arrow.down"
-                                variant="icon-hover"
-                                size="xs"
-                                iconSize={14}
-                                iconYOffset={2}
-                                onClick={handleSavePlaylist}
                                 disabled={queue.tracks.length === 0}
-                                tooltip="Save playlist"
+                                onSave={(_playlistName) => handleSavePlaylist()}
                             />
                         ) : null;
                     case "toggleVisualizer": {
