@@ -4,26 +4,22 @@ import { Alert, Platform, ScrollView, Text, TextInput, View } from "react-native
 import type { NativeMouseEvent } from "react-native-macos";
 
 import { Button } from "@/components/Button";
-import { localAudioControls } from "@/components/LocalAudioPlayer";
 import {
+    type DraggedItem,
     DroppableZone,
     MEDIA_LIBRARY_DRAG_ZONE_ID,
-    type DraggedItem,
     type MediaLibraryDragData,
 } from "@/components/dnd";
+import { localAudioControls } from "@/components/LocalAudioPlayer";
 import type { TextInputSearchRef } from "@/components/TextInputSearch";
 import { showToast } from "@/components/Toast";
 import { useListItemStyles } from "@/hooks/useListItemStyles";
-import { showContextMenu, type ContextMenuItem } from "@/native-modules/ContextMenu";
+import { type ContextMenuItem, showContextMenu } from "@/native-modules/ContextMenu";
 import { DragDropView } from "@/native-modules/DragDropView";
 import { showInFinder } from "@/native-modules/FileDialog";
 import { SUPPORT_PLAYLISTS } from "@/systems/constants";
-import {
-    libraryUI$,
-    selectLibraryPlaylist,
-    selectLibraryView,
-    type LibraryView,
-} from "@/systems/LibraryState";
+import { type LibraryView, libraryUI$, selectLibraryPlaylist, selectLibraryView } from "@/systems/LibraryState";
+import { createLocalPlaylist, type LocalPlaylist, localMusicState$ } from "@/systems/LocalMusicState";
 import {
     addTracksToPlaylist,
     deletePlaylist,
@@ -31,7 +27,6 @@ import {
     exportPlaylistToFile,
     renamePlaylist,
 } from "@/systems/LocalPlaylists";
-import { createLocalPlaylist, localMusicState$, type LocalPlaylist } from "@/systems/LocalMusicState";
 import { cn } from "@/utils/cn";
 import { perfCount } from "@/utils/perfLogger";
 import { getQueueAction } from "@/utils/queueActions";
@@ -39,9 +34,9 @@ import { buildTrackLookup, resolvePlaylistTracks } from "@/utils/trackResolution
 import { MediaLibrarySearchBar } from "./SearchBar";
 
 const LIBRARY_VIEWS: { id: LibraryView; label: string; disabled?: boolean }[] = [
-    { id: "songs", label: "Songs" },
     { id: "artists", label: "Artists" },
     { id: "albums", label: "Albums" },
+    { id: "songs", label: "Songs" },
     { id: "starred", label: "Starred", disabled: true },
 ];
 
@@ -59,12 +54,9 @@ export function MediaLibrarySidebar() {
     const [editingPlaylistId, setEditingPlaylistId] = useState<string | null>(null);
     const [editingPlaylistName, setEditingPlaylistName] = useState("");
 
-    const handleSelectView = useCallback(
-        (view: LibraryView) => {
-            selectLibraryView(view);
-        },
-        [],
-    );
+    const handleSelectView = useCallback((view: LibraryView) => {
+        selectLibraryView(view);
+    }, []);
 
     const handleAddPlaylist = useCallback(() => {
         if (tempPlaylistId) {
@@ -189,7 +181,13 @@ export function MediaLibrarySidebar() {
             const { addedPaths, playlist } = await addTracksToPlaylist(playlistId, trackPaths);
             const addedCount = addedPaths.length;
             if (addedCount > 0) {
-                showToast(`Added ${addedCount} ${addedCount === 1 ? "track" : "tracks"} to ${playlist.name}`, "info");
+                let msg: string;
+                if (addedCount === 1) {
+                    msg = "track";
+                } else {
+                    msg = "tracks";
+                }
+                showToast(`Added ${addedCount} ${msg} to ${playlist.name}`, "info");
             } else {
                 showToast("No new tracks to add", "info");
             }
@@ -199,93 +197,90 @@ export function MediaLibrarySidebar() {
         }
     }, []);
 
-    const handlePlaylistContextMenu = useCallback(
-        async (playlist: LocalPlaylist, event: NativeMouseEvent) => {
-            const x = event.pageX ?? event.x ?? 0;
-            const y = event.pageY ?? event.y ?? 0;
+    const handlePlaylistContextMenu = useCallback(async (playlist: LocalPlaylist, event: NativeMouseEvent) => {
+        const x = event.pageX ?? event.x ?? 0;
+        const y = event.pageY ?? event.y ?? 0;
 
-            const isEditable = playlist.source === "cache" && Boolean(playlist.filePath);
-            const menuItems: ContextMenuItem[] = [];
+        const isEditable = playlist.source === "cache" && Boolean(playlist.filePath);
+        const menuItems: ContextMenuItem[] = [];
 
-            if (isEditable) {
-                menuItems.push({ id: "rename", title: "Rename" });
-                menuItems.push({ id: "delete", title: "Delete" });
-                menuItems.push({ id: "export", title: "Export .m3u" });
-            } else {
-                menuItems.push({ id: "import", title: "Import to Local Playlists" });
-                menuItems.push({ id: "export", title: "Export .m3u" });
-            }
+        if (isEditable) {
+            menuItems.push({ id: "rename", title: "Rename" });
+            menuItems.push({ id: "delete", title: "Delete" });
+            menuItems.push({ id: "export", title: "Export .m3u" });
+        } else {
+            menuItems.push({ id: "import", title: "Import to Local Playlists" });
+            menuItems.push({ id: "export", title: "Export .m3u" });
+        }
 
-            menuItems.push({ id: "reveal", title: "Reveal in Finder" });
+        menuItems.push({ id: "reveal", title: "Reveal in Finder" });
 
-            const selection = await showContextMenu(menuItems, { x, y });
-            if (!selection) {
+        const selection = await showContextMenu(menuItems, { x, y });
+        if (!selection) {
+            return;
+        }
+
+        switch (selection) {
+            case "rename":
+                setEditingPlaylistId(playlist.id);
+                setEditingPlaylistName(playlist.name);
+                return;
+            case "delete":
+                Alert.alert("Delete playlist", `Delete “${playlist.name}”?`, [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                        text: "Delete",
+                        style: "destructive",
+                        onPress: () => {
+                            void (async () => {
+                                try {
+                                    await deletePlaylist(playlist.id);
+                                    showToast(`Deleted ${playlist.name}`, "info");
+                                } catch (error) {
+                                    const message =
+                                        error instanceof Error ? error.message : "Failed to delete playlist";
+                                    showToast(message, "error");
+                                }
+                            })();
+                        },
+                    },
+                ]);
+                return;
+            case "reveal": {
+                const didReveal = await showInFinder(playlist.filePath);
+                if (!didReveal) {
+                    showToast("Unable to reveal playlist", "error");
+                }
                 return;
             }
-
-            switch (selection) {
-                case "rename":
-                    setEditingPlaylistId(playlist.id);
-                    setEditingPlaylistName(playlist.name);
-                    return;
-                case "delete":
-                    Alert.alert("Delete playlist", `Delete “${playlist.name}”?`, [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                            text: "Delete",
-                            style: "destructive",
-                            onPress: () => {
-                                void (async () => {
-                                    try {
-                                        await deletePlaylist(playlist.id);
-                                        showToast(`Deleted ${playlist.name}`, "info");
-                                    } catch (error) {
-                                        const message =
-                                            error instanceof Error ? error.message : "Failed to delete playlist";
-                                        showToast(message, "error");
-                                    }
-                                })();
-                            },
-                        },
-                    ]);
-                    return;
-                case "reveal": {
-                    const didReveal = await showInFinder(playlist.filePath);
-                    if (!didReveal) {
-                        showToast("Unable to reveal playlist", "error");
+            case "export": {
+                try {
+                    const exportedPath = await exportPlaylistToFile(playlist.id);
+                    if (exportedPath) {
+                        await showInFinder(exportedPath);
+                        showToast(`Exported ${playlist.name}`, "info");
                     }
-                    return;
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : "Failed to export playlist";
+                    showToast(message, "error");
                 }
-                case "export": {
-                    try {
-                        const exportedPath = await exportPlaylistToFile(playlist.id);
-                        if (exportedPath) {
-                            await showInFinder(exportedPath);
-                            showToast(`Exported ${playlist.name}`, "info");
-                        }
-                    } catch (error) {
-                        const message = error instanceof Error ? error.message : "Failed to export playlist";
-                        showToast(message, "error");
-                    }
-                    return;
-                }
-                case "import": {
-                    try {
-                        const nextPlaylist = await duplicatePlaylistToCache(playlist.id);
-                        selectLibraryPlaylist(nextPlaylist.id);
-                        showToast(`Imported ${playlist.name}`, "info");
-                    } catch (error) {
-                        const message = error instanceof Error ? error.message : "Failed to import playlist";
-                        showToast(message, "error");
-                    }
-                    return;
-                }
-                default:
-                    return;
+                return;
             }
-        },
-        [],
-    );
+            case "import": {
+                try {
+                    const nextPlaylist = await duplicatePlaylistToCache(playlist.id);
+                    selectLibraryPlaylist(nextPlaylist.id);
+                    showToast(`Imported ${playlist.name}`, "info");
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : "Failed to import playlist";
+                    showToast(message, "error");
+                }
+                return;
+            }
+            default:
+                return;
+        }
+    }, []);
 
     return (
         <View className="flex-1 min-h-0">
@@ -345,13 +340,14 @@ export function MediaLibrarySidebar() {
                             </View>
                         ) : (
                             playlists.map((playlist) => {
-                                const isSelected =
-                                    selectedView === "playlist" && selectedPlaylistId === playlist.id;
+                                const isSelected = selectedView === "playlist" && selectedPlaylistId === playlist.id;
                                 const isTemp = playlist.id === tempPlaylistId;
                                 const isEditing = playlist.id === editingPlaylistId;
                                 const isDroppable = playlist.source === "cache" && Boolean(playlist.filePath);
                                 const isNativeDropActive =
-                                    Platform.OS === "macos" && isDroppable && activeNativeDropPlaylistId === playlist.id;
+                                    Platform.OS === "macos" &&
+                                    isDroppable &&
+                                    activeNativeDropPlaylistId === playlist.id;
 
                                 if (isTemp) {
                                     return (
