@@ -4,13 +4,14 @@ import { PortalProvider } from "@gorhom/portal";
 import { useMount } from "@legendapp/state/react";
 import type React from "react";
 import { useRef } from "react";
-import { LogBox, StyleSheet, View } from "react-native";
+import { LogBox, View } from "react-native";
 import { DragDropProvider } from "@/components/dnd";
 import { MainContainer } from "@/components/MainContainer";
 import { TitleBar } from "@/components/TitleBar";
 import { ToastProvider } from "@/components/Toast";
 import { TooltipProvider } from "@/components/TooltipProvider";
 import { MediaLibraryWindowManager } from "@/media-library/MediaLibraryWindowManager";
+import { GlassEffectView } from "@/native-modules/GlassEffectView";
 import { CurrentSongOverlayController } from "@/overlay/CurrentSongOverlayController";
 import { CurrentSongOverlayWindowManager } from "@/overlay/CurrentSongOverlayWindowManager";
 import { SettingsWindowManager } from "@/settings/SettingsWindowManager";
@@ -19,6 +20,7 @@ import { hydrateLibraryFromCache } from "@/systems/LibraryState";
 import { initializeLocalMusic } from "@/systems/LocalMusicState";
 import { initializeMenuManager } from "@/systems/MenuManager";
 import { initializeUpdater } from "@/systems/Updater";
+import { IS_TAHOE } from "@/systems/constants";
 import { perfMark } from "@/utils/perfLogger";
 import { runAfterInteractionsWithLabel } from "@/utils/runAfterInteractions";
 import { VisualizerWindowManager } from "@/visualizer/VisualizerWindowManager";
@@ -87,22 +89,33 @@ function App(): React.JSX.Element | null {
         perfMark("App.firstLayout");
     };
 
+    const contentClassName = IS_TAHOE ? "flex-1" : "flex-1 bg-background-primary/40";
+    const content = (
+        <View className={contentClassName} onLayout={handleFirstLayout}>
+            <PortalProvider>
+                <ToastProvider />
+                <TooltipProvider>
+                    <DragDropProvider>
+                        <MainContainer />
+                    </DragDropProvider>
+                </TooltipProvider>
+            </PortalProvider>
+        </View>
+    );
+
     return (
         <WindowProvider id="main">
             <ThemeProvider>
                 <HookKeyboard />
-                <VibrancyView blendingMode="behindWindow" material="sidebar" style={styles.vibrancy}>
-                    <View className="flex-1 bg-background-primary/40" onLayout={handleFirstLayout}>
-                        <PortalProvider>
-                            <ToastProvider />
-                            <TooltipProvider>
-                                <DragDropProvider>
-                                    <MainContainer />
-                                </DragDropProvider>
-                            </TooltipProvider>
-                        </PortalProvider>
-                    </View>
-                </VibrancyView>
+                {IS_TAHOE ? (
+                    <GlassEffectView glassStyle="regular" tintColor="#00000033" className="flex-1">
+                        {content}
+                    </GlassEffectView>
+                ) : (
+                    <VibrancyView blendingMode="behindWindow" material="sidebar" style={{ flex: 1 }}>
+                        {content}
+                    </VibrancyView>
+                )}
                 <TitleBar />
                 <MediaLibraryWindowManager />
                 <SettingsWindowManager />
@@ -115,9 +128,3 @@ function App(): React.JSX.Element | null {
 }
 
 export default App;
-
-const styles = StyleSheet.create({
-    vibrancy: {
-        flex: 1,
-    },
-});

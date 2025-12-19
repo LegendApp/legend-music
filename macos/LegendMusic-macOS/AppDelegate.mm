@@ -210,6 +210,8 @@ static inline NSAppearance *LegendDarkAppearance() {
                                            styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskResizable | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable
                                              backing:NSBackingStoreBuffered
                                                defer:NO];
+  self.window.opaque = NO;
+  self.window.backgroundColor = [NSColor clearColor];
   self.window.minSize = NSMakeSize(200, 300);
   self.window.title = self.moduleName;
   NSAppearance *darkAppearance = LegendDarkAppearance();
@@ -230,6 +232,17 @@ static inline NSAppearance *LegendDarkAppearance() {
   rootView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
 
   self.window.contentViewController = rootViewController;
+  if ([rootView respondsToSelector:@selector(setBackgroundColor:)]) {
+    [(id)rootView setBackgroundColor:[NSColor clearColor]];
+  }
+  rootView.wantsLayer = YES;
+  rootView.layer.backgroundColor = [NSColor clearColor].CGColor;
+  rootView.layer.masksToBounds = NO;
+
+  NSView *contentView = self.window.contentView;
+  contentView.wantsLayer = YES;
+  contentView.layer.backgroundColor = [NSColor clearColor].CGColor;
+  contentView.layer.masksToBounds = NO;
   [self.window setDelegate:self];
 
   // Only center if no saved frame exists
