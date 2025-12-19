@@ -69,7 +69,7 @@ export function TrackList(_props: TrackListProps) {
 
     const columns = useMemo<TableColumnSpec[]>(
         () => [
-            { id: "number", label: "#", width: 36, align: "right" },
+            { id: "number", label: "#", width: 48, align: "right" },
             { id: "title", label: "Title", flex: 3, minWidth: 120 },
             { id: "artist", label: "Artist", flex: 2, minWidth: 100 },
             { id: "album", label: "Album", flex: 2, minWidth: 100 },

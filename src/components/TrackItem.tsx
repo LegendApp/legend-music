@@ -1,6 +1,6 @@
 import type { Observable } from "@legendapp/state";
 import { useValue } from "@legendapp/state/react";
-import { Text, View } from "react-native";
+import { Text, View, type DimensionValue } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 import { Button } from "@/components/Button";
 import { localPlayerState$ } from "@/components/LocalAudioPlayer";
@@ -39,6 +39,7 @@ interface TrackItemProps {
     onMouseDown?: (index: number, event: NativeMouseEvent) => void;
     disableHover?: boolean;
     suppressActiveState?: boolean;
+    artistMaxWidth?: DimensionValue;
 }
 
 export const TrackItem = ({
@@ -52,6 +53,7 @@ export const TrackItem = ({
     onMouseDown,
     disableHover = false,
     suppressActiveState = false,
+    artistMaxWidth,
 }: TrackItemProps) => {
     perfCount("TrackItem.render");
     const listItemStyles = useListItemStyles();
@@ -123,6 +125,36 @@ export const TrackItem = ({
     const durationTone = track.fromSuggestions || isMissing ? listItemStyles.text.muted : "";
     const trackIndex = track.index ?? index;
     const showDisplayIndex = trackIndex >= 0;
+    const shouldClampArtist = artistMaxWidth != null;
+    const artistText = (
+        <Text
+            className={cn(
+                "text-sm font-medium tabular-nums",
+                listItemStyles.text.primary,
+                isPlaying && "text-accent-primary",
+            )}
+            numberOfLines={shouldClampArtist ? 1 : undefined}
+            ellipsizeMode={shouldClampArtist ? "tail" : undefined}
+            style={shouldClampArtist ? { maxWidth: artistMaxWidth } : undefined}
+        >
+            {track.artist}
+        </Text>
+    );
+    const titleText = (
+        <Text
+            className={cn(
+                "text-sm tabular-nums",
+                listItemStyles.text.secondary,
+                shouldClampArtist && "flex-1",
+                isPlaying && "text-accent-primary opacity-90",
+            )}
+            numberOfLines={shouldClampArtist ? 1 : undefined}
+            ellipsizeMode={shouldClampArtist ? "tail" : undefined}
+        >
+            {" "}
+            - {track.title}
+        </Text>
+    );
 
     return (
         <Button
@@ -142,27 +174,17 @@ export const TrackItem = ({
                     ) : null}
                 </View>
             )}
-            <Text className={cn("flex-1 tabular-nums text-sm", primaryTone)} numberOfLines={1}>
-                <Text
-                    className={cn(
-                        "text-sm font-medium",
-                        listItemStyles.text.primary,
-                        isPlaying && "text-accent-primary",
-                    )}
-                >
-                    {track.artist}
+            {shouldClampArtist ? (
+                <View className="flex-1 flex-row items-center">
+                    {artistText}
+                    {titleText}
+                </View>
+            ) : (
+                <Text className={cn("flex-1 tabular-nums text-sm", primaryTone)} numberOfLines={1}>
+                    {artistText}
+                    {titleText}
                 </Text>
-                <Text
-                    className={cn(
-                        "text-sm",
-                        listItemStyles.text.secondary,
-                        isPlaying && "text-accent-primary opacity-90",
-                    )}
-                >
-                    {" "}
-                    - {track.title}
-                </Text>
-            </Text>
+            )}
 
             <Text
                 className={cn(

@@ -883,6 +883,7 @@ export function Playlist() {
                                     onMouseDown={handleTrackMouseDown}
                                     onRightClick={handleTrackContextMenu}
                                     disableHover
+                                    artistMaxWidth="50%"
                                 />
                             );
 
