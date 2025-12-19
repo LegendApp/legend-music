@@ -1,11 +1,11 @@
-import { VibrancyView } from "@fluentui-react-native/vibrancy-view";
 import { PortalProvider } from "@gorhom/portal";
 import type { Observable } from "@legendapp/state";
 import { useObservable, useValue } from "@legendapp/state/react";
 import { useMemo } from "react";
-import { StyleSheet, View } from "react-native";
+import { View } from "react-native";
 import { Sidebar } from "@/components/Sidebar";
 import { TooltipProvider } from "@/components/TooltipProvider";
+import { WindowEffectView } from "@/components/WindowEffectView";
 import { AccountSettings } from "@/settings/AccountSettings";
 import { CustomizeUISettings } from "@/settings/CustomizeUISettings";
 import { GeneralSettings } from "@/settings/GeneralSettings";
@@ -55,7 +55,7 @@ export default function SettingsContainer() {
     const selectedItem$ = useObservable<SettingsPage>(showSettingsPage || "general");
 
     return (
-        <VibrancyView blendingMode="behindWindow" material="sidebar" style={styles.vibrancy}>
+        <WindowEffectView style={{ flex: 1 }}>
             <ThemeProvider>
                 <PortalProvider>
                     <TooltipProvider>
@@ -68,12 +68,6 @@ export default function SettingsContainer() {
                     </TooltipProvider>
                 </PortalProvider>
             </ThemeProvider>
-        </VibrancyView>
+        </WindowEffectView>
     );
 }
-
-const styles = StyleSheet.create({
-    vibrancy: {
-        flex: 1,
-    },
-});

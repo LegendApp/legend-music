@@ -1,5 +1,4 @@
 import "@/../global.css";
-import { VibrancyView } from "@fluentui-react-native/vibrancy-view";
 import { PortalProvider } from "@gorhom/portal";
 import { useObserveEffect } from "@legendapp/state/react";
 import { useCallback, useEffect, useState } from "react";
@@ -15,6 +14,7 @@ import Animated, {
 
 import { PlaybackArea } from "@/components/PlaybackArea";
 import { TooltipProvider } from "@/components/TooltipProvider";
+import { WindowEffectView } from "@/components/WindowEffectView";
 import { setWindowBlur } from "@/native-modules/WindowManager";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 import { withWindowProvider } from "@/windows";
@@ -192,7 +192,7 @@ function CurrentSongOverlayWindow() {
         >
             <Animated.View style={styles.shadowContainer}>
                 <View style={styles.overlayWrapper}>
-                    <VibrancyView
+                    <WindowEffectView
                         blendingMode="behindWindow"
                         material="hudWindow"
                         state="active"
@@ -210,7 +210,7 @@ function CurrentSongOverlayWindow() {
                                 </PortalProvider>
                             </ThemeProvider>
                         </View>
-                    </VibrancyView>
+                    </WindowEffectView>
                 </View>
             </Animated.View>
         </Animated.View>

@@ -1,5 +1,4 @@
 import "@/../global.css";
-import { VibrancyView } from "@fluentui-react-native/vibrancy-view";
 import { PortalProvider } from "@gorhom/portal";
 import { useMount } from "@legendapp/state/react";
 import type React from "react";
@@ -10,8 +9,8 @@ import { MainContainer } from "@/components/MainContainer";
 import { TitleBar } from "@/components/TitleBar";
 import { ToastProvider } from "@/components/Toast";
 import { TooltipProvider } from "@/components/TooltipProvider";
+import { WindowEffectView } from "@/components/WindowEffectView";
 import { MediaLibraryWindowManager } from "@/media-library/MediaLibraryWindowManager";
-import { GlassEffectView } from "@/native-modules/GlassEffectView";
 import { CurrentSongOverlayController } from "@/overlay/CurrentSongOverlayController";
 import { CurrentSongOverlayWindowManager } from "@/overlay/CurrentSongOverlayWindowManager";
 import { SettingsWindowManager } from "@/settings/SettingsWindowManager";
@@ -107,15 +106,9 @@ function App(): React.JSX.Element | null {
         <WindowProvider id="main">
             <ThemeProvider>
                 <HookKeyboard />
-                {IS_TAHOE ? (
-                    <GlassEffectView glassStyle="regular" tintColor="#00000033" className="flex-1">
-                        {content}
-                    </GlassEffectView>
-                ) : (
-                    <VibrancyView blendingMode="behindWindow" material="sidebar" style={{ flex: 1 }}>
-                        {content}
-                    </VibrancyView>
-                )}
+                <WindowEffectView glassStyle="regular" tintColor="#00000033" style={{ flex: 1 }}>
+                    {content}
+                </WindowEffectView>
                 <TitleBar />
                 <MediaLibraryWindowManager />
                 <SettingsWindowManager />
