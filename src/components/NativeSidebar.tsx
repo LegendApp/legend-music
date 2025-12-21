@@ -9,11 +9,20 @@ export interface NativeSidebarProps {
     selectedId?: string;
     onSelectionChange?: (id: string) => void;
     width?: number;
+    contentInsetTop?: number;
     className?: string;
     style?: StyleProp<ViewStyle>;
 }
 
-export function NativeSidebar({ items, selectedId, onSelectionChange, width, className, style }: NativeSidebarProps) {
+export function NativeSidebar({
+    items,
+    selectedId,
+    onSelectionChange,
+    width,
+    contentInsetTop,
+    className,
+    style,
+}: NativeSidebarProps) {
     const isMacOS = Platform.OS === "macos";
 
     const fallbackItems = useMemo(() => {
@@ -39,6 +48,7 @@ export function NativeSidebar({ items, selectedId, onSelectionChange, width, cla
             <NativeSidebarView
                 items={items}
                 selectedId={selectedId}
+                contentInsetTop={contentInsetTop}
                 onSidebarSelectionChange={(event) => onSelectionChange?.(event.nativeEvent.id)}
                 style={[style, width !== undefined ? { width } : null]}
                 className={className}

@@ -9,6 +9,7 @@ export interface NativeSidebarItem {
 export interface NativeSidebarViewProps extends ViewProps {
     items: NativeSidebarItem[];
     selectedId?: string;
+    contentInsetTop?: number;
     onSidebarSelectionChange?: (event: { nativeEvent: { id: string } }) => void;
 }
 

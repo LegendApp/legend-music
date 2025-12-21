@@ -28,11 +28,21 @@ const windowsConfig = {
         loadComponent: () => import("@/media-library/MediaLibraryWindow"),
         identifier: "media-library",
         options: {
-            title: "Media Library",
+            title: "",
+            transparentBackground: true,
             windowStyle: {
                 width: 800,
                 height: 600,
-                mask: [WindowStyleMask.Titled, WindowStyleMask.Closable, WindowStyleMask.Resizable],
+                mask: [
+                    WindowStyleMask.Titled,
+                    WindowStyleMask.Closable,
+                    WindowStyleMask.Resizable,
+                    WindowStyleMask.FullSizeContentView,
+                    WindowStyleMask.UnifiedTitleAndToolbar,
+                ],
+                titlebarAppearsTransparent: true,
+                toolbarStyle: "unified",
+                hasToolbar: true,
             },
         },
     },

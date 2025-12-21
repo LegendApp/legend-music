@@ -1,5 +1,5 @@
 import { useValue } from "@legendapp/state/react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Alert, Platform, ScrollView, Text, TextInput, View } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 
@@ -11,6 +11,7 @@ import {
     type MediaLibraryDragData,
 } from "@/components/dnd";
 import { localAudioControls } from "@/components/LocalAudioPlayer";
+import { NativeSidebar } from "@/components/NativeSidebar";
 import type { TextInputSearchRef } from "@/components/TextInputSearch";
 import { showToast } from "@/components/Toast";
 import { useListItemStyles } from "@/hooks/useListItemStyles";
@@ -40,7 +41,13 @@ const LIBRARY_VIEWS: { id: LibraryView; label: string; disabled?: boolean }[] = 
     { id: "starred", label: "Starred", disabled: true },
 ];
 
-export function MediaLibrarySidebar() {
+interface MediaLibrarySidebarProps {
+    useNativeLibraryList?: boolean;
+}
+
+const NATIVE_SIDEBAR_ROW_HEIGHT = 28;
+
+export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibrarySidebarProps) {
     perfCount("MediaLibrary.Sidebar.render");
     const selectedView = useValue(libraryUI$.selectedView);
     const selectedPlaylistId = useValue(libraryUI$.selectedPlaylistId);
@@ -53,10 +60,32 @@ export function MediaLibrarySidebar() {
     const [activeNativeDropPlaylistId, setActiveNativeDropPlaylistId] = useState<string | null>(null);
     const [editingPlaylistId, setEditingPlaylistId] = useState<string | null>(null);
     const [editingPlaylistName, setEditingPlaylistName] = useState("");
+    const shouldUseNativeLibraryList = useNativeLibraryList && Platform.OS === "macos";
+
+    const nativeLibraryItems = useMemo(() => {
+        return LIBRARY_VIEWS.filter((view) => !view.disabled).map((view) => ({ id: view.id, label: view.label }));
+    }, []);
+
+    const nativeLibraryHeight = nativeLibraryItems.length * NATIVE_SIDEBAR_ROW_HEIGHT;
+
+    const nativeSelectedId = useMemo(() => {
+        if (nativeLibraryItems.some((view) => view.id === selectedView)) {
+            return selectedView;
+        }
+
+        return undefined;
+    }, [nativeLibraryItems, selectedView]);
 
     const handleSelectView = useCallback((view: LibraryView) => {
         selectLibraryView(view);
     }, []);
+
+    const handleNativeLibrarySelection = useCallback(
+        (id: string) => {
+            handleSelectView(id as LibraryView);
+        },
+        [handleSelectView],
+    );
 
     const handleAddPlaylist = useCallback(() => {
         if (tempPlaylistId) {
@@ -290,32 +319,43 @@ export function MediaLibrarySidebar() {
                     <Text className="px-3 pt-2 pb-1 text-xs font-semibold text-white/40 uppercase tracking-wider">
                         Library
                     </Text>
-                    {LIBRARY_VIEWS.map((view) => {
-                        const isSelected = selectedView === view.id;
-                        return (
-                            <Button
-                                key={view.id}
-                                disabled={view.disabled}
-                                className={listItemStyles.getRowClassName({
-                                    variant: "compact",
-                                    isSelected,
-                                    isInteractive: !view.disabled,
-                                })}
-                                onClick={() => handleSelectView(view.id)}
-                            >
-                                <Text
-                                    className={cn(
-                                        "text-sm truncate flex-1 pr-4",
-                                        isSelected ? listItemStyles.text.primary : listItemStyles.text.secondary,
-                                        view.disabled ? "opacity-40" : "",
-                                    )}
-                                    numberOfLines={1}
+                    {shouldUseNativeLibraryList ? (
+                        <NativeSidebar
+                            items={nativeLibraryItems}
+                            selectedId={nativeSelectedId}
+                            onSelectionChange={handleNativeLibrarySelection}
+                            contentInsetTop={0}
+                            style={{ height: nativeLibraryHeight }}
+                            className="bg-transparent"
+                        />
+                    ) : (
+                        LIBRARY_VIEWS.map((view) => {
+                            const isSelected = selectedView === view.id;
+                            return (
+                                <Button
+                                    key={view.id}
+                                    disabled={view.disabled}
+                                    className={listItemStyles.getRowClassName({
+                                        variant: "compact",
+                                        isSelected,
+                                        isInteractive: !view.disabled,
+                                    })}
+                                    onClick={() => handleSelectView(view.id)}
                                 >
-                                    {view.label}
-                                </Text>
-                            </Button>
-                        );
-                    })}
+                                    <Text
+                                        className={cn(
+                                            "text-sm truncate flex-1 pr-4",
+                                            isSelected ? listItemStyles.text.primary : listItemStyles.text.secondary,
+                                            view.disabled ? "opacity-40" : "",
+                                        )}
+                                        numberOfLines={1}
+                                    >
+                                        {view.label}
+                                    </Text>
+                                </Button>
+                            );
+                        })
+                    )}
                 </View>
 
                 {SUPPORT_PLAYLISTS ? (
