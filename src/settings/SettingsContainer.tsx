@@ -1,11 +1,13 @@
 import { PortalProvider } from "@gorhom/portal";
 import type { Observable } from "@legendapp/state";
 import { useObservable, useValue } from "@legendapp/state/react";
-import { View } from "react-native";
+import { useCallback, useMemo } from "react";
+import { Platform, View } from "react-native";
 import { EffectView } from "@/components/EffectView";
+import { NativeSidebar } from "@/components/NativeSidebar";
 import { Sidebar } from "@/components/Sidebar";
 import { TooltipProvider } from "@/components/TooltipProvider";
-import { SplitView } from "@/native-modules/SplitView";
+import { SidebarSplitView } from "@/native-modules/SidebarSplitView";
 import { AccountSettings } from "@/settings/AccountSettings";
 import { CustomizeUISettings } from "@/settings/CustomizeUISettings";
 import { GeneralSettings } from "@/settings/GeneralSettings";
@@ -53,20 +55,44 @@ function Content({ selectedItem$ }: { selectedItem$: Observable<SettingsPage> })
 export default function SettingsContainer() {
     const showSettingsPage = useValue(state$.showSettingsPage);
     const selectedItem$ = useObservable<SettingsPage>(showSettingsPage || "general");
+    const selectedItem = useValue(selectedItem$);
+    const isMacOS = Platform.OS === "macos";
+
+    const nativeItems = useMemo(() => {
+        return SETTING_PAGES.map((item) => ({ id: item.id, label: item.name }));
+    }, []);
+
+    const handleSelectionChange = useCallback(
+        (id: string) => {
+            selectedItem$.set(id as SettingsPage);
+        },
+        [selectedItem$],
+    );
 
     return (
         <EffectView style={{ flex: 1 }}>
             <ThemeProvider>
                 <PortalProvider>
                     <TooltipProvider>
-                        <SplitView className="flex-1" isVertical>
-                            <View className="flex-1">
-                                <Sidebar items={SETTING_PAGES} selectedItem$={selectedItem$} className="py-2" />
+                        {isMacOS ? (
+                            <SidebarSplitView className="flex-1">
+                                <NativeSidebar
+                                    items={nativeItems}
+                                    selectedId={selectedItem}
+                                    onSelectionChange={handleSelectionChange}
+                                />
+                                <View className="flex-1 bg-background-primary">
+                                    <Content selectedItem$={selectedItem$} />
+                                </View>
+                            </SidebarSplitView>
+                        ) : (
+                            <View className="flex flex-1 flex-row">
+                                <Sidebar items={SETTING_PAGES} selectedItem$={selectedItem$} width={140} className="py-2" />
+                                <View className="flex-1 bg-background-primary">
+                                    <Content selectedItem$={selectedItem$} />
+                                </View>
                             </View>
-                            <View className="flex-1 bg-background-primary">
-                                <Content selectedItem$={selectedItem$} />
-                            </View>
-                        </SplitView>
+                        )}
                     </TooltipProvider>
                 </PortalProvider>
             </ThemeProvider>

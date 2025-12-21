@@ -13,6 +13,10 @@
 		514201552437B4B40078DB4F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 514201532437B4B40078DB4F /* Main.storyboard */; };
 		514201582437B4B40078DB4F /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 514201572437B4B40078DB4F /* main.m */; };
 		690B85542E7C1B4C009B767D /* RNSplitView.m in Sources */ = {isa = PBXBuildFile; fileRef = 690B85522E7C1B4C009B767D /* RNSplitView.m */; };
+		A0B1C2D3E4F5678901234567 /* SidebarSplitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0B1C2D3E4F5678901234571 /* SidebarSplitView.swift */; };
+		A0B1C2D3E4F5678901234568 /* SidebarSplitViewBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = A0B1C2D3E4F5678901234572 /* SidebarSplitViewBridge.m */; };
+		A0B1C2D3E4F5678901234569 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0B1C2D3E4F5678901234573 /* SidebarView.swift */; };
+		A0B1C2D3E4F5678901234570 /* SidebarBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = A0B1C2D3E4F5678901234574 /* SidebarBridge.m */; };
 		690D93E62DD37F08002EFC73 /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 690D93E52DD37F08002EFC73 /* AppDelegate.mm */; };
 		69118FE92E7F652300F00B75 /* DragDropView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69118FE72E7F652300F00B75 /* DragDropView.swift */; };
 		69118FEA2E7F652300F00B75 /* DragDropBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 69118FE62E7F652300F00B75 /* DragDropBridge.m */; };
@@ -57,6 +61,10 @@
 		52F3B9566C7991859BDE0DEF /* Pods-LegendMusic-macOS.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LegendMusic-macOS.debug.xcconfig"; path = "Target Support Files/Pods-LegendMusic-macOS/Pods-LegendMusic-macOS.debug.xcconfig"; sourceTree = "<group>"; };
 		690B85512E7C1B4C009B767D /* RNSplitView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RNSplitView.h; sourceTree = "<group>"; };
 		690B85522E7C1B4C009B767D /* RNSplitView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RNSplitView.m; sourceTree = "<group>"; };
+		A0B1C2D3E4F5678901234571 /* SidebarSplitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarSplitView.swift; sourceTree = "<group>"; };
+		A0B1C2D3E4F5678901234572 /* SidebarSplitViewBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SidebarSplitViewBridge.m; sourceTree = "<group>"; };
+		A0B1C2D3E4F5678901234573 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
+		A0B1C2D3E4F5678901234574 /* SidebarBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SidebarBridge.m; sourceTree = "<group>"; };
 		690D93E42DD37F08002EFC73 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		690D93E52DD37F08002EFC73 /* AppDelegate.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = AppDelegate.mm; sourceTree = "<group>"; };
 		69118FE62E7F652300F00B75 /* DragDropBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = DragDropBridge.m; sourceTree = "<group>"; };
@@ -143,6 +151,8 @@
 				007C706263464B1C9C26F193 /* GlassEffect */,
 				697C9C7C2E7D4F6400AB8492 /* TextInputSearch */,
 				690B85532E7C1B4C009B767D /* SplitView */,
+				A0B1C2D3E4F5678901234575 /* SidebarSplitView */,
+				A0B1C2D3E4F5678901234576 /* Sidebar */,
 				698A69F32E1838D0001B4A90 /* KeyboardManager */,
 				69C9C0F32E0E056300FE0F5C /* LegendMusic-macOS.entitlements */,
 				690D93E42DD37F08002EFC73 /* AppDelegate.h */,
@@ -181,6 +191,24 @@
 				690B85522E7C1B4C009B767D /* RNSplitView.m */,
 			);
 			path = SplitView;
+			sourceTree = "<group>";
+		};
+		A0B1C2D3E4F5678901234575 /* SidebarSplitView */ = {
+			isa = PBXGroup;
+			children = (
+				A0B1C2D3E4F5678901234572 /* SidebarSplitViewBridge.m */,
+				A0B1C2D3E4F5678901234571 /* SidebarSplitView.swift */,
+			);
+			path = SidebarSplitView;
+			sourceTree = "<group>";
+		};
+		A0B1C2D3E4F5678901234576 /* Sidebar */ = {
+			isa = PBXGroup;
+			children = (
+				A0B1C2D3E4F5678901234574 /* SidebarBridge.m */,
+				A0B1C2D3E4F5678901234573 /* SidebarView.swift */,
+			);
+			path = Sidebar;
 			sourceTree = "<group>";
 		};
 		69118FE82E7F652300F00B75 /* DragDrop */ = {
@@ -615,6 +643,10 @@
 				697C9C7D2E7D4F6400AB8492 /* TextInputSearch.m in Sources */,
 				698A69F62E1838D0001B4A90 /* KeyboardManager.swift in Sources */,
 				690B85542E7C1B4C009B767D /* RNSplitView.m in Sources */,
+				A0B1C2D3E4F5678901234567 /* SidebarSplitView.swift in Sources */,
+				A0B1C2D3E4F5678901234568 /* SidebarSplitViewBridge.m in Sources */,
+				A0B1C2D3E4F5678901234569 /* SidebarView.swift in Sources */,
+				A0B1C2D3E4F5678901234570 /* SidebarBridge.m in Sources */,
 				690D93E62DD37F08002EFC73 /* AppDelegate.mm in Sources */,
 				69EDA80D2DC90E2E00CCB7F7 /* WindowManager.m in Sources */,
 				69D53FB82DC6653D0004AD94 /* SFSymbolBridge.m in Sources */,
