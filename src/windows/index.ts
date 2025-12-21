@@ -7,10 +7,20 @@ const windowsConfig = {
         identifier: "settings",
         options: {
             title: "Settings",
+            transparentBackground: true,
             windowStyle: {
                 width: 800,
                 height: 800,
-                mask: [WindowStyleMask.Titled, WindowStyleMask.Closable, WindowStyleMask.Resizable],
+                mask: [
+                    WindowStyleMask.Titled,
+                    WindowStyleMask.Closable,
+                    WindowStyleMask.Resizable,
+                    WindowStyleMask.FullSizeContentView,
+                    WindowStyleMask.UnifiedTitleAndToolbar,
+                ],
+                titlebarAppearsTransparent: true,
+                titleVisibility: "hidden",
+                toolbarStyle: "unified",
             },
         },
     },

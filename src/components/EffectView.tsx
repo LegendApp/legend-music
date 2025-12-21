@@ -29,6 +29,7 @@ export function EffectView({
             </GlassEffectView>
         );
     } else {
+        console.log("rendering a vibrancy view");
         return (
             <VibrancyView blendingMode={blendingMode} material={material} state={state} {...props}>
                 {children}

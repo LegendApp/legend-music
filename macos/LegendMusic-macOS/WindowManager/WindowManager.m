@@ -14,6 +14,38 @@ static inline NSAppearance *LegendDarkAppearance() {
   return nil;
 }
 
+static void LegendApplyTitleVisibility(NSWindow *window, NSString *value) {
+  if (![value isKindOfClass:[NSString class]] || value.length == 0) {
+    return;
+  }
+
+  if ([value isEqualToString:@"hidden"]) {
+    window.titleVisibility = NSWindowTitleHidden;
+  } else if ([value isEqualToString:@"visible"]) {
+    window.titleVisibility = NSWindowTitleVisible;
+  }
+}
+
+static void LegendApplyToolbarStyle(NSWindow *window, NSString *value) {
+  if (![value isKindOfClass:[NSString class]] || value.length == 0) {
+    return;
+  }
+
+  if (@available(macOS 11.0, *)) {
+    if ([value isEqualToString:@"automatic"]) {
+      window.toolbarStyle = NSWindowToolbarStyleAutomatic;
+    } else if ([value isEqualToString:@"expanded"]) {
+      window.toolbarStyle = NSWindowToolbarStyleExpanded;
+    } else if ([value isEqualToString:@"preference"]) {
+      window.toolbarStyle = NSWindowToolbarStylePreference;
+    } else if ([value isEqualToString:@"unified"]) {
+      window.toolbarStyle = NSWindowToolbarStyleUnified;
+    } else if ([value isEqualToString:@"unifiedCompact"]) {
+      window.toolbarStyle = NSWindowToolbarStyleUnifiedCompact;
+    }
+  }
+}
+
 @interface WindowManager() <NSWindowDelegate>
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSWindow *> *windows;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, RCTRootView *> *rootViews;
@@ -91,6 +123,8 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
   NSDictionary *windowStyle = options[@"windowStyle"];
   NSNumber *maskNumber = windowStyle[@"mask"];
   NSNumber *transparentTitlebar = windowStyle[@"titlebarAppearsTransparent"];
+  NSString *titleVisibility = windowStyle[@"titleVisibility"];
+  NSString *toolbarStyle = windowStyle[@"toolbarStyle"];
   NSNumber *levelNumber = options[@"level"];
   BOOL transparentBackground = [options[@"transparentBackground"] boolValue];
   NSNumber *hasShadowNumber = options[@"hasShadow"];
@@ -155,6 +189,8 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
     if (transparentTitlebar != nil) {
       [existingWindow setTitlebarAppearsTransparent:[transparentTitlebar boolValue]];
     }
+    LegendApplyTitleVisibility(existingWindow, titleVisibility);
+    LegendApplyToolbarStyle(existingWindow, toolbarStyle);
 
     if (levelNumber) {
       [existingWindow setLevel:[levelNumber integerValue]];
@@ -217,6 +253,8 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
   if (transparentTitlebar != nil) {
     [window setTitlebarAppearsTransparent:[transparentTitlebar boolValue]];
   }
+  LegendApplyTitleVisibility(window, titleVisibility);
+  LegendApplyToolbarStyle(window, toolbarStyle);
 
   if (levelNumber) {
     [window setLevel:[levelNumber integerValue]];
