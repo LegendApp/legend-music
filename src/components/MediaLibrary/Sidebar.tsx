@@ -318,14 +318,14 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                 className="flex-1 h-full"
             >
                 {/* Library Section Header */}
-                <SidebarItem itemId="header-library" selectable={false}>
-                    <Text className="text-xs font-semibold text-white/40 uppercase tracking-wider pt-1">Library</Text>
+                <SidebarItem itemId="header-library" selectable={false} rowHeight={20}>
+                    <Text className="text-xs font-semibold text-white/40 uppercase tracking-wider">Library</Text>
                 </SidebarItem>
 
                 {/* Library Views */}
                 {LIBRARY_VIEWS.filter((view) => !view.disabled).map((view) => (
-                    <SidebarItem key={view.id} itemId={view.id}>
-                        <Text className="text-sm text-text-primary">{view.label}</Text>
+                    <SidebarItem key={view.id} itemId={view.id} className="py-2">
+                        <Text className="text-sm text-text-primary pt-1">{view.label}</Text>
                     </SidebarItem>
                 ))}
 
@@ -397,8 +397,11 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
 
                           return (
                               <SidebarItem key={playlist.id} itemId={`playlist-${playlist.id}`}>
-                                  <View className="flex-row items-center justify-between">
-                                      <Text className="text-sm text-text-primary flex-1" numberOfLines={1}>
+                                  <View
+                                      className="flex-row items-center justify-between"
+                                      onLayout={(e) => console.log(e.nativeEvent.layout)}
+                                  >
+                                      <Text className="text-sm text-text-primary flex-1 py-1" numberOfLines={1}>
                                           {playlist.name}
                                       </Text>
                                       <Text className="text-xs text-white/40">{playlist.trackCount}</Text>
@@ -409,7 +412,7 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                     : null}
 
                 {/* Sources Section */}
-                <SidebarItem itemId="header-sources" selectable={false}>
+                <SidebarItem itemId="header-sources" selectable={false} rowHeight={36}>
                     <Text className="text-xs font-semibold text-white/40 uppercase tracking-wider pt-3">Sources</Text>
                 </SidebarItem>
                 <SidebarItem itemId="source-local" selectable={false}>
