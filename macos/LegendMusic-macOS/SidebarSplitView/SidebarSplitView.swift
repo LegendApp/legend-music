@@ -12,7 +12,7 @@ class RNSidebarSplitView: RCTViewManager {
     }
 }
 
-final class SidebarSplitView: NSView, NSSplitViewDelegate {
+final class SidebarSplitView: NSView {
     @objc var onSplitViewDidResize: RCTBubblingEventBlock?
     @objc var sidebarMinWidth: NSNumber = 180 {
         didSet {
@@ -32,6 +32,7 @@ final class SidebarSplitView: NSView, NSSplitViewDelegate {
     private let contentViewController: NSViewController
     private let sidebarItem: NSSplitViewItem
     private let contentItem: NSSplitViewItem
+    private var resizeObserver: NSObjectProtocol?
 
     override var isFlipped: Bool {
         return true
@@ -77,7 +78,13 @@ final class SidebarSplitView: NSView, NSSplitViewDelegate {
         splitViewController.addSplitViewItem(contentItem)
         splitViewController.splitView.isVertical = true
         splitViewController.splitView.dividerStyle = .thin
-        splitViewController.splitView.delegate = self
+        resizeObserver = NotificationCenter.default.addObserver(
+            forName: NSSplitView.didResizeSubviewsNotification,
+            object: splitViewController.splitView,
+            queue: .main
+        ) { [weak self] _ in
+            self?.emitResizeEvent()
+        }
 
         splitViewController.view.frame = bounds
         splitViewController.view.autoresizingMask = [.width, .height]
@@ -114,7 +121,7 @@ final class SidebarSplitView: NSView, NSSplitViewDelegate {
         subview.removeFromSuperview()
     }
 
-    func splitViewDidResizeSubviews(_ notification: Notification) {
+    private func emitResizeEvent() {
         guard let onSplitViewDidResize else {
             return
         }
@@ -125,5 +132,11 @@ final class SidebarSplitView: NSView, NSSplitViewDelegate {
             "sizes": sizes,
             "isVertical": true,
         ])
+    }
+
+    deinit {
+        if let resizeObserver {
+            NotificationCenter.default.removeObserver(resizeObserver)
+        }
     }
 }
