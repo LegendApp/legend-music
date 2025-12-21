@@ -51,13 +51,13 @@ export default function MediaLibraryWindow() {
                                             }}
                                         >
                                             <TrackList />
-                                            {showHints ? (
+                                            {/* {showHints ? (
                                                 <View className="border-t border-white/15 bg-black/20 px-3 py-2">
                                                     <Text className="text-xs text-white/60">
                                                         Shift click to play next
                                                     </Text>
                                                 </View>
-                                            ) : null}
+                                            ) : null} */}
                                         </View>
                                     </View>
                                 </SidebarSplitView>
