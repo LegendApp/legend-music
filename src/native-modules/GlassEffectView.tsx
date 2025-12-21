@@ -2,7 +2,7 @@ import { cssInterop } from "nativewind";
 import type { ReactNode } from "react";
 import { type ColorValue, requireNativeComponent, type ViewProps } from "react-native";
 
-export type GlassEffectStyle = "regular" | "clear";
+export type GlassEffectStyle = "regular" | "clear" | "sidebar";
 
 export interface GlassEffectViewProps extends ViewProps {
     children: ReactNode;
