@@ -1,14 +1,14 @@
 import { PortalProvider } from "@gorhom/portal";
 import type { Observable } from "@legendapp/state";
 import { useObservable, useValue } from "@legendapp/state/react";
-import { Effect } from "babel-plugin-react-compiler";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { Platform, View } from "react-native";
 import { EffectView } from "@/components/EffectView";
 import { NativeSidebar } from "@/components/NativeSidebar";
 import { Sidebar } from "@/components/Sidebar";
 import { TooltipProvider } from "@/components/TooltipProvider";
 import { SidebarSplitView } from "@/native-modules/SidebarSplitView";
+import { setWindowTitle } from "@/native-modules/WindowManager";
 import { AccountSettings } from "@/settings/AccountSettings";
 import { CustomizeUISettings } from "@/settings/CustomizeUISettings";
 import { GeneralSettings } from "@/settings/GeneralSettings";
@@ -62,6 +62,11 @@ export default function SettingsContainer() {
     const nativeItems = useMemo(() => {
         return SETTING_PAGES.map((item) => ({ id: item.id, label: item.name }));
     }, []);
+
+    useEffect(() => {
+        const pageName = SETTING_PAGES.find((page) => page.id === selectedItem)?.name ?? "Settings";
+        setWindowTitle("settings", pageName);
+    }, [selectedItem]);
 
     const handleSelectionChange = useCallback(
         (id: string) => {

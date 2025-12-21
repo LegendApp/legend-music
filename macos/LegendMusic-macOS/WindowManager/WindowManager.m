@@ -367,6 +367,25 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
   resolve(@{@"success": @YES});
 }
 
+RCT_EXPORT_METHOD(setWindowTitle:(NSString *)identifier
+                  title:(NSString *)title
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject) {
+  NSString *targetIdentifier = identifier;
+  if (![targetIdentifier isKindOfClass:[NSString class]] || targetIdentifier.length == 0) {
+    targetIdentifier = @"default";
+  }
+
+  NSWindow *window = self.windows[targetIdentifier];
+  if (!window) {
+    reject(@"window_not_found", @"Window not found", nil);
+    return;
+  }
+
+  [window setTitle:title ?: @""];
+  resolve(@{@"success": @YES});
+}
+
 RCT_EXPORT_METHOD(closeWindow:(NSString *)identifier
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject) {
