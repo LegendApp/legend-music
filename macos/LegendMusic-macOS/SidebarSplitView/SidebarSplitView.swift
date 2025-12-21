@@ -99,8 +99,7 @@ final class SidebarSplitView: NSView {
     override func layout() {
         super.layout()
         splitViewController.view.frame = bounds
-        sidebarReactView?.frame = sidebarContainer.bounds
-        contentReactView?.frame = contentContainer.bounds
+        syncReactSubviewFrames()
     }
 
     private func updateSidebarSizing() {
@@ -123,8 +122,7 @@ final class SidebarSplitView: NSView {
 
         let targetView = subview === sidebarReactView ? sidebarContainer : contentContainer
         targetView.addSubview(subview)
-        subview.frame = targetView.bounds
-        subview.autoresizingMask = [.width, .height]
+        syncReactSubviewFrames()
     }
 
     override func removeReactSubview(_ subview: NSView!) {
@@ -137,6 +135,7 @@ final class SidebarSplitView: NSView {
     }
 
     private func emitResizeEvent() {
+        syncReactSubviewFrames()
         guard let onSplitViewDidResize else {
             return
         }
@@ -147,6 +146,25 @@ final class SidebarSplitView: NSView {
             "sizes": sizes,
             "isVertical": true,
         ])
+    }
+
+    private func syncReactSubviewFrames() {
+        syncReactSubview(sidebarReactView, in: sidebarContainer)
+        syncReactSubview(contentReactView, in: contentContainer)
+    }
+
+    private func syncReactSubview(_ subview: NSView?, in container: NSView) {
+        guard let subview else {
+            return
+        }
+
+        let targetFrame = container.bounds
+        if subview.responds(to: Selector(("reactSetFrame:"))) {
+            subview.reactSetFrame(targetFrame)
+        } else {
+            subview.frame = targetFrame
+        }
+        subview.autoresizingMask = [.width, .height]
     }
 
     deinit {
