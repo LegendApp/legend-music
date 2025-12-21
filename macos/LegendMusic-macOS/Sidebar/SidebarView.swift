@@ -166,8 +166,9 @@ final class SidebarView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     // MARK: - React Native Subview Management
 
     override func insertReactSubview(_ subview: NSView!, at index: Int) {
+        super.insertReactSubview(subview, at: index)
+
         guard let itemView = subview as? SidebarItemView else {
-            super.insertReactSubview(subview, at: index)
             return
         }
 
@@ -181,9 +182,6 @@ final class SidebarView: NSView, NSTableViewDataSource, NSTableViewDelegate {
 
         let safeIndex = min(index, itemModels.count)
         itemModels.insert(model, at: safeIndex)
-
-        tableView.reloadData()
-        updateSelection()
     }
 
     override func removeReactSubview(_ subview: NSView!) {
@@ -193,10 +191,11 @@ final class SidebarView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         }
 
         if let index = itemModels.firstIndex(where: { $0.view === itemView }) {
+            let removed = itemModels[index]
             itemModels.remove(at: index)
-            tableView.reloadData()
-            updateSelection()
         }
+
+        super.removeReactSubview(subview)
     }
 
     override func didUpdateReactSubviews() {
