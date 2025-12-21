@@ -315,7 +315,7 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                 selectedId={nativeSidebarSelectedId}
                 onSelectionChange={handleNativeSidebarSelection}
                 contentInsetTop={0}
-                className="flex-1 h-full bg-red-500"
+                className="flex-1 h-full"
             >
                 {/* Library Section Header */}
                 <SidebarItem itemId="header-library" selectable={false}>
@@ -414,22 +414,6 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                 </SidebarItem>
                 <SidebarItem itemId="source-local" selectable={false}>
                     <Text className="text-sm text-white/70">✓ Local Music</Text>
-                </SidebarItem>
-
-                <SidebarItem itemId="spacer" selectable={false}>
-                    <View className="h-full bg-blue-500" />
-                </SidebarItem>
-                <SidebarItem itemId="spacer2" selectable={false}>
-                    <View className="h-full bg-blue-500" />
-                </SidebarItem>
-                <SidebarItem itemId="space3r3   " selectable={false}>
-                    <View className="h-full bg-blue-500" />
-                </SidebarItem>
-                <SidebarItem itemId="space4r4" selectable={false}>
-                    <View className="h-full bg-blue-500" />
-                </SidebarItem>
-                <SidebarItem itemId="space5r5" selectable={false}>
-                    <View className="h-full bg-blue-500" />
                 </SidebarItem>
             </NativeSidebar>
         );

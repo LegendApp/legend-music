@@ -37,7 +37,7 @@ export function SidebarItem({ itemId, selectable = true, children, className, st
             <NativeSidebarItemView
                 itemId={itemId}
                 selectable={selectable}
-                className={cn("px-3 py-1", className)}
+                // className={cn("px-3 py-2", className)}
                 style={style}
                 {...props}
             >

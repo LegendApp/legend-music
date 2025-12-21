@@ -1,7 +1,7 @@
 import "@/../global.css";
 import { PortalProvider } from "@gorhom/portal";
 import { useValue } from "@legendapp/state/react";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import type { LayoutChangeEvent } from "react-native";
 import { Platform, Text, View } from "react-native";
 import { DragDropProvider } from "@/components/dnd";
@@ -21,10 +21,13 @@ const MEDIA_LIBRARY_WINDOW_ID = "media-library";
 export default function MediaLibraryWindow() {
     const showHints = useValue(settings$.general.showHints);
     const isMacOS = Platform.OS === "macos";
+    const [height, setHeight] = useState(0);
     const handleLayout = useCallback((event: LayoutChangeEvent) => {
         const { width, height } = event.nativeEvent.layout;
         if (width > 0 && height > 0) {
             stateSaved$.libraryWindowSize.set({ width: Math.round(width), height: Math.round(height) });
+
+            setHeight(height);
         }
     }, []);
 
@@ -37,21 +40,25 @@ export default function MediaLibraryWindow() {
                     <TooltipProvider>
                         <DragDropProvider>
                             {isMacOS ? (
-                                <SidebarSplitView
-                                    className="flex-1 bg-background-primary"
-                                    onLayout={(e) => console.log(e.nativeEvent.layout)}
-                                >
+                                <SidebarSplitView className="flex-1 bg-background-primary" onLayout={handleLayout}>
                                     <MediaLibrarySidebar useNativeLibraryList />
-                                    <View
-                                        className="flex-1 bg-blue-500"
-                                        onLayout={(e) => console.log("z", e.nativeEvent.layout)}
-                                    >
-                                        <TrackList />
-                                        {showHints ? (
-                                            <View className="border-t border-white/15 bg-black/20 px-3 py-2">
-                                                <Text className="text-xs text-white/60">Shift click to play next</Text>
-                                            </View>
-                                        ) : null}
+                                    <View className="flex-1">
+                                        <View
+                                            className="flex-1"
+                                            style={{
+                                                minHeight: height ? height : undefined,
+                                                height: height ? height : undefined,
+                                            }}
+                                        >
+                                            <TrackList />
+                                            {showHints ? (
+                                                <View className="border-t border-white/15 bg-black/20 px-3 py-2">
+                                                    <Text className="text-xs text-white/60">
+                                                        Shift click to play next
+                                                    </Text>
+                                                </View>
+                                            ) : null}
+                                        </View>
                                     </View>
                                 </SidebarSplitView>
                             ) : (
