@@ -1,6 +1,7 @@
 import { PortalProvider } from "@gorhom/portal";
 import type { Observable } from "@legendapp/state";
 import { useObservable, useValue } from "@legendapp/state/react";
+import { Effect } from "babel-plugin-react-compiler";
 import { useCallback, useMemo } from "react";
 import { Platform, View } from "react-native";
 import { EffectView } from "@/components/EffectView";
@@ -70,12 +71,12 @@ export default function SettingsContainer() {
     );
 
     return (
-        <EffectView style={{ flex: 1 }}>
+        <View className="flex-1">
             <ThemeProvider>
                 <PortalProvider>
                     <TooltipProvider>
                         {isMacOS ? (
-                            <SidebarSplitView className="flex-1">
+                            <SidebarSplitView className="flex-1 bg-background-primary">
                                 <NativeSidebar
                                     items={nativeItems}
                                     selectedId={selectedItem}
@@ -93,7 +94,7 @@ export default function SettingsContainer() {
                                     width={140}
                                     className="py-2"
                                 />
-                                <View className="flex-1 bg-background-primary">
+                                <View className="flex-1">
                                     <Content selectedItem$={selectedItem$} />
                                 </View>
                             </View>
@@ -101,6 +102,6 @@ export default function SettingsContainer() {
                     </TooltipProvider>
                 </PortalProvider>
             </ThemeProvider>
-        </EffectView>
+        </View>
     );
 }
