@@ -1,7 +1,7 @@
-import { VibrancyView } from "@fluentui-react-native/vibrancy-view";
 import type { Observable } from "@legendapp/state";
-import { type Animated, ScrollView, StyleSheet, View } from "react-native";
+import { type Animated, ScrollView, View } from "react-native";
 
+import { EffectView } from "@/components/EffectView";
 import { SidebarButton } from "@/components/SidebarButton";
 import { cn } from "@/utils/cn";
 
@@ -36,17 +36,11 @@ export function Sidebar({ items, selectedItem$, width, className, children }: Si
 
     return (
         <View className="h-full" style={sidebarStyle}>
-            <VibrancyView blendingMode="behindWindow" material="sidebar" style={styles.vibrancy}>
+            <EffectView style={{ flex: 1 }}>
                 <View className={cn("flex-1", className)}>
                     <ScrollView showsVerticalScrollIndicator={false}>{children ?? renderItems()}</ScrollView>
                 </View>
-            </VibrancyView>
+            </EffectView>
         </View>
     );
 }
-
-const styles = StyleSheet.create({
-    vibrancy: {
-        flex: 1,
-    },
-});
