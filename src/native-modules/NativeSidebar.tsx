@@ -12,7 +12,7 @@ export interface NativeSidebarViewProps extends ViewProps {
     onSelectionChange?: (event: { nativeEvent: { id: string } }) => void;
 }
 
-const NativeSidebarView = requireNativeComponent<NativeSidebarViewProps>("RNSidebar");
+const NativeSidebarView = requireNativeComponent<NativeSidebarViewProps>("LMSidebar");
 
 cssInterop(NativeSidebarView, {
     className: "style",

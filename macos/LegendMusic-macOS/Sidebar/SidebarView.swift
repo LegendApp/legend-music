@@ -1,8 +1,8 @@
 import AppKit
 import React
 
-@objc(RNSidebar)
-class RNSidebar: RCTViewManager {
+@objc(LMSidebar)
+class LMSidebar: RCTViewManager {
     override func view() -> NSView! {
         return SidebarView()
     }

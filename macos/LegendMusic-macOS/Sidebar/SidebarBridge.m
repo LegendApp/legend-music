@@ -1,6 +1,6 @@
 #import <React/RCTViewManager.h>
 
-@interface RCT_EXTERN_MODULE(RNSidebar, RCTViewManager)
+@interface RCT_EXTERN_MODULE(LMSidebar, RCTViewManager)
 
 RCT_EXPORT_VIEW_PROPERTY(items, NSArray)
 RCT_EXPORT_VIEW_PROPERTY(selectedId, NSString)
