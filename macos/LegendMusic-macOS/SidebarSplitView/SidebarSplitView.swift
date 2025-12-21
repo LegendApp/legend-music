@@ -146,6 +146,7 @@ final class SidebarSplitView: NSView {
 
     private func emitResizeEvent() {
         syncReactSubviewFrames()
+        logLayoutState("splitViewDidResize")
         guard let onSplitViewDidResize else {
             return
         }
@@ -161,6 +162,7 @@ final class SidebarSplitView: NSView {
     private func syncReactSubviewFrames() {
         syncReactSubview(sidebarReactView, in: sidebarContainer)
         syncReactSubview(contentReactView, in: contentContainer)
+        logLayoutState("syncReactSubviewFrames")
     }
 
     private func syncReactSubview(_ subview: NSView?, in container: NSView) {
@@ -176,6 +178,23 @@ final class SidebarSplitView: NSView {
             subview.frame = targetFrame
         }
         subview.autoresizingMask = [.width, .height]
+    }
+
+    private func logLayoutState(_ context: String) {
+        let splitFrame = splitViewController.splitView.frame
+        let sidebarFrame = sidebarContainer.frame
+        let contentFrame = contentContainer.frame
+        let sidebarReactFrame = sidebarReactView?.frame ?? .zero
+        let contentReactFrame = contentReactView?.frame ?? .zero
+        NSLog(
+            "[SidebarSplitView:%@] split=%@ sidebar=%@ content=%@ sidebarReact=%@ contentReact=%@",
+            context,
+            NSStringFromRect(splitFrame),
+            NSStringFromRect(sidebarFrame),
+            NSStringFromRect(contentFrame),
+            NSStringFromRect(sidebarReactFrame),
+            NSStringFromRect(contentReactFrame)
+        )
     }
 
     deinit {
