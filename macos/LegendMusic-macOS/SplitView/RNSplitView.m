@@ -26,14 +26,11 @@ static const CGFloat kMinimumSecondarySize = 320.0;
         self.isVertical = YES;
         self.dividerThickness = 6.0;
 
-        // Default to vertical split view
-        self.vertical = YES;
-
         // Allow the split view to resize with its container managed by React Native
         self.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
 
-        // Manage layout manually to avoid constraint conflicts
-        self.arrangesAllSubviews = NO;
+        // Let NSSplitView manage its arranged subviews.
+        self.arrangesAllSubviews = YES;
         self.initialDividerPositionSet = NO;
         _lastDividerPosition = 0.0f;
     }
