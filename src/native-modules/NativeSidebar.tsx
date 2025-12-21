@@ -9,7 +9,7 @@ export interface NativeSidebarItem {
 export interface NativeSidebarViewProps extends ViewProps {
     items: NativeSidebarItem[];
     selectedId?: string;
-    onSelectionChange?: (event: { nativeEvent: { id: string } }) => void;
+    onSidebarSelectionChange?: (event: { nativeEvent: { id: string } }) => void;
 }
 
 const NativeSidebarView = requireNativeComponent<NativeSidebarViewProps>("LMSidebar");

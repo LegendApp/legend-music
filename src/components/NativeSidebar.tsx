@@ -46,7 +46,7 @@ export function NativeSidebar({
             <NativeSidebarView
                 items={items}
                 selectedId={selectedId}
-                onSelectionChange={(event) => onSelectionChange?.(event.nativeEvent.id)}
+                onSidebarSelectionChange={(event) => onSelectionChange?.(event.nativeEvent.id)}
                 style={[style, width !== undefined ? { width } : null]}
                 className={className}
             />

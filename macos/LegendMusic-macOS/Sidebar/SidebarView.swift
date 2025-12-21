@@ -30,7 +30,7 @@ final class SidebarView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         }
     }
 
-    @objc var onSelectionChange: RCTBubblingEventBlock?
+    @objc var onSidebarSelectionChange: RCTBubblingEventBlock?
 
     private let scrollView = NSScrollView()
     private let tableView = NSTableView()
@@ -170,6 +170,6 @@ final class SidebarView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         }
 
         let selectedItem = itemModels[row]
-        onSelectionChange?(["id": selectedItem.id])
+        onSidebarSelectionChange?(["id": selectedItem.id])
     }
 }
