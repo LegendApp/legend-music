@@ -35,6 +35,11 @@ final class SidebarItemView: NSView {
         return true
     }
 
+    override func rightMouseDown(with event: NSEvent) {
+        selectContainingRow()
+        super.rightMouseDown(with: event)
+    }
+
     override func rightMouseUp(with event: NSEvent) {
         let locationInWindow = event.locationInWindow
         let locationInView = convert(locationInWindow, from: nil)
@@ -54,6 +59,34 @@ final class SidebarItemView: NSView {
         ])
 
         super.rightMouseUp(with: event)
+    }
+
+    private func selectContainingRow() {
+        guard selectable else {
+            return
+        }
+
+        guard let tableView = enclosingTableView() else {
+            return
+        }
+
+        let row = tableView.row(for: self)
+        guard row >= 0 else {
+            return
+        }
+
+        tableView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+    }
+
+    private func enclosingTableView() -> NSTableView? {
+        var view: NSView? = self
+        while let current = view {
+            if let tableView = current as? NSTableView {
+                return tableView
+            }
+            view = current.superview
+        }
+        return nil
     }
 
     override func layout() {
@@ -76,6 +109,11 @@ final class SidebarTableView: NSTableView {
     override func validateProposedFirstResponder(_ responder: NSResponder, for event: NSEvent?) -> Bool {
         // Allow all responders to become first responder, enabling buttons in RN content to receive clicks
         return true
+    }
+
+    override func rightMouseDown(with event: NSEvent) {
+        window?.makeFirstResponder(self)
+        super.rightMouseDown(with: event)
     }
 }
 
@@ -172,6 +210,16 @@ final class SidebarView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         super.layout()
         scrollView.frame = bounds
         reportLayoutIfNeeded()
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+
+        guard let window, window.isKeyWindow else {
+            return
+        }
+
+        window.makeFirstResponder(tableView)
     }
 
     private func reportLayoutIfNeeded() {
