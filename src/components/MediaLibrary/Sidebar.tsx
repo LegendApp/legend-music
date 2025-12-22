@@ -443,12 +443,12 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                     : null}
 
                 {/* Sources Section */}
-                <SidebarItem itemId="header-sources" selectable={false} rowHeight={36}>
+                {/* <SidebarItem itemId="header-sources" selectable={false} rowHeight={36}>
                     <Text className="text-xs font-semibold text-white/40 uppercase tracking-wider pt-3">Sources</Text>
                 </SidebarItem>
                 <SidebarItem itemId="source-local" selectable={false}>
                     <Text className="text-sm text-white/70">✓ Local Music</Text>
-                </SidebarItem>
+                </SidebarItem> */}
             </NativeSidebar>
         );
     }

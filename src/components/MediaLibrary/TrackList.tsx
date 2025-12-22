@@ -52,6 +52,11 @@ export function TrackList(_props: TrackListProps) {
     const playlistSort = useValue(libraryUI$.playlistSort);
     const playlists = useValue(localMusicState$.playlists);
 
+    const nonSeparatorTrackCount = useMemo(
+        () => tracks.reduce((count, track) => (track.isSeparator ? count : count + 1), 0),
+        [tracks],
+    );
+
     const selectedPlaylist = useMemo(() => {
         if (selectedView !== "playlist" || !selectedPlaylistId) {
             return null;
@@ -59,6 +64,26 @@ export function TrackList(_props: TrackListProps) {
 
         return playlists.find((pl) => pl.id === selectedPlaylistId) ?? null;
     }, [playlists, selectedPlaylistId, selectedView]);
+
+    const headerConfig = useMemo(() => {
+        if (selectedView === "playlist" && selectedPlaylist) {
+            return { title: selectedPlaylist.name, count: selectedPlaylist.trackCount, showSort: true };
+        }
+
+        if (selectedView === "artists") {
+            return { title: "Artists", count: nonSeparatorTrackCount, showSort: false };
+        }
+
+        if (selectedView === "albums") {
+            return { title: "Albums", count: nonSeparatorTrackCount, showSort: false };
+        }
+
+        if (selectedView === "songs") {
+            return { title: "Songs", count: nonSeparatorTrackCount, showSort: false };
+        }
+
+        return null;
+    }, [nonSeparatorTrackCount, selectedPlaylist, selectedView]);
 
     const isPlaylistEditable =
         selectedView === "playlist" &&
@@ -239,34 +264,36 @@ export function TrackList(_props: TrackListProps) {
 
     return (
         <View className="flex-1 pl-2">
-            {selectedView === "playlist" && selectedPlaylist ? (
-                <View className="px-3 py-2 border-b border-white/10 flex-row items-center gap-2">
+            {headerConfig ? (
+                <View className="px-3 py-2 flex-row items-center gap-2">
                     <View className="flex-1 min-w-0">
                         <Text className="text-sm font-semibold text-text-primary" numberOfLines={1}>
-                            {selectedPlaylist.name}
+                            {headerConfig.title}
                         </Text>
                         <Text className="text-xs text-text-secondary" numberOfLines={1}>
-                            {selectedPlaylist.trackCount} {selectedPlaylist.trackCount === 1 ? "track" : "tracks"}
+                            {headerConfig.count} {headerConfig.count === 1 ? "track" : "tracks"}
                         </Text>
                     </View>
-                    <Button
-                        size="small"
-                        variant="secondary"
-                        className={cn("px-2", searchQuery.trim().length > 0 ? "opacity-50" : "")}
-                        disabled={searchQuery.trim().length > 0}
-                        onClick={handlePlaylistSortClick}
-                    >
-                        <Text className="text-xs text-text-primary">
-                            Sort:{" "}
-                            {playlistSort === "playlist-order"
-                                ? "Playlist order"
-                                : playlistSort === "title"
-                                  ? "Title"
-                                  : playlistSort === "artist"
-                                    ? "Artist"
-                                    : "Album"}
-                        </Text>
-                    </Button>
+                    {headerConfig.showSort ? (
+                        <Button
+                            size="small"
+                            variant="secondary"
+                            className={cn("px-2", searchQuery.trim().length > 0 ? "opacity-50" : "")}
+                            disabled={searchQuery.trim().length > 0}
+                            onClick={handlePlaylistSortClick}
+                        >
+                            <Text className="text-xs text-text-primary">
+                                Sort:{" "}
+                                {playlistSort === "playlist-order"
+                                    ? "Playlist order"
+                                    : playlistSort === "title"
+                                      ? "Title"
+                                      : playlistSort === "artist"
+                                        ? "Artist"
+                                        : "Album"}
+                            </Text>
+                        </Button>
+                    ) : null}
                 </View>
             ) : null}
             <Table header={<TableHeader columns={columns} />}>
