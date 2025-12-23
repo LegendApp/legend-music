@@ -160,6 +160,21 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
   CGFloat width = widthNumber ? [widthNumber floatValue] : 400;
   CGFloat height = heightNumber ? [heightNumber floatValue] : 300;
 
+  NSNumber *minWidthNumber = windowStyle[@"minWidth"] ?: options[@"minWidth"];
+  NSNumber *minHeightNumber = windowStyle[@"minHeight"] ?: options[@"minHeight"];
+  BOOL hasMinWidth = minWidthNumber != nil;
+  BOOL hasMinHeight = minHeightNumber != nil;
+  CGFloat minWidth = hasMinWidth ? [minWidthNumber floatValue] : 0;
+  CGFloat minHeight = hasMinHeight ? [minHeightNumber floatValue] : 0;
+
+  if (hasMinWidth && width < minWidth) {
+    width = minWidth;
+  }
+
+  if (hasMinHeight && height < minHeight) {
+    height = minHeight;
+  }
+
   NSNumber *originX = options[@"x"];
   NSNumber *originY = options[@"y"];
 
@@ -179,6 +194,14 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
 
     if (hasHeight) {
       newHeight = height;
+    }
+
+    if (hasMinWidth && newWidth < minWidth) {
+      newWidth = minWidth;
+    }
+
+    if (hasMinHeight && newHeight < minHeight) {
+      newHeight = minHeight;
     }
 
     NSPoint origin = frame.origin;
@@ -251,6 +274,13 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
     }
 
     existingWindow.delegate = self;
+
+    if (hasMinWidth || hasMinHeight) {
+      NSSize currentMinSize = existingWindow.minSize;
+      CGFloat resolvedMinWidth = hasMinWidth ? minWidth : currentMinSize.width;
+      CGFloat resolvedMinHeight = hasMinHeight ? minHeight : currentMinSize.height;
+      [existingWindow setMinSize:NSMakeSize(resolvedMinWidth, resolvedMinHeight)];
+    }
 
     NSDictionary *initialProps = [self initialPropsFromOptions:options];
     if (existingRootView && initialProps) {
@@ -327,6 +357,13 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
     [window setFrameOrigin:origin];
   } else {
     [window center];
+  }
+
+  if (hasMinWidth || hasMinHeight) {
+    NSSize currentMinSize = window.minSize;
+    CGFloat resolvedMinWidth = hasMinWidth ? minWidth : currentMinSize.width;
+    CGFloat resolvedMinHeight = hasMinHeight ? minHeight : currentMinSize.height;
+    [window setMinSize:NSMakeSize(resolvedMinWidth, resolvedMinHeight)];
   }
 
   RCTBridge *bridge = self.bridge;

@@ -51,6 +51,8 @@ export type WindowStyleOptions = {
     mask?: WindowStyleMask[];
     width?: number;
     height?: number;
+    minWidth?: number;
+    minHeight?: number;
     titlebarAppearsTransparent?: boolean;
     titleVisibility?: "visible" | "hidden";
     toolbarStyle?: "automatic" | "expanded" | "preference" | "unified" | "unifiedCompact";
@@ -81,6 +83,8 @@ type NativeWindowOptions = Omit<WindowOptions, "windowStyle" | "level"> & {
     windowStyle?: NativeWindowStyleOptions;
     width?: number;
     height?: number;
+    minWidth?: number;
+    minHeight?: number;
     level?: number;
 };
 
@@ -131,6 +135,14 @@ const convertOptionsToNative = (options: WindowOptions = {}): NativeWindowOption
 
     if (nativeWindowStyle?.height !== undefined) {
         nativeOptions.height = nativeWindowStyle.height;
+    }
+
+    if (nativeWindowStyle?.minWidth !== undefined) {
+        nativeOptions.minWidth = nativeWindowStyle.minWidth;
+    }
+
+    if (nativeWindowStyle?.minHeight !== undefined) {
+        nativeOptions.minHeight = nativeWindowStyle.minHeight;
     }
 
     const nativeLevel = convertWindowLevelToNative(level);
