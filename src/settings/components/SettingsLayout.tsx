@@ -4,31 +4,18 @@ import { ScrollView, Text, View } from "react-native";
 import { cn } from "@/utils/cn";
 
 interface SettingsPageProps {
-    title: string;
-    description?: string;
-    actions?: ReactNode;
     children: ReactNode;
-    scroll?: boolean;
     className?: string;
     contentClassName?: string;
 }
 
-export function SettingsPage({ title, description, actions, children, contentClassName }: SettingsPageProps) {
+export function SettingsPage({ children, contentClassName }: SettingsPageProps) {
     return (
-        <View className={cn("flex-1 bg-background-primary")}>
+        <View className={cn("flex-1")}>
             <ScrollView
                 className="flex-1"
-                contentContainerClassName={cn("mx-auto w-full max-w-4xl p-6 flex flex-col", contentClassName)}
+                contentContainerClassName={cn("mx-auto w-full max-w-4xl px-6 flex flex-col", contentClassName)}
             >
-                <View className="flex-row items-start justify-between gap-6">
-                    <View className="flex-1 flex-col gap-2">
-                        <Text className="text-[32px] font-semibold text-text-primary leading-tight">{title}</Text>
-                        {description ? (
-                            <Text className="text-base leading-relaxed text-text-secondary">{description}</Text>
-                        ) : null}
-                    </View>
-                    {actions ? <View className="flex-none flex-row gap-3">{actions}</View> : null}
-                </View>
                 {children}
             </ScrollView>
         </View>
@@ -43,6 +30,7 @@ interface SettingsSectionProps {
     contentClassName?: string;
     headerRight?: ReactNode;
     card?: boolean;
+    first?: boolean;
 }
 
 export function SettingsSection({
@@ -53,8 +41,9 @@ export function SettingsSection({
     contentClassName,
     headerRight,
     card = true,
+    first = false,
 }: SettingsSectionProps) {
-    const containerClassName = cn("mt-6 flex flex-col gap-6", className);
+    const containerClassName = cn("flex flex-col gap-6", !first && "mt-6", className);
     const content = (
         <>
             <View className="flex-row items-start justify-between gap-4">
@@ -85,10 +74,7 @@ interface SettingsCardProps {
 export function SettingsCard({ children, className }: SettingsCardProps) {
     return (
         <View
-            className={cn(
-                "rounded-2xl border border-border-primary bg-background-secondary px-6 py-6 shadow-2xl",
-                className,
-            )}
+            className={cn("rounded-2xl border border-border-primary bg-background-secondary p-6 shadow-xl", className)}
         >
             {children}
         </View>

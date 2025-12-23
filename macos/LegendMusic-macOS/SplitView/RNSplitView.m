@@ -2,7 +2,7 @@
 #import <React/RCTView.h>
 #import <React/RCTLog.h>
 
-static const CGFloat kMinimumPrimarySize = 220.0;
+static const CGFloat kMinimumPrimarySize = 140.0;
 static const CGFloat kMinimumSecondarySize = 320.0;
 
 @interface RNSplitView () <NSSplitViewDelegate>
@@ -22,18 +22,15 @@ static const CGFloat kMinimumSecondarySize = 320.0;
     self = [super init];
     if (self) {
         self.delegate = self;
-        self.dividerStyle = NSSplitViewDividerStylePaneSplitter;
+        self.dividerStyle = NSSplitViewDividerStyleThin;
         self.isVertical = YES;
-        self.dividerThickness = 6.0;
-
-        // Default to vertical split view
-        self.vertical = YES;
+        self.dividerThickness = 1.0;
 
         // Allow the split view to resize with its container managed by React Native
         self.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
 
-        // Manage layout manually to avoid constraint conflicts
-        self.arrangesAllSubviews = NO;
+        // Let NSSplitView manage its arranged subviews.
+        self.arrangesAllSubviews = YES;
         self.initialDividerPositionSet = NO;
         _lastDividerPosition = 0.0f;
     }
@@ -62,19 +59,7 @@ static const CGFloat kMinimumSecondarySize = 320.0;
 
 - (void)drawDividerInRect:(NSRect)rect
 {
-    [[NSColor colorWithCalibratedWhite:0.85 alpha:0.9] setFill];
-    NSRectFill(rect);
-
-    CGFloat inset = rect.size.width > 2.0 ? rect.size.width * 0.3 : 0.0;
-    NSRect highlightRect = NSInsetRect(rect, inset, 0.0);
-    [[NSColor colorWithCalibratedWhite:1.0 alpha:0.45] setFill];
-    NSRectFill(highlightRect);
-
-    [[NSColor colorWithCalibratedWhite:0.35 alpha:0.6] setFill];
-    NSRect bottomLine = NSMakeRect(rect.origin.x, rect.origin.y, rect.size.width, 1.0);
-    NSRectFill(bottomLine);
-    NSRect topLine = NSMakeRect(rect.origin.x, NSMaxY(rect) - 1.0, rect.size.width, 1.0);
-    NSRectFill(topLine);
+    [super drawDividerInRect:rect];
 }
 
 - (void)setPosition:(CGFloat)position ofDividerAtIndex:(NSInteger)dividerIndex
@@ -198,7 +183,7 @@ static const CGFloat kMinimumSecondarySize = 320.0;
         return;
     }
 
-    CGFloat preferred = totalSize * 0.3;
+    CGFloat preferred = kMinimumPrimarySize;
     preferred = [self clampedDividerPosition:preferred totalSize:totalSize];
 
     [super setPosition:preferred ofDividerAtIndex:0];

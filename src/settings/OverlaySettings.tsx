@@ -45,8 +45,8 @@ export const OverlaySettings = function OverlaySettings() {
     );
 
     return (
-        <SettingsPage title="Overlay Settings">
-            <SettingsSection title="Overlay Options">
+        <SettingsPage>
+            <SettingsSection title="Overlay Options" first>
                 <SettingsRow
                     title="Enable overlay"
                     description="Show the current song overlay when a new track begins"

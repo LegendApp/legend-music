@@ -108,8 +108,8 @@ export const LibrarySettings = function LibrarySettings() {
     };
 
     return (
-        <SettingsPage title="Library Settings">
-            <SettingsSection title="Library Paths">
+        <SettingsPage>
+            <SettingsSection title="Library Paths" first>
                 {librarySettings.paths.length > 0 ? (
                     <View className="flex flex-col gap-2">
                         {librarySettings.paths.map((path, index) => {

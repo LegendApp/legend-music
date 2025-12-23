@@ -10,8 +10,6 @@ export const ThemeSettings = () => {
 
     return (
         <SettingsPage
-            title="Dark Theme Settings"
-            scroll
             actions={
                 <Button onClick={resetTheme} variant="secondary" className="px-3 py-1.5 h-auto">
                     <Text className="text-sm text-text-primary">Reset</Text>

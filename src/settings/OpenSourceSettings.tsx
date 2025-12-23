@@ -92,11 +92,11 @@ export function OpenSourceSettings() {
     };
 
     return (
-        <SettingsPage title="Open Source">
+        <SettingsPage>
             <SettingsSection
                 title="Legend Music is Open Source"
                 description="Legend Music is completely free and open source. Contribute to development, explore the code, or build your own version."
-                // contentClassName="flex flex-col gap-4"
+                first
             >
                 <Button
                     onClick={handleOpenLegendMusicSource}

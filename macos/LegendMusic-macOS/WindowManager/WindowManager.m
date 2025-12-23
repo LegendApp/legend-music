@@ -14,6 +14,56 @@ static inline NSAppearance *LegendDarkAppearance() {
   return nil;
 }
 
+static void LegendApplyTitleVisibility(NSWindow *window, NSString *value) {
+  if (![value isKindOfClass:[NSString class]] || value.length == 0) {
+    return;
+  }
+
+  if ([value isEqualToString:@"hidden"]) {
+    window.titleVisibility = NSWindowTitleHidden;
+  } else if ([value isEqualToString:@"visible"]) {
+    window.titleVisibility = NSWindowTitleVisible;
+  }
+}
+
+static void LegendApplyToolbarStyle(NSWindow *window, NSString *value) {
+  if (![value isKindOfClass:[NSString class]] || value.length == 0) {
+    return;
+  }
+
+  if (@available(macOS 11.0, *)) {
+    if ([value isEqualToString:@"automatic"]) {
+      window.toolbarStyle = NSWindowToolbarStyleAutomatic;
+    } else if ([value isEqualToString:@"expanded"]) {
+      window.toolbarStyle = NSWindowToolbarStyleExpanded;
+    } else if ([value isEqualToString:@"preference"]) {
+      window.toolbarStyle = NSWindowToolbarStylePreference;
+    } else if ([value isEqualToString:@"unified"]) {
+      window.toolbarStyle = NSWindowToolbarStyleUnified;
+    } else if ([value isEqualToString:@"unifiedCompact"]) {
+      window.toolbarStyle = NSWindowToolbarStyleUnifiedCompact;
+    }
+  }
+}
+
+static void LegendApplyTitlebarSeparatorStyle(NSWindow *window, NSString *value) {
+  if (![value isKindOfClass:[NSString class]] || value.length == 0) {
+    return;
+  }
+
+  if (@available(macOS 11.0, *)) {
+    if ([value isEqualToString:@"automatic"]) {
+      window.titlebarSeparatorStyle = NSTitlebarSeparatorStyleAutomatic;
+    } else if ([value isEqualToString:@"none"]) {
+      window.titlebarSeparatorStyle = NSTitlebarSeparatorStyleNone;
+    } else if ([value isEqualToString:@"line"]) {
+      window.titlebarSeparatorStyle = NSTitlebarSeparatorStyleLine;
+    } else if ([value isEqualToString:@"shadow"]) {
+      window.titlebarSeparatorStyle = NSTitlebarSeparatorStyleShadow;
+    }
+  }
+}
+
 @interface WindowManager() <NSWindowDelegate>
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSWindow *> *windows;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, RCTRootView *> *rootViews;
@@ -91,6 +141,9 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
   NSDictionary *windowStyle = options[@"windowStyle"];
   NSNumber *maskNumber = windowStyle[@"mask"];
   NSNumber *transparentTitlebar = windowStyle[@"titlebarAppearsTransparent"];
+  NSString *titleVisibility = windowStyle[@"titleVisibility"];
+  NSString *toolbarStyle = windowStyle[@"toolbarStyle"];
+  NSString *titlebarSeparatorStyle = windowStyle[@"titlebarSeparatorStyle"];
   NSNumber *levelNumber = options[@"level"];
   BOOL transparentBackground = [options[@"transparentBackground"] boolValue];
   NSNumber *hasShadowNumber = options[@"hasShadow"];
@@ -106,6 +159,21 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
   NSNumber *heightNumber = windowStyle[@"height"] ?: options[@"height"];
   CGFloat width = widthNumber ? [widthNumber floatValue] : 400;
   CGFloat height = heightNumber ? [heightNumber floatValue] : 300;
+
+  NSNumber *minWidthNumber = windowStyle[@"minWidth"] ?: options[@"minWidth"];
+  NSNumber *minHeightNumber = windowStyle[@"minHeight"] ?: options[@"minHeight"];
+  BOOL hasMinWidth = minWidthNumber != nil;
+  BOOL hasMinHeight = minHeightNumber != nil;
+  CGFloat minWidth = hasMinWidth ? [minWidthNumber floatValue] : 0;
+  CGFloat minHeight = hasMinHeight ? [minHeightNumber floatValue] : 0;
+
+  if (hasMinWidth && width < minWidth) {
+    width = minWidth;
+  }
+
+  if (hasMinHeight && height < minHeight) {
+    height = minHeight;
+  }
 
   NSNumber *originX = options[@"x"];
   NSNumber *originY = options[@"y"];
@@ -126,6 +194,14 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
 
     if (hasHeight) {
       newHeight = height;
+    }
+
+    if (hasMinWidth && newWidth < minWidth) {
+      newWidth = minWidth;
+    }
+
+    if (hasMinHeight && newHeight < minHeight) {
+      newHeight = minHeight;
     }
 
     NSPoint origin = frame.origin;
@@ -155,6 +231,19 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
     if (transparentTitlebar != nil) {
       [existingWindow setTitlebarAppearsTransparent:[transparentTitlebar boolValue]];
     }
+    LegendApplyTitleVisibility(existingWindow, titleVisibility);
+
+    // Create toolbar if requested and not already present
+    BOOL hasToolbar = [windowStyle[@"hasToolbar"] boolValue];
+    if (hasToolbar && ![existingWindow toolbar]) {
+      NSToolbar *toolbar = [[NSToolbar alloc] initWithIdentifier:identifier];
+      toolbar.displayMode = NSToolbarDisplayModeIconOnly;
+      toolbar.showsBaselineSeparator = NO;
+      [existingWindow setToolbar:toolbar];
+    }
+
+    LegendApplyToolbarStyle(existingWindow, toolbarStyle);
+    LegendApplyTitlebarSeparatorStyle(existingWindow, titlebarSeparatorStyle);
 
     if (levelNumber) {
       [existingWindow setLevel:[levelNumber integerValue]];
@@ -185,6 +274,13 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
     }
 
     existingWindow.delegate = self;
+
+    if (hasMinWidth || hasMinHeight) {
+      NSSize currentMinSize = existingWindow.minSize;
+      CGFloat resolvedMinWidth = hasMinWidth ? minWidth : currentMinSize.width;
+      CGFloat resolvedMinHeight = hasMinHeight ? minHeight : currentMinSize.height;
+      [existingWindow setMinSize:NSMakeSize(resolvedMinWidth, resolvedMinHeight)];
+    }
 
     NSDictionary *initialProps = [self initialPropsFromOptions:options];
     if (existingRootView && initialProps) {
@@ -217,6 +313,19 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
   if (transparentTitlebar != nil) {
     [window setTitlebarAppearsTransparent:[transparentTitlebar boolValue]];
   }
+  LegendApplyTitleVisibility(window, titleVisibility);
+
+  // Create toolbar if requested (needed for proper sidebar layout)
+  BOOL hasToolbar = [windowStyle[@"hasToolbar"] boolValue];
+  if (hasToolbar) {
+    NSToolbar *toolbar = [[NSToolbar alloc] initWithIdentifier:identifier];
+    toolbar.displayMode = NSToolbarDisplayModeIconOnly;
+    toolbar.showsBaselineSeparator = NO;
+    [window setToolbar:toolbar];
+  }
+
+  LegendApplyToolbarStyle(window, toolbarStyle);
+  LegendApplyTitlebarSeparatorStyle(window, titlebarSeparatorStyle);
 
   if (levelNumber) {
     [window setLevel:[levelNumber integerValue]];
@@ -248,6 +357,13 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
     [window setFrameOrigin:origin];
   } else {
     [window center];
+  }
+
+  if (hasMinWidth || hasMinHeight) {
+    NSSize currentMinSize = window.minSize;
+    CGFloat resolvedMinWidth = hasMinWidth ? minWidth : currentMinSize.width;
+    CGFloat resolvedMinHeight = hasMinHeight ? minHeight : currentMinSize.height;
+    [window setMinSize:NSMakeSize(resolvedMinWidth, resolvedMinHeight)];
   }
 
   RCTBridge *bridge = self.bridge;
@@ -285,6 +401,25 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
     [window orderFrontRegardless];
   }
 
+  resolve(@{@"success": @YES});
+}
+
+RCT_EXPORT_METHOD(setWindowTitle:(NSString *)identifier
+                  title:(NSString *)title
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject) {
+  NSString *targetIdentifier = identifier;
+  if (![targetIdentifier isKindOfClass:[NSString class]] || targetIdentifier.length == 0) {
+    targetIdentifier = @"default";
+  }
+
+  NSWindow *window = self.windows[targetIdentifier];
+  if (!window) {
+    reject(@"window_not_found", @"Window not found", nil);
+    return;
+  }
+
+  [window setTitle:title ?: @""];
   resolve(@{@"success": @YES});
 }
 

@@ -51,7 +51,13 @@ export type WindowStyleOptions = {
     mask?: WindowStyleMask[];
     width?: number;
     height?: number;
+    minWidth?: number;
+    minHeight?: number;
     titlebarAppearsTransparent?: boolean;
+    titleVisibility?: "visible" | "hidden";
+    toolbarStyle?: "automatic" | "expanded" | "preference" | "unified" | "unifiedCompact";
+    titlebarSeparatorStyle?: "automatic" | "none" | "line" | "shadow";
+    hasToolbar?: boolean;
 };
 
 export type WindowOptions = {
@@ -77,6 +83,8 @@ type NativeWindowOptions = Omit<WindowOptions, "windowStyle" | "level"> & {
     windowStyle?: NativeWindowStyleOptions;
     width?: number;
     height?: number;
+    minWidth?: number;
+    minHeight?: number;
     level?: number;
 };
 
@@ -129,6 +137,14 @@ const convertOptionsToNative = (options: WindowOptions = {}): NativeWindowOption
         nativeOptions.height = nativeWindowStyle.height;
     }
 
+    if (nativeWindowStyle?.minWidth !== undefined) {
+        nativeOptions.minWidth = nativeWindowStyle.minWidth;
+    }
+
+    if (nativeWindowStyle?.minHeight !== undefined) {
+        nativeOptions.minHeight = nativeWindowStyle.minHeight;
+    }
+
     const nativeLevel = convertWindowLevelToNative(level);
     if (nativeLevel !== undefined) {
         nativeOptions.level = nativeLevel;
@@ -169,6 +185,7 @@ type NativeWindowManagerType = NativeModule & {
     getMainWindowFrame: () => Promise<WindowFrame>;
     setMainWindowFrame: (frame: WindowFrame) => Promise<{ success: boolean }>;
     setWindowBlur: (identifier: string, radius: number, durationMs: number) => Promise<{ success: boolean }>;
+    setWindowTitle: (identifier: string, title: string) => Promise<{ success: boolean }>;
 };
 
 const windowManagerModule = WindowManager as NativeWindowManagerType;
@@ -182,6 +199,7 @@ export type WindowManagerBridge = {
     getMainWindowFrame: () => Promise<WindowFrame>;
     setMainWindowFrame: (frame: WindowFrame) => Promise<{ success: boolean }>;
     setWindowBlur: (identifier: string, radius: number, durationMs?: number) => Promise<{ success: boolean }>;
+    setWindowTitle: (identifier: string, title: string) => Promise<{ success: boolean }>;
     onWindowClosed: (callback: (event: WindowClosedEvent) => void) => { remove: () => void };
     onWindowFocused: (callback: (event: WindowFocusedEvent) => void) => { remove: () => void };
 };
@@ -195,6 +213,7 @@ export const useWindowManager = (): WindowManagerBridge => {
         setMainWindowFrame: (frame: WindowFrame) => windowManagerModule.setMainWindowFrame(frame),
         setWindowBlur: (identifier: string, radius: number, durationMs?: number) =>
             windowManagerModule.setWindowBlur(identifier, radius, durationMs ?? 0),
+        setWindowTitle: (identifier: string, title: string) => windowManagerModule.setWindowTitle(identifier, title),
         onWindowClosed: (callback: (event: WindowClosedEvent) => void) => {
             const subscription = windowManagerEmitter.addListener("onWindowClosed", callback);
             return {
@@ -219,5 +238,8 @@ export const closeFrontmostWindow = () => windowManagerModule.closeFrontmostWind
 
 export const setWindowBlur = (identifier: string, radius: number, durationMs?: number) =>
     windowManagerModule.setWindowBlur(identifier, radius, durationMs ?? 0);
+
+export const setWindowTitle = (identifier: string, title: string) =>
+    windowManagerModule.setWindowTitle(identifier, title);
 
 export default windowManagerModule;

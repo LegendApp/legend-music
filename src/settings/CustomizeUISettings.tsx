@@ -112,25 +112,20 @@ export function CustomizeUISettings() {
     const normalizedPlaybackLayout = useNormalizedLayout(playbackLayout, PLAYBACK_CONTROL_DEFINITIONS);
 
     return (
-        <SettingsPage
-            title="Customize UI"
-            description="Select which controls are visible and arrange their order for the playback toolbar."
-        >
+        <SettingsPage>
             <DragDropProvider>
                 <View className="flex flex-col gap-8">
                     <SettingsSection
                         title="Playback Controls"
                         description="Drag controls between Shown and Hidden to curate the playback toolbar."
+                        first
                     >
                         <SettingsRow
                             title="Enable playback controls"
                             description="Show the playback toolbar beneath the Now Playing area."
                             control={<Checkbox $checked={settings$.ui.playbackControlsEnabled} />}
                         />
-                        <ControlLayoutEditor
-                            layout={normalizedPlaybackLayout}
-                            definitions={PLAYBACK_CONTROL_MAP}
-                        />
+                        <ControlLayoutEditor layout={normalizedPlaybackLayout} definitions={PLAYBACK_CONTROL_MAP} />
                     </SettingsSection>
                 </View>
             </DragDropProvider>
@@ -237,12 +232,7 @@ function ControlGroup<T extends string>({ label, items, group, definitions, onMo
             <Text className="text-sm font-semibold text-text-secondary">{label}</Text>
             <View className="rounded-2xl border border-border-primary bg-white/5 py-2">
                 <View className={cn("flex flex-row flex-wrap items-center", hasItems ? undefined : "justify-center")}>
-                    <ControlDropZone
-                        targetGroup={group}
-                        index={0}
-                        onMove={onMove}
-                        isExpanded={!hasItems}
-                    />
+                    <ControlDropZone targetGroup={group} index={0} onMove={onMove} isExpanded={!hasItems} />
                     {items.map((controlId, index) => (
                         <Fragment key={`${group}-${controlId}`}>
                             <DraggableItem<ControlDragData<T>>
@@ -254,21 +244,12 @@ function ControlGroup<T extends string>({ label, items, group, definitions, onMo
                                 <ControlChip definition={definitions[controlId]} />
                             </DraggableItem>
                             {index < items.length - 1 && (
-                                <ControlDropZone
-                                    targetGroup={group}
-                                    index={index + 1}
-                                    onMove={onMove}
-                                />
+                                <ControlDropZone targetGroup={group} index={index + 1} onMove={onMove} />
                             )}
                         </Fragment>
                     ))}
                     {hasItems && (
-                        <ControlDropZone
-                            targetGroup={group}
-                            index={items.length}
-                            onMove={onMove}
-                            isExpanded
-                        />
+                        <ControlDropZone targetGroup={group} index={items.length} onMove={onMove} isExpanded />
                     )}
                 </View>
             </View>
@@ -283,7 +264,12 @@ interface ControlDropZoneProps<T extends string> {
     isExpanded?: boolean;
 }
 
-function ControlDropZone<T extends string>({ targetGroup, index, onMove, isExpanded = false }: ControlDropZoneProps<T>) {
+function ControlDropZone<T extends string>({
+    targetGroup,
+    index,
+    onMove,
+    isExpanded = false,
+}: ControlDropZoneProps<T>) {
     const dropId = `playback-${targetGroup}-drop-${index}`;
     const baseClassName = isExpanded ? "px-2 h-10 flex-1 w-full basis-full" : "h-10 w-2 flex-shrink-0";
     const indicatorClass = isExpanded

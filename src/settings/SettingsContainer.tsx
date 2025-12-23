@@ -1,11 +1,14 @@
-import { VibrancyView } from "@fluentui-react-native/vibrancy-view";
 import { PortalProvider } from "@gorhom/portal";
 import type { Observable } from "@legendapp/state";
 import { useObservable, useValue } from "@legendapp/state/react";
-import { useMemo } from "react";
-import { StyleSheet, View } from "react-native";
+import { useCallback, useEffect, useMemo } from "react";
+import { Platform, View } from "react-native";
+import { EffectView } from "@/components/EffectView";
+import { NativeSidebar } from "@/components/NativeSidebar";
 import { Sidebar } from "@/components/Sidebar";
 import { TooltipProvider } from "@/components/TooltipProvider";
+import { SidebarSplitView } from "@/native-modules/SidebarSplitView";
+import { setWindowTitle } from "@/native-modules/WindowManager";
 import { AccountSettings } from "@/settings/AccountSettings";
 import { CustomizeUISettings } from "@/settings/CustomizeUISettings";
 import { GeneralSettings } from "@/settings/GeneralSettings";
@@ -53,27 +56,57 @@ function Content({ selectedItem$ }: { selectedItem$: Observable<SettingsPage> })
 export default function SettingsContainer() {
     const showSettingsPage = useValue(state$.showSettingsPage);
     const selectedItem$ = useObservable<SettingsPage>(showSettingsPage || "general");
+    const selectedItem = useValue(selectedItem$);
+    const isMacOS = Platform.OS === "macos";
+
+    const nativeItems = useMemo(() => {
+        return SETTING_PAGES.map((item) => ({ id: item.id, label: item.name }));
+    }, []);
+
+    useEffect(() => {
+        const pageName = SETTING_PAGES.find((page) => page.id === selectedItem)?.name ?? "Settings";
+        setWindowTitle("settings", pageName);
+    }, [selectedItem]);
+
+    const handleSelectionChange = useCallback(
+        (id: string) => {
+            selectedItem$.set(id as SettingsPage);
+        },
+        [selectedItem$],
+    );
 
     return (
-        <VibrancyView blendingMode="behindWindow" material="sidebar" style={styles.vibrancy}>
+        <View className="flex-1">
             <ThemeProvider>
                 <PortalProvider>
                     <TooltipProvider>
-                        <View className="flex flex-1 flex-row">
-                            <Sidebar items={SETTING_PAGES} selectedItem$={selectedItem$} width={140} className="py-2" />
-                            <View className="flex-1 bg-background-primary">
-                                <Content selectedItem$={selectedItem$} />
+                        {isMacOS ? (
+                            <SidebarSplitView className="flex-1 bg-background-primary">
+                                <NativeSidebar
+                                    items={nativeItems}
+                                    selectedId={selectedItem}
+                                    onSelectionChange={handleSelectionChange}
+                                />
+                                <View className="flex-1">
+                                    <Content selectedItem$={selectedItem$} />
+                                </View>
+                            </SidebarSplitView>
+                        ) : (
+                            <View className="flex flex-1 flex-row">
+                                <Sidebar
+                                    items={SETTING_PAGES}
+                                    selectedItem$={selectedItem$}
+                                    width={140}
+                                    className="py-2"
+                                />
+                                <View className="flex-1">
+                                    <Content selectedItem$={selectedItem$} />
+                                </View>
                             </View>
-                        </View>
+                        )}
                     </TooltipProvider>
                 </PortalProvider>
             </ThemeProvider>
-        </VibrancyView>
+        </View>
     );
 }
-
-const styles = StyleSheet.create({
-    vibrancy: {
-        flex: 1,
-    },
-});

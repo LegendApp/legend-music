@@ -13,8 +13,8 @@ export const GeneralSettings = function GeneralSettings() {
     // ];
 
     return (
-        <SettingsPage title="General Settings">
-            <SettingsSection title="Appearance">
+        <SettingsPage>
+            <SettingsSection title="Appearance" first>
                 {/* <SettingsRow
                     title="Playlist Style"
                     description="Choose how playlist items are displayed"
