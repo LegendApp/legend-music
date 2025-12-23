@@ -346,8 +346,8 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                 className="flex-1 h-full"
                 onLayout={onNativeSidebarLayout}
             >
-                <SidebarItem itemId="header-search" selectable={false} rowHeight={56}>
-                    <MediaLibrarySearchBar searchInputRef={searchInputRef} query={searchQuery} width={width} />
+                <SidebarItem itemId="header-search" selectable={false} rowHeight={48}>
+                    <MediaLibrarySearchBar searchInputRef={searchInputRef} query={searchQuery} width={width + 8} />
                 </SidebarItem>
 
                 {/* Library Section Header */}

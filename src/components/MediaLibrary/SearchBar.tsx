@@ -12,7 +12,7 @@ interface MediaLibrarySearchBarProps {
 
 export function MediaLibrarySearchBar({ searchInputRef, query, width }: MediaLibrarySearchBarProps) {
     return (
-        <View className="relative" style={{ width }}>
+        <View className="-ml-1.5" style={{ width }}>
             <TextInputSearch
                 ref={searchInputRef}
                 value$={libraryUI$.searchQuery}

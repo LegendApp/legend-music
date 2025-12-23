@@ -35,10 +35,7 @@ export const TextInputSearch = memo(
         { value$, value, defaultValue, onChangeText, ...rest },
         ref,
     ) {
-        const fallbackValue$ = useRef(observable("")).current;
-        const observedText = useValue(value$ ?? fallbackValue$);
-        const resolvedText = value$ ? observedText : (value ?? "");
-        const defaultText = defaultValue ?? resolvedText;
+        const defaultText = defaultValue ?? value$?.peek();
         const nativeRef = useRef<any>(null);
 
         useImperativeHandle(
@@ -69,7 +66,6 @@ export const TextInputSearch = memo(
             <TextInputSearchNative
                 ref={nativeRef}
                 defaultText={defaultText}
-                text={resolvedText}
                 onChangeText={handleChangeText}
                 style={{ minHeight: 32 }}
                 {...rest}
