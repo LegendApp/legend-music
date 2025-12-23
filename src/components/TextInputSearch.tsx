@@ -71,7 +71,7 @@ export const TextInputSearch = memo(
                 defaultText={defaultText}
                 text={resolvedText}
                 onChangeText={handleChangeText}
-                style={{ minHeight: 16 }}
+                style={{ minHeight: 32 }}
                 {...rest}
             />
         );

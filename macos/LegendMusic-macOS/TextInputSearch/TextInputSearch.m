@@ -4,7 +4,7 @@
 #import <React/RCTConvert.h>
 #import <React/RCTUIManager.h>
 
-@interface TextInputSearchView : NSTextField
+@interface TextInputSearchView : NSSearchField
 
 @end
 
@@ -14,15 +14,7 @@
 {
     self = [super init];
     if (self) {
-        // Disable focus ring
         self.focusRingType = NSFocusRingTypeNone;
-
-        // Set up basic text field properties
-        self.bordered = NO;
-        self.bezeled = NO;
-        self.drawsBackground = NO;
-        self.editable = YES;
-        self.selectable = YES;
     }
     return self;
 }
@@ -47,18 +39,6 @@
     [super keyDown:event];
 }
 
-- (BOOL)becomeFirstResponder
-{
-    BOOL result = [super becomeFirstResponder];
-
-    // Ensure focus ring stays disabled even when becoming first responder
-    if (result) {
-        self.focusRingType = NSFocusRingTypeNone;
-    }
-
-    return result;
-}
-
 @end
 
 @interface TextInputSearchRCTView : RCTView <NSTextFieldDelegate>
@@ -80,7 +60,7 @@
 
         [self addSubview:_textField];
 
-        // Set up constraints
+        // Set up constraints to fill the container
         _textField.translatesAutoresizingMaskIntoConstraints = NO;
         [NSLayoutConstraint activateConstraints:@[
             [_textField.topAnchor constraintEqualToAnchor:self.topAnchor],

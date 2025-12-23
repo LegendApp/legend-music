@@ -68,7 +68,8 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
     const [editingPlaylistId, setEditingPlaylistId] = useState<string | null>(null);
     const [editingPlaylistName, setEditingPlaylistName] = useState("");
     const shouldUseNativeLibraryList = useNativeLibraryList && Platform.OS === "macos";
-    const [width, setWidth] = useState(0);
+    const [outerWidth, setWidth] = useState(0);
+    const width = Math.max(outerWidth - 28, 0);
 
     const onNativeSidebarLayout = useCallback(
         (layout: { width: number; height: number }) => {
@@ -345,6 +346,10 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                 className="flex-1 h-full"
                 onLayout={onNativeSidebarLayout}
             >
+                <SidebarItem itemId="header-search" selectable={false} rowHeight={56}>
+                    <MediaLibrarySearchBar searchInputRef={searchInputRef} query={searchQuery} width={width} />
+                </SidebarItem>
+
                 {/* Library Section Header */}
                 <SidebarItem itemId="header-library" selectable={false} rowHeight={20}>
                     <Text className="text-xs font-semibold text-white/40 uppercase tracking-wider">Library</Text>
@@ -360,7 +365,7 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                 {/* Playlists Section Header */}
                 {SUPPORT_PLAYLISTS ? (
                     <SidebarItem itemId="header-playlists" selectable={false} rowHeight={36}>
-                        <View className="flex-row items-center justify-between pt-3" style={{ width: width - 28 }}>
+                        <View className="flex-row items-center justify-between pt-3" style={{ width }}>
                             <Text className="text-xs font-semibold text-white/40 uppercase tracking-wider">
                                 Playlists
                             </Text>
