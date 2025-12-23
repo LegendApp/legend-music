@@ -110,6 +110,20 @@ final class SidebarSplitView: RCTUIView {
         syncReactSubviewFrames()
     }
 
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window != nil {
+            // Defer size update to ensure React's tracking areas are properly initialized.
+            // Without this delay, hover events may not work on parts of the view.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                guard let self, self.window != nil else { return }
+                self.lastSidebarSize = .zero
+                self.lastContentSize = .zero
+                self.syncReactSubviewFrames()
+            }
+        }
+    }
+
     override func setFrameSize(_ newSize: NSSize) {
         super.setFrameSize(newSize)
         splitViewController.view.frame = bounds
@@ -157,7 +171,6 @@ final class SidebarSplitView: RCTUIView {
 
     private func emitResizeEvent() {
         syncReactSubviewFrames()
-        logLayoutState("splitViewDidResize")
         guard let onSplitViewDidResize else {
             return
         }
@@ -174,7 +187,6 @@ final class SidebarSplitView: RCTUIView {
         syncReactSubview(sidebarReactView, in: sidebarContainer)
         syncReactSubview(contentReactView, in: contentContainer)
         updateReactShadowSizes()
-        logLayoutState("syncReactSubviewFrames")
     }
 
     private func syncReactSubview(_ subview: NSView?, in container: NSView) {
@@ -190,23 +202,6 @@ final class SidebarSplitView: RCTUIView {
             subview.frame = targetFrame
         }
         subview.autoresizingMask = [.width, .height]
-    }
-
-    private func logLayoutState(_ context: String) {
-        let splitFrame = splitViewController.splitView.frame
-        let sidebarFrame = sidebarContainer.frame
-        let contentFrame = contentContainer.frame
-        let sidebarReactFrame = sidebarReactView?.frame ?? .zero
-        let contentReactFrame = contentReactView?.frame ?? .zero
-        NSLog(
-            "[SidebarSplitView:%@] split=%@ sidebar=%@ content=%@ sidebarReact=%@ contentReact=%@",
-            context,
-            NSStringFromRect(splitFrame),
-            NSStringFromRect(sidebarFrame),
-            NSStringFromRect(contentFrame),
-            NSStringFromRect(sidebarReactFrame),
-            NSStringFromRect(contentReactFrame)
-        )
     }
 
     private func updateReactShadowSizes() {
