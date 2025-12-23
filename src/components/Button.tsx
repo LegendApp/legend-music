@@ -151,7 +151,7 @@ export function Button({
             {...restPressableProps}
             ref={pressableRef}
             className={cn(
-                icon && children && "flex-row items-center",
+                icon && children && "flex-row items-center gap-x-2",
                 icon && !children && "items-center justify-center",
                 icon && !children && active && "text-blue-500",
                 size === "xs" && isIcon && "size-6",
@@ -165,7 +165,7 @@ export function Button({
                 size === "small" && !isIcon && "h-7 px-2 justify-center items-center",
                 size === "medium" && !isIcon && "h-9 px-3 justify-center items-center",
                 size === "large" && !isIcon && "h-11 px-4 justify-center items-center",
-                variant === "primary" && "rounded-md bg-white/15 ",
+                variant === "primary" && "rounded-md bg-white/15 hover:bg-white/20 transition-colors duration-300",
                 variant === "accent" && "rounded-md bg-accent-primary",
                 variant === "secondary" && "rounded-md bg-background-secondary",
                 variant === "destructive" && "rounded-md bg-background-destructive",

@@ -3,6 +3,7 @@ import { Linking, Text, View } from "react-native";
 import { Button } from "@/components/Button";
 import { Checkbox } from "@/components/Checkbox";
 import { SettingsPage, SettingsRow, SettingsSection } from "@/settings/components";
+import { Icon } from "@/systems/Icon";
 import { settings$ } from "@/systems/Settings";
 import packageJson from "../../package.json";
 
@@ -48,10 +49,9 @@ export const GeneralSettings = function GeneralSettings() {
                         <Text className="text-text-secondary text-sm">{packageJson.version}</Text>
                     </View>
                     <Button
-                        variant="secondary"
+                        variant="primary"
                         icon="exclamationmark.circle"
                         size="medium"
-                        iconMarginTop={-2}
                         onClick={() => Linking.openURL("https://github.com/LegendApp/legend-music/issues/new")}
                     >
                         <Text className="text-text-primary font-medium text-sm">Report an Issue</Text>
