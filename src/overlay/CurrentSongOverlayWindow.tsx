@@ -1,7 +1,8 @@
 import "@/../global.css";
+import { VibrancyView } from "@fluentui-react-native/vibrancy-view";
 import { PortalProvider } from "@gorhom/portal";
 import { useObserveEffect } from "@legendapp/state/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import Animated, {
     Easing,
@@ -11,13 +12,12 @@ import Animated, {
     withSpring,
     withTiming,
 } from "react-native-reanimated";
-import { EffectView } from "@/components/EffectView";
 import { PlaybackArea } from "@/components/PlaybackArea";
 import { TooltipProvider } from "@/components/TooltipProvider";
 import { setWindowBlur } from "@/native-modules/WindowManager";
+import { IS_TAHOE } from "@/systems/constants";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 import { withWindowProvider } from "@/windows";
-
 import {
     currentSongOverlay$,
     finalizeCurrentSongOverlayDismissal,
@@ -26,10 +26,8 @@ import {
     setCurrentSongOverlayWindowHeight,
     setCurrentSongOverlayWindowWidth,
 } from "./CurrentSongOverlayState";
-
 import {
     OVERLAY_WINDOW_HEIGHT_COMPACT,
-    OVERLAY_WINDOW_HEIGHT_EXPANDED,
     OVERLAY_WINDOW_HIDE_DURATION_MS,
     OVERLAY_WINDOW_INITIAL_SCALE,
     OVERLAY_WINDOW_MAX_BLUR_RADIUS,
@@ -42,10 +40,10 @@ import {
     OVERLAY_WINDOW_SPRING_REST_SPEED,
     OVERLAY_WINDOW_SPRING_STIFFNESS,
     OVERLAY_WINDOW_WIDTH_COMPACT,
-    OVERLAY_WINDOW_WIDTH_EXPANDED,
 } from "./OverlayConstants";
 
 const WINDOW_ID = "current-song-overlay";
+const BORDER_RADIUS = IS_TAHOE ? 20 : 16;
 const styles = StyleSheet.create({
     root: {
         alignSelf: "stretch",
@@ -57,10 +55,9 @@ const styles = StyleSheet.create({
     },
     shadowContainer: {
         flex: 1,
-        borderRadius: 20,
-        backgroundColor: "#050505",
+        borderRadius: BORDER_RADIUS,
         shadowColor: "#000000",
-        shadowOffset: { width: 0, height: 8 },
+        shadowOffset: { width: 1, height: 8 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
         alignSelf: "stretch",
@@ -68,16 +65,16 @@ const styles = StyleSheet.create({
     },
     overlayWrapper: {
         flex: 1,
-        borderRadius: 18,
+        borderRadius: BORDER_RADIUS,
         overflow: "hidden",
         alignSelf: "stretch",
         width: "100%",
     },
     overlaySurface: {
         flex: 1,
-        borderRadius: 18,
+        borderRadius: BORDER_RADIUS,
         borderWidth: 1,
-        borderColor: "#AAABAB22",
+        borderColor: "#AAABAB26",
         overflow: "hidden",
         alignSelf: "stretch",
         width: "100%",
@@ -191,13 +188,13 @@ function CurrentSongOverlayWindow() {
         >
             <Animated.View style={styles.shadowContainer}>
                 <View style={styles.overlayWrapper}>
-                    <EffectView
+                    <VibrancyView
                         blendingMode="behindWindow"
                         material="hudWindow"
                         state="active"
                         style={styles.overlaySurface}
                     >
-                        <View className="flex-1 bg-background-primary/40">
+                        <View className="flex-1 bg-black/10">
                             <ThemeProvider>
                                 <PortalProvider>
                                     <TooltipProvider>
@@ -209,7 +206,7 @@ function CurrentSongOverlayWindow() {
                                 </PortalProvider>
                             </ThemeProvider>
                         </View>
-                    </EffectView>
+                    </VibrancyView>
                 </View>
             </Animated.View>
         </Animated.View>
