@@ -1,7 +1,16 @@
 #!/usr/bin/env bun
 
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+    cpSync,
+    existsSync,
+    mkdirSync,
+    readdirSync,
+    readFileSync,
+    renameSync,
+    rmSync,
+    writeFileSync,
+} from "node:fs";
 import path, { join, resolve } from "node:path";
 
 const ENABLE_CHANGELOG = false;
@@ -319,6 +328,40 @@ function replaceSpacesInAppcast(distDir: string, appName: string) {
     log("Space replacement in appcast.xml and delta files complete");
 }
 
+function moveDeltaFilesForVersion(
+    distDir: string,
+    releaseDir: string,
+    appNameForZip: string,
+    bundleVersion: string,
+) {
+    const deltaPrefix = `${appNameForZip}${bundleVersion}`;
+    const deltaFiles = readdirSync(distDir, { withFileTypes: true })
+        .filter((entry) => entry.isFile() && entry.name.startsWith(deltaPrefix) && entry.name.endsWith(".delta"))
+        .map((entry) => entry.name);
+
+    if (deltaFiles.length === 0) {
+        log(`No delta files found starting with ${deltaPrefix}`);
+        return;
+    }
+
+    deltaFiles.forEach((deltaFile) => {
+        const sourcePath = join(distDir, deltaFile);
+        const targetPath = join(releaseDir, deltaFile);
+
+        if (existsSync(targetPath)) {
+            rmSync(targetPath, { force: true });
+        }
+
+        try {
+            renameSync(sourcePath, targetPath);
+            console.log(`Moved delta file to: ${targetPath}`);
+        } catch (error) {
+            console.error(`Error moving delta file ${deltaFile} to release directory:`, error);
+            process.exit(1);
+        }
+    });
+}
+
 // Main execution
 function main() {
     // Load configuration
@@ -339,6 +382,7 @@ function main() {
     // Setup paths
     const builtAppPath = join(PROJECT_ROOT, "macos/build/Build/Products/Release", `${appName}.app`);
     const distDir = join(PROJECT_ROOT, "dist");
+    const releaseDir = join(distDir, `v${config.version}`);
 
     const appNameForZip = appName.replace(/\s+/g, "-");
     const safeAppName = appName.replace(/\s+/g, "_");
@@ -346,8 +390,9 @@ function main() {
     // Use the same base filename both for the app and zip
     const versionedAppName = `${appName}.app`;
     const zipFileName = `${appNameForZip}-${config.version}.zip`;
-    const distAppPath = join(distDir, versionedAppName);
-    const zipFilePath = join(distDir, zipFileName);
+    const releaseAppPath = join(releaseDir, versionedAppName);
+    const distZipPath = join(distDir, zipFileName);
+    const releaseZipPath = join(releaseDir, zipFileName);
 
     // Check if app exists
     if (!existsSync(builtAppPath)) {
@@ -364,43 +409,54 @@ function main() {
         mkdirSync(distDir, { recursive: true });
     }
 
-    // Remove any previously packaged app to avoid permission issues when overwriting
-    if (existsSync(distAppPath)) {
-        log(`Removing existing app at ${versionedAppName}`);
+    // Reset the release directory for this version
+    if (existsSync(releaseDir)) {
+        log(`Removing existing release directory at ${releaseDir}`);
         try {
-            rmSync(distAppPath, { recursive: true, force: true });
+            rmSync(releaseDir, { recursive: true, force: true });
         } catch (error) {
-            console.error("Error removing existing app from dist directory:", error);
+            console.error("Error removing existing release directory:", error);
             process.exit(1);
         }
     }
 
-    // Copy the app to dist with versioned name
-    log(`Copying app to dist directory as ${versionedAppName}`);
+    console.log(`Creating release directory: ${releaseDir}`);
+    mkdirSync(releaseDir, { recursive: true });
+
+    // Copy the app to the release folder with versioned name
+    log(`Copying app to release directory as ${versionedAppName}`);
     try {
-        cpSync(builtAppPath, distAppPath, { recursive: true, force: true });
-        console.log(`App copied successfully to: ${distAppPath}`);
+        cpSync(builtAppPath, releaseAppPath, { recursive: true, force: true });
+        console.log(`App copied successfully to: ${releaseAppPath}`);
     } catch (error) {
-        console.error("Error copying app to dist directory:", error);
+        console.error("Error copying app to release directory:", error);
         process.exit(1);
     }
-    const distInfoPlistPath = join(distAppPath, "Contents", "Info.plist");
-    ensureInfoPlistVersion(distInfoPlistPath, config.version, bundleVersion, "packaged app");
+    const releaseInfoPlistPath = join(releaseAppPath, "Contents", "Info.plist");
+    ensureInfoPlistVersion(releaseInfoPlistPath, config.version, bundleVersion, "packaged app");
 
     // Notarize the copied app
-    notarizeApp(distAppPath, config, safeAppName);
+    notarizeApp(releaseAppPath, config, safeAppName);
 
     // Create final zip
     log(`Packaging ${appName} v${config.version}`);
     log(`Creating distribution ZIP archive: ${zipFileName}`);
     execCommand(
         "ditto",
-        ["-ck", "-rsrc", "--sequesterRsrc", "--keepParent", distAppPath, zipFilePath],
+        ["-ck", "-rsrc", "--sequesterRsrc", "--keepParent", releaseAppPath, distZipPath],
         "Error creating distribution zip archive:",
     );
 
     log("Packaging complete");
-    console.log(`App has been packaged to: ${zipFilePath}`);
+    console.log(`App has been packaged to: ${distZipPath}`);
+
+    try {
+        cpSync(distZipPath, releaseZipPath, { force: true });
+        console.log(`Copied zip to release directory: ${releaseZipPath}`);
+    } catch (error) {
+        console.error("Error copying zip to release directory:", error);
+        process.exit(1);
+    }
 
     // Create version info file for Sparkle
     createVersionInfoFile(distDir, config, zipFileName);
@@ -408,12 +464,30 @@ function main() {
     if (ENABLE_CHANGELOG) {
         // Generate HTML update files from CHANGELOG.md
         generateChangelogHtml(distDir, config, appName);
+
+        const releaseNotesFileName = `${appName} ${config.version}.html`;
+        const distReleaseNotesPath = join(distDir, releaseNotesFileName);
+        const releaseNotesPath = join(releaseDir, releaseNotesFileName);
+
+        if (existsSync(distReleaseNotesPath)) {
+            cpSync(distReleaseNotesPath, releaseNotesPath, { force: true });
+            console.log(`Copied release notes to: ${releaseNotesPath}`);
+        }
     }
 
     // Generate appcast
     generateAppcast(distDir, config);
 
     replaceSpacesInAppcast(distDir, appName);
+
+    const distAppcastPath = join(distDir, "appcast.xml");
+    const releaseAppcastPath = join(releaseDir, "appcast.xml");
+    if (existsSync(distAppcastPath)) {
+        cpSync(distAppcastPath, releaseAppcastPath, { force: true });
+        console.log(`Copied appcast to: ${releaseAppcastPath}`);
+    }
+
+    moveDeltaFilesForVersion(distDir, releaseDir, appNameForZip, bundleVersion);
 }
 
 // Run the script
