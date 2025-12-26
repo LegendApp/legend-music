@@ -28,6 +28,7 @@
     "nativewind": "^4.1.23",
     "react": "19.0.0",
     "react-native": "0.78.2",
+    "react-native-config": "^1.6.1",
     "react-native-macos": "^0.78.3",
     "react-native-reanimated": "^3.18.0",
     "react-native-webview": "^13.16.0",

@@ -709,8 +709,8 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.legendapp.LegendMusic;
-				PRODUCT_NAME = "Legend Music";
 				PRODUCT_MODULE_NAME = LegendMusic;
+				PRODUCT_NAME = "Legend Music";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -735,8 +735,8 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.legendapp.LegendMusic;
-				PRODUCT_NAME = "Legend Music";
 				PRODUCT_MODULE_NAME = LegendMusic;
+				PRODUCT_NAME = "Legend Music";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
 			};
@@ -766,8 +766,8 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.legendapp.LegendMusic;
-				PRODUCT_NAME = "Legend Music";
 				PRODUCT_MODULE_NAME = LegendMusic;
+				PRODUCT_NAME = "Legend Music";
 				SDKROOT = macosx;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -801,8 +801,8 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.legendapp.LegendMusic;
-				PRODUCT_NAME = "Legend Music";
 				PRODUCT_MODULE_NAME = LegendMusic;
+				PRODUCT_NAME = "Legend Music";
 				SDKROOT = macosx;
 				STRIP_INSTALLED_PRODUCT = YES;
 				STRIP_STYLE = "non-global";
