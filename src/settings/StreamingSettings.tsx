@@ -1,14 +1,14 @@
+import { useValue } from "@legendapp/state/react";
 import { useCallback, useEffect, useState } from "react";
 import { Linking, Text, TextInput, View } from "react-native";
 import { Button } from "@/components/Button";
 import { localAudioControls } from "@/components/LocalAudioPlayer";
 import { showToast } from "@/components/Toast";
 import { providerSettings$, setActiveProvider } from "@/providers/providerRegistry";
-import { startSpotifyLogin, completeSpotifyLogin, logoutSpotify, spotifyAuthState$ } from "@/providers/spotify";
+import { completeSpotifyLogin, logoutSpotify, spotifyAuthState$, startSpotifyLogin } from "@/providers/spotify";
 import { searchSpotifyTracks } from "@/providers/spotify/search";
 import type { ProviderTrack } from "@/providers/types";
 import { formatSecondsToMmSs } from "@/utils/m3u";
-import { useValue } from "@legendapp/state/react";
 
 const PROVIDER_OPTIONS = [
     { id: "local", label: "Local files" },
@@ -35,25 +35,23 @@ export function StreamingSettings() {
     const [searchResults, setSearchResults] = useState<ProviderTrack[]>([]);
     const [isSearching, setIsSearching] = useState(false);
 
-    const handleAuthUrl = useCallback(
-        async (url: string) => {
-            const { code, state } = parseAuthParams(url);
-            if (!code || !state) {
-                return;
-            }
+    const handleAuthUrl = useCallback(async (url: string) => {
+        const { code, state } = parseAuthParams(url);
+        console.log("auth url", url, code, state);
+        if (!code || !state) {
+            return;
+        }
 
-            try {
-                await completeSpotifyLogin({ code, state });
-                showToast("Spotify connected", "success");
-                setIsLoggingIn(false);
-            } catch (error) {
-                console.error("Spotify login failed", error);
-                showToast(error instanceof Error ? error.message : "Spotify login failed", "error");
-                setIsLoggingIn(false);
-            }
-        },
-        [],
-    );
+        try {
+            await completeSpotifyLogin({ code, state });
+            showToast("Spotify connected", "success");
+            setIsLoggingIn(false);
+        } catch (error) {
+            console.error("Spotify login failed", error);
+            showToast(error instanceof Error ? error.message : "Spotify login failed", "error");
+            setIsLoggingIn(false);
+        }
+    }, []);
 
     useEffect(() => {
         const subscription = Linking.addEventListener("url", (event) => handleAuthUrl(event.url));

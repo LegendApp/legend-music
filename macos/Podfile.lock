@@ -1311,6 +1311,10 @@ PODS:
     - React-jsiexecutor
     - React-RCTFBReactNativeSpec
     - ReactCommon/turbomodule/core
+  - react-native-config (1.6.1):
+    - react-native-config/App (= 1.6.1)
+  - react-native-config/App (1.6.1):
+    - React-Core
   - react-native-skia (2.3.7):
     - DoubleConversion
     - glog
@@ -1320,6 +1324,27 @@ PODS:
     - RCTTypeSafety
     - React
     - React-callinvoker
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
+  - react-native-webview (13.16.0):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.11.18.00)
+    - RCTRequired
+    - RCTTypeSafety
     - React-Core
     - React-debug
     - React-Fabric
@@ -1789,7 +1814,9 @@ DEPENDENCIES:
   - React-logger (from `../node_modules/react-native-macos/ReactCommon/logger`)
   - React-Mapbuffer (from `../node_modules/react-native-macos/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native-macos/ReactCommon/react/nativemodule/microtasks`)
+  - react-native-config (from `../node_modules/react-native-config`)
   - "react-native-skia (from `../node_modules/@shopify/react-native-skia`)"
+  - react-native-webview (from `../node_modules/react-native-webview`)
   - React-NativeModulesApple (from `../node_modules/react-native-macos/ReactCommon/react/nativemodule/core/platform/ios`)
   - React-perflogger (from `../node_modules/react-native-macos/ReactCommon/reactperflogger`)
   - React-performancetimeline (from `../node_modules/react-native-macos/ReactCommon/react/performance/timeline`)
@@ -1913,8 +1940,12 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-macos/ReactCommon"
   React-microtasksnativemodule:
     :path: "../node_modules/react-native-macos/ReactCommon/react/nativemodule/microtasks"
+  react-native-config:
+    :path: "../node_modules/react-native-config"
   react-native-skia:
     :path: "../node_modules/@shopify/react-native-skia"
+  react-native-webview:
+    :path: "../node_modules/react-native-webview"
   React-NativeModulesApple:
     :path: "../node_modules/react-native-macos/ReactCommon/react/nativemodule/core/platform/ios"
   React-perflogger:
@@ -2021,7 +2052,9 @@ SPEC CHECKSUMS:
   React-logger: 403502d548fbc097ab2c5a783ca98f5e84390bad
   React-Mapbuffer: 3815edc6553967769cdd5e9127284926416270f0
   React-microtasksnativemodule: e6cb4584ab49af3ecb0c13b5909c9fe0ce969ea9
+  react-native-config: 8ebcf99c9ed605aea6ecea5ecb80416c63f0fbdc
   react-native-skia: 3f78a1ad5b84a32fd0bc20d8b21cb5d2caf21b9c
+  react-native-webview: d9d01324f104e41fe57b8ddd048acd9e1e39caf5
   React-NativeModulesApple: f3c2e2ce112c5f1cc4f163176924418d446a6e6a
   React-perflogger: 3756bfe3ff8cc8fffed3c51dce34cef861d4b82a
   React-performancetimeline: c4678b2226a660268cc478662ffc43a2ab1b5d30
