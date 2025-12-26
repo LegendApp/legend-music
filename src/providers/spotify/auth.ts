@@ -1,5 +1,11 @@
-import { SPOTIFY_AUTH_SCOPES, SPOTIFY_AUTH_URL, SPOTIFY_CLIENT_ID, SPOTIFY_REDIRECT_URI, SPOTIFY_TOKEN_URL } from "./constants";
 import { clearSpotifyAuth, setPKCEState, setSpotifyTokens, setSpotifyUser, spotifyAuthState$ } from "./authState";
+import {
+    SPOTIFY_AUTH_SCOPES,
+    SPOTIFY_AUTH_URL,
+    SPOTIFY_CLIENT_ID,
+    SPOTIFY_REDIRECT_URI,
+    SPOTIFY_TOKEN_URL,
+} from "./constants";
 import { createPKCEChallenge } from "./pkce";
 import type { SpotifyAuthState, SpotifyTokens, SpotifyUserProfile } from "./types";
 

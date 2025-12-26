@@ -57,7 +57,7 @@ export function StreamingSettings() {
         const subscription = Linking.addEventListener("url", (event) => handleAuthUrl(event.url));
         void Linking.getInitialURL().then((url) => {
             if (url) {
-                void handleAuthUrl(url);
+                handleAuthUrl(url);
             }
         });
         return () => subscription.remove();
