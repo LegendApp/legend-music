@@ -259,7 +259,10 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
 
     if (transparentBackground) {
       [existingWindow setOpaque:NO];
-      [existingWindow setBackgroundColor:[NSColor clearColor]];
+      // Only clear window background if there's no toolbar - otherwise the toolbar loses its native material
+      if (!hasToolbar) {
+        [existingWindow setBackgroundColor:[NSColor clearColor]];
+      }
       NSView *contentView = existingWindow.contentView;
       contentView.wantsLayer = YES;
       contentView.layer.backgroundColor = [NSColor clearColor].CGColor;
@@ -340,7 +343,10 @@ RCT_EXPORT_METHOD(openWindow:(NSDictionary *)options
 
   if (transparentBackground) {
     [window setOpaque:NO];
-    [window setBackgroundColor:[NSColor clearColor]];
+    // Only clear window background if there's no toolbar - otherwise the toolbar loses its native material
+    if (!hasToolbar) {
+      [window setBackgroundColor:[NSColor clearColor]];
+    }
     window.contentView.wantsLayer = YES;
     window.contentView.layer.masksToBounds = NO;
   }

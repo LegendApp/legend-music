@@ -20,7 +20,7 @@ const windowsConfig = {
                     WindowStyleMask.FullSizeContentView,
                     WindowStyleMask.UnifiedTitleAndToolbar,
                 ],
-                titlebarAppearsTransparent: true,
+                titlebarAppearsTransparent: false,
                 toolbarStyle: "unified",
                 hasToolbar: true,
             },
