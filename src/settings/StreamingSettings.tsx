@@ -2,18 +2,15 @@ import { useValue } from "@legendapp/state/react";
 import { useCallback, useEffect, useState } from "react";
 import { Linking, Text, TextInput, View } from "react-native";
 import { Button } from "@/components/Button";
+import { Checkbox } from "@/components/Checkbox";
 import { localAudioControls } from "@/components/LocalAudioPlayer";
 import { showToast } from "@/components/Toast";
 import { providerSettings$, setActiveProvider } from "@/providers/providerRegistry";
 import { completeSpotifyLogin, logoutSpotify, spotifyAuthState$, startSpotifyLogin } from "@/providers/spotify";
 import { searchSpotifyTracks } from "@/providers/spotify/search";
 import type { ProviderTrack } from "@/providers/types";
+import { SettingsPage, SettingsRow, SettingsSection } from "@/settings/components";
 import { formatSecondsToMmSs } from "@/utils/m3u";
-
-const PROVIDER_OPTIONS = [
-    { id: "local", label: "Local files" },
-    { id: "spotify", label: "Spotify" },
-] as const;
 
 const parseAuthParams = (url: string): { code?: string; state?: string } => {
     try {
@@ -85,14 +82,18 @@ export function StreamingSettings() {
         }
     }, []);
 
-    const handleProviderSelect = useCallback((providerId: (typeof PROVIDER_OPTIONS)[number]["id"]) => {
-        setActiveProvider(providerId);
+    const activeProvider = providerSettings.activeProviderId;
+    const isSpotifyEnabled = activeProvider === "spotify";
+    const isAuthenticated = Boolean(auth.accessToken && auth.refreshToken);
+    const handleSpotifyToggle = useCallback((enabled: boolean) => {
+        setActiveProvider(enabled ? "spotify" : "local");
     }, []);
 
-    const activeProvider = providerSettings.activeProviderId;
-    const isAuthenticated = Boolean(auth.accessToken && auth.refreshToken);
-
     const handleSearch = useCallback(async () => {
+        if (!isSpotifyEnabled) {
+            return;
+        }
+
         if (!searchQuery.trim()) {
             setSearchResults([]);
             return;
@@ -108,7 +109,7 @@ export function StreamingSettings() {
         } finally {
             setIsSearching(false);
         }
-    }, [searchQuery]);
+    }, [isSpotifyEnabled, searchQuery]);
 
     const queueSpotifyTrack = useCallback((track: ProviderTrack) => {
         const durationSeconds = track.durationMs ? track.durationMs / 1000 : 0;
@@ -132,105 +133,145 @@ export function StreamingSettings() {
     }, []);
 
     return (
-        <View className="flex-1 gap-4 px-6 py-4">
-            <View className="gap-2">
-                <Text className="text-lg font-semibold text-foreground-primary">Streaming providers</Text>
-                <Text className="text-sm text-foreground-secondary">
-                    Choose an active provider. Local files stay available; Spotify needs Premium for playback.
-                </Text>
-                <View className="mt-2 flex flex-row gap-2">
-                    {PROVIDER_OPTIONS.map((option) => (
-                        <Button
-                            key={option.id}
-                            variant={activeProvider === option.id ? "primary" : "secondary"}
-                            onClick={() => handleProviderSelect(option.id)}
-                        >
-                            {option.label}
-                        </Button>
-                    ))}
-                </View>
-            </View>
+        <SettingsPage>
+            <SettingsSection
+                title="Spotify"
+                description="Enable or disable Spotify playback and search."
+                first
+            >
+                <SettingsRow
+                    title="Enable Spotify"
+                    description="Use Spotify as the active streaming provider."
+                    control={<Checkbox checked={isSpotifyEnabled} onChange={handleSpotifyToggle} />}
+                />
+            </SettingsSection>
 
-            <View className="gap-2 rounded-lg bg-background-secondary/60 p-4">
-                <Text className="text-base font-semibold text-foreground-primary">Spotify</Text>
-                <Text className="text-sm text-foreground-secondary">
-                    Login uses PKCE and the Spotify Web Playback SDK (Premium required). Redirect URI must match app
-                    config.
-                </Text>
-                <View className="mt-2 flex flex-row gap-2">
-                    <Button variant="primary" disabled={isLoggingIn} onClick={handleLogin}>
-                        {isAuthenticated ? "Re-authenticate" : "Log in to Spotify"}
-                    </Button>
-                    <Button variant="secondary" onClick={handleLogout} disabled={!isAuthenticated}>
-                        Log out
-                    </Button>
-                </View>
-                <View className="mt-3 gap-1">
-                    <Text className="text-sm text-foreground-primary">Status</Text>
-                    <Text className="text-sm text-foreground-secondary">
-                        {isAuthenticated
-                            ? `Signed in as ${auth.user?.displayName ?? auth.user?.email ?? auth.user?.id ?? "Unknown"}`
-                            : "Not signed in"}
-                    </Text>
-                    {auth.user?.product && (
-                        <Text className="text-sm text-foreground-secondary">Plan: {auth.user.product}</Text>
-                    )}
-                    {auth.expiresAt && (
-                        <Text className="text-xs text-foreground-tertiary">
-                            Token expires: {new Date(auth.expiresAt).toLocaleTimeString()}
-                        </Text>
-                    )}
-                </View>
-            </View>
-
-            <View className="gap-2 rounded-lg bg-background-secondary/60 p-4">
-                <Text className="text-base font-semibold text-foreground-primary">Spotify search</Text>
-                <Text className="text-sm text-foreground-secondary">
-                    Search Spotify tracks and enqueue them. Requires Spotify login and Premium for playback.
-                </Text>
-                <View className="mt-2 flex flex-row items-center gap-2">
-                    <TextInput
-                        className="flex-1 rounded-md bg-background-tertiary px-2 py-2 text-foreground-primary"
-                        placeholder="Search songs or artists"
-                        placeholderTextColor="#9ca3af"
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                        onSubmitEditing={handleSearch}
-                    />
-                    <Button variant="primary" disabled={isSearching || !isAuthenticated} onClick={handleSearch}>
-                        {isSearching ? "Searching..." : "Search"}
-                    </Button>
-                </View>
-                <View className="mt-3 gap-2">
-                    {searchResults.length === 0 ? (
-                        <Text className="text-sm text-foreground-tertiary">No results yet</Text>
-                    ) : (
-                        searchResults.map((track) => (
-                            <View
-                                key={track.uri ?? track.id}
-                                className="flex flex-row items-center justify-between rounded-md bg-background-tertiary/70 px-2 py-2"
+            <SettingsSection
+                title="Spotify Account"
+                description="Login uses PKCE and the Spotify Web Playback SDK (Premium required). Redirect URI must match app config."
+            >
+                <SettingsRow
+                    title="Connection"
+                    description={
+                        !isSpotifyEnabled
+                            ? "Enable Spotify to connect your account."
+                            : isAuthenticated
+                              ? "Spotify is connected and ready for playback."
+                              : "Connect a Spotify Premium account to enable streaming."
+                    }
+                    control={
+                        <View className="flex flex-row flex-wrap gap-2">
+                            <Button
+                                variant="primary"
+                                size="medium"
+                                disabled={isLoggingIn || !isSpotifyEnabled}
+                                onClick={handleLogin}
                             >
-                                <View className="flex-1 pr-2">
-                                    <Text className="text-sm font-semibold text-foreground-primary" numberOfLines={1}>
-                                        {track.name}
-                                    </Text>
-                                    <Text className="text-xs text-foreground-secondary" numberOfLines={1}>
-                                        {(track.artists ?? []).join(", ")}
-                                    </Text>
-                                </View>
-                                <View className="flex-row gap-2">
-                                    <Text className="text-xs text-foreground-tertiary">
-                                        {track.durationMs ? formatSecondsToMmSs(track.durationMs / 1000) : ""}
-                                    </Text>
-                                    <Button variant="secondary" onClick={() => queueSpotifyTrack(track)}>
-                                        Queue
+                                <Text className="text-text-primary text-sm font-medium">
+                                    {isAuthenticated ? "Re-authenticate" : "Log in to Spotify"}
+                                </Text>
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                size="medium"
+                                onClick={handleLogout}
+                                disabled={!isAuthenticated}
+                            >
+                                <Text className="text-text-primary text-sm font-medium">Log out</Text>
+                            </Button>
+                        </View>
+                    }
+                    controlWrapperClassName="ml-6"
+                />
+                <SettingsRow
+                    title="Account status"
+                    description="Current account details from Spotify."
+                    control={
+                        <View className="items-end gap-1">
+                            <Text className="text-sm text-text-secondary">
+                                {!isSpotifyEnabled
+                                    ? "Spotify is disabled."
+                                    : isAuthenticated
+                                    ? `Signed in as ${auth.user?.displayName ?? auth.user?.email ?? auth.user?.id ?? "Unknown"}`
+                                    : "Not signed in"}
+                            </Text>
+                            {isSpotifyEnabled && auth.user?.product ? (
+                                <Text className="text-sm text-text-secondary">Plan: {auth.user.product}</Text>
+                            ) : null}
+                            {isSpotifyEnabled && auth.expiresAt ? (
+                                <Text className="text-xs text-text-tertiary">
+                                    Token expires: {new Date(auth.expiresAt).toLocaleTimeString()}
+                                </Text>
+                            ) : null}
+                        </View>
+                    }
+                    controlWrapperClassName="ml-6"
+                />
+            </SettingsSection>
+
+            <SettingsSection
+                title="Spotify Search"
+                description="Search Spotify tracks and enqueue them. Requires Spotify login and Premium for playback."
+                contentClassName="gap-4"
+            >
+                <SettingsRow
+                    title="Search"
+                    description="Find tracks by song or artist."
+                    control={
+                        <View className="flex flex-row items-center gap-2">
+                            <TextInput
+                                className="flex-1 rounded-md border border-border-primary bg-background-tertiary px-2 py-2 text-text-primary"
+                                placeholder="Search songs or artists"
+                                placeholderTextColor="#9ca3af"
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                                onSubmitEditing={handleSearch}
+                                editable={isSpotifyEnabled}
+                            />
+                            <Button
+                                variant="primary"
+                                size="medium"
+                                disabled={isSearching || !isAuthenticated || !isSpotifyEnabled}
+                                onClick={handleSearch}
+                            >
+                                <Text className="text-text-primary text-sm font-medium">
+                                    {isSearching ? "Searching..." : "Search"}
+                                </Text>
+                            </Button>
+                        </View>
+                    }
+                    controlWrapperClassName="ml-6 w-[360px]"
+                />
+                {!isSpotifyEnabled ? (
+                    <View className="rounded-xl border border-border-primary bg-background-tertiary px-5 py-4">
+                        <Text className="text-sm text-text-tertiary">Enable Spotify to search.</Text>
+                    </View>
+                ) : searchResults.length === 0 ? (
+                    <View className="rounded-xl border border-border-primary bg-background-tertiary px-5 py-4">
+                        <Text className="text-sm text-text-tertiary">No results yet</Text>
+                    </View>
+                ) : (
+                    searchResults.map((track) => (
+                        <SettingsRow
+                            key={track.uri ?? track.id}
+                            title={track.name}
+                            description={(track.artists ?? []).join(", ")}
+                            control={
+                                <View className="flex-row items-center gap-2">
+                                    {track.durationMs ? (
+                                        <Text className="text-xs text-text-tertiary">
+                                            {formatSecondsToMmSs(track.durationMs / 1000)}
+                                        </Text>
+                                    ) : null}
+                                    <Button variant="secondary" size="medium" onClick={() => queueSpotifyTrack(track)}>
+                                        <Text className="text-text-primary text-sm font-medium">Queue</Text>
                                     </Button>
                                 </View>
-                            </View>
-                        ))
-                    )}
-                </View>
-            </View>
-        </View>
+                            }
+                        />
+                    ))
+                )}
+            </SettingsSection>
+        </SettingsPage>
     );
 }

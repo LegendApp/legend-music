@@ -3,7 +3,6 @@ import type { Observable } from "@legendapp/state";
 import { useObservable, useValue } from "@legendapp/state/react";
 import { useCallback, useEffect, useMemo } from "react";
 import { Platform, View } from "react-native";
-import { EffectView } from "@/components/EffectView";
 import { NativeSidebar } from "@/components/NativeSidebar";
 import { Sidebar } from "@/components/Sidebar";
 import { TooltipProvider } from "@/components/TooltipProvider";
@@ -21,14 +20,14 @@ import { state$ } from "@/systems/State";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 import { ax } from "@/utils/ax";
 
-export type SettingsPage = "general" | "library" | "overlay" | "ui-customize" | "streaming" | "account" | "open-source";
+export type SettingsPage = "general" | "library" | "overlay" | "ui-customize" | "spotify" | "account" | "open-source";
 
 // Define the categories for settings
 const SETTING_PAGES: { id: SettingsPage; name: string }[] = ax([
     { id: "general", name: "General" },
     { id: "library", name: "Library" },
     { id: "overlay", name: "Overlay" },
-    { id: "streaming", name: "Streaming" },
+    { id: "spotify", name: "Spotify" },
     { id: "ui-customize", name: "Customize UI" },
     SUPPORT_ACCOUNTS && { id: "account", name: "Account" },
     { id: "open-source", name: "Open Source" },
@@ -44,7 +43,7 @@ function Content({ selectedItem$ }: { selectedItem$: Observable<SettingsPage> })
             return <LibrarySettings />;
         case "overlay":
             return <OverlaySettings />;
-        case "streaming":
+        case "spotify":
             return <StreamingSettings />;
         case "ui-customize":
             return <CustomizeUISettings />;

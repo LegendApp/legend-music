@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { ScrollView, Text, View } from "react-native";
-
 import { cn } from "@/utils/cn";
 
 interface SettingsPageProps {
