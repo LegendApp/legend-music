@@ -8,6 +8,7 @@
 #import <React/RCTLinkingManager.h>
 #import <React/RCTCxxBridgeDelegate.h>
 #import <React/RCTDevSettings.h>
+#import <Carbon/Carbon.h>
 #import <objc/runtime.h>
 
 static NSString *const kMenuCommandTriggeredNotification = @"MenuCommandTriggered";
@@ -105,6 +106,10 @@ static inline NSAppearance *LegendDarkAppearance() {
   // They will be passed down to the ViewController used by React Native.
   self.initialProps = @{};
   self.menuCommandItems = [NSMutableDictionary dictionary];
+  [[NSAppleEventManager sharedAppleEventManager] setEventHandler:[RCTLinkingManager class]
+                                                     andSelector:@selector(getUrlEventHandler:withReplyEvent:)
+                                                   forEventClass:kInternetEventClass
+                                                      andEventID:kAEGetURL];
 
   // Sometimes the "loading bar" gets stuck on and you have to kill the app to fix it;
   // by turning it off here, we avoid that issue
