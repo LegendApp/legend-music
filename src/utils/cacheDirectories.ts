@@ -15,7 +15,7 @@ export function getCacheDirectory(subdirectory: string): FileSystem.Directory {
 export function ensureCacheDirectory(cacheDir: FileSystem.Directory): void {
     try {
         if (!cacheDir.exists) {
-            cacheDir.create();
+            cacheDir.create({ intermediates: true });
         }
     } catch (error) {
         console.warn(`Failed to create cache directory ${cacheDir.uri}:`, error);
