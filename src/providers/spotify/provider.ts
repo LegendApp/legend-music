@@ -7,6 +7,7 @@ import {
     setSpotifyUser,
     spotifyAuthState$,
 } from "./authState";
+import { clearSpotifyPlaylistsCache } from "./playlistsState";
 import {
     completeSpotifyLogin,
     ensureSpotifyAccessToken,
@@ -75,6 +76,7 @@ export const spotifyProvider: Provider = {
             scope: [],
         });
         setSpotifyUser(null);
+        clearSpotifyPlaylistsCache();
         if (stateListener) {
             stateListener(session$.get());
         }
