@@ -22,6 +22,7 @@ import type { TrackData } from "@/components/TrackItem";
 import { useListItemStyles } from "@/hooks/useListItemStyles";
 import { type ContextMenuItem, showContextMenu } from "@/native-modules/ContextMenu";
 import { type NativeDragTrack, TrackDragSource } from "@/native-modules/TrackDragSource";
+import { spotifyPlaylists$ } from "@/providers/spotify";
 import { Icon } from "@/systems/Icon";
 import { libraryUI$ } from "@/systems/LibraryState";
 import { localMusicState$, saveLocalPlaylistTracks } from "@/systems/LocalMusicState";
@@ -48,26 +49,46 @@ export function TrackList(_props: TrackListProps) {
 
     const selectedView = useValue(libraryUI$.selectedView);
     const selectedPlaylistId = useValue(libraryUI$.selectedPlaylistId);
+    const selectedPlaylistProvider = useValue(libraryUI$.selectedPlaylistProvider);
     const searchQuery = useValue(libraryUI$.searchQuery);
     const playlistSort = useValue(libraryUI$.playlistSort);
     const playlists = useValue(localMusicState$.playlists);
+    const spotifyPlaylists = useValue(spotifyPlaylists$.playlists);
 
     const nonSeparatorTrackCount = useMemo(
         () => tracks.reduce((count, track) => (track.isSeparator ? count : count + 1), 0),
         [tracks],
     );
 
-    const selectedPlaylist = useMemo(() => {
-        if (selectedView !== "playlist" || !selectedPlaylistId) {
+    const selectedLocalPlaylist = useMemo(() => {
+        if (selectedView !== "playlist" || selectedPlaylistProvider !== "local" || !selectedPlaylistId) {
             return null;
         }
 
         return playlists.find((pl) => pl.id === selectedPlaylistId) ?? null;
-    }, [playlists, selectedPlaylistId, selectedView]);
+    }, [playlists, selectedPlaylistId, selectedPlaylistProvider, selectedView]);
+
+    const selectedSpotifyPlaylist = useMemo(() => {
+        if (selectedView !== "playlist" || selectedPlaylistProvider !== "spotify" || !selectedPlaylistId) {
+            return null;
+        }
+
+        return spotifyPlaylists.find((pl) => pl.id === selectedPlaylistId) ?? null;
+    }, [selectedPlaylistId, selectedPlaylistProvider, selectedView, spotifyPlaylists]);
 
     const headerConfig = useMemo(() => {
-        if (selectedView === "playlist" && selectedPlaylist) {
-            return { title: selectedPlaylist.name, count: selectedPlaylist.trackCount, showSort: true };
+        if (selectedView === "playlist") {
+            if (selectedPlaylistProvider === "local" && selectedLocalPlaylist) {
+                return { title: selectedLocalPlaylist.name, count: selectedLocalPlaylist.trackCount, showSort: true };
+            }
+
+            if (selectedPlaylistProvider === "spotify") {
+                return {
+                    title: selectedSpotifyPlaylist?.name ?? "Playlist",
+                    count: selectedSpotifyPlaylist?.trackCount ?? nonSeparatorTrackCount,
+                    showSort: true,
+                };
+            }
         }
 
         if (selectedView === "artists") {
@@ -83,12 +104,19 @@ export function TrackList(_props: TrackListProps) {
         }
 
         return null;
-    }, [nonSeparatorTrackCount, selectedPlaylist, selectedView]);
+    }, [
+        nonSeparatorTrackCount,
+        selectedLocalPlaylist,
+        selectedPlaylistProvider,
+        selectedSpotifyPlaylist,
+        selectedView,
+    ]);
 
     const isPlaylistEditable =
         selectedView === "playlist" &&
-        selectedPlaylist !== null &&
-        selectedPlaylist.source === "cache" &&
+        selectedPlaylistProvider === "local" &&
+        selectedLocalPlaylist !== null &&
+        selectedLocalPlaylist.source === "cache" &&
         playlistSort === "playlist-order" &&
         searchQuery.trim().length === 0;
 
@@ -106,7 +134,7 @@ export function TrackList(_props: TrackListProps) {
 
     const handlePlaylistSortClick = useCallback(
         async (event: NativeMouseEvent) => {
-            if (selectedView !== "playlist" || !selectedPlaylist) {
+            if (selectedView !== "playlist" || !selectedPlaylistProvider) {
                 return;
             }
 
@@ -126,12 +154,12 @@ export function TrackList(_props: TrackListProps) {
                 libraryUI$.playlistSort.set(selection);
             }
         },
-        [selectedPlaylist, selectedView],
+        [selectedPlaylistProvider, selectedView],
     );
 
     const allowPlaylistDrop = useCallback(
         (item: DraggedItem<DragData>) => {
-            if (!isPlaylistEditable || !selectedPlaylist) {
+            if (!isPlaylistEditable || !selectedLocalPlaylist) {
                 return false;
             }
 
@@ -141,7 +169,7 @@ export function TrackList(_props: TrackListProps) {
             }
 
             if (data.type === "local-playlist-track" && item.sourceZoneId === LOCAL_PLAYLIST_DRAG_ZONE_ID) {
-                return data.playlistId === selectedPlaylist.id;
+                return data.playlistId === selectedLocalPlaylist.id;
             }
 
             if (data.type === "media-library-tracks" && item.sourceZoneId === MEDIA_LIBRARY_DRAG_ZONE_ID) {
@@ -150,21 +178,21 @@ export function TrackList(_props: TrackListProps) {
 
             return false;
         },
-        [isPlaylistEditable, selectedPlaylist],
+        [isPlaylistEditable, selectedLocalPlaylist],
     );
 
     const handleDropAtPosition = useCallback(
         async (item: DraggedItem<DragData>, targetPosition: number) => {
-            if (!isPlaylistEditable || !selectedPlaylist) {
+            if (!isPlaylistEditable || !selectedLocalPlaylist) {
                 return;
             }
 
             const data = item.data;
-            const currentPaths = selectedPlaylist.trackPaths;
+            const currentPaths = selectedLocalPlaylist.trackPaths;
             const boundedTarget = Math.max(0, Math.min(targetPosition, currentPaths.length));
 
             if (data.type === "local-playlist-track") {
-                if (data.playlistId !== selectedPlaylist.id) {
+                if (data.playlistId !== selectedLocalPlaylist.id) {
                     return;
                 }
 
@@ -181,7 +209,7 @@ export function TrackList(_props: TrackListProps) {
                 const insertIndex = boundedTarget > sourceIndex ? boundedTarget - 1 : boundedTarget;
                 nextPaths.splice(insertIndex, 0, movedPath);
 
-                await saveLocalPlaylistTracks(selectedPlaylist, nextPaths);
+                await saveLocalPlaylistTracks(selectedLocalPlaylist, nextPaths);
                 syncSelectionAfterReorder(sourceIndex, boundedTarget);
                 return;
             }
@@ -190,10 +218,10 @@ export function TrackList(_props: TrackListProps) {
                 const insertPaths = data.tracks.map((track) => track.filePath);
                 const nextPaths = currentPaths.slice();
                 nextPaths.splice(boundedTarget, 0, ...insertPaths);
-                await saveLocalPlaylistTracks(selectedPlaylist, nextPaths);
+                await saveLocalPlaylistTracks(selectedLocalPlaylist, nextPaths);
             }
         },
-        [isPlaylistEditable, selectedPlaylist, syncSelectionAfterReorder],
+        [isPlaylistEditable, selectedLocalPlaylist, syncSelectionAfterReorder],
     );
 
     const renderTrack = useCallback(
@@ -203,7 +231,9 @@ export function TrackList(_props: TrackListProps) {
             }
 
             const trackPathForPlaylist =
-                isPlaylistEditable && selectedPlaylist ? (selectedPlaylist.trackPaths[index] ?? item.id) : null;
+                isPlaylistEditable && selectedLocalPlaylist
+                    ? (selectedLocalPlaylist.trackPaths[index] ?? item.id)
+                    : null;
 
             const trackRow = (
                 <LibraryTrackRow
@@ -218,7 +248,7 @@ export function TrackList(_props: TrackListProps) {
                     buildDragData={buildDragData}
                     onNativeDragStart={handleNativeDragStart}
                     isPlaylistEditable={isPlaylistEditable}
-                    playlistId={selectedPlaylist?.id ?? null}
+                    playlistId={selectedLocalPlaylist?.id ?? null}
                     trackPath={trackPathForPlaylist}
                 />
             );
@@ -248,7 +278,7 @@ export function TrackList(_props: TrackListProps) {
             handleNativeDragStart,
             handleDropAtPosition,
             isPlaylistEditable,
-            selectedPlaylist,
+            selectedLocalPlaylist,
             selectedIndices$,
             columns,
         ],

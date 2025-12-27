@@ -9,6 +9,8 @@ import { showToast } from "@/components/Toast";
 import type { TrackData } from "@/components/TrackItem";
 import { usePlaylistSelection } from "@/hooks/usePlaylistSelection";
 import { type ContextMenuItem, showContextMenu } from "@/native-modules/ContextMenu";
+import { fetchSpotifyPlaylistTracks, isSpotifyAuthenticated$, spotifyPlaylists$ } from "@/providers/spotify";
+import type { ProviderId, ProviderTrack } from "@/providers/types";
 import {
     getArtistKey,
     type LibraryTrack,
@@ -20,6 +22,7 @@ import {
 } from "@/systems/LibraryState";
 import { type LocalPlaylist, localMusicState$, saveLocalPlaylistTracks } from "@/systems/LocalMusicState";
 import { addTracksToPlaylist } from "@/systems/LocalPlaylists";
+import { formatSecondsToMmSs } from "@/utils/m3u";
 import { getQueueAction, type QueueAction } from "@/utils/queueActions";
 import { buildTrackContextMenuItems, handleTrackContextMenuSelection } from "@/utils/trackContextMenu";
 import { buildTrackLookup } from "@/utils/trackResolution";
@@ -46,6 +49,27 @@ const getAlbumSortInfo = (track: LibraryTrack): { key: string; displayName: stri
     return { key: trimmed.toLowerCase(), displayName: trimmed, isMissing: false };
 };
 
+const buildSpotifyLibraryTrack = (track: ProviderTrack, index: number): LibraryTrack => {
+    const durationSeconds = typeof track.durationMs === "number" ? track.durationMs / 1000 : 0;
+    const duration = durationSeconds ? formatSecondsToMmSs(durationSeconds) : " ";
+    const uri = track.uri ?? track.id;
+
+    return {
+        id: uri,
+        title: track.name,
+        artist: (track.artists ?? []).join(", "),
+        album: track.album,
+        duration,
+        filePath: uri,
+        fileName: track.name,
+        thumbnail: track.thumbnail,
+        provider: "spotify",
+        uri: track.uri,
+        durationMs: track.durationMs,
+        trackNumber: index + 1,
+    };
+};
+
 interface UseLibraryTrackListResult {
     tracks: TrackData[];
     selectedIndices$: Observable<Set<number>>;
@@ -64,6 +88,8 @@ interface BuildTrackItemsInput {
     playlists: LocalPlaylist[];
     selectedView: LibraryView;
     selectedPlaylistId: string | null;
+    selectedPlaylistProvider: ProviderId | null;
+    selectedPlaylistTracks?: LibraryTrack[];
     searchQuery: string;
     playlistSort: PlaylistSortMode;
 }
@@ -73,6 +99,8 @@ export function buildTrackItems({
     playlists,
     selectedView,
     selectedPlaylistId,
+    selectedPlaylistProvider,
+    selectedPlaylistTracks,
     searchQuery,
     playlistSort,
 }: BuildTrackItemsInput) {
@@ -211,6 +239,58 @@ export function buildTrackItems({
             return { trackItems: [] as LibraryTrackListItem[] };
         }
 
+        const shouldApplySort = !normalizedQuery && playlistSort !== "playlist-order";
+        const sortTracks = (inputTracks: LibraryTrack[]) =>
+            shouldApplySort
+                ? [...inputTracks].sort((a, b) => {
+                      const valueA =
+                          playlistSort === "artist" ? a.artist : playlistSort === "album" ? (a.album ?? "") : a.title;
+                      const valueB =
+                          playlistSort === "artist" ? b.artist : playlistSort === "album" ? (b.album ?? "") : b.title;
+                      const compare = (valueA ?? "").localeCompare(valueB ?? "");
+                      if (compare !== 0) {
+                          return compare;
+                      }
+                      return (a.title ?? "").localeCompare(b.title ?? "");
+                  })
+                : inputTracks;
+
+        const usedIds = new Set<string>();
+        const makeUniqueId = (baseId: string) => {
+            if (!usedIds.has(baseId)) {
+                usedIds.add(baseId);
+                return baseId;
+            }
+
+            let attempt = 2;
+            let candidate = `${baseId}-${attempt}`;
+            while (usedIds.has(candidate)) {
+                attempt += 1;
+                candidate = `${baseId}-${attempt}`;
+            }
+            usedIds.add(candidate);
+            return candidate;
+        };
+
+        const buildPlaylistItems = (playlistTracks: LibraryTrack[]) => {
+            const filteredTracks = normalizedQuery ? playlistTracks.filter(matchesQuery) : playlistTracks;
+            const displayTracks = sortTracks(filteredTracks);
+            return displayTracks.map((track, index) => {
+                const baseItem = toTrackItem(track, index);
+                const uniqueId = makeUniqueId(baseItem.id);
+                if (uniqueId === baseItem.id) {
+                    return baseItem;
+                }
+                return { ...baseItem, id: uniqueId };
+            });
+        };
+
+        if (selectedPlaylistProvider === "spotify") {
+            return {
+                trackItems: buildPlaylistItems(selectedPlaylistTracks ?? []),
+            };
+        }
+
         const playlist = playlists.find((pl) => pl.id === selectedPlaylistId);
         if (!playlist) {
             return { trackItems: [] as LibraryTrackListItem[] };
@@ -234,47 +314,9 @@ export function buildTrackItems({
         const orderedTracks: LibraryTrack[] = playlist.trackPaths.map(
             (path) => (trackLookup.get(path) as LibraryTrack | undefined) ?? makeMissingTrack(path),
         );
-        const shouldApplySort = !normalizedQuery && playlistSort !== "playlist-order";
-        const displayTracks = shouldApplySort
-            ? [...orderedTracks].sort((a, b) => {
-                  const valueA =
-                      playlistSort === "artist" ? a.artist : playlistSort === "album" ? (a.album ?? "") : a.title;
-                  const valueB =
-                      playlistSort === "artist" ? b.artist : playlistSort === "album" ? (b.album ?? "") : b.title;
-                  const compare = (valueA ?? "").localeCompare(valueB ?? "");
-                  if (compare !== 0) {
-                      return compare;
-                  }
-                  return (a.title ?? "").localeCompare(b.title ?? "");
-              })
-            : orderedTracks;
-
-        const usedIds = new Set<string>();
-        const makeUniqueId = (baseId: string) => {
-            if (!usedIds.has(baseId)) {
-                usedIds.add(baseId);
-                return baseId;
-            }
-
-            let attempt = 2;
-            let candidate = `${baseId}-${attempt}`;
-            while (usedIds.has(candidate)) {
-                attempt += 1;
-                candidate = `${baseId}-${attempt}`;
-            }
-            usedIds.add(candidate);
-            return candidate;
-        };
 
         return {
-            trackItems: (normalizedQuery ? displayTracks.filter(matchesQuery) : displayTracks).map((track, index) => {
-                const baseItem = toTrackItem(track, index);
-                const uniqueId = makeUniqueId(baseItem.id);
-                if (uniqueId === baseItem.id) {
-                    return baseItem;
-                }
-                return { ...baseItem, id: uniqueId };
-            }),
+            trackItems: buildPlaylistItems(orderedTracks),
         };
     }
 
@@ -286,11 +328,52 @@ export function buildTrackItems({
 export function useLibraryTrackList(): UseLibraryTrackListResult {
     const selectedView = useValue(libraryUI$.selectedView);
     const selectedPlaylistId = useValue(libraryUI$.selectedPlaylistId);
+    const selectedPlaylistProvider = useValue(libraryUI$.selectedPlaylistProvider);
     const searchQuery = useValue(libraryUI$.searchQuery);
     const playlistSort = useValue(libraryUI$.playlistSort);
     const allTracks = useValue(library$.tracks);
     const playlists = useValue(localMusicState$.playlists);
+    const spotifyTracksByPlaylistId = useValue(spotifyPlaylists$.tracksByPlaylistId);
+    const spotifyTracksFetchedAtByPlaylistId = useValue(spotifyPlaylists$.tracksFetchedAtByPlaylistId);
+    const isSpotifyAuthenticated = useValue(isSpotifyAuthenticated$);
     const skipClickRef = useRef(false);
+
+    const spotifyPlaylistTracks = useMemo(() => {
+        if (selectedPlaylistProvider !== "spotify" || !selectedPlaylistId) {
+            return [] as LibraryTrack[];
+        }
+
+        const tracks = spotifyTracksByPlaylistId[selectedPlaylistId] ?? [];
+        return tracks.map((track, index) => buildSpotifyLibraryTrack(track, index));
+    }, [selectedPlaylistId, selectedPlaylistProvider, spotifyTracksByPlaylistId]);
+
+    useEffect(() => {
+        if (selectedView !== "playlist" || selectedPlaylistProvider !== "spotify" || !selectedPlaylistId) {
+            return;
+        }
+
+        if (!isSpotifyAuthenticated) {
+            return;
+        }
+
+        if (spotifyTracksFetchedAtByPlaylistId[selectedPlaylistId]) {
+            return;
+        }
+
+        void fetchSpotifyPlaylistTracks(selectedPlaylistId).catch((error) => {
+            console.error("Failed to load Spotify playlist tracks", error);
+            showToast(
+                error instanceof Error ? error.message : "Failed to load Spotify playlist tracks",
+                "error",
+            );
+        });
+    }, [
+        isSpotifyAuthenticated,
+        selectedPlaylistId,
+        selectedPlaylistProvider,
+        selectedView,
+        spotifyTracksFetchedAtByPlaylistId,
+    ]);
 
     const { trackItems } = useMemo(
         () =>
@@ -299,15 +382,26 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
                 playlists,
                 selectedView,
                 selectedPlaylistId,
+                selectedPlaylistProvider,
+                selectedPlaylistTracks: spotifyPlaylistTracks,
                 searchQuery,
                 playlistSort,
             }),
-        [allTracks, playlists, playlistSort, searchQuery, selectedPlaylistId, selectedView],
+        [
+            allTracks,
+            playlists,
+            playlistSort,
+            searchQuery,
+            selectedPlaylistId,
+            selectedPlaylistProvider,
+            selectedView,
+            spotifyPlaylistTracks,
+        ],
     );
 
     const isSearchActive = searchQuery.trim().length > 0;
     const selectedPlaylist =
-        selectedView === "playlist" && selectedPlaylistId
+        selectedView === "playlist" && selectedPlaylistProvider === "local" && selectedPlaylistId
             ? (playlists.find((pl) => pl.id === selectedPlaylistId) ?? null)
             : null;
     const isPlaylistEditable =
@@ -365,6 +459,7 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
     useObserveEffect(() => {
         libraryUI$.selectedView.get();
         libraryUI$.selectedPlaylistId.get();
+        libraryUI$.selectedPlaylistProvider.get();
         libraryUI$.playlistSort.get();
         library$.tracks.get().length;
         clearSelection();
@@ -396,31 +491,31 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
         [trackItems],
     );
 
-    const trackContextMenuItems = useMemo(
-        () =>
-            buildTrackContextMenuItems({
-                includeQueueActions: true,
-                includeFinder: true,
-                extraItems: [ADD_TO_PLAYLIST_MENU_ITEM],
-            }),
-        [],
-    );
-
     const handleTrackContextMenu = useCallback(
         async (index: number, event: NativeMouseEvent) => {
             const x = event.pageX ?? event.x ?? 0;
             const y = event.pageY ?? event.y ?? 0;
-
-            const selection = await showContextMenu(trackContextMenuItems, { x, y });
+            const sourceTrack = trackItems[index]?.sourceTrack;
+            const isSpotifyTrack = sourceTrack?.provider === "spotify";
+            const menuItems = buildTrackContextMenuItems({
+                includeQueueActions: true,
+                includeFinder: !isSpotifyTrack,
+                extraItems: isSpotifyTrack ? [] : [ADD_TO_PLAYLIST_MENU_ITEM],
+            });
+            const selection = await showContextMenu(menuItems, { x, y });
 
             await handleTrackContextMenuSelection({
                 selection,
-                filePath: trackItems[index]?.sourceTrack?.filePath,
+                filePath: isSpotifyTrack ? null : sourceTrack?.filePath,
                 onQueueAction: (action) => {
                     handleTrackAction(index, action === "play-next" ? "play-next" : "enqueue");
                 },
                 onCustomSelect: async (customSelection) => {
                     if (customSelection !== ADD_TO_PLAYLIST_MENU_ITEM.id) {
+                        return;
+                    }
+
+                    if (sourceTrack?.provider === "spotify") {
                         return;
                     }
 
@@ -491,7 +586,7 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
                 },
             });
         },
-        [handleTrackAction, playlists, selectedIndices$, trackItems, trackContextMenuItems],
+        [handleTrackAction, playlists, selectedIndices$, trackItems],
     );
 
     const handleNativeDragStart = useCallback(() => {
@@ -516,10 +611,11 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
             const tracksToInclude = indices
                 .map((trackIndex) => trackItems[trackIndex]?.sourceTrack)
                 .filter((track): track is LibraryTrack => Boolean(track))
+                .filter((track) => track.provider !== "spotify")
                 .map((track) => ({ ...track }));
 
             const activeTrack = trackItems[activeIndex]?.sourceTrack;
-            if (tracksToInclude.length === 0 && activeTrack) {
+            if (tracksToInclude.length === 0 && activeTrack && activeTrack.provider !== "spotify") {
                 tracksToInclude.push({ ...activeTrack });
             }
 
