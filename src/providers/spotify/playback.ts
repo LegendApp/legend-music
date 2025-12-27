@@ -16,6 +16,12 @@ const buildHeaders = (token: string) => ({
 function getDeviceId(deviceId?: string): string {
     const id = deviceId || spotifyWebPlayerState$.deviceId.peek();
     if (!id) {
+        if (__DEV__) {
+            console.warn("[SpotifyPlayback] missing device id", {
+                deviceId,
+                webPlayerState: spotifyWebPlayerState$.get(),
+            });
+        }
         throw new Error("Spotify player is not ready. Connect the Web Playback SDK first.");
     }
     return id;
@@ -39,6 +45,9 @@ async function apiFetch(path: string, init: RequestInit = {}): Promise<Response>
 
 export async function transferSpotifyPlayback(deviceId?: string, play = false): Promise<void> {
     const targetDevice = getDeviceId(deviceId);
+    if (__DEV__) {
+        console.log("[SpotifyPlayback] transfer", { deviceId: targetDevice, play });
+    }
     const response = await apiFetch("/me/player", {
         method: "PUT",
         body: JSON.stringify({
@@ -54,6 +63,9 @@ export async function transferSpotifyPlayback(deviceId?: string, play = false): 
 
 export async function playSpotifyUri(request: PlayRequest): Promise<void> {
     const deviceId = getDeviceId(request.deviceId);
+    if (__DEV__) {
+        console.log("[SpotifyPlayback] play", { deviceId, uri: request.uri });
+    }
     const body = {
         uris: [request.uri],
         position_ms: request.positionMs ?? 0,

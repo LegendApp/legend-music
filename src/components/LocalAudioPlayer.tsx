@@ -2,13 +2,14 @@ import { observable } from "@legendapp/state";
 import { File } from "expo-file-system/next";
 import { showToast } from "@/components/Toast";
 import {
+    activateSpotifyWebPlayer,
     pauseSpotify,
     playSpotifyUri,
     resumeSpotify,
     seekSpotify,
     setSpotifyVolume,
     transferSpotifyPlayback,
-} from "@/providers/spotify/playback";
+} from "@/providers/spotify";
 import { spotifyWebPlayerState$ } from "@/providers/spotify/webPlayerState";
 import appExit from "@/native-modules/AppExit";
 import audioPlayerApi, { type NowPlayingInfoPayload } from "@/native-modules/AudioPlayer";
@@ -370,10 +371,18 @@ spotifyWebPlayerState$.lastState.onChange(({ value }) => {
         localPlayerState$.duration.set(state.duration / 1000);
     }
     if (typeof state.position === "number" && !playbackInteractionState$.isScrubbing.peek()) {
-        localPlayerState$.currentTime.set(state.position / 1000);
+        const nextTime = state.position / 1000;
+        anchorProgress(nextTime);
+        localPlayerState$.currentTime.set(nextTime);
     }
     if (typeof state.paused === "boolean") {
         localPlayerState$.isPlaying.set(!state.paused);
+        if (!state.paused && !isWindowOccluded) {
+            anchorProgress(localPlayerState$.currentTime.peek());
+            startJsProgressTimer();
+        } else {
+            stopJsProgressTimer();
+        }
     }
 });
 
@@ -412,6 +421,7 @@ async function play(): Promise<void> {
     const currentTrack = localPlayerState$.currentTrack.peek();
     if (isSpotifyTrack(currentTrack)) {
         try {
+            activateSpotifyWebPlayer();
             await resumeSpotify();
             localPlayerState$.isPlaying.set(true);
         } catch (error) {
@@ -492,6 +502,7 @@ async function loadTrackInternal(track: LocalTrack): Promise<boolean> {
 
     if (isSpotifyTrack(track)) {
         try {
+            activateSpotifyWebPlayer();
             const uri = track.uri || track.id;
             if (!uri) {
                 throw new Error("Missing Spotify URI");
