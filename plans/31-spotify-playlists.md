@@ -57,6 +57,6 @@ Show Spotify playlists in the media library when the Spotify provider is enabled
 - [x] Implement Spotify playlist + playlist-track fetching with caching and auth guards.
 - [x] Wire Spotify playlists into `MediaLibrarySidebar` and selection state when Spotify is enabled.
 - [x] Render Spotify playlist tracks in `TrackList` with proper queue actions and read-only behavior.
-- [ ] Add/adjust tests around playlist track list building and selection behavior.
+- [x] Add/adjust tests around playlist track list building and selection behavior.
 
 Validation: Unable to run the app here; please verify Spotify playlists appear in the media library sidebar, selecting a playlist lists tracks, and queuing/double-clicking plays via Spotify.

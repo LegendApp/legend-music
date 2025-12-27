@@ -39,6 +39,7 @@ describe("buildTrackItems", () => {
             playlists: [],
             selectedView: "songs",
             selectedPlaylistId: null,
+            selectedPlaylistProvider: null,
             searchQuery: "",
             playlistSort: "playlist-order",
         });
@@ -52,6 +53,7 @@ describe("buildTrackItems", () => {
             playlists: [],
             selectedView: "artists",
             selectedPlaylistId: null,
+            selectedPlaylistProvider: null,
             searchQuery: "",
             playlistSort: "playlist-order",
         });
@@ -95,6 +97,7 @@ describe("buildTrackItems", () => {
             playlists: [],
             selectedView: "artists",
             selectedPlaylistId: null,
+            selectedPlaylistProvider: null,
             searchQuery: "",
             playlistSort: "playlist-order",
         });
@@ -108,6 +111,7 @@ describe("buildTrackItems", () => {
             playlists: [],
             selectedView: "albums",
             selectedPlaylistId: null,
+            selectedPlaylistProvider: null,
             searchQuery: "",
             playlistSort: "playlist-order",
         });
@@ -159,6 +163,7 @@ describe("buildTrackItems", () => {
             playlists: [],
             selectedView: "albums",
             selectedPlaylistId: null,
+            selectedPlaylistProvider: null,
             searchQuery: "",
             playlistSort: "playlist-order",
         });
@@ -179,12 +184,51 @@ describe("buildTrackItems", () => {
             playlists: [],
             selectedView: "artists",
             selectedPlaylistId: null,
+            selectedPlaylistProvider: null,
             searchQuery: "album y",
             playlistSort: "playlist-order",
         });
 
         expect(result.trackItems.map((item) => item.title)).toEqual(["— Artist 2 —", "Song B"]);
         expect(result.trackItems.filter((item) => item.isSeparator).length).toBe(1);
+    });
+
+    it("spotify playlist view uses provider tracks", () => {
+        const spotifyTracks: LibraryTrack[] = [
+            {
+                id: "spotify:track:1",
+                title: "Spotify Song 1",
+                artist: "Artist A",
+                album: "Album A",
+                duration: "3:00",
+                filePath: "spotify:track:1",
+                fileName: "Spotify Song 1",
+                provider: "spotify",
+            },
+            {
+                id: "spotify:track:2",
+                title: "Spotify Song 2",
+                artist: "Artist B",
+                album: "Album B",
+                duration: "2:30",
+                filePath: "spotify:track:2",
+                fileName: "Spotify Song 2",
+                provider: "spotify",
+            },
+        ];
+
+        const result = buildTrackItems({
+            tracks: mockTracks,
+            playlists: [],
+            selectedView: "playlist",
+            selectedPlaylistId: "spotify:playlist:1",
+            selectedPlaylistProvider: "spotify",
+            selectedPlaylistTracks: spotifyTracks,
+            searchQuery: "",
+            playlistSort: "playlist-order",
+        });
+
+        expect(result.trackItems.map((item) => item.id)).toEqual(["spotify:track:1", "spotify:track:2"]);
     });
 
     it("playlist view preserves order and flags missing tracks", () => {
@@ -204,6 +248,7 @@ describe("buildTrackItems", () => {
             playlists,
             selectedView: "playlist",
             selectedPlaylistId: playlists[0].id,
+            selectedPlaylistProvider: "local",
             searchQuery: "",
             playlistSort: "playlist-order",
         });
@@ -229,6 +274,7 @@ describe("buildTrackItems", () => {
             playlists,
             selectedView: "playlist",
             selectedPlaylistId: playlists[0].id,
+            selectedPlaylistProvider: "local",
             searchQuery: "",
             playlistSort: "playlist-order",
         });
@@ -242,6 +288,7 @@ describe("buildTrackItems", () => {
             playlists: [],
             selectedView: "songs",
             selectedPlaylistId: null,
+            selectedPlaylistProvider: null,
             searchQuery: "",
             playlistSort: "playlist-order",
         });
