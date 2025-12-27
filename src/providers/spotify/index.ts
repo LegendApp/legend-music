@@ -4,6 +4,8 @@ export * from "./constants";
 export * from "./pkce";
 export * from "./provider";
 export * from "./playback";
+export * from "./playlists";
+export * from "./playlistsState";
 export * from "./SpotifyWebPlayerHost";
 export * from "./SpotifyWebPlayerBridge";
 export * from "./search";

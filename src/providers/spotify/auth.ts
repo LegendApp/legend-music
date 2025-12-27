@@ -1,4 +1,5 @@
 import { clearSpotifyAuth, setPKCEState, setSpotifyTokens, setSpotifyUser, spotifyAuthState$ } from "./authState";
+import { clearSpotifyPlaylistsCache } from "./playlistsState";
 import {
     SPOTIFY_AUTH_SCOPES,
     SPOTIFY_AUTH_URL,
@@ -166,4 +167,5 @@ export async function completeSpotifyLogin(params: { code: string; state: string
 
 export async function logoutSpotify(): Promise<void> {
     clearSpotifyAuth();
+    clearSpotifyPlaylistsCache();
 }
