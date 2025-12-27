@@ -1114,11 +1114,25 @@ async function setVolume(volume: number): Promise<void> {
 
 async function seek(seconds: number): Promise<void> {
     perfLog("LocalAudioControls.seek", { seconds });
+    const nextSeconds = Number(seconds);
+    if (!Number.isFinite(nextSeconds)) {
+        if (__DEV__) {
+            console.warn("Invalid seek value", { seconds });
+        }
+        return;
+    }
+
+    const clampedSeconds = Math.max(0, nextSeconds);
+    const positionMs = Math.round(clampedSeconds * 1000);
     const currentTrack = localPlayerState$.currentTrack.peek();
     if (isSpotifyTrack(currentTrack)) {
         try {
-            await seekSpotify(seconds * 1000);
-            localPlayerState$.currentTime.set(seconds);
+            await seekSpotify(positionMs);
+            anchorProgress(clampedSeconds);
+            localPlayerState$.currentTime.set(clampedSeconds);
+            if (localPlayerState$.isPlaying.peek() && !isWindowOccluded) {
+                startJsProgressTimer();
+            }
         } catch (error) {
             console.error("Error seeking Spotify:", error);
         }
@@ -1130,7 +1144,7 @@ async function seek(seconds: number): Promise<void> {
     }
 
     try {
-        await audioPlayer.seek(seconds);
+        await audioPlayer.seek(clampedSeconds);
     } catch (error) {
         console.error("Error seeking:", error);
     }
