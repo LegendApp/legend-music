@@ -159,10 +159,11 @@ export async function renamePlaylist(
 
     if (
         libraryUI$.selectedView.peek() === "playlist" &&
+        libraryUI$.selectedPlaylistProvider.peek() === "local" &&
         libraryUI$.selectedPlaylistId.peek() &&
         libraryUI$.selectedPlaylistId.peek() === playlistId
     ) {
-        selectLibraryPlaylist(nextFilePath);
+        selectLibraryPlaylist(nextFilePath, "local");
     }
 
     return { playlistId: nextFilePath, playlistName: resolvedName };
@@ -179,7 +180,11 @@ export async function deletePlaylist(playlistId: string): Promise<void> {
         file.delete();
     }
 
-    if (libraryUI$.selectedView.peek() === "playlist" && libraryUI$.selectedPlaylistId.peek() === playlistId) {
+    if (
+        libraryUI$.selectedView.peek() === "playlist" &&
+        libraryUI$.selectedPlaylistProvider.peek() === "local" &&
+        libraryUI$.selectedPlaylistId.peek() === playlistId
+    ) {
         selectLibraryView("songs");
     }
 
