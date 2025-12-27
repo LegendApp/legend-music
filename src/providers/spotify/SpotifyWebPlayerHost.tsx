@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, forwardRef } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import { View } from "react-native";
 import WebView, { type WebViewMessageEvent } from "react-native-webview";
 import { SPOTIFY_DEVICE_NAME } from "./constants";
@@ -50,6 +50,8 @@ const playerHtml = `
     let pendingTokenResolvers = [];
     let currentToken = null;
     let player = null;
+    let pollTimer = null;
+    const STATE_POLL_INTERVAL_MS = 5000;
 
     function setToken(token) {
         currentToken = token;
@@ -82,6 +84,26 @@ const playerHtml = `
             return;
         }
         player.connect();
+    }
+
+    function startStatePolling() {
+        if (pollTimer || !player || !player.getCurrentState) {
+            return;
+        }
+
+        pollTimer = setInterval(() => {
+            if (!player || !player.getCurrentState) {
+                return;
+            }
+            player
+                .getCurrentState()
+                .then((state) => {
+                    if (state) {
+                        send("state", state);
+                    }
+                })
+                .catch(() => {});
+        }, STATE_POLL_INTERVAL_MS);
     }
 
     function handleMessage(event) {
@@ -143,6 +165,7 @@ const playerHtml = `
         player.addListener("playback_error", ({ message }) => send("error", { kind: "playback", message }));
 
         connectPlayer();
+        startStatePolling();
     };
 </script>
 </body>
@@ -191,6 +214,18 @@ export const SpotifyWebPlayerHost = forwardRef<SpotifyWebPlayerHandle, Props>(fu
                 return;
             }
 
+            if (__DEV__) {
+                if (
+                    data.type === "ready" ||
+                    data.type === "not_ready" ||
+                    data.type === "error" ||
+                    data.type === "token-request" ||
+                    data.type === "state"
+                ) {
+                    console.log("[SpotifyWebPlayerHost] message", { type: data.type, payload: data.payload });
+                }
+            }
+
             switch (data.type) {
                 case "ready":
                     onReady?.(data.payload.deviceId);
@@ -236,6 +271,7 @@ export const SpotifyWebPlayerHost = forwardRef<SpotifyWebPlayerHandle, Props>(fu
                 hideKeyboardAccessoryView
                 allowsInlineMediaPlayback
                 mediaPlaybackRequiresUserAction={false}
+                webviewDebuggingEnabled
             />
         </View>
     );
