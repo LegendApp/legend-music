@@ -1,5 +1,5 @@
 import { useValue } from "@legendapp/state/react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     Alert,
     LayoutChangeEvent,
@@ -27,6 +27,13 @@ import { useListItemStyles } from "@/hooks/useListItemStyles";
 import { type ContextMenuItem, showContextMenu } from "@/native-modules/ContextMenu";
 import { DragDropView } from "@/native-modules/DragDropView";
 import { showInFinder } from "@/native-modules/FileDialog";
+import { activeProviderId$ } from "@/providers/providerRegistry";
+import {
+    fetchSpotifyPlaylists,
+    isSpotifyAuthenticated$,
+    spotifyPlaylists$,
+    spotifyPlaylistsStatus$,
+} from "@/providers/spotify";
 import { SUPPORT_PLAYLISTS } from "@/systems/constants";
 import { type LibraryView, libraryUI$, selectLibraryPlaylist, selectLibraryView } from "@/systems/LibraryState";
 import { createLocalPlaylist, type LocalPlaylist, localMusicState$ } from "@/systems/LocalMusicState";
@@ -50,6 +57,12 @@ const LIBRARY_VIEWS: { id: LibraryView; label: string; disabled?: boolean }[] = 
     { id: "starred", label: "Starred", disabled: true },
 ];
 
+const LOCAL_PLAYLIST_ITEM_PREFIX = "playlist-local:";
+const SPOTIFY_PLAYLIST_ITEM_PREFIX = "playlist-spotify:";
+
+const buildPlaylistItemId = (provider: "local" | "spotify", playlistId: string): string =>
+    `${provider === "local" ? LOCAL_PLAYLIST_ITEM_PREFIX : SPOTIFY_PLAYLIST_ITEM_PREFIX}${playlistId}`;
+
 interface MediaLibrarySidebarProps {
     useNativeLibraryList?: boolean;
 }
@@ -58,8 +71,13 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
     perfCount("MediaLibrary.Sidebar.render");
     const selectedView = useValue(libraryUI$.selectedView);
     const selectedPlaylistId = useValue(libraryUI$.selectedPlaylistId);
+    const selectedPlaylistProvider = useValue(libraryUI$.selectedPlaylistProvider);
     const searchQuery = useValue(libraryUI$.searchQuery);
-    const playlists = useValue(localMusicState$.playlists);
+    const localPlaylists = useValue(localMusicState$.playlists);
+    const activeProviderId = useValue(activeProviderId$);
+    const isSpotifyAuthenticated = useValue(isSpotifyAuthenticated$);
+    const spotifyPlaylists = useValue(spotifyPlaylists$.playlists);
+    const spotifyPlaylistsLoading = useValue(spotifyPlaylistsStatus$.isLoading);
     const listItemStyles = useListItemStyles();
     const searchInputRef = useRef<TextInputSearchRef | null>(null);
     const [tempPlaylistId, setTempPlaylistId] = useState<string | null>(null);
@@ -68,8 +86,22 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
     const [editingPlaylistId, setEditingPlaylistId] = useState<string | null>(null);
     const [editingPlaylistName, setEditingPlaylistName] = useState("");
     const shouldUseNativeLibraryList = useNativeLibraryList && Platform.OS === "macos";
+    const isSpotifyProvider = activeProviderId === "spotify";
     const [outerWidth, setWidth] = useState(0);
     const width = Math.max(outerWidth - 28, 0);
+    const showLocalPlaylists = SUPPORT_PLAYLISTS && !isSpotifyProvider;
+    const showSpotifyPlaylists = SUPPORT_PLAYLISTS && isSpotifyProvider;
+
+    useEffect(() => {
+        if (!isSpotifyProvider || !isSpotifyAuthenticated) {
+            return;
+        }
+
+        void fetchSpotifyPlaylists().catch((error) => {
+            console.error("Failed to load Spotify playlists", error);
+            showToast(error instanceof Error ? error.message : "Failed to load Spotify playlists", "error");
+        });
+    }, [isSpotifyAuthenticated, isSpotifyProvider]);
 
     const onNativeSidebarLayout = useCallback(
         (layout: { width: number; height: number }) => {
@@ -83,7 +115,7 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
 
     const handleAddPlaylist = useCallback(() => {
         console.log("handleAddPlaylist");
-        if (tempPlaylistId) {
+        if (isSpotifyProvider || tempPlaylistId) {
             return;
         }
 
@@ -99,8 +131,8 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
         });
         setTempPlaylistId(id);
         setTempPlaylistName(defaultName);
-        selectLibraryPlaylist(id);
-    }, [tempPlaylistId]);
+        selectLibraryPlaylist(id, "local");
+    }, [isSpotifyProvider, tempPlaylistId]);
 
     const finalizeTempPlaylist = useCallback(async () => {
         if (!tempPlaylistId) {
@@ -121,7 +153,7 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
 
         try {
             const playlist = await createLocalPlaylist(name);
-            selectLibraryPlaylist(playlist.id);
+            selectLibraryPlaylist(playlist.id, "local");
         } catch (error) {
             console.error("Failed to create playlist:", error);
             selectLibraryView("songs");
@@ -301,7 +333,7 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                 case "import": {
                     try {
                         const nextPlaylist = await duplicatePlaylistToCache(playlist.id);
-                        selectLibraryPlaylist(nextPlaylist.id);
+                        selectLibraryPlaylist(nextPlaylist.id, "local");
                         showToast(`Imported ${playlist.name}`, "info");
                     } catch (error) {
                         const message = error instanceof Error ? error.message : "Failed to import playlist";
@@ -318,20 +350,30 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
 
     // Compute selected ID for native sidebar
     const nativeSidebarSelectedId = useMemo(() => {
-        if (selectedView === "playlist" && selectedPlaylistId) {
-            return `playlist-${selectedPlaylistId}`;
+        if (selectedView === "playlist" && selectedPlaylistId && selectedPlaylistProvider) {
+            if (selectedPlaylistProvider === "spotify") {
+                return buildPlaylistItemId("spotify", selectedPlaylistId);
+            }
+            if (selectedPlaylistProvider === "local") {
+                return buildPlaylistItemId("local", selectedPlaylistId);
+            }
         }
         return selectedView;
-    }, [selectedView, selectedPlaylistId]);
+    }, [selectedPlaylistId, selectedPlaylistProvider, selectedView]);
 
     const handleNativeSidebarSelection = useCallback(
         (id: string) => {
-            if (id.startsWith("playlist-")) {
-                const playlistId = id.replace("playlist-", "");
-                selectLibraryPlaylist(playlistId);
-            } else {
-                handleSelectView(id as LibraryView);
+            if (id.startsWith(LOCAL_PLAYLIST_ITEM_PREFIX)) {
+                selectLibraryPlaylist(id.replace(LOCAL_PLAYLIST_ITEM_PREFIX, ""), "local");
+                return;
             }
+
+            if (id.startsWith(SPOTIFY_PLAYLIST_ITEM_PREFIX)) {
+                selectLibraryPlaylist(id.replace(SPOTIFY_PLAYLIST_ITEM_PREFIX, ""), "spotify");
+                return;
+            }
+
+            handleSelectView(id as LibraryView);
         },
         [handleSelectView],
     );
@@ -367,35 +409,70 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                     <SidebarItem itemId="header-playlists" selectable={false} rowHeight={36}>
                         <View className="flex-row items-center justify-between pt-3" style={{ width }}>
                             <Text className="text-xs font-semibold text-white/40 uppercase tracking-wider">
-                                Playlists
+                                {isSpotifyProvider ? "Spotify Playlists" : "Playlists"}
                             </Text>
-                            <Button
-                                icon="plus"
-                                variant="icon-hover"
-                                size="small"
-                                accessibilityLabel="Add playlist"
-                                disabled={Boolean(tempPlaylistId)}
-                                onClick={handleAddPlaylist}
-                            />
+                            {showLocalPlaylists ? (
+                                <Button
+                                    icon="plus"
+                                    variant="icon-hover"
+                                    size="small"
+                                    accessibilityLabel="Add playlist"
+                                    disabled={Boolean(tempPlaylistId)}
+                                    onClick={handleAddPlaylist}
+                                />
+                            ) : null}
                         </View>
                     </SidebarItem>
                 ) : null}
 
                 {/* Playlist Items */}
-                {SUPPORT_PLAYLISTS && playlists.length === 0 ? (
+                {showSpotifyPlaylists ? (
+                    !isSpotifyAuthenticated ? (
+                        <SidebarItem itemId="spotify-playlists-disabled" selectable={false}>
+                            <Text className="text-sm text-white/40">Connect Spotify to view playlists</Text>
+                        </SidebarItem>
+                    ) : spotifyPlaylistsLoading ? (
+                        <SidebarItem itemId="spotify-playlists-loading" selectable={false}>
+                            <Text className="text-sm text-white/40">Loading Spotify playlists...</Text>
+                        </SidebarItem>
+                    ) : spotifyPlaylists.length === 0 ? (
+                        <SidebarItem itemId="spotify-playlists-empty" selectable={false}>
+                            <Text className="text-sm text-white/40">No Spotify playlists found</Text>
+                        </SidebarItem>
+                    ) : (
+                        spotifyPlaylists.map((playlist) => (
+                            <SidebarItem
+                                key={playlist.id}
+                                itemId={buildPlaylistItemId("spotify", playlist.id)}
+                            >
+                                <View className="flex-row items-center justify-between">
+                                    <Text className="text-sm text-text-primary flex-1 py-1" numberOfLines={1}>
+                                        {playlist.name}
+                                    </Text>
+                                    <Text className="text-xs text-white/40">{playlist.trackCount ?? 0}</Text>
+                                </View>
+                            </SidebarItem>
+                        ))
+                    )
+                ) : null}
+
+                {showLocalPlaylists && localPlaylists.length === 0 ? (
                     <SidebarItem itemId="no-playlists" selectable={false}>
                         <Text className="text-sm text-white/40">No playlists yet</Text>
                     </SidebarItem>
                 ) : null}
 
-                {SUPPORT_PLAYLISTS
-                    ? playlists.map((playlist) => {
+                {showLocalPlaylists
+                    ? localPlaylists.map((playlist) => {
                           const isTemp = playlist.id === tempPlaylistId;
                           const isEditing = playlist.id === editingPlaylistId;
 
                           if (isTemp) {
                               return (
-                                  <SidebarItem key={playlist.id} itemId={`playlist-${playlist.id}`}>
+                                  <SidebarItem
+                                      key={playlist.id}
+                                      itemId={buildPlaylistItemId("local", playlist.id)}
+                                  >
                                       <TextInput
                                           value={tempPlaylistName}
                                           onChangeText={setTempPlaylistName}
@@ -412,7 +489,10 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
 
                           if (isEditing) {
                               return (
-                                  <SidebarItem key={playlist.id} itemId={`playlist-${playlist.id}`}>
+                                  <SidebarItem
+                                      key={playlist.id}
+                                      itemId={buildPlaylistItemId("local", playlist.id)}
+                                  >
                                       <TextInput
                                           value={editingPlaylistName}
                                           onChangeText={setEditingPlaylistName}
@@ -430,13 +510,10 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                           return (
                               <SidebarItem
                                   key={playlist.id}
-                                  itemId={`playlist-${playlist.id}`}
+                                  itemId={buildPlaylistItemId("local", playlist.id)}
                                   onRightClick={(event) => handlePlaylistContextMenu(playlist, event, "basic")}
                               >
-                                  <View
-                                      className="flex-row items-center justify-between"
-                                      onLayout={(e) => console.log(e.nativeEvent.layout)}
-                                  >
+                                  <View className="flex-row items-center justify-between">
                                       <Text className="text-sm text-text-primary flex-1 py-1" numberOfLines={1}>
                                           {playlist.name}
                                       </Text>
@@ -499,193 +576,261 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                     <View className="pb-3">
                         <View className="flex-row items-center justify-between px-3 pt-2 pb-1">
                             <Text className="text-xs font-semibold text-white/40 uppercase tracking-wider">
-                                Playlists
+                                {isSpotifyProvider ? "Spotify Playlists" : "Playlists"}
                             </Text>
-                            <Button
-                                icon="plus"
-                                variant="icon"
-                                size="small"
-                                accessibilityLabel="Add playlist"
-                                disabled={Boolean(tempPlaylistId)}
-                                onClick={handleAddPlaylist}
-                                className="bg-transparent hover:bg-white/10"
-                            />
+                            {showLocalPlaylists ? (
+                                <Button
+                                    icon="plus"
+                                    variant="icon"
+                                    size="small"
+                                    accessibilityLabel="Add playlist"
+                                    disabled={Boolean(tempPlaylistId)}
+                                    onClick={handleAddPlaylist}
+                                    className="bg-transparent hover:bg-white/10"
+                                />
+                            ) : null}
                         </View>
-                        {playlists.length === 0 ? (
+
+                        {showSpotifyPlaylists ? (
+                            !isSpotifyAuthenticated ? (
+                                <View className="px-3 py-1">
+                                    <Text className="text-sm text-white/40">Connect Spotify to view playlists</Text>
+                                </View>
+                            ) : spotifyPlaylistsLoading ? (
+                                <View className="px-3 py-1">
+                                    <Text className="text-sm text-white/40">Loading Spotify playlists...</Text>
+                                </View>
+                            ) : spotifyPlaylists.length === 0 ? (
+                                <View className="px-3 py-1">
+                                    <Text className="text-sm text-white/40">No Spotify playlists found</Text>
+                                </View>
+                            ) : (
+                                spotifyPlaylists.map((playlist) => {
+                                    const isSelected =
+                                        selectedView === "playlist" &&
+                                        selectedPlaylistProvider === "spotify" &&
+                                        selectedPlaylistId === playlist.id;
+                                    return (
+                                        <Button
+                                            key={playlist.id}
+                                            className={listItemStyles.getRowClassName({
+                                                variant: "compact",
+                                                isSelected,
+                                            })}
+                                            onClick={() => selectLibraryPlaylist(playlist.id, "spotify")}
+                                        >
+                                            <View className="flex-1 flex-row items-center justify-between overflow-hidden">
+                                                <Text
+                                                    className={cn(
+                                                        "text-sm truncate flex-1 pr-2",
+                                                        isSelected
+                                                            ? listItemStyles.text.primary
+                                                            : listItemStyles.text.secondary,
+                                                    )}
+                                                    numberOfLines={1}
+                                                >
+                                                    {playlist.name}
+                                                </Text>
+                                                <Text className={listItemStyles.getMetaClassName()}>
+                                                    {playlist.trackCount ?? 0}
+                                                </Text>
+                                            </View>
+                                        </Button>
+                                    );
+                                })
+                            )
+                        ) : null}
+
+                        {showLocalPlaylists && localPlaylists.length === 0 ? (
                             <View className="px-3 py-1">
                                 <Text className="text-sm text-white/40">No playlists yet</Text>
                             </View>
-                        ) : (
-                            playlists.map((playlist) => {
-                                const isSelected = selectedView === "playlist" && selectedPlaylistId === playlist.id;
-                                const isTemp = playlist.id === tempPlaylistId;
-                                const isEditing = playlist.id === editingPlaylistId;
-                                const isDroppable = playlist.source === "cache" && Boolean(playlist.filePath);
-                                const isNativeDropActive =
-                                    Platform.OS === "macos" &&
-                                    isDroppable &&
-                                    activeNativeDropPlaylistId === playlist.id;
+                        ) : null}
 
-                                if (isTemp) {
-                                    return (
-                                        <View
-                                            key={playlist.id}
-                                            className={listItemStyles.getRowClassName({
-                                                variant: "compact",
-                                                isSelected: true,
-                                                isInteractive: false,
-                                            })}
-                                        >
-                                            <TextInput
-                                                value={tempPlaylistName}
-                                                onChangeText={setTempPlaylistName}
-                                                onSubmitEditing={finalizeTempPlaylist}
-                                                onBlur={finalizeTempPlaylist}
-                                                autoFocus
-                                                selectTextOnFocus
-                                                placeholder="New Playlist"
-                                                className="flex-1 text-sm text-text-primary"
-                                            />
-                                        </View>
-                                    );
-                                }
+                        {showLocalPlaylists
+                            ? localPlaylists.map((playlist) => {
+                                  const isSelected =
+                                      selectedView === "playlist" &&
+                                      selectedPlaylistProvider === "local" &&
+                                      selectedPlaylistId === playlist.id;
+                                  const isTemp = playlist.id === tempPlaylistId;
+                                  const isEditing = playlist.id === editingPlaylistId;
+                                  const isDroppable = playlist.source === "cache" && Boolean(playlist.filePath);
+                                  const isNativeDropActive =
+                                      Platform.OS === "macos" &&
+                                      isDroppable &&
+                                      activeNativeDropPlaylistId === playlist.id;
 
-                                if (isEditing) {
-                                    return (
-                                        <View
-                                            key={playlist.id}
-                                            className={listItemStyles.getRowClassName({
-                                                variant: "compact",
-                                                isSelected: true,
-                                                isInteractive: false,
-                                            })}
-                                        >
-                                            <TextInput
-                                                value={editingPlaylistName}
-                                                onChangeText={setEditingPlaylistName}
-                                                onSubmitEditing={finalizeRename}
-                                                onBlur={finalizeRename}
-                                                autoFocus
-                                                selectTextOnFocus
-                                                placeholder="Playlist name"
-                                                className="flex-1 text-sm text-text-primary"
-                                            />
-                                        </View>
-                                    );
-                                }
+                                  if (isTemp) {
+                                      return (
+                                          <View
+                                              key={playlist.id}
+                                              className={listItemStyles.getRowClassName({
+                                                  variant: "compact",
+                                                  isSelected: true,
+                                                  isInteractive: false,
+                                              })}
+                                          >
+                                              <TextInput
+                                                  value={tempPlaylistName}
+                                                  onChangeText={setTempPlaylistName}
+                                                  onSubmitEditing={finalizeTempPlaylist}
+                                                  onBlur={finalizeTempPlaylist}
+                                                  autoFocus
+                                                  selectTextOnFocus
+                                                  placeholder="New Playlist"
+                                                  className="flex-1 text-sm text-text-primary"
+                                              />
+                                          </View>
+                                      );
+                                  }
 
-                                const renderRow = (className?: string) => (
-                                    <Button
-                                        className={cn(
-                                            listItemStyles.getRowClassName({
-                                                variant: "compact",
-                                                isSelected,
-                                            }),
-                                            className,
-                                        )}
-                                        onClick={() => selectLibraryPlaylist(playlist.id)}
-                                        onDoubleClick={(event) => handlePlaylistDoubleClick(playlist, event)}
-                                        onRightClick={(event) => handlePlaylistContextMenu(playlist, event)}
-                                    >
-                                        <View className="flex-1 flex-row items-center justify-between overflow-hidden">
-                                            <Text
-                                                className={cn(
-                                                    "text-sm truncate flex-1 pr-2",
-                                                    isSelected
-                                                        ? listItemStyles.text.primary
-                                                        : listItemStyles.text.secondary,
-                                                )}
-                                                numberOfLines={1}
-                                            >
-                                                {playlist.name}
-                                            </Text>
-                                            <Text className={listItemStyles.getMetaClassName()}>
-                                                {playlist.trackCount}
-                                            </Text>
-                                        </View>
-                                    </Button>
-                                );
+                                  if (isEditing) {
+                                      return (
+                                          <View
+                                              key={playlist.id}
+                                              className={listItemStyles.getRowClassName({
+                                                  variant: "compact",
+                                                  isSelected: true,
+                                                  isInteractive: false,
+                                              })}
+                                          >
+                                              <TextInput
+                                                  value={editingPlaylistName}
+                                                  onChangeText={setEditingPlaylistName}
+                                                  onSubmitEditing={finalizeRename}
+                                                  onBlur={finalizeRename}
+                                                  autoFocus
+                                                  selectTextOnFocus
+                                                  placeholder="Playlist name"
+                                                  className="flex-1 text-sm text-text-primary"
+                                              />
+                                          </View>
+                                      );
+                                  }
 
-                                if (Platform.OS === "macos") {
-                                    return (
-                                        <DragDropView
-                                            key={playlist.id}
-                                            className={cn(
-                                                "relative",
-                                                isNativeDropActive ? "bg-blue-500/15 border border-blue-400/50" : "",
-                                            )}
-                                            onTrackDragEnter={() => {
-                                                if (isDroppable) {
-                                                    setActiveNativeDropPlaylistId(playlist.id);
-                                                }
-                                            }}
-                                            onTrackDragLeave={() => {
-                                                setActiveNativeDropPlaylistId((prev) =>
-                                                    prev === playlist.id ? null : prev,
-                                                );
-                                            }}
-                                            onTrackDrop={(event) => {
-                                                setActiveNativeDropPlaylistId((prev) =>
-                                                    prev === playlist.id ? null : prev,
-                                                );
-                                                const tracks = event.nativeEvent.tracks ?? [];
-                                                const trackPaths = tracks
-                                                    .map((track) => track.filePath ?? track.id)
-                                                    .filter((path): path is string => Boolean(path));
-                                                if (isDroppable && trackPaths.length > 0) {
-                                                    void handleAddTracks(playlist.id, trackPaths);
-                                                }
-                                            }}
-                                        >
-                                            {renderRow()}
-                                        </DragDropView>
-                                    );
-                                }
+                                  const renderRow = (className?: string) => (
+                                      <Button
+                                          className={cn(
+                                              listItemStyles.getRowClassName({
+                                                  variant: "compact",
+                                                  isSelected,
+                                              }),
+                                              className,
+                                          )}
+                                          onClick={() => selectLibraryPlaylist(playlist.id, "local")}
+                                          onDoubleClick={(event) => handlePlaylistDoubleClick(playlist, event)}
+                                          onRightClick={(event) => handlePlaylistContextMenu(playlist, event)}
+                                      >
+                                          <View className="flex-1 flex-row items-center justify-between overflow-hidden">
+                                              <Text
+                                                  className={cn(
+                                                      "text-sm truncate flex-1 pr-2",
+                                                      isSelected
+                                                          ? listItemStyles.text.primary
+                                                          : listItemStyles.text.secondary,
+                                                  )}
+                                                  numberOfLines={1}
+                                              >
+                                                  {playlist.name}
+                                              </Text>
+                                              <Text className={listItemStyles.getMetaClassName()}>
+                                                  {playlist.trackCount}
+                                              </Text>
+                                          </View>
+                                      </Button>
+                                  );
 
-                                if (!isDroppable) {
-                                    return <View key={playlist.id}>{renderRow()}</View>;
-                                }
+                                  if (Platform.OS === "macos") {
+                                      return (
+                                          <DragDropView
+                                              key={playlist.id}
+                                              className={cn(
+                                                  "relative",
+                                                  isNativeDropActive
+                                                      ? "bg-blue-500/15 border border-blue-400/50"
+                                                      : "",
+                                              )}
+                                              onTrackDragEnter={() => {
+                                                  if (isDroppable) {
+                                                      setActiveNativeDropPlaylistId(playlist.id);
+                                                  }
+                                              }}
+                                              onTrackDragLeave={() => {
+                                                  setActiveNativeDropPlaylistId((prev) =>
+                                                      prev === playlist.id ? null : prev,
+                                                  );
+                                              }}
+                                              onTrackDrop={(event) => {
+                                                  setActiveNativeDropPlaylistId((prev) =>
+                                                      prev === playlist.id ? null : prev,
+                                                  );
+                                                  const tracks = event.nativeEvent.tracks ?? [];
+                                                  const trackPaths = tracks
+                                                      .map((track) => track.filePath ?? track.id)
+                                                      .filter(
+                                                          (path): path is string =>
+                                                              Boolean(path) && !path.startsWith("spotify:"),
+                                                      );
+                                                  if (isDroppable && trackPaths.length > 0) {
+                                                      void handleAddTracks(playlist.id, trackPaths);
+                                                  }
+                                              }}
+                                          >
+                                              {renderRow()}
+                                          </DragDropView>
+                                      );
+                                  }
 
-                                return (
-                                    <View key={playlist.id} className="relative">
-                                        <DroppableZone
-                                            id={`library-playlist-drop-${playlist.id}`}
-                                            className="absolute inset-0"
-                                            allowDrop={(item: DraggedItem) => {
-                                                if (item.sourceZoneId !== MEDIA_LIBRARY_DRAG_ZONE_ID) {
-                                                    return false;
-                                                }
+                                  if (!isDroppable) {
+                                      return <View key={playlist.id}>{renderRow()}</View>;
+                                  }
 
-                                                const data = item.data as MediaLibraryDragData;
-                                                return data?.type === "media-library-tracks" && data.tracks.length > 0;
-                                            }}
-                                            onDrop={(item: DraggedItem) => {
-                                                const data = item.data as MediaLibraryDragData;
-                                                if (data?.type !== "media-library-tracks") {
-                                                    return;
-                                                }
+                                  return (
+                                      <View key={playlist.id} className="relative">
+                                          <DroppableZone
+                                              id={`library-playlist-drop-${playlist.id}`}
+                                              className="absolute inset-0"
+                                              allowDrop={(item: DraggedItem) => {
+                                                  if (item.sourceZoneId !== MEDIA_LIBRARY_DRAG_ZONE_ID) {
+                                                      return false;
+                                                  }
 
-                                                const trackPaths = data.tracks
-                                                    .map((track) => track.filePath)
-                                                    .filter((path): path is string => Boolean(path));
-                                                if (trackPaths.length === 0) {
-                                                    return;
-                                                }
+                                                  const data = item.data as MediaLibraryDragData;
+                                                  if (!data || data.type !== "media-library-tracks") {
+                                                      return false;
+                                                  }
 
-                                                void handleAddTracks(playlist.id, trackPaths);
-                                            }}
-                                        >
-                                            {(isActive) =>
-                                                isActive ? (
-                                                    <View className="absolute inset-0 rounded-md bg-blue-500/15 border border-blue-400/50" />
-                                                ) : null
-                                            }
-                                        </DroppableZone>
-                                        {renderRow()}
-                                    </View>
-                                );
-                            })
-                        )}
+                                                  return data.tracks.some((track) => track.provider !== "spotify");
+                                              }}
+                                              onDrop={(item: DraggedItem) => {
+                                                  const data = item.data as MediaLibraryDragData;
+                                                  if (data?.type !== "media-library-tracks") {
+                                                      return;
+                                                  }
+
+                                                  const trackPaths = data.tracks
+                                                      .filter((track) => track.provider !== "spotify")
+                                                      .map((track) => track.filePath)
+                                                      .filter((path): path is string => Boolean(path));
+                                                  if (trackPaths.length === 0) {
+                                                      return;
+                                                  }
+
+                                                  void handleAddTracks(playlist.id, trackPaths);
+                                              }}
+                                          >
+                                              {(isActive) =>
+                                                  isActive ? (
+                                                      <View className="absolute inset-0 rounded-md bg-blue-500/15 border border-blue-400/50" />
+                                                  ) : null
+                                              }
+                                          </DroppableZone>
+                                          {renderRow()}
+                                      </View>
+                                  );
+                              })
+                            : null}
                     </View>
                 ) : null}
 

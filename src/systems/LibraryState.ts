@@ -5,6 +5,7 @@ import { type LocalTrack, librarySettings$, localMusicState$ } from "@/systems/L
 import { perfCount, perfLog, perfTime } from "@/utils/perfLogger";
 import { runAfterInteractions } from "@/utils/runAfterInteractions";
 import { resolveThumbnailFromFields } from "@/utils/thumbnails";
+import type { ProviderId } from "@/providers/types";
 
 export interface LibraryItem {
     id: string;
@@ -25,6 +26,7 @@ export type PlaylistSortMode = "playlist-order" | "title" | "artist" | "album";
 export interface LibraryUIState {
     selectedView: LibraryView;
     selectedPlaylistId: string | null;
+    selectedPlaylistProvider: ProviderId | null;
     searchQuery: string;
     playlistSort: PlaylistSortMode;
 }
@@ -33,6 +35,7 @@ export interface LibraryUIState {
 export const libraryUI$ = observable<LibraryUIState>({
     selectedView: "artists",
     selectedPlaylistId: null,
+    selectedPlaylistProvider: null,
     searchQuery: "",
     playlistSort: "playlist-order",
 });
@@ -42,12 +45,14 @@ export function selectLibraryView(view: LibraryView): void {
 
     if (view !== "playlist") {
         libraryUI$.selectedPlaylistId.set(null);
+        libraryUI$.selectedPlaylistProvider.set(null);
     }
 }
 
-export function selectLibraryPlaylist(playlistId: string | null): void {
+export function selectLibraryPlaylist(playlistId: string | null, providerId: ProviderId = "local"): void {
     libraryUI$.selectedView.set("playlist");
     libraryUI$.selectedPlaylistId.set(playlistId);
+    libraryUI$.selectedPlaylistProvider.set(playlistId ? providerId : null);
 }
 
 // Library data derived from local music state
