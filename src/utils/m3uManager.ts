@@ -5,6 +5,37 @@ import { ensureCacheDirectory, getCacheDirectory, getPlaylistsDirectory } from "
 import { formatSecondsToMmSs, type M3UTrack, parseDurationToSeconds, parseM3U, writeM3U } from "@/utils/m3u";
 
 const QUEUE_FILE_PATH = "queue.m3u";
+const THUMBNAILS_DIRECTORY = getCacheDirectory("thumbnails");
+const THUMBNAILS_BASE_URI = THUMBNAILS_DIRECTORY.uri.endsWith("/")
+    ? THUMBNAILS_DIRECTORY.uri
+    : `${THUMBNAILS_DIRECTORY.uri}/`;
+
+const isAbsoluteOrRemotePath = (value: string): boolean =>
+    value.startsWith("/") || value.startsWith("file://") || /^[a-z][a-z0-9+.-]*:/i.test(value);
+
+const stripThumbnailBase = (logo?: string): string | undefined => {
+    if (!logo) {
+        return undefined;
+    }
+
+    if (logo.startsWith(THUMBNAILS_BASE_URI)) {
+        return logo.slice(THUMBNAILS_BASE_URI.length);
+    }
+
+    return logo;
+};
+
+const resolveThumbnailBase = (logo?: string): string | undefined => {
+    if (!logo) {
+        return undefined;
+    }
+
+    if (isAbsoluteOrRemotePath(logo)) {
+        return logo;
+    }
+
+    return `${THUMBNAILS_BASE_URI}${logo}`;
+};
 
 /**
  * Converts LocalTrack to M3UTrack
@@ -12,13 +43,15 @@ const QUEUE_FILE_PATH = "queue.m3u";
 function localTrackToM3UTrack(track: LocalTrack): M3UTrack {
     // Convert duration from "mm:ss" format to seconds
     const durationSeconds = parseDurationToSeconds(track.duration);
+    const filePath = track.filePath;
 
     return {
-        id: track.filePath,
-        duration: durationSeconds,
+        id: filePath,
+        duration: Number.isFinite(durationSeconds) ? durationSeconds : -1,
         title: track.title,
         artist: track.artist,
-        filePath: track.filePath,
+        filePath,
+        logo: stripThumbnailBase(track.thumbnail),
     };
 }
 
@@ -26,19 +59,24 @@ function localTrackToM3UTrack(track: LocalTrack): M3UTrack {
  * Converts M3UTrack to LocalTrack
  */
 function m3uTrackToLocalTrack(track: M3UTrack): LocalTrack {
-    // Convert duration from seconds to "mm:ss" format
-    const durationString = formatSecondsToMmSs(track.duration);
-
-    // Extract filename from path
-    const fileName = track.filePath.split("/").pop() || track.filePath;
+    const durationSeconds = Number.isFinite(track.duration) && track.duration > 0 ? track.duration : 0;
+    const durationString = durationSeconds > 0 ? formatSecondsToMmSs(durationSeconds) : " ";
+    const isSpotify = track.filePath.toLowerCase().startsWith("spotify:");
+    const fallbackTitle = track.title || track.filePath.split("/").pop() || track.filePath;
+    const fileName = isSpotify ? fallbackTitle : track.filePath.split("/").pop() || track.filePath;
 
     return {
         id: track.filePath,
-        title: track.title,
+        title: fallbackTitle,
         artist: track.artist || "Unknown Artist",
         duration: durationString,
         filePath: track.filePath,
         fileName,
+        thumbnail: resolveThumbnailBase(track.logo),
+        addedAt: track.addedAt,
+        provider: isSpotify ? "spotify" : undefined,
+        uri: isSpotify ? track.filePath : undefined,
+        durationMs: durationSeconds > 0 ? durationSeconds * 1000 : undefined,
     };
 }
 
