@@ -18,7 +18,7 @@ import {
 import { settings$ } from "@/systems/Settings";
 import { stateSaved$ } from "@/systems/State";
 import { ensureCacheDirectory, getCacheDirectory, getPlaylistsDirectory } from "@/utils/cacheDirectories";
-import { type M3UTrack, parseM3U, writeM3U } from "@/utils/m3u";
+import { parseM3U, type M3UTrack, writeM3U } from "@/utils/m3u";
 import { loadQueueFromM3U } from "@/utils/m3uManager";
 import { perfCount, perfLog } from "@/utils/perfLogger";
 import { runAfterInteractions, runAfterInteractionsWithLabel } from "@/utils/runAfterInteractions";
@@ -42,6 +42,7 @@ export interface LocalTrack {
     provider?: ProviderId;
     uri?: string;
     durationMs?: number;
+    addedAt?: number;
 }
 
 export interface LocalPlaylist {
