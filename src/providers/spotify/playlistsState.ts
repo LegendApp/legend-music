@@ -1,25 +1,7 @@
 import { observable } from "@legendapp/state";
-import type { ProviderPlaylist, ProviderTrack } from "@/providers/types";
-import { createJSONManager } from "@/utils/JSONManager";
+import { createSpotifyState, spotifyState$ } from "@/providers/spotify/state";
 
-export interface SpotifyPlaylistsState {
-    playlists: ProviderPlaylist[];
-    playlistsFetchedAt: number | null;
-    tracksByPlaylistId: Record<string, ProviderTrack[]>;
-    tracksFetchedAtByPlaylistId: Record<string, number>;
-}
-
-const createInitialState = (): SpotifyPlaylistsState => ({
-    playlists: [],
-    playlistsFetchedAt: null,
-    tracksByPlaylistId: {},
-    tracksFetchedAtByPlaylistId: {},
-});
-
-export const spotifyPlaylists$ = createJSONManager<SpotifyPlaylistsState>({
-    filename: "spotify-playlists",
-    initialValue: createInitialState(),
-});
+export const spotifyPlaylists$ = spotifyState$;
 
 export const spotifyPlaylistsStatus$ = observable({
     isLoading: false,
@@ -29,7 +11,7 @@ export const spotifyPlaylistsStatus$ = observable({
 });
 
 export function clearSpotifyPlaylistsCache(): void {
-    spotifyPlaylists$.set(createInitialState());
+    spotifyPlaylists$.set(createSpotifyState());
     spotifyPlaylistsStatus$.isLoading.set(false);
     spotifyPlaylistsStatus$.error.set(null);
     spotifyPlaylistsStatus$.tracksLoading.set({});
