@@ -103,21 +103,17 @@ const fetchSpotifyJson = async <T>(url: string, token: string): Promise<T> => {
     return response.json() as Promise<T>;
 };
 
-export async function fetchSpotifyPlaylists(options: { force?: boolean } = {}): Promise<ProviderPlaylist[]> {
-    const cachedAt = spotifyPlaylists$.playlistsFetchedAt.peek();
-    if (!options.force && cachedAt) {
-        return spotifyPlaylists$.playlists.peek();
+const refreshSpotifyPlaylists = async (options: { showLoading: boolean }): Promise<ProviderPlaylist[]> => {
+    if (options.showLoading) {
+        spotifyPlaylistsStatus$.isLoading.set(true);
     }
-
-    const token = await ensureSpotifyAccessToken();
-    if (!token) {
-        throw new Error("Spotify login required to load playlists");
-    }
-
-    spotifyPlaylistsStatus$.isLoading.set(true);
     spotifyPlaylistsStatus$.error.set(null);
 
     try {
+        const token = await ensureSpotifyAccessToken();
+        if (!token) {
+            throw new Error("Spotify login required to load playlists");
+        }
         const playlists: ProviderPlaylist[] = [];
         let nextUrl: string | null = `${SPOTIFY_API_BASE}/me/playlists?limit=${PLAYLIST_PAGE_LIMIT}`;
 
@@ -134,10 +130,28 @@ export async function fetchSpotifyPlaylists(options: { force?: boolean } = {}): 
     } catch (error) {
         const message = error instanceof Error ? error.message : "Failed to load Spotify playlists";
         spotifyPlaylistsStatus$.error.set(message);
-        throw error;
+        if (options.showLoading) {
+            throw error;
+        }
+        return spotifyPlaylists$.playlists.peek();
     } finally {
-        spotifyPlaylistsStatus$.isLoading.set(false);
+        if (options.showLoading) {
+            spotifyPlaylistsStatus$.isLoading.set(false);
+        }
     }
+};
+
+export async function fetchSpotifyPlaylists(options: { force?: boolean } = {}): Promise<ProviderPlaylist[]> {
+    const cachedAt = spotifyPlaylists$.playlistsFetchedAt.peek();
+    const cachedPlaylists = spotifyPlaylists$.playlists.peek();
+    const hasCached = Boolean(cachedAt) || cachedPlaylists.length > 0;
+
+    if (!options.force && hasCached) {
+        void refreshSpotifyPlaylists({ showLoading: false });
+        return cachedPlaylists;
+    }
+
+    return refreshSpotifyPlaylists({ showLoading: true });
 }
 
 export async function fetchSpotifyPlaylistTracks(

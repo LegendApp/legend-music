@@ -9,5 +9,6 @@ export * from "./playlistsState";
 export * from "./SpotifyWebPlayerHost";
 export * from "./SpotifyWebPlayerBridge";
 export * from "./search";
+export * from "./state";
 export * from "./types";
 export * from "./webPlayerState";
