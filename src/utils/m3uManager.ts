@@ -41,13 +41,15 @@ const resolveThumbnailBase = (logo?: string): string | undefined => {
  * Converts LocalTrack to M3UTrack
  */
 function localTrackToM3UTrack(track: LocalTrack): M3UTrack | null {
-    if (track.provider && track.provider !== "local") {
+    const filePath = track.uri ?? track.filePath;
+    if (!filePath) {
         return null;
     }
 
-    // Convert duration from "mm:ss" format to seconds
-    const durationSeconds = parseDurationToSeconds(track.duration);
-    const filePath = track.filePath;
+    const durationSeconds =
+        typeof track.durationMs === "number"
+            ? Math.round(track.durationMs / 1000)
+            : parseDurationToSeconds(track.duration);
 
     return {
         id: filePath,
@@ -56,6 +58,7 @@ function localTrackToM3UTrack(track: LocalTrack): M3UTrack | null {
         artist: track.artist,
         filePath,
         logo: stripThumbnailBase(track.thumbnail),
+        addedAt: track.addedAt,
     };
 }
 
