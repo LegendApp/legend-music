@@ -18,10 +18,11 @@ import {
 import { settings$ } from "@/systems/Settings";
 import { stateSaved$ } from "@/systems/State";
 import { ensureCacheDirectory, getCacheDirectory, getPlaylistsDirectory } from "@/utils/cacheDirectories";
-import { parseM3U, writeM3U } from "@/utils/m3u";
+import { type M3UTrack, parseM3U, writeM3U } from "@/utils/m3u";
 import { loadQueueFromM3U } from "@/utils/m3uManager";
 import { perfCount, perfLog } from "@/utils/perfLogger";
 import { runAfterInteractions, runAfterInteractionsWithLabel } from "@/utils/runAfterInteractions";
+import { buildThumbnailUri } from "@/utils/thumbnails";
 import { DEFAULT_LOCAL_PLAYLIST_ID } from "./localMusicConstants";
 
 export interface LocalTrack {
@@ -43,6 +44,7 @@ export interface LocalPlaylist {
     name: string;
     filePath: string;
     trackPaths: string[];
+    tracks?: M3UTrack[];
     trackCount: number;
     source: "cache" | "library-folder";
     originRoot?: string;
@@ -263,15 +265,6 @@ function buildAbsolutePath(rootPath: string, relativePath: string): string {
     return `${normalizedRoot}/${relativePath}`;
 }
 
-function buildThumbnailUri(baseUri: string, key?: string): string | undefined {
-    if (!key || !baseUri) {
-        return undefined;
-    }
-
-    const normalizedBase = baseUri.endsWith("/") ? baseUri.slice(0, -1) : baseUri;
-    return `${normalizedBase}/${key}.png`;
-}
-
 function isLocalFileUri(uri: string): boolean {
     return uri.startsWith("file://") || uri.startsWith("/");
 }
@@ -360,7 +353,7 @@ export async function ensureLocalTrackThumbnail(track: LocalTrack): Promise<stri
         const thumbnailsDir = getCacheDirectory("thumbnails");
         ensureCacheDirectory(thumbnailsDir);
 
-        const fromKey = buildThumbnailUri(thumbnailsDir.uri, track.thumbnailKey);
+        const fromKey = buildThumbnailUri(track.thumbnailKey);
         if (fromKey && thumbnailFileExists(fromKey)) {
             track.thumbnail = fromKey;
             bumpThumbnailVersion();
@@ -433,12 +426,12 @@ async function extractId3Metadata(
                 album = nativeTags.album;
             }
             trackNumber = normalizeTrackNumber(nativeTags.trackNumber);
-            if (Number.isFinite(nativeTags.durationSeconds) && nativeTags.durationSeconds > 0) {
-                duration = formatDuration(nativeTags.durationSeconds);
+            if (Number.isFinite(nativeTags.durationSeconds) && nativeTags.durationSeconds! > 0) {
+                duration = formatDuration(nativeTags.durationSeconds!);
             }
             const nativeThumbnailKey = nativeTags.artworkKey?.length ? nativeTags.artworkKey : undefined;
             if (nativeThumbnailKey) {
-                thumbnail = buildThumbnailUri(thumbnailsDirUri, nativeThumbnailKey) ?? thumbnail;
+                thumbnail = buildThumbnailUri(nativeThumbnailKey) ?? thumbnail;
             }
             if (!thumbnail && nativeTags.artworkUri?.length) {
                 thumbnail = nativeTags.artworkUri;
@@ -750,9 +743,7 @@ async function scanLibraryNative(
             }
 
             const candidatePath =
-                (playlist.absolutePath && playlist.absolutePath.length > 0
-                    ? playlist.absolutePath
-                    : undefined) ??
+                (playlist.absolutePath && playlist.absolutePath.length > 0 ? playlist.absolutePath : undefined) ??
                 (playlist.relativePath?.length
                     ? buildAbsolutePath(originRoot, playlist.relativePath)
                     : buildAbsolutePath(originRoot, playlist.fileName ?? ""));
@@ -1063,6 +1054,10 @@ const resolveTrackPathForPlaylist = (playlistFilePath: string, entryPath: string
         return filePath;
     }
 
+    if (filePath.toLowerCase().startsWith("spotify:")) {
+        return filePath;
+    }
+
     if (/^[a-z][a-z0-9+.-]*:\/\//i.test(filePath)) {
         return filePath;
     }
@@ -1071,10 +1066,22 @@ const resolveTrackPathForPlaylist = (playlistFilePath: string, entryPath: string
     return `${baseDir}/${filePath}`.replace(/\/{2,}/g, "/");
 };
 
-const readPlaylistTrackPaths = (file: File): string[] => {
+const readPlaylistTracks = (file: File): M3UTrack[] => {
     const content = file.text();
     const parsed = parseM3U(content);
-    return parsed.songs.map((track) => resolveTrackPathForPlaylist(file.uri, track.filePath));
+    return parsed.songs
+        .map((track) => {
+            const resolvedPath = resolveTrackPathForPlaylist(file.uri, track.filePath);
+            if (!resolvedPath) {
+                return null;
+            }
+            return {
+                ...track,
+                id: resolvedPath,
+                filePath: resolvedPath,
+            };
+        })
+        .filter((track): track is M3UTrack => Boolean(track));
 };
 
 export function loadLocalPlaylists(): void {
@@ -1108,12 +1115,14 @@ export function loadLocalPlaylists(): void {
         }
 
         try {
-            const trackPaths = readPlaylistTrackPaths(entry);
+            const tracks = readPlaylistTracks(entry);
+            const trackPaths = tracks.map((track) => track.filePath);
             cachePlaylists.push({
                 id: toFilePath(entry.uri),
                 name: entry.name.replace(/\.(m3u|m3u8)$/i, ""),
                 filePath: toFilePath(entry.uri),
                 trackPaths,
+                tracks,
                 trackCount: trackPaths.length,
                 source: "cache",
             });
@@ -1143,13 +1152,15 @@ export function loadLocalPlaylists(): void {
                 continue;
             }
 
-            const trackPaths = readPlaylistTrackPaths(file);
+            const tracks = readPlaylistTracks(file);
+            const trackPaths = tracks.map((track) => track.filePath);
             const playlistName = fileName.replace(/\.(m3u|m3u8)$/i, "");
             libraryPlaylists.push({
                 id: toFilePath(file.uri),
                 name: playlistName,
                 filePath: toFilePath(file.uri),
                 trackPaths,
+                tracks,
                 trackCount: trackPaths.length,
                 source: "library-folder",
                 originRoot: discovered.originRoot,
@@ -1203,6 +1214,7 @@ export function createLocalPlaylist(name: string): LocalPlaylist {
         name: playlistName,
         filePath,
         trackPaths: [],
+        tracks: [],
         trackCount: 0,
         source: "cache",
     };
@@ -1215,14 +1227,44 @@ export function createLocalPlaylist(name: string): LocalPlaylist {
     return playlist;
 }
 
-export function saveLocalPlaylistTracks(playlist: LocalPlaylist, trackPaths: string[]): void {
+export function saveLocalPlaylistTracks(
+    playlist: LocalPlaylist,
+    trackPaths: string[],
+    trackEntries?: M3UTrack[],
+): void {
     try {
-        const m3uTracks = trackPaths.map((filePath) => ({
-            id: filePath,
-            duration: -1,
-            title: filePath.split("/").pop() || filePath,
-            filePath,
-        }));
+        const entryBuckets = new Map<string, M3UTrack[]>();
+        const seedEntries = trackEntries ?? playlist.tracks ?? [];
+        for (const entry of seedEntries) {
+            const key = entry.filePath;
+            const bucket = entryBuckets.get(key);
+            if (bucket) {
+                bucket.push(entry);
+            } else {
+                entryBuckets.set(key, [entry]);
+            }
+        }
+
+        const now = Date.now();
+        const m3uTracks = trackPaths.map((filePath) => {
+            const bucket = entryBuckets.get(filePath);
+            const existing = bucket && bucket.length > 0 ? bucket.shift() : null;
+            if (existing) {
+                return {
+                    ...existing,
+                    id: existing.id || filePath,
+                    filePath,
+                };
+            }
+
+            return {
+                id: filePath,
+                duration: -1,
+                title: filePath.split("/").pop() || filePath,
+                filePath,
+                addedAt: now,
+            };
+        });
         const m3uContent = writeM3U({ songs: m3uTracks, suggestions: [] });
 
         const file = new File(decodeIfUriEncoded(playlist.filePath));
@@ -1233,6 +1275,7 @@ export function saveLocalPlaylistTracks(playlist: LocalPlaylist, trackPaths: str
                 ? {
                       ...pl,
                       trackPaths: [...trackPaths],
+                      tracks: m3uTracks,
                       trackCount: trackPaths.length,
                   }
                 : pl,
