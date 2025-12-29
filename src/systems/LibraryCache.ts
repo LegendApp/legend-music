@@ -1,4 +1,5 @@
 import { createJSONManager } from "@/utils/JSONManager";
+import { deriveThumbnailKey } from "@/utils/thumbnails";
 
 export interface PersistedLibraryTrack {
     root: number;
@@ -61,17 +62,6 @@ const normalizeRootPath = (path: string): string => {
 const fileNameFromPath = (path: string): string => {
     const lastSlash = path.lastIndexOf("/");
     return lastSlash === -1 ? path : path.slice(lastSlash + 1);
-};
-
-const deriveThumbnailKey = (thumbnail: unknown): string | undefined => {
-    if (typeof thumbnail !== "string" || thumbnail.length === 0) {
-        return undefined;
-    }
-
-    const lastSlash = thumbnail.lastIndexOf("/");
-    const fileName = lastSlash === -1 ? thumbnail : thumbnail.slice(lastSlash + 1);
-    const [baseName] = fileName.split(".");
-    return baseName && baseName.length > 0 ? baseName : undefined;
 };
 
 const sanitizeTrack = (track: RawLibraryTrack, roots: string[]): PersistedLibraryTrack | null => {

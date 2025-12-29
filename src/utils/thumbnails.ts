@@ -7,7 +7,7 @@ const thumbnailsDirUri = thumbnailsDir.uri.endsWith("/") ? thumbnailsDir.uri.sli
 const normalizeKey = (value?: string): string | undefined =>
     typeof value === "string" && value.length > 0 ? value : undefined;
 
-export const deriveThumbnailKey = (value?: string): string | undefined => {
+export const deriveThumbnailKey = (value?: unknown): string | undefined => {
     if (!value || typeof value !== "string") {
         return undefined;
     }
