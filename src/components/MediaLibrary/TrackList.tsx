@@ -97,14 +97,13 @@ export function TrackList(_props: TrackListProps) {
     const headerConfig = useMemo(() => {
         if (selectedView === "playlist") {
             if (selectedPlaylistProvider === "local" && selectedLocalPlaylist) {
-                return { title: selectedLocalPlaylist.name, count: selectedLocalPlaylist.trackCount, showSort: true };
+                return { title: selectedLocalPlaylist.name, count: selectedLocalPlaylist.trackCount };
             }
 
             if (selectedPlaylistProvider === "spotify") {
                 return {
                     title: selectedSpotifyPlaylist?.name ?? "Playlist",
                     count: selectedSpotifyPlaylist?.trackCount ?? nonSeparatorTrackCount,
-                    showSort: true,
                 };
             }
         }
@@ -160,7 +159,6 @@ export function TrackList(_props: TrackListProps) {
 
         return nextColumns;
     }, [showDateAddedColumn]);
-
     const handleColumnSort = useCallback(
         (sortId: string) => {
             if (

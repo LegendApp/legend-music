@@ -232,6 +232,7 @@ describe("buildTrackItems", () => {
             selectedPlaylistTracks: spotifyTracks,
             searchQuery: "",
             playlistSort: "playlist-order",
+            playlistSortDirection: "asc",
         });
 
         expect(result.trackItems.map((item) => item.id)).toEqual(["spotify:track:1", "spotify:track:2"]);
@@ -304,6 +305,7 @@ describe("buildTrackItems", () => {
             playlists,
             selectedView: "playlist",
             selectedPlaylistId: playlists[0].id,
+            selectedPlaylistProvider: "local",
             searchQuery: "",
             playlistSort: "date-added",
             playlistSortDirection: "desc",

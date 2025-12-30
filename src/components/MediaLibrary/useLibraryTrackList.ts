@@ -26,7 +26,7 @@ import { addTracksToPlaylist } from "@/systems/LocalPlaylists";
 import { formatSecondsToMmSs } from "@/utils/m3u";
 import { getQueueAction, type QueueAction } from "@/utils/queueActions";
 import { buildTrackContextMenuItems, handleTrackContextMenuSelection } from "@/utils/trackContextMenu";
-import { buildTrackLookup } from "@/utils/trackResolution";
+import { buildTrackFromPlaylistEntry, buildTrackLookup, isSpotifyUri } from "@/utils/trackResolution";
 
 type TrackListItem = TrackData;
 type LibraryTrackListItem = TrackData & { sourceTrack?: LibraryTrack };
@@ -209,6 +209,7 @@ const buildSpotifyLibraryTrack = (track: ProviderTrack, index: number): LibraryT
         uri: track.uri,
         durationMs: track.durationMs,
         trackNumber: index + 1,
+        addedAt: track.addedAt,
     };
 };
 
@@ -451,16 +452,14 @@ export function buildTrackItems({
             };
         };
 
-        const playlistEntries = playlist.tracks
-            ? playlist.tracks.map((entry) => ({
-                  filePath: entry.filePath,
-                  title: entry.title,
-                  addedAt: entry.addedAt,
-              }))
-            : playlist.trackPaths.map((path) => ({
-                  filePath: path,
-                  title: path.split("/").pop() || path,
-              }));
+        const playlistEntries =
+            playlist.tracks ??
+            playlist.trackPaths.map((path) => ({
+                id: path,
+                duration: -1,
+                title: path.split("/").pop() || path,
+                filePath: path,
+            }));
 
         const orderedTracks: LibraryTrack[] = playlistEntries.map((entry) => {
             const resolved = trackLookup.get(entry.filePath) as LibraryTrack | undefined;
@@ -469,6 +468,10 @@ export function buildTrackItems({
                     return { ...resolved, addedAt: entry.addedAt };
                 }
                 return resolved;
+            }
+
+            if (isSpotifyUri(entry.filePath)) {
+                return buildTrackFromPlaylistEntry(entry) as LibraryTrack;
             }
 
             return makeMissingTrack(entry.filePath, entry.title, entry.addedAt);
