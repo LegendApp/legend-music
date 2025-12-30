@@ -25,6 +25,7 @@ export interface ProviderTrack {
     uri: string;
     name: string;
     durationMs?: number;
+    addedAt?: number;
     artists?: string[];
     album?: string;
     thumbnail?: string;

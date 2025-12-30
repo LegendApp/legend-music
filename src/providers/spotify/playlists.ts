@@ -38,6 +38,7 @@ type SpotifyTrack = {
 };
 
 type SpotifyPlaylistTrackItem = {
+    added_at?: string | null;
     track?: SpotifyTrack | null;
 };
 
@@ -183,6 +184,12 @@ export async function fetchSpotifyPlaylistTracks(
             for (const item of items) {
                 const mapped = mapSpotifyTrack(item.track);
                 if (mapped) {
+                    if (item.added_at) {
+                        const addedAt = Date.parse(item.added_at);
+                        if (Number.isFinite(addedAt)) {
+                            mapped.addedAt = addedAt;
+                        }
+                    }
                     tracks.push(mapped);
                 }
             }

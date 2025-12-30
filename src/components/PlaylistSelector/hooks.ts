@@ -18,6 +18,7 @@ import {
 } from "@/systems/LocalMusicState";
 import { stateSaved$ } from "@/systems/State";
 
+import { parseDurationToSeconds, type M3UTrack } from "@/utils/m3u";
 import { perfLog } from "@/utils/perfLogger";
 import type { QueueAction } from "@/utils/queueActions";
 import { buildTrackLookup, getTracksForLibraryItem, resolvePlaylistTracks } from "@/utils/trackResolution";
@@ -29,6 +30,7 @@ interface PlaylistOption {
     count: number;
     type: "local-files" | "saved";
     trackPaths?: string[];
+    trackEntries?: M3UTrack[];
 }
 
 interface UsePlaylistOptionsResult {
@@ -56,6 +58,7 @@ export function usePlaylistOptions(localMusicState: LocalMusicState): UsePlaylis
                 count: playlist.trackCount,
                 type: "saved" as const,
                 trackPaths: playlist.trackPaths,
+                trackEntries: playlist.tracks,
             })),
         [localMusicState.playlists],
     );
@@ -118,6 +121,7 @@ export function usePlaylistQueueHandlers({
                     name: playlist.name,
                     type: playlist.type,
                     trackPaths: playlist.trackPaths,
+                    trackEntries: playlist.trackEntries,
                 },
                 localTracks,
                 tracksByPath,
@@ -188,6 +192,7 @@ export function usePlaylistQueueHandlers({
                     id: playlist.id,
                     name: playlist.name,
                     trackPaths: playlist.trackPaths,
+                    trackEntries: playlist.tracks,
                 },
                 localTracks,
                 tracksByPath,
@@ -276,7 +281,25 @@ export function useQueueExporter({ queueTracks }: QueueExporterArgs) {
             const playlists = localMusicState$.playlists.peek();
             const existing =
                 playlists.find((playlist) => playlist.name.trim().toLowerCase() === normalizedName) ?? null;
-            const trackPaths = queueTracks.map((track) => track.filePath);
+            const addedAt = Date.now();
+            const trackEntries: M3UTrack[] = queueTracks.map((track) => {
+                const filePath = track.uri ?? track.filePath;
+                const durationSeconds =
+                    typeof track.durationMs === "number"
+                        ? Math.round(track.durationMs / 1000)
+                        : parseDurationToSeconds(track.duration);
+
+                return {
+                    id: filePath,
+                    duration: Number.isFinite(durationSeconds) ? durationSeconds : -1,
+                    title: track.title || track.fileName || filePath,
+                    artist: track.artist,
+                    filePath,
+                    logo: track.thumbnail,
+                    addedAt: track.addedAt ?? addedAt,
+                };
+            });
+            const trackPaths = trackEntries.map((entry) => entry.filePath);
 
             try {
                 if (existing) {
@@ -291,14 +314,14 @@ export function useQueueExporter({ queueTracks }: QueueExporterArgs) {
                         return false;
                     }
 
-                    await saveLocalPlaylistTracks(existing, trackPaths);
+                    await saveLocalPlaylistTracks(existing, trackPaths, trackEntries);
                     await loadLocalPlaylists();
                     showToast(`${existing.name} was saved`, "info");
                     return true;
                 }
 
                 const playlist = await createLocalPlaylist(trimmedName);
-                await saveLocalPlaylistTracks(playlist, trackPaths);
+                await saveLocalPlaylistTracks(playlist, trackPaths, trackEntries);
                 await loadLocalPlaylists();
                 showToast(`${playlist.name} was saved`, "info");
                 return true;

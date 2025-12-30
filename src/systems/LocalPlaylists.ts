@@ -200,12 +200,14 @@ export async function exportPlaylistToFile(playlistId: string): Promise<string |
     const fileBase = sanitizePlaylistFileName(playlist.name);
     const file = new File(directory, `${fileBase}.m3u`);
 
-    const m3uTracks = playlist.trackPaths.map((filePath) => ({
-        id: filePath,
-        duration: -1,
-        title: filePath.split("/").pop() || filePath,
-        filePath,
-    }));
+    const m3uTracks =
+        playlist.tracks ??
+        playlist.trackPaths.map((filePath) => ({
+            id: filePath,
+            duration: -1,
+            title: filePath.split("/").pop() || filePath,
+            filePath,
+        }));
     const m3uContent = writeM3U({ songs: m3uTracks, suggestions: [] });
 
     file.write(m3uContent);
@@ -217,7 +219,7 @@ export async function duplicatePlaylistToCache(playlistId: string, nextName?: st
     const name = nextName?.trim() || playlist.name;
 
     const nextPlaylist = await createLocalPlaylist(name);
-    await saveLocalPlaylistTracks(nextPlaylist, playlist.trackPaths);
+    await saveLocalPlaylistTracks(nextPlaylist, playlist.trackPaths, playlist.tracks);
     await loadLocalPlaylists();
 
     return getPlaylistOrThrow(nextPlaylist.id);

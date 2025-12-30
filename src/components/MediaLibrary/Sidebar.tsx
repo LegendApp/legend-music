@@ -191,20 +191,22 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
 
     const handlePlaylistDoubleClick = useCallback((playlist: LocalPlaylist, event?: NativeMouseEvent) => {
         const allTracks = localMusicState$.tracks.peek();
-        if (allTracks.length === 0) {
+        const playlistLength = playlist.tracks?.length ?? playlist.trackPaths.length;
+        if (allTracks.length === 0 && playlistLength === 0) {
             return;
         }
 
-        const { tracks: resolvedTracks, missingPaths } = resolvePlaylistTracks(
-            {
-                id: playlist.id,
-                name: playlist.name,
-                type: playlist.source,
-                trackPaths: playlist.trackPaths,
-            },
-            allTracks,
-            buildTrackLookup(allTracks),
-        );
+            const { tracks: resolvedTracks, missingPaths } = resolvePlaylistTracks(
+                {
+                    id: playlist.id,
+                    name: playlist.name,
+                    type: playlist.source,
+                    trackPaths: playlist.trackPaths,
+                    trackEntries: playlist.tracks,
+                },
+                allTracks,
+                buildTrackLookup(allTracks),
+            );
 
         if (missingPaths.length > 0) {
             console.warn(`Playlist ${playlist.name} is missing ${missingPaths.length} tracks from the library`);
