@@ -5,6 +5,7 @@ import type { NativeMouseEvent } from "react-native-macos";
 import { Button } from "@/components/Button";
 import { PlaybackIndicator } from "@/components/PlaybackIndicator";
 import { useListItemStyles } from "@/hooks/useListItemStyles";
+import { Icon } from "@/systems/Icon";
 import { cn } from "@/utils/cn";
 
 export type TableColumnAlign = "left" | "center" | "right";
@@ -16,6 +17,7 @@ export interface TableColumnSpec {
     width?: number;
     minWidth?: number;
     align?: TableColumnAlign;
+    sortId?: string;
 }
 
 interface TableProps {
@@ -42,9 +44,19 @@ interface TableHeaderProps {
     columns: TableColumnSpec[];
     className?: string;
     cellClassName?: string;
+    activeSortId?: string | null;
+    activeSortDirection?: "asc" | "desc";
+    onColumnClick?: (sortId: string) => void;
 }
 
-export function TableHeader({ columns, className, cellClassName }: TableHeaderProps) {
+export function TableHeader({
+    columns,
+    className,
+    cellClassName,
+    activeSortId,
+    activeSortDirection,
+    onColumnClick,
+}: TableHeaderProps) {
     const listItemStyles = useListItemStyles();
 
     return (
@@ -52,15 +64,40 @@ export function TableHeader({ columns, className, cellClassName }: TableHeaderPr
             {columns.map((column) => (
                 <TableCell key={column.id} column={column} className={cellClassName}>
                     {column.label ? (
-                        <Text
-                            className={cn(
-                                "text-[11px] font-semibold uppercase tracking-wider",
-                                listItemStyles.text.muted,
-                            )}
-                            numberOfLines={1}
-                        >
-                            {column.label}
-                        </Text>
+                        column.sortId && onColumnClick ? (
+                            <Button
+                                onClick={() => onColumnClick(column.sortId)}
+                                className="flex-row items-center gap-1"
+                            >
+                                <Text
+                                    className={cn(
+                                        "text-[11px] font-semibold uppercase tracking-wider",
+                                        column.sortId === activeSortId
+                                            ? listItemStyles.text.primary
+                                            : listItemStyles.text.muted,
+                                    )}
+                                    numberOfLines={1}
+                                >
+                                    {column.label}
+                                </Text>
+                                {column.sortId === activeSortId && activeSortDirection ? (
+                                    <Icon
+                                        name={activeSortDirection === "asc" ? "chevron.up" : "chevron.down"}
+                                        size={10}
+                                    />
+                                ) : null}
+                            </Button>
+                        ) : (
+                            <Text
+                                className={cn(
+                                    "text-[11px] font-semibold uppercase tracking-wider",
+                                    listItemStyles.text.muted,
+                                )}
+                                numberOfLines={1}
+                            >
+                                {column.label}
+                            </Text>
+                        )
                     ) : null}
                 </TableCell>
             ))}

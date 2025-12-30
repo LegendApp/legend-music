@@ -33,6 +33,23 @@ import { useLibraryTrackList } from "./useLibraryTrackList";
 
 type TrackListProps = {};
 
+const formatAddedDate = (timestamp?: number): string => {
+    if (!timestamp) {
+        return "";
+    }
+
+    const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) {
+        return "";
+    }
+
+    return date.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+    });
+};
+
 export function TrackList(_props: TrackListProps) {
     const {
         tracks,
@@ -52,6 +69,7 @@ export function TrackList(_props: TrackListProps) {
     const selectedPlaylistProvider = useValue(libraryUI$.selectedPlaylistProvider);
     const searchQuery = useValue(libraryUI$.searchQuery);
     const playlistSort = useValue(libraryUI$.playlistSort);
+    const playlistSortDirection = useValue(libraryUI$.playlistSortDirection);
     const playlists = useValue(localMusicState$.playlists);
     const spotifyPlaylists = useValue(spotifyPlaylists$.playlists);
 
@@ -79,28 +97,27 @@ export function TrackList(_props: TrackListProps) {
     const headerConfig = useMemo(() => {
         if (selectedView === "playlist") {
             if (selectedPlaylistProvider === "local" && selectedLocalPlaylist) {
-                return { title: selectedLocalPlaylist.name, count: selectedLocalPlaylist.trackCount, showSort: true };
+                return { title: selectedLocalPlaylist.name, count: selectedLocalPlaylist.trackCount };
             }
 
             if (selectedPlaylistProvider === "spotify") {
                 return {
                     title: selectedSpotifyPlaylist?.name ?? "Playlist",
                     count: selectedSpotifyPlaylist?.trackCount ?? nonSeparatorTrackCount,
-                    showSort: true,
                 };
             }
         }
 
         if (selectedView === "artists") {
-            return { title: "Artists", count: nonSeparatorTrackCount, showSort: false };
+            return { title: "Artists", count: nonSeparatorTrackCount };
         }
 
         if (selectedView === "albums") {
-            return { title: "Albums", count: nonSeparatorTrackCount, showSort: false };
+            return { title: "Albums", count: nonSeparatorTrackCount };
         }
 
         if (selectedView === "songs") {
-            return { title: "Songs", count: nonSeparatorTrackCount, showSort: false };
+            return { title: "Songs", count: nonSeparatorTrackCount };
         }
 
         return null;
@@ -118,43 +135,57 @@ export function TrackList(_props: TrackListProps) {
         selectedLocalPlaylist !== null &&
         selectedLocalPlaylist.source === "cache" &&
         playlistSort === "playlist-order" &&
+        playlistSortDirection === "asc" &&
         searchQuery.trim().length === 0;
 
+    const showDateAddedColumn = selectedView === "playlist";
+
     const columns = useMemo<TableColumnSpec[]>(
-        () => [
-            { id: "number", label: "#", width: 36, align: "right" },
-            { id: "title", label: "Title", flex: 3, minWidth: 120 },
-            { id: "artist", label: "Artist", flex: 2, minWidth: 100 },
-            { id: "album", label: "Album", flex: 2, minWidth: 100 },
-            { id: "duration", label: "Duration", width: 64, align: "right" },
-            { id: "actions", width: 28, align: "center" },
-        ],
-        [],
+        () => {
+            const nextColumns: TableColumnSpec[] = [
+                { id: "number", label: "#", width: 36, align: "right", sortId: "playlist-order" },
+                { id: "title", label: "Title", flex: 3, minWidth: 120, sortId: "title" },
+                { id: "artist", label: "Artist", flex: 2, minWidth: 100, sortId: "artist" },
+                { id: "album", label: "Album", flex: 2, minWidth: 100, sortId: "album" },
+            ];
+
+            if (showDateAddedColumn) {
+                nextColumns.push({ id: "date-added", label: "Date added", width: 120, sortId: "date-added" });
+            }
+
+            nextColumns.push(
+                { id: "duration", label: "Duration", width: 64, align: "right" },
+                { id: "actions", width: 28, align: "center" },
+            );
+
+            return nextColumns;
+        },
+        [showDateAddedColumn],
     );
 
-    const handlePlaylistSortClick = useCallback(
-        async (event: NativeMouseEvent) => {
-            if (selectedView !== "playlist" || !selectedPlaylistProvider) {
-                return;
-            }
-
-            const x = event.pageX ?? event.x ?? 0;
-            const y = event.pageY ?? event.y ?? 0;
-            const selection = await showContextMenu(PLAYLIST_SORT_MENU_ITEMS, { x, y });
-            if (!selection) {
-                return;
-            }
-
+    const handleColumnSort = useCallback(
+        (sortId: string) => {
             if (
-                selection === "playlist-order" ||
-                selection === "title" ||
-                selection === "artist" ||
-                selection === "album"
+                sortId !== "playlist-order" &&
+                sortId !== "date-added" &&
+                sortId !== "title" &&
+                sortId !== "artist" &&
+                sortId !== "album"
             ) {
-                libraryUI$.playlistSort.set(selection);
+                return;
             }
+
+            if (sortId === playlistSort) {
+                const nextDirection = playlistSortDirection === "asc" ? "desc" : "asc";
+                libraryUI$.playlistSortDirection.set(nextDirection);
+                return;
+            }
+
+            const defaultDirection = sortId === "date-added" ? "desc" : "asc";
+            libraryUI$.playlistSort.set(sortId);
+            libraryUI$.playlistSortDirection.set(defaultDirection);
         },
-        [selectedPlaylistProvider, selectedView],
+        [playlistSort, playlistSortDirection],
     );
 
     const allowPlaylistDrop = useCallback(
@@ -304,29 +335,18 @@ export function TrackList(_props: TrackListProps) {
                             {headerConfig.count} {headerConfig.count === 1 ? "track" : "tracks"}
                         </Text>
                     </View>
-                    {headerConfig.showSort ? (
-                        <Button
-                            size="small"
-                            variant="secondary"
-                            className={cn("px-2", searchQuery.trim().length > 0 ? "opacity-50" : "")}
-                            disabled={searchQuery.trim().length > 0}
-                            onClick={handlePlaylistSortClick}
-                        >
-                            <Text className="text-xs text-text-primary">
-                                Sort:{" "}
-                                {playlistSort === "playlist-order"
-                                    ? "Playlist order"
-                                    : playlistSort === "title"
-                                      ? "Title"
-                                      : playlistSort === "artist"
-                                        ? "Artist"
-                                        : "Album"}
-                            </Text>
-                        </Button>
-                    ) : null}
                 </View>
             ) : null}
-            <Table header={<TableHeader columns={columns} />}>
+            <Table
+                header={
+                    <TableHeader
+                        columns={columns}
+                        activeSortId={playlistSort}
+                        activeSortDirection={playlistSortDirection}
+                        onColumnClick={handleColumnSort}
+                    />
+                }
+            >
                 <LegendList
                     key={selectedView}
                     data={tracks}
@@ -425,13 +445,6 @@ const TRACK_ROW_MENU_ITEMS: ContextMenuItem[] = [
     { id: "star", title: "Star", enabled: false },
 ];
 
-const PLAYLIST_SORT_MENU_ITEMS: ContextMenuItem[] = [
-    { id: "playlist-order", title: "Playlist order" },
-    { id: "title", title: "Title" },
-    { id: "artist", title: "Artist" },
-    { id: "album", title: "Album" },
-];
-
 function LibraryTrackRow({
     track,
     index,
@@ -456,6 +469,14 @@ function LibraryTrackRow({
     });
     const accentColor = useValue(() => themeState$.customColors.dark.accent.primary.get());
     const displayIndex = track.trackIndex;
+    const numberColumn = columns.find((column) => column.id === "number") ?? columns[0];
+    const titleColumn = columns.find((column) => column.id === "title") ?? columns[1];
+    const artistColumn = columns.find((column) => column.id === "artist") ?? columns[2];
+    const albumColumn = columns.find((column) => column.id === "album") ?? columns[3];
+    const dateAddedColumn = columns.find((column) => column.id === "date-added");
+    const durationColumn = columns.find((column) => column.id === "duration") ?? columns[columns.length - 2];
+    const actionsColumn = columns.find((column) => column.id === "actions") ?? columns[columns.length - 1];
+    const addedAtLabel = formatAddedDate(track.addedAt);
 
     const handleMenuClick = useCallback(
         async (event: NativeMouseEvent) => {
@@ -483,32 +504,39 @@ function LibraryTrackRow({
             onDoubleClick={(event) => onDoubleClick(index, event)}
             onRightClick={(event) => onRightClick(index, event)}
         >
-            <TableCell column={columns[0]}>
+            <TableCell column={numberColumn}>
                 {isPlaying ? (
                     <Icon name="play.fill" size={12} color={accentColor} />
                 ) : displayIndex != null ? (
                     <Text className={cn("text-xs tabular-nums", listItemStyles.text.muted)}>{displayIndex}</Text>
                 ) : null}
             </TableCell>
-            <TableCell column={columns[1]}>
+            <TableCell column={titleColumn}>
                 <Text className={cn("text-sm font-medium truncate", listItemStyles.text.primary)} numberOfLines={1}>
                     {track.title}
                 </Text>
             </TableCell>
-            <TableCell column={columns[2]}>
+            <TableCell column={artistColumn}>
                 <Text className={cn("text-sm truncate", listItemStyles.text.secondary)} numberOfLines={1}>
                     {track.artist}
                 </Text>
             </TableCell>
-            <TableCell column={columns[3]}>
+            <TableCell column={albumColumn}>
                 <Text className={cn("text-sm truncate", listItemStyles.text.secondary)} numberOfLines={1}>
                     {track.album ?? ""}
                 </Text>
             </TableCell>
-            <TableCell column={columns[4]}>
+            {dateAddedColumn ? (
+                <TableCell column={dateAddedColumn}>
+                    <Text className={cn("text-xs truncate", listItemStyles.text.secondary)} numberOfLines={1}>
+                        {addedAtLabel || "-"}
+                    </Text>
+                </TableCell>
+            ) : null}
+            <TableCell column={durationColumn}>
                 <Text className={listItemStyles.getMetaClassName({ className: "text-xs" })}>{track.duration}</Text>
             </TableCell>
-            <TableCell column={columns[5]} className="pl-1 pr-1">
+            <TableCell column={actionsColumn} className="pl-1 pr-1">
                 <Button
                     icon="ellipsis"
                     variant="icon"

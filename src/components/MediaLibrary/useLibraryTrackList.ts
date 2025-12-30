@@ -18,6 +18,7 @@ import {
     library$,
     libraryUI$,
     normalizeArtistName,
+    type PlaylistSortDirection,
     type PlaylistSortMode,
 } from "@/systems/LibraryState";
 import { type LocalPlaylist, localMusicState$, saveLocalPlaylistTracks } from "@/systems/LocalMusicState";
@@ -25,7 +26,7 @@ import { addTracksToPlaylist } from "@/systems/LocalPlaylists";
 import { formatSecondsToMmSs } from "@/utils/m3u";
 import { getQueueAction, type QueueAction } from "@/utils/queueActions";
 import { buildTrackContextMenuItems, handleTrackContextMenuSelection } from "@/utils/trackContextMenu";
-import { buildTrackLookup } from "@/utils/trackResolution";
+import { buildTrackFromPlaylistEntry, buildTrackLookup, isSpotifyUri } from "@/utils/trackResolution";
 
 type TrackListItem = TrackData;
 type LibraryTrackListItem = TrackData & { sourceTrack?: LibraryTrack };
@@ -49,6 +50,147 @@ const getAlbumSortInfo = (track: LibraryTrack): { key: string; displayName: stri
     return { key: trimmed.toLowerCase(), displayName: trimmed, isMissing: false };
 };
 
+const compareTextValues = (valueA?: string, valueB?: string): number => {
+    return (valueA ?? "").localeCompare(valueB ?? "");
+};
+
+const applySortDirection = (value: number, direction: PlaylistSortDirection): number => {
+    if (direction === "desc") {
+        return value * -1;
+    }
+    return value;
+};
+
+const sortTracksByField = (
+    tracks: LibraryTrack[],
+    field: "title" | "artist" | "album",
+    direction: PlaylistSortDirection,
+): LibraryTrack[] => {
+    const indexedTracks = tracks.map((track, index) => ({ track, index }));
+    indexedTracks.sort((a, b) => {
+        const valueA =
+            field === "artist" ? a.track.artist : field === "album" ? (a.track.album ?? "") : a.track.title;
+        const valueB =
+            field === "artist" ? b.track.artist : field === "album" ? (b.track.album ?? "") : b.track.title;
+        const compare = applySortDirection(compareTextValues(valueA, valueB), direction);
+        if (compare !== 0) {
+            return compare;
+        }
+        const titleCompare = applySortDirection(compareTextValues(a.track.title, b.track.title), direction);
+        if (titleCompare !== 0) {
+            return titleCompare;
+        }
+        return a.index - b.index;
+    });
+    return indexedTracks.map(({ track }) => track);
+};
+
+const sortTracksByDateAdded = (tracks: LibraryTrack[], direction: PlaylistSortDirection): LibraryTrack[] => {
+    const indexedTracks = tracks.map((track, index) => ({ track, index }));
+    indexedTracks.sort((a, b) => {
+        const addedA = typeof a.track.addedAt === "number" ? a.track.addedAt : null;
+        const addedB = typeof b.track.addedAt === "number" ? b.track.addedAt : null;
+        if (addedA != null && addedB != null && addedA !== addedB) {
+            return applySortDirection(addedA - addedB, direction);
+        }
+        if (addedA != null && addedB == null) {
+            return -1;
+        }
+        if (addedA == null && addedB != null) {
+            return 1;
+        }
+        return a.index - b.index;
+    });
+    return indexedTracks.map(({ track }) => track);
+};
+
+const sortTracksByMode = (
+    tracks: LibraryTrack[],
+    mode: PlaylistSortMode,
+    direction: PlaylistSortDirection,
+): LibraryTrack[] => {
+    if (mode === "playlist-order") {
+        if (direction === "desc") {
+            return [...tracks].reverse();
+        }
+        return tracks;
+    }
+    if (mode === "date-added") {
+        return sortTracksByDateAdded(tracks, direction);
+    }
+    if (mode === "title" || mode === "artist" || mode === "album") {
+        return sortTracksByField(tracks, mode, direction);
+    }
+    return tracks;
+};
+
+const sortTracksByAlbumThenTrackNumber = (
+    tracks: LibraryTrack[],
+    direction: PlaylistSortDirection,
+): LibraryTrack[] =>
+    [...tracks].sort((a, b) => {
+        const albumInfoA = getAlbumSortInfo(a);
+        const albumInfoB = getAlbumSortInfo(b);
+        if (albumInfoA.isMissing !== albumInfoB.isMissing) {
+            return albumInfoA.isMissing ? 1 : -1;
+        }
+        if (albumInfoA.key !== albumInfoB.key) {
+            return applySortDirection(albumInfoA.key.localeCompare(albumInfoB.key), direction);
+        }
+
+        const trackNumberA = getSortableTrackNumber(a);
+        const trackNumberB = getSortableTrackNumber(b);
+        if (trackNumberA != null && trackNumberB != null && trackNumberA !== trackNumberB) {
+            return applySortDirection(trackNumberA - trackNumberB, direction);
+        }
+
+        return applySortDirection(compareTextValues(a.title, b.title), direction);
+    });
+
+const sortTracksByTrackNumber = (tracks: LibraryTrack[], direction: PlaylistSortDirection): LibraryTrack[] =>
+    [...tracks].sort((a, b) => {
+        const trackNumberA = getSortableTrackNumber(a);
+        const trackNumberB = getSortableTrackNumber(b);
+        if (trackNumberA != null && trackNumberB != null && trackNumberA !== trackNumberB) {
+            return applySortDirection(trackNumberA - trackNumberB, direction);
+        }
+        return applySortDirection(compareTextValues(a.title, b.title), direction);
+    });
+
+const sortArtistGroupTracks = (
+    tracks: LibraryTrack[],
+    mode: PlaylistSortMode,
+    direction: PlaylistSortDirection,
+): LibraryTrack[] => {
+    if (mode === "title") {
+        return sortTracksByField(tracks, "title", direction);
+    }
+    if (mode === "date-added") {
+        return sortTracksByDateAdded(tracks, direction);
+    }
+    if (mode === "album" || mode === "artist" || mode === "playlist-order") {
+        return sortTracksByAlbumThenTrackNumber(tracks, direction);
+    }
+    return sortTracksByAlbumThenTrackNumber(tracks, direction);
+};
+
+const sortAlbumGroupTracks = (
+    tracks: LibraryTrack[],
+    mode: PlaylistSortMode,
+    direction: PlaylistSortDirection,
+): LibraryTrack[] => {
+    if (mode === "title") {
+        return sortTracksByField(tracks, "title", direction);
+    }
+    if (mode === "artist") {
+        return sortTracksByField(tracks, "artist", direction);
+    }
+    if (mode === "date-added") {
+        return sortTracksByDateAdded(tracks, direction);
+    }
+    return sortTracksByTrackNumber(tracks, direction);
+};
+
 const buildSpotifyLibraryTrack = (track: ProviderTrack, index: number): LibraryTrack => {
     const durationSeconds = typeof track.durationMs === "number" ? track.durationMs / 1000 : 0;
     const duration = durationSeconds ? formatSecondsToMmSs(durationSeconds) : " ";
@@ -67,6 +209,7 @@ const buildSpotifyLibraryTrack = (track: ProviderTrack, index: number): LibraryT
         uri: track.uri,
         durationMs: track.durationMs,
         trackNumber: index + 1,
+        addedAt: track.addedAt,
     };
 };
 
@@ -92,6 +235,7 @@ interface BuildTrackItemsInput {
     selectedPlaylistTracks?: LibraryTrack[];
     searchQuery: string;
     playlistSort: PlaylistSortMode;
+    playlistSortDirection: PlaylistSortDirection;
 }
 
 export function buildTrackItems({
@@ -103,6 +247,7 @@ export function buildTrackItems({
     selectedPlaylistTracks,
     searchQuery,
     playlistSort,
+    playlistSortDirection,
 }: BuildTrackItemsInput) {
     const normalizedQuery = searchQuery.trim().toLowerCase();
     const matchesQuery = (track: LibraryTrack): boolean => {
@@ -124,6 +269,7 @@ export function buildTrackItems({
         duration: formatDuration(track.duration),
         thumbnail: track.thumbnail,
         isMissing: track.isMissing,
+        addedAt: track.addedAt,
         index: viewIndex,
         trackIndex: track.trackNumber,
         sourceTrack: track,
@@ -138,100 +284,101 @@ export function buildTrackItems({
     const filteredTracks = normalizedQuery ? tracks.filter(matchesQuery) : tracks;
 
     if (selectedView === "artists") {
-        const sortedTracks = [...filteredTracks].sort((a, b) => {
-            const keyA = getArtistKey(a.artist);
-            const keyB = getArtistKey(b.artist);
-            if (keyA !== keyB) {
-                return keyA.localeCompare(keyB);
-            }
+        const artistGroups = new Map<string, { displayName: string; tracks: LibraryTrack[] }>();
 
-            const albumInfoA = getAlbumSortInfo(a);
-            const albumInfoB = getAlbumSortInfo(b);
-            if (albumInfoA.isMissing !== albumInfoB.isMissing) {
-                return albumInfoA.isMissing ? 1 : -1;
-            }
-            if (albumInfoA.key !== albumInfoB.key) {
-                return albumInfoA.key.localeCompare(albumInfoB.key);
-            }
-
-            const trackNumberA = getSortableTrackNumber(a);
-            const trackNumberB = getSortableTrackNumber(b);
-            if (trackNumberA != null && trackNumberB != null && trackNumberA !== trackNumberB) {
-                return trackNumberA - trackNumberB;
-            }
-
-            return (a.title ?? "").localeCompare(b.title ?? "");
-        });
-
-        const trackItems: LibraryTrackListItem[] = [];
-        let lastArtistKey: string | null = null;
-
-        let viewIndex = 0;
-        for (const track of sortedTracks) {
+        for (const track of filteredTracks) {
             const artistKey = getArtistKey(track.artist);
-            if (artistKey !== lastArtistKey) {
-                const displayName = normalizeArtistName(track.artist);
-                trackItems.push({
-                    id: `sep-artist-${artistKey}`,
-                    title: `— ${displayName} —`,
-                    artist: "",
-                    album: "",
-                    duration: "",
-                    isSeparator: true,
-                });
-                lastArtistKey = artistKey;
+            const displayName = normalizeArtistName(track.artist);
+            const existing = artistGroups.get(artistKey);
+            if (existing) {
+                if (existing.displayName === "Unknown Artist" && displayName !== "Unknown Artist") {
+                    existing.displayName = displayName;
+                }
+                existing.tracks.push(track);
+            } else {
+                artistGroups.set(artistKey, { displayName, tracks: [track] });
             }
+        }
 
-            trackItems.push(toTrackItem(track, viewIndex));
-            viewIndex += 1;
+        const sortedGroups = Array.from(artistGroups.entries()).sort((a, b) =>
+            applySortDirection(a[0].localeCompare(b[0]), playlistSortDirection),
+        );
+        const trackItems: LibraryTrackListItem[] = [];
+        let viewIndex = 0;
+
+        for (const [artistKey, group] of sortedGroups) {
+            trackItems.push({
+                id: `sep-artist-${artistKey}`,
+                title: `— ${group.displayName} —`,
+                artist: "",
+                album: "",
+                duration: "",
+                isSeparator: true,
+            });
+
+            const groupTracks = sortArtistGroupTracks(group.tracks, playlistSort, playlistSortDirection);
+            for (const track of groupTracks) {
+                trackItems.push(toTrackItem(track, viewIndex));
+                viewIndex += 1;
+            }
         }
 
         return { trackItems };
     }
 
     if (selectedView === "albums") {
-        const sortedTracks = [...filteredTracks].sort((a, b) => {
-            const albumInfoA = getAlbumSortInfo(a);
-            const albumInfoB = getAlbumSortInfo(b);
-            if (albumInfoA.isMissing !== albumInfoB.isMissing) {
-                return albumInfoA.isMissing ? 1 : -1;
-            }
-            if (albumInfoA.key !== albumInfoB.key) {
-                return albumInfoA.key.localeCompare(albumInfoB.key);
-            }
+        const albumGroups = new Map<
+            string,
+            { info: { key: string; displayName: string; isMissing: boolean }; tracks: LibraryTrack[] }
+        >();
 
-            const trackNumberA = getSortableTrackNumber(a);
-            const trackNumberB = getSortableTrackNumber(b);
-            if (trackNumberA != null && trackNumberB != null && trackNumberA !== trackNumberB) {
-                return trackNumberA - trackNumberB;
+        for (const track of filteredTracks) {
+            const albumInfo = getAlbumSortInfo(track);
+            const existing = albumGroups.get(albumInfo.key);
+            if (existing) {
+                existing.tracks.push(track);
+            } else {
+                albumGroups.set(albumInfo.key, { info: albumInfo, tracks: [track] });
             }
+        }
 
-            return (a.title ?? "").localeCompare(b.title ?? "");
+        const sortedGroups = Array.from(albumGroups.values()).sort((a, b) => {
+            if (a.info.isMissing !== b.info.isMissing) {
+                return a.info.isMissing ? 1 : -1;
+            }
+            if (a.info.key !== b.info.key) {
+                return applySortDirection(a.info.key.localeCompare(b.info.key), playlistSortDirection);
+            }
+            return 0;
         });
 
         const trackItems: LibraryTrackListItem[] = [];
-        let lastAlbumKey: string | null = null;
-
         let viewIndex = 0;
-        for (const track of sortedTracks) {
-            const albumInfo = getAlbumSortInfo(track);
-            if (albumInfo.key !== lastAlbumKey) {
-                trackItems.push({
-                    id: `sep-album-${albumInfo.key}`,
-                    title: `— ${albumInfo.displayName} —`,
-                    artist: "",
-                    album: "",
-                    duration: "",
-                    isSeparator: true,
-                });
-                lastAlbumKey = albumInfo.key;
-            }
+        for (const group of sortedGroups) {
+            trackItems.push({
+                id: `sep-album-${group.info.key}`,
+                title: `— ${group.info.displayName} —`,
+                artist: "",
+                album: "",
+                duration: "",
+                isSeparator: true,
+            });
 
-            trackItems.push(toTrackItem(track, viewIndex));
-            viewIndex += 1;
+            const groupTracks = sortAlbumGroupTracks(group.tracks, playlistSort, playlistSortDirection);
+            for (const track of groupTracks) {
+                trackItems.push(toTrackItem(track, viewIndex));
+                viewIndex += 1;
+            }
         }
 
         return { trackItems };
+    }
+
+    if (selectedView === "songs") {
+        const sortedTracks = sortTracksByMode(filteredTracks, playlistSort, playlistSortDirection);
+        return {
+            trackItems: sortedTracks.map((track, index) => toTrackItem(track, index)),
+        };
     }
 
     if (selectedView === "playlist") {
@@ -239,21 +386,14 @@ export function buildTrackItems({
             return { trackItems: [] as LibraryTrackListItem[] };
         }
 
-        const shouldApplySort = !normalizedQuery && playlistSort !== "playlist-order";
-        const sortTracks = (inputTracks: LibraryTrack[]) =>
-            shouldApplySort
-                ? [...inputTracks].sort((a, b) => {
-                      const valueA =
-                          playlistSort === "artist" ? a.artist : playlistSort === "album" ? (a.album ?? "") : a.title;
-                      const valueB =
-                          playlistSort === "artist" ? b.artist : playlistSort === "album" ? (b.album ?? "") : b.title;
-                      const compare = (valueA ?? "").localeCompare(valueB ?? "");
-                      if (compare !== 0) {
-                          return compare;
-                      }
-                      return (a.title ?? "").localeCompare(b.title ?? "");
-                  })
-                : inputTracks;
+        const shouldApplySort = playlistSort !== "playlist-order" || playlistSortDirection === "desc";
+        const sortTracks = (inputTracks: LibraryTrack[]) => {
+            if (!shouldApplySort) {
+                return inputTracks;
+            }
+
+            return sortTracksByMode(inputTracks, playlistSort, playlistSortDirection);
+        };
 
         const usedIds = new Set<string>();
         const makeUniqueId = (baseId: string) => {
@@ -297,23 +437,45 @@ export function buildTrackItems({
         }
 
         const trackLookup = buildTrackLookup(tracks);
-        const makeMissingTrack = (path: string): LibraryTrack => {
+        const makeMissingTrack = (path: string, titleOverride?: string, addedAt?: number): LibraryTrack => {
             const fileName = path.split("/").pop() || path;
             return {
                 id: path,
-                title: fileName,
+                title: titleOverride || fileName,
                 artist: "Missing Track",
                 album: "",
                 duration: "",
                 filePath: path,
                 fileName,
                 isMissing: true,
+                addedAt,
             };
         };
 
-        const orderedTracks: LibraryTrack[] = playlist.trackPaths.map(
-            (path) => (trackLookup.get(path) as LibraryTrack | undefined) ?? makeMissingTrack(path),
-        );
+        const playlistEntries =
+            playlist.tracks ??
+            playlist.trackPaths.map((path) => ({
+                id: path,
+                duration: -1,
+                title: path.split("/").pop() || path,
+                filePath: path,
+            }));
+
+        const orderedTracks: LibraryTrack[] = playlistEntries.map((entry) => {
+            const resolved = trackLookup.get(entry.filePath) as LibraryTrack | undefined;
+            if (resolved) {
+                if (entry.addedAt != null) {
+                    return { ...resolved, addedAt: entry.addedAt };
+                }
+                return resolved;
+            }
+
+            if (isSpotifyUri(entry.filePath)) {
+                return buildTrackFromPlaylistEntry(entry) as LibraryTrack;
+            }
+
+            return makeMissingTrack(entry.filePath, entry.title, entry.addedAt);
+        });
 
         return {
             trackItems: buildPlaylistItems(orderedTracks),
@@ -331,6 +493,7 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
     const selectedPlaylistProvider = useValue(libraryUI$.selectedPlaylistProvider);
     const searchQuery = useValue(libraryUI$.searchQuery);
     const playlistSort = useValue(libraryUI$.playlistSort);
+    const playlistSortDirection = useValue(libraryUI$.playlistSortDirection);
     const allTracks = useValue(library$.tracks);
     const playlists = useValue(localMusicState$.playlists);
     const spotifyTracksByPlaylistId = useValue(spotifyPlaylists$.tracksByPlaylistId);
@@ -386,11 +549,13 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
                 selectedPlaylistTracks: spotifyPlaylistTracks,
                 searchQuery,
                 playlistSort,
+                playlistSortDirection,
             }),
         [
             allTracks,
             playlists,
             playlistSort,
+            playlistSortDirection,
             searchQuery,
             selectedPlaylistId,
             selectedPlaylistProvider,
@@ -409,7 +574,7 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
         selectedPlaylist !== null &&
         selectedPlaylist.source === "cache" &&
         !isSearchActive &&
-        playlistSort === "playlist-order";
+        playlistSort === "playlist-order" && playlistSortDirection === "asc";
 
     const handleDeleteSelection = useCallback(
         (indices: number[]) => {
@@ -461,6 +626,7 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
         libraryUI$.selectedPlaylistId.get();
         libraryUI$.selectedPlaylistProvider.get();
         libraryUI$.playlistSort.get();
+        libraryUI$.playlistSortDirection.get();
         library$.tracks.get().length;
         clearSelection();
     });
