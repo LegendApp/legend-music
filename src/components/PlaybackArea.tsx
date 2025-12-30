@@ -5,6 +5,7 @@ import { AlbumArt } from "@/components/AlbumArt";
 import { localAudioControls, localPlayerState$ } from "@/components/LocalAudioPlayer";
 import { PlaybackControls } from "@/components/PlaybackControls";
 import { PlaybackTimeline } from "@/components/PlaybackTimeline";
+import { SpotifySourceBadge } from "@/components/SpotifySourceBadge";
 import { OVERLAY_WINDOW_WIDTH_COMPACT } from "@/overlay/OverlayConstants";
 import { Icon } from "@/systems/Icon";
 import { localMusicState$ } from "@/systems/LocalMusicState";
@@ -38,6 +39,8 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
     const handleHoverIn = useCallback(() => setIsHovered(true), []);
     const handleHoverOut = useCallback(() => setIsHovered(false), []);
     const showTimeline = !overlayModeEnabled;
+    const isSpotifyTrack = currentTrack?.provider === "spotify";
+    const spotifyBadgeSize = overlayModeEnabled ? 10 : 12;
 
     // const hoverContentVisible = isHovered && overlayControlsVisible;
     // const hoverContentVisible = isWindowHovered && overlayControlsVisible;
@@ -91,6 +94,11 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
                     >
                         <Icon name={isPlaying ? "pause.fill" : "play.fill"} size={24} color="#fff" />
                     </Pressable>
+                    {isSpotifyTrack ? (
+                        <View className="absolute bottom-1 right-1 opacity-90" pointerEvents="none">
+                            <SpotifySourceBadge size={spotifyBadgeSize} />
+                        </View>
+                    ) : null}
                 </View>
 
                 {/* Song Info */}
@@ -108,11 +116,6 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
                         <Text className="text-white/70 text-sm" numberOfLines={1}>
                             {currentTrack?.artist || " "}
                         </Text>
-                        {currentTrack?.provider && currentTrack.provider !== "local" ? (
-                            <Text className="text-xs text-white/60" numberOfLines={1}>
-                                {currentTrack.provider.toUpperCase()} • Streaming
-                            </Text>
-                        ) : null}
                         {sliderRowNode}
                     </View>
                 </View>
