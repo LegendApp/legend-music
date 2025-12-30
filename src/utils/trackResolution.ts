@@ -1,18 +1,51 @@
 import { getArtistKey, type LibraryItem, type LibraryTrack } from "@/systems/LibraryState";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import { DEFAULT_LOCAL_PLAYLIST_ID } from "@/systems/localMusicConstants";
+import { formatSecondsToMmSs, type M3UTrack } from "@/utils/m3u";
 
 export interface PlaylistResolutionSource {
     id: string;
     name?: string;
     type?: string;
     trackPaths?: string[];
+    trackEntries?: M3UTrack[];
 }
 
 export interface PlaylistResolutionResult {
     tracks: LocalTrack[];
     missingPaths: string[];
 }
+
+export const isSpotifyUri = (value: string): boolean => value.toLowerCase().startsWith("spotify:");
+
+export function buildTrackFromPlaylistEntry(entry: M3UTrack): LocalTrack {
+    const durationSeconds = Number.isFinite(entry.duration) && entry.duration > 0 ? entry.duration : 0;
+    const duration = durationSeconds > 0 ? formatSecondsToMmSs(durationSeconds) : " ";
+    const title = entry.title || entry.filePath.split("/").pop() || entry.filePath;
+    const artist = entry.artist ?? "Unknown Artist";
+    const isSpotify = isSpotifyUri(entry.filePath);
+
+    return {
+        id: entry.id || entry.filePath,
+        title,
+        artist,
+        duration,
+        filePath: entry.filePath,
+        fileName: title,
+        thumbnail: entry.logo,
+        addedAt: entry.addedAt,
+        provider: isSpotify ? "spotify" : undefined,
+        uri: isSpotify ? entry.filePath : undefined,
+        durationMs: durationSeconds > 0 ? durationSeconds * 1000 : undefined,
+    };
+}
+
+const buildFallbackEntry = (filePath: string): M3UTrack => ({
+    id: filePath,
+    duration: -1,
+    title: filePath.split("/").pop() || filePath,
+    filePath,
+});
 
 export function resolvePlaylistTracks(
     source: PlaylistResolutionSource,
@@ -26,8 +59,8 @@ export function resolvePlaylistTracks(
         };
     }
 
-    const trackPaths = source.trackPaths ?? [];
-    if (trackPaths.length === 0) {
+    const trackEntries = source.trackEntries ?? (source.trackPaths ?? []).map(buildFallbackEntry);
+    if (trackEntries.length === 0) {
         return {
             tracks: [],
             missingPaths: [],
@@ -37,13 +70,19 @@ export function resolvePlaylistTracks(
     const resolvedTracks: LocalTrack[] = [];
     const missingPaths: string[] = [];
 
-    for (const path of trackPaths) {
-        const track = trackLookup.get(path);
+    for (const entry of trackEntries) {
+        const track = trackLookup.get(entry.filePath);
         if (track) {
             resolvedTracks.push(track);
-        } else {
-            missingPaths.push(path);
+            continue;
         }
+
+        if (isSpotifyUri(entry.filePath)) {
+            resolvedTracks.push(buildTrackFromPlaylistEntry(entry));
+            continue;
+        }
+
+        missingPaths.push(entry.filePath);
     }
 
     return {

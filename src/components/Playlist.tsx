@@ -69,14 +69,6 @@ const debugPlaylistLog = (...args: unknown[]) => {
     }
 };
 
-const normalizeTrackPath = (path: string): string => {
-    if (!path) {
-        return "";
-    }
-    const withoutPrefix = path.startsWith("file://") ? path.slice("file://".length) : path;
-    return withoutPrefix.replace(/\/+$/, "").toLowerCase();
-};
-
 export function Playlist() {
     perfCount("Playlist.render");
     const localMusicState = useValue(localMusicState$);
@@ -90,16 +82,6 @@ export function Playlist() {
     const hasConfiguredLibrary = libraryPaths.length > 0;
     const hasLibraryTracks = localMusicState.tracks.length > 0;
     const isDefaultPlaylistSelected = localMusicState.isLocalFilesSelected;
-    const existingTrackPathSet = useMemo(() => {
-        const set = new Set<string>();
-        for (const track of localMusicState.tracks) {
-            const normalized = normalizeTrackPath(track.filePath);
-            if (normalized) {
-                set.add(normalized);
-            }
-        }
-        return set;
-    }, [localMusicState.tracks]);
     const [isDragOver, setIsDragOver] = useState(false);
     const skipClickRef = useRef(false);
     const skipBackgroundClearRef = useRef(false);
@@ -130,10 +112,6 @@ export function Playlist() {
                 const isNowPlaying =
                     (currentTrackQueueEntryId && track.queueEntryId === currentTrackQueueEntryId) ||
                     index === currentTrackIndex;
-                const normalizedPath = normalizeTrackPath(track.filePath);
-                const isMissing =
-                    track.isMissing ||
-                    (hasLibraryTracks && normalizedPath ? !existingTrackPathSet.has(normalizedPath) : false);
                 return {
                     id: track.id,
                     title: track.title,
@@ -145,10 +123,10 @@ export function Playlist() {
                     index,
                     isPlaying: isNowPlaying,
                     queueEntryId: track.queueEntryId,
-                    isMissing,
+                    isMissing: track.isMissing,
                 };
             }),
-        [queueTracks, currentTrackIndex, currentTrackQueueEntryId, hasLibraryTracks, existingTrackPathSet],
+        [queueTracks, currentTrackIndex, currentTrackQueueEntryId],
     );
 
     const playlistContextMenuItems = useMemo(

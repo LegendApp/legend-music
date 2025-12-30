@@ -4,6 +4,7 @@ export interface M3UTrack {
     artist?: string;
     filePath: string;
     logo?: string; // URL to track thumbnail/logo
+    addedAt?: number;
     id: string; // Video ID extracted from URL
 }
 
@@ -44,13 +45,36 @@ export function parseM3U(content: string): M3UPlaylist {
 
         // Parse EXTINF line
         if (line.startsWith("#EXTINF:")) {
-            // Updated regex to capture optional logo parameter
-            const extinfMatch = line.match(/^#EXTINF:(-?\d+)(?:\s+logo="([^"]*)")?,(.*?)$/);
-            if (extinfMatch && i + 1 < lines.length) {
-                const duration = Number.parseInt(extinfMatch[1], 10);
-                const logo = extinfMatch[2] || undefined; // Logo URL if present
-                const titleInfo = extinfMatch[3].trim();
+            const extinfBody = line.slice("#EXTINF:".length);
+            const commaIndex = extinfBody.indexOf(",");
+            if (commaIndex !== -1 && i + 1 < lines.length) {
+                const header = extinfBody.slice(0, commaIndex).trim();
+                const titleInfo = extinfBody.slice(commaIndex + 1).trim();
+                const headerParts = header.split(" ").filter(Boolean);
+                const durationText = headerParts.shift() ?? "-1";
+                const durationValue = Number.parseInt(durationText, 10);
+                const duration = Number.isNaN(durationValue) ? -1 : durationValue;
+                const attributes = headerParts.join(" ");
                 const filePath = lines[i + 1];
+
+                let logo: string | undefined;
+                let addedAt: number | undefined;
+                if (attributes) {
+                    const attrRegex = /(\w+)="([^"]*)"/g;
+                    let match: RegExpExecArray | null;
+                    while ((match = attrRegex.exec(attributes)) !== null) {
+                        const key = match[1];
+                        const value = match[2];
+                        if (key === "logo") {
+                            logo = value;
+                        } else if (key === "added") {
+                            const parsed = Number.parseInt(value, 10);
+                            if (Number.isFinite(parsed)) {
+                                addedAt = parsed;
+                            }
+                        }
+                    }
+                }
 
                 // Parse artist and title from the title info
                 let title = titleInfo;
@@ -70,6 +94,7 @@ export function parseM3U(content: string): M3UPlaylist {
                     artist,
                     filePath,
                     logo, // Include logo if present
+                    addedAt,
                 };
 
                 // Add to appropriate section
@@ -119,10 +144,17 @@ export function writeM3U(playlist: M3UPlaylist): string {
             titleInfo = `${track.artist} - ${track.title}`;
         }
 
-        // Add EXTINF line with optional logo parameter
-        let extinfLine = `#EXTINF:${track.duration}`;
+        // Add EXTINF line with optional attributes
+        const attributes: string[] = [];
         if (track.logo) {
-            extinfLine += ` logo="${track.logo}"`;
+            attributes.push(`logo="${track.logo}"`);
+        }
+        if (typeof track.addedAt === "number" && Number.isFinite(track.addedAt)) {
+            attributes.push(`added="${track.addedAt}"`);
+        }
+        let extinfLine = `#EXTINF:${track.duration}`;
+        if (attributes.length > 0) {
+            extinfLine += ` ${attributes.join(" ")}`;
         }
         extinfLine += `,${titleInfo}`;
         lines.push(extinfLine);
@@ -145,10 +177,17 @@ export function writeM3U(playlist: M3UPlaylist): string {
                 titleInfo = `${track.artist} - ${track.title}`;
             }
 
-            // Add EXTINF line with optional logo parameter
-            let extinfLine = `#EXTINF:${track.duration}`;
+            // Add EXTINF line with optional attributes
+            const attributes: string[] = [];
             if (track.logo) {
-                extinfLine += ` logo="${track.logo}"`;
+                attributes.push(`logo="${track.logo}"`);
+            }
+            if (typeof track.addedAt === "number" && Number.isFinite(track.addedAt)) {
+                attributes.push(`added="${track.addedAt}"`);
+            }
+            let extinfLine = `#EXTINF:${track.duration}`;
+            if (attributes.length > 0) {
+                extinfLine += ` ${attributes.join(" ")}`;
             }
             extinfLine += `,${titleInfo}`;
             lines.push(extinfLine);
