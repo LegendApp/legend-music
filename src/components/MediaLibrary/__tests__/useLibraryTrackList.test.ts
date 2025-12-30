@@ -41,6 +41,7 @@ describe("buildTrackItems", () => {
             selectedPlaylistId: null,
             searchQuery: "",
             playlistSort: "playlist-order",
+            playlistSortDirection: "asc",
         });
 
         expect(result.trackItems.map((track) => track.id)).toEqual(["1", "2", "3"]);
@@ -54,6 +55,7 @@ describe("buildTrackItems", () => {
             selectedPlaylistId: null,
             searchQuery: "",
             playlistSort: "playlist-order",
+            playlistSortDirection: "asc",
         });
 
         expect(result.trackItems.map((item) => item.title)).toEqual([
@@ -97,6 +99,7 @@ describe("buildTrackItems", () => {
             selectedPlaylistId: null,
             searchQuery: "",
             playlistSort: "playlist-order",
+            playlistSortDirection: "asc",
         });
 
         expect(result.trackItems.map((item) => item.title)).toEqual(["— Artist 1 —", "Zed", "Alpha"]);
@@ -110,6 +113,7 @@ describe("buildTrackItems", () => {
             selectedPlaylistId: null,
             searchQuery: "",
             playlistSort: "playlist-order",
+            playlistSortDirection: "asc",
         });
 
         expect(result.trackItems.map((item) => item.title)).toEqual([
@@ -161,6 +165,7 @@ describe("buildTrackItems", () => {
             selectedPlaylistId: null,
             searchQuery: "",
             playlistSort: "playlist-order",
+            playlistSortDirection: "asc",
         });
 
         expect(result.trackItems.map((item) => item.title)).toEqual([
@@ -181,6 +186,7 @@ describe("buildTrackItems", () => {
             selectedPlaylistId: null,
             searchQuery: "album y",
             playlistSort: "playlist-order",
+            playlistSortDirection: "asc",
         });
 
         expect(result.trackItems.map((item) => item.title)).toEqual(["— Artist 2 —", "Song B"]);
@@ -206,10 +212,59 @@ describe("buildTrackItems", () => {
             selectedPlaylistId: playlists[0].id,
             searchQuery: "",
             playlistSort: "playlist-order",
+            playlistSortDirection: "asc",
         });
 
         expect(result.trackItems.map((item) => item.id)).toEqual(["2", "/music/missing.mp3", "1"]);
         expect(result.trackItems[1]).toMatchObject({ isMissing: true, title: "missing.mp3" });
+    });
+
+    it("playlist view sorts by date added", () => {
+        const playlists: LocalPlaylist[] = [
+            {
+                id: "/cache/data/test-date-added.m3u",
+                name: "Date Added",
+                filePath: "/cache/data/test-date-added.m3u",
+                trackPaths: ["/music/song-b.mp3", "/music/song-a.mp3", "/music/song-c.mp3"],
+                trackCount: 3,
+                source: "cache",
+                tracks: [
+                    {
+                        id: "/music/song-b.mp3",
+                        duration: -1,
+                        title: "Song B",
+                        filePath: "/music/song-b.mp3",
+                        addedAt: 1000,
+                    },
+                    {
+                        id: "/music/song-a.mp3",
+                        duration: -1,
+                        title: "Song A",
+                        filePath: "/music/song-a.mp3",
+                        addedAt: 3000,
+                    },
+                    {
+                        id: "/music/song-c.mp3",
+                        duration: -1,
+                        title: "Another Song",
+                        filePath: "/music/song-c.mp3",
+                        addedAt: 2000,
+                    },
+                ],
+            },
+        ];
+
+        const result = buildTrackItems({
+            tracks: mockTracks,
+            playlists,
+            selectedView: "playlist",
+            selectedPlaylistId: playlists[0].id,
+            searchQuery: "",
+            playlistSort: "date-added",
+            playlistSortDirection: "desc",
+        });
+
+        expect(result.trackItems.map((item) => item.id)).toEqual(["1", "3", "2"]);
     });
 
     it("playlist view makes duplicate IDs unique", () => {
@@ -231,6 +286,7 @@ describe("buildTrackItems", () => {
             selectedPlaylistId: playlists[0].id,
             searchQuery: "",
             playlistSort: "playlist-order",
+            playlistSortDirection: "asc",
         });
 
         expect(result.trackItems.map((item) => item.id)).toEqual(["2", "2-2", "1"]);
@@ -244,6 +300,7 @@ describe("buildTrackItems", () => {
             selectedPlaylistId: null,
             searchQuery: "",
             playlistSort: "playlist-order",
+            playlistSortDirection: "asc",
         });
 
         const songA = result.trackItems.find((track) => track.id === "1");

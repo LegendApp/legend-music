@@ -36,6 +36,7 @@ export interface LocalTrack {
     fileName: string;
     thumbnail?: string;
     thumbnailKey?: string;
+    addedAt?: number;
     isMissing?: boolean;
 }
 

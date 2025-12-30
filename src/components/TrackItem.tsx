@@ -18,6 +18,7 @@ export interface TrackData {
     duration: string;
     thumbnail?: string;
     album?: string;
+    addedAt?: number;
     index?: number;
     trackIndex?: number;
     isPlaying?: boolean;

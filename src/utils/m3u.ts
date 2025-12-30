@@ -3,6 +3,7 @@ export interface M3UTrack {
     title: string;
     artist?: string;
     filePath: string;
+    addedAt?: number;
     logo?: string; // URL to track thumbnail/logo
     id: string; // Video ID extracted from URL
 }
