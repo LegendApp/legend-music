@@ -5,7 +5,7 @@ import type { SFSymbol } from "sf-symbols-typescript";
 
 import { Button } from "@/components/Button";
 import type { DropdownMenuRootRef } from "@/components/DropdownMenu";
-import { localAudioControls, localPlayerState$, queue$ } from "@/components/LocalAudioPlayer";
+import { audioControls, audioPlayerState$, queue$ } from "@/components/AudioPlayer";
 import { PlaylistSelectorSearchDropdown } from "@/components/PlaylistSelectorSearchDropdown";
 import { SavePlaylistDropdown } from "@/components/SavePlaylistDropdown";
 import { usePlaybackControlLayout } from "@/hooks/useUIControls";
@@ -39,7 +39,7 @@ type PlaybackControlsProps = {
 };
 
 export function PlaybackControls({ className }: PlaybackControlsProps = {}) {
-    const isPlaying = useValue(localPlayerState$.isPlaying);
+    const isPlaying = useValue(audioPlayerState$.isPlaying);
     const shuffleEnabled = useValue(settings$.playback.shuffle);
     const repeatMode = useValue(settings$.playback.repeatMode);
     const playbackControlsLayout = usePlaybackControlLayout();
@@ -102,7 +102,7 @@ export function PlaybackControls({ className }: PlaybackControlsProps = {}) {
                                 variant="icon-hover"
                                 iconSize={14}
                                 size="xs"
-                                onClick={localAudioControls.playPrevious}
+                                onClick={audioControls.playPrevious}
                                 tooltip="Previous"
                             />
                         );
@@ -114,7 +114,7 @@ export function PlaybackControls({ className }: PlaybackControlsProps = {}) {
                                 variant="icon-hover"
                                 iconSize={14}
                                 size="xs"
-                                onClick={localAudioControls.togglePlayPause}
+                                onClick={audioControls.togglePlayPause}
                                 tooltip={isPlaying ? "Pause" : "Play"}
                             />
                         );
@@ -126,7 +126,7 @@ export function PlaybackControls({ className }: PlaybackControlsProps = {}) {
                                 variant="icon-hover"
                                 iconSize={14}
                                 size="xs"
-                                onClick={localAudioControls.playNext}
+                                onClick={audioControls.playNext}
                                 tooltip="Next"
                             />
                         );
@@ -141,7 +141,7 @@ export function PlaybackControls({ className }: PlaybackControlsProps = {}) {
                                 variant="icon-hover"
                                 iconSize={shuffleSize}
                                 size="xs"
-                                onClick={localAudioControls.toggleShuffle}
+                                onClick={audioControls.toggleShuffle}
                                 tooltip={shuffleEnabled ? "Disable shuffle" : "Enable shuffle"}
                                 active={shuffleEnabled}
                             />
@@ -169,7 +169,7 @@ export function PlaybackControls({ className }: PlaybackControlsProps = {}) {
                                 variant="icon-hover"
                                 iconSize={repeatSize}
                                 size="xs"
-                                onClick={localAudioControls.cycleRepeatMode}
+                                onClick={audioControls.cycleRepeatMode}
                                 tooltip={repeatTooltip}
                                 active={repeatMode !== "off"}
                             />

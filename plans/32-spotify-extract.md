@@ -47,7 +47,7 @@ Extract Spotify-specific playback behavior out of `src/components/LocalAudioPlay
 - [x] Extract local-file playback into `src/providers/local/playbackProvider.ts` and adjust `LocalAudioPlayer` to use it.
 - [x] Extract Spotify playback + state handling into `src/providers/spotify/playbackProvider.ts` and `src/providers/spotify/playerState.ts`.
 - [x] Rename `src/components/LocalAudioPlayer.tsx` to `src/components/AudioPlayer.tsx` and make it provider-agnostic.
-- [ ] Update imports/usages (UI and tests) to use the new `AudioPlayer` module.
+- [x] Update imports/usages (UI and tests) to use the new `AudioPlayer` module.
 - [ ] Ensure queue persistence and Spotify URI handling remain unchanged in `src/utils/m3uManager.ts`.
 
 Validation: Unable to run here; please verify local playback still works, Spotify playback controls respond, album art updates on Spotify tracks, and queue persistence loads/stores Spotify items correctly.

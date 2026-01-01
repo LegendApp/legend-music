@@ -1,6 +1,6 @@
 import { useObserveEffect } from "@legendapp/state/react";
 import { useRef } from "react";
-import { localPlayerState$ } from "@/components/LocalAudioPlayer";
+import { audioPlayerState$ } from "@/components/AudioPlayer";
 import { settings$ } from "@/systems/Settings";
 
 import {
@@ -14,8 +14,8 @@ export function CurrentSongOverlayController() {
     const lastTrackIdRef = useRef<string | null>(null);
 
     useObserveEffect(() => {
-        const currentTrack = localPlayerState$.currentTrack.get();
-        const isPlaying = localPlayerState$.isPlaying.get();
+        const currentTrack = audioPlayerState$.currentTrack.get();
+        const isPlaying = audioPlayerState$.isPlaying.get();
         const trackId = currentTrack?.id ?? null;
         const overlayEnabled = settings$.overlay.enabled.get();
         const shouldShow = Boolean(trackId && overlayEnabled && isPlaying);

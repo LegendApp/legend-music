@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Linking, Text, TextInput, View } from "react-native";
 import { Button } from "@/components/Button";
 import { Checkbox } from "@/components/Checkbox";
-import { localAudioControls } from "@/components/LocalAudioPlayer";
+import { audioControls } from "@/components/AudioPlayer";
 import { showToast } from "@/components/Toast";
 import { providerSettings$, setActiveProvider } from "@/providers/providerRegistry";
 import { completeSpotifyLogin, logoutSpotify, spotifyAuthState$, startSpotifyLogin } from "@/providers/spotify";
@@ -128,7 +128,7 @@ export function StreamingSettings() {
             durationMs: track.durationMs,
             isMissing: false,
         };
-        localAudioControls.queue.append(localTrack, { playImmediately: true });
+        audioControls.queue.append(localTrack, { playImmediately: true });
         showToast(`Queued ${track.name}`, "success");
     }, []);
 

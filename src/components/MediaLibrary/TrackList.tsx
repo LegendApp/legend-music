@@ -16,7 +16,7 @@ import {
     MEDIA_LIBRARY_DRAG_ZONE_ID,
     type MediaLibraryDragData,
 } from "@/components/dnd";
-import { localPlayerState$ } from "@/components/LocalAudioPlayer";
+import { audioPlayerState$ } from "@/components/AudioPlayer";
 import { Table, TableCell, type TableColumnSpec, TableHeader, TableRow } from "@/components/Table";
 import type { TrackData } from "@/components/TrackItem";
 import { useListItemStyles } from "@/hooks/useListItemStyles";
@@ -464,7 +464,7 @@ function LibraryTrackRow({
     const listItemStyles = useListItemStyles();
     const isSelected = useValue(() => selectedIndices$.get().has(index));
     const isPlaying = useValue(() => {
-        const currentTrack = localPlayerState$.currentTrack.get();
+        const currentTrack = audioPlayerState$.currentTrack.get();
         return currentTrack ? currentTrack.id === track.id : false;
     });
     const accentColor = useValue(() => themeState$.customColors.dark.accent.primary.get());

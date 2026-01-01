@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { NativeMouseEvent } from "react-native-macos";
 
 import type { MediaLibraryDragData } from "@/components/dnd";
-import { localAudioControls } from "@/components/LocalAudioPlayer";
+import { audioControls } from "@/components/AudioPlayer";
 import { showToast } from "@/components/Toast";
 import type { TrackData } from "@/components/TrackItem";
 import { usePlaylistSelection } from "@/hooks/usePlaylistSelection";
@@ -644,13 +644,13 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
 
             switch (action) {
                 case "play-now":
-                    localAudioControls.queue.insertNext(track, { playImmediately: true });
+                    audioControls.queue.insertNext(track, { playImmediately: true });
                     break;
                 case "play-next":
-                    localAudioControls.queue.insertNext(track);
+                    audioControls.queue.insertNext(track);
                     break;
                 default:
-                    localAudioControls.queue.append(track);
+                    audioControls.queue.append(track);
                     break;
             }
         },

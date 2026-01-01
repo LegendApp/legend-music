@@ -3,7 +3,7 @@ import { useValue } from "@legendapp/state/react";
 import { Text, View, type DimensionValue } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 import { Button } from "@/components/Button";
-import { localPlayerState$ } from "@/components/LocalAudioPlayer";
+import { audioPlayerState$ } from "@/components/AudioPlayer";
 import { PlaybackIndicator } from "@/components/PlaybackIndicator";
 import { useListItemStyles } from "@/hooks/useListItemStyles";
 import { Icon } from "@/systems/Icon";
@@ -69,7 +69,7 @@ export const TrackItem = ({
             return trackIsPlayingFlag;
         }
 
-        const currentTrack = localPlayerState$.currentTrack.get();
+        const currentTrack = audioPlayerState$.currentTrack.get();
         if (!currentTrack) {
             return false;
         }

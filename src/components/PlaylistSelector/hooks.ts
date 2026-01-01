@@ -2,7 +2,7 @@ import { useValue } from "@legendapp/state/react";
 import { useCallback, useMemo } from "react";
 import { Alert } from "react-native";
 
-import { localAudioControls } from "@/components/LocalAudioPlayer";
+import { audioControls } from "@/components/AudioPlayer";
 import { showToast } from "@/components/Toast";
 import { useOnHotkeys } from "@/systems/keyboard/Keyboard";
 import type { LibraryItem, LibraryTrack } from "@/systems/LibraryState";
@@ -128,10 +128,10 @@ export function usePlaylistQueueHandlers({
             );
 
             if (resolvedTracks.length > 0) {
-                localAudioControls.queue.replace(resolvedTracks, { startIndex: 0, playImmediately: true });
+                audioControls.queue.replace(resolvedTracks, { startIndex: 0, playImmediately: true });
             } else if (playlist.type !== "local-files") {
                 console.warn(`No tracks resolved for playlist ${playlist.name}`);
-                localAudioControls.queue.clear();
+                audioControls.queue.clear();
             }
 
             if (missingPaths.length > 0) {
@@ -148,13 +148,13 @@ export function usePlaylistQueueHandlers({
 
         switch (action) {
             case "play-now":
-                localAudioControls.queue.insertNext(track, { playImmediately: true });
+                audioControls.queue.insertNext(track, { playImmediately: true });
                 break;
             case "play-next":
-                localAudioControls.queue.insertNext(track);
+                audioControls.queue.insertNext(track);
                 break;
             default:
-                localAudioControls.queue.append(track);
+                audioControls.queue.append(track);
                 break;
         }
     }, []);
@@ -170,13 +170,13 @@ export function usePlaylistQueueHandlers({
 
             switch (action) {
                 case "play-now":
-                    localAudioControls.queue.insertNext(tracksToAdd, { playImmediately: true });
+                    audioControls.queue.insertNext(tracksToAdd, { playImmediately: true });
                     break;
                 case "play-next":
-                    localAudioControls.queue.insertNext(tracksToAdd);
+                    audioControls.queue.insertNext(tracksToAdd);
                     break;
                 default:
-                    localAudioControls.queue.append(tracksToAdd);
+                    audioControls.queue.append(tracksToAdd);
                     break;
             }
         },
@@ -199,10 +199,10 @@ export function usePlaylistQueueHandlers({
             );
 
             if (resolvedTracks.length > 0) {
-                localAudioControls.queue.replace(resolvedTracks, { startIndex: 0, playImmediately: true });
+                audioControls.queue.replace(resolvedTracks, { startIndex: 0, playImmediately: true });
             } else if (playlist.id !== DEFAULT_LOCAL_PLAYLIST_ID) {
                 console.warn(`No tracks resolved for playlist ${playlist.name}`);
-                localAudioControls.queue.clear();
+                audioControls.queue.clear();
             }
 
             if (missingPaths.length > 0) {

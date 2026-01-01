@@ -4,7 +4,7 @@ import { type LayoutChangeEvent, Text, useWindowDimensions, View } from "react-n
 import type { SFSymbol } from "sf-symbols-typescript";
 import { Button } from "@/components/Button";
 import type { DropdownMenuRootRef } from "@/components/DropdownMenu";
-import { queue$ } from "@/components/LocalAudioPlayer";
+import { queue$ } from "@/components/AudioPlayer";
 import { PlaylistSelectorSearchDropdown } from "@/components/PlaylistSelectorSearchDropdown";
 import { usePlaybackControlLayout } from "@/hooks/useUIControls";
 import { SUPPORT_PLAYLISTS } from "@/systems/constants";

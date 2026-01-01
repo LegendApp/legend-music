@@ -19,7 +19,7 @@ import {
     MEDIA_LIBRARY_DRAG_ZONE_ID,
     type MediaLibraryDragData,
 } from "@/components/dnd";
-import { localAudioControls } from "@/components/LocalAudioPlayer";
+import { audioControls } from "@/components/AudioPlayer";
 import { NativeSidebar, SidebarItem } from "@/components/NativeSidebar";
 import type { TextInputSearchRef } from "@/components/TextInputSearch";
 import { showToast } from "@/components/Toast";
@@ -220,13 +220,13 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
         const action = getQueueAction({ event });
         switch (action) {
             case "play-now":
-                localAudioControls.queue.insertNext(resolvedTracks, { playImmediately: true });
+                audioControls.queue.insertNext(resolvedTracks, { playImmediately: true });
                 break;
             case "play-next":
-                localAudioControls.queue.insertNext(resolvedTracks);
+                audioControls.queue.insertNext(resolvedTracks);
                 break;
             default:
-                localAudioControls.queue.append(resolvedTracks);
+                audioControls.queue.append(resolvedTracks);
                 break;
         }
 
