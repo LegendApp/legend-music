@@ -16,7 +16,7 @@ import { clearQueueM3U, loadQueueFromM3U, saveQueueToM3U } from "@/utils/m3uMana
 import { perfCount, perfLog, perfMark } from "@/utils/perfLogger";
 import { runAfterInteractionsWithLabel } from "@/utils/runAfterInteractions";
 
-export interface LocalPlayerState {
+export interface AudioPlayerState {
     isPlaying: boolean;
     currentTrack: LocalTrack | null;
     currentTime: number;
@@ -27,8 +27,8 @@ export interface LocalPlayerState {
     currentIndex: number;
 }
 
-// Create observable player state for local music
-export const localPlayerState$ = observable<LocalPlayerState>({
+// Create observable player state for playback
+export const audioPlayerState$ = observable<AudioPlayerState>({
     isPlaying: false,
     currentTrack: null,
     currentTime: 0,
@@ -97,7 +97,7 @@ const getDurationSeconds = (track: LocalTrack): number => {
 
 type QueueInput = LocalTrack | LocalTrack[];
 
-let localAudioPlayerInitialized = false;
+let audioPlayerInitialized = false;
 
 function stopJsProgressTimer(): void {
     if (jsProgressTimer) {
@@ -142,7 +142,7 @@ function scheduleJsProgressTick(): void {
 }
 
 function tickJsProgress(): void {
-    if (isWindowOccluded || !localPlayerState$.isPlaying.peek()) {
+    if (isWindowOccluded || !audioPlayerState$.isPlaying.peek()) {
         stopJsProgressTimer();
         return;
     }
@@ -152,13 +152,13 @@ function tickJsProgress(): void {
     }
 
     const elapsedSeconds = (Date.now() - lastNativeProgressTimestamp) / 1000;
-    const duration = localPlayerState$.duration.peek();
+    const duration = audioPlayerState$.duration.peek();
     const projected = lastNativeProgressTime + elapsedSeconds;
     const target = duration > 0 ? Math.min(duration, projected) : projected;
-    const current = localPlayerState$.currentTime.peek();
+    const current = audioPlayerState$.currentTime.peek();
 
     if (!playbackInteractionState$.isScrubbing.peek() && Math.abs(target - current) >= 0.05) {
-        localPlayerState$.currentTime.set(target);
+        audioPlayerState$.currentTime.set(target);
     }
 
     // Schedule next tick aligned to second boundaries from the last native progress anchor
@@ -191,36 +191,36 @@ function applyPlaybackStateUpdate(update: PlaybackStateUpdate): void {
     }
 
     if (typeof update.isLoading === "boolean") {
-        localPlayerState$.isLoading.set(update.isLoading);
+        audioPlayerState$.isLoading.set(update.isLoading);
     }
 
     if (update.error !== undefined) {
-        localPlayerState$.error.set(update.error ?? null);
+        audioPlayerState$.error.set(update.error ?? null);
         if (update.error) {
-            localPlayerState$.isPlaying.set(false);
+            audioPlayerState$.isPlaying.set(false);
         }
     }
 
     if (typeof update.durationSeconds === "number" && update.durationSeconds > 0) {
-        if (update.durationSeconds !== localPlayerState$.duration.peek()) {
-            localPlayerState$.duration.set(update.durationSeconds);
+        if (update.durationSeconds !== audioPlayerState$.duration.peek()) {
+            audioPlayerState$.duration.set(update.durationSeconds);
         }
     }
 
     if (typeof update.positionSeconds === "number") {
         setProgressAnchor(update.positionSeconds);
         if (!isWindowOccluded && !playbackInteractionState$.isScrubbing.peek()) {
-            localPlayerState$.currentTime.set(update.positionSeconds);
+            audioPlayerState$.currentTime.set(update.positionSeconds);
         }
-        if (localPlayerState$.isPlaying.peek() && !isWindowOccluded) {
+        if (audioPlayerState$.isPlaying.peek() && !isWindowOccluded) {
             startJsProgressTimer();
         }
     }
 
     if (typeof update.isPlaying === "boolean") {
-        localPlayerState$.isPlaying.set(update.isPlaying);
+        audioPlayerState$.isPlaying.set(update.isPlaying);
         if (update.isPlaying && !isWindowOccluded) {
-            anchorProgress(localPlayerState$.currentTime.peek());
+            anchorProgress(audioPlayerState$.currentTime.peek());
             startJsProgressTimer();
         } else {
             stopJsProgressTimer();
@@ -228,20 +228,20 @@ function applyPlaybackStateUpdate(update: PlaybackStateUpdate): void {
     }
 
     if (update.artwork) {
-        const current = localPlayerState$.currentTrack.peek();
+        const current = audioPlayerState$.currentTrack.peek();
         const currentQueueEntryId = (current as Partial<QueuedTrack> | null)?.queueEntryId;
         if (current && !current.thumbnail && currentQueueEntryId) {
             updateQueueEntry(currentQueueEntryId, { thumbnail: update.artwork });
-            localPlayerState$.currentTrack.set({ ...current, thumbnail: update.artwork });
+            audioPlayerState$.currentTrack.set({ ...current, thumbnail: update.artwork });
         }
     }
 
     if (update.didComplete) {
-        const duration = localPlayerState$.duration.peek();
-        localPlayerState$.currentTime.set(duration);
-        localPlayerState$.isPlaying.set(false);
+        const duration = audioPlayerState$.duration.peek();
+        audioPlayerState$.currentTime.set(duration);
+        audioPlayerState$.isPlaying.set(false);
         stopJsProgressTimer();
-        localAudioControls.playNext();
+        audioControls.playNext();
     }
 
     if (update.command) {
@@ -319,7 +319,7 @@ function applyDurationFromTrack(track: LocalTrack): void {
     const provider = getPlaybackProviderForTrack(track);
     const seconds = provider ? provider.getDurationSeconds(track) : getDurationSeconds(track);
     if (seconds > 0) {
-        localPlayerState$.duration.set(seconds);
+        audioPlayerState$.duration.set(seconds);
     }
 }
 
@@ -331,9 +331,9 @@ async function hydrateCurrentTrackMetadata(track: QueuedTrack): Promise<void> {
         updateQueueEntry(track.queueEntryId, updates);
     }
 
-    const current = localPlayerState$.currentTrack.peek();
+    const current = audioPlayerState$.currentTrack.peek();
     if (updates && current && current.queueEntryId === track.queueEntryId) {
-        localPlayerState$.currentTrack.set({ ...current, ...updates });
+        audioPlayerState$.currentTrack.set({ ...current, ...updates });
     }
 
     applyDurationFromTrack(track);
@@ -345,15 +345,15 @@ const handleMissingTrackFile = (track: LocalTrack, queueEntryId?: string) => {
     if (queueEntryId) {
         updateQueueEntry(queueEntryId, { isMissing: true });
     }
-    localPlayerState$.error.set("Track file not found");
-    localPlayerState$.isLoading.set(false);
-    localPlayerState$.isPlaying.set(false);
+    audioPlayerState$.error.set("Track file not found");
+    audioPlayerState$.isLoading.set(false);
+    audioPlayerState$.isPlaying.set(false);
 };
 
 const handleTrackLoadFailure = (_track: LocalTrack, _queueEntryId: string | undefined, errorMessage: string) => {
-    localPlayerState$.error.set(errorMessage);
-    localPlayerState$.isLoading.set(false);
-    localPlayerState$.isPlaying.set(false);
+    audioPlayerState$.error.set(errorMessage);
+    audioPlayerState$.isLoading.set(false);
+    audioPlayerState$.isPlaying.set(false);
 };
 
 function asArray(input: QueueInput): LocalTrack[] {
@@ -374,7 +374,7 @@ function getQueueSnapshot(): QueuedTrack[] {
 function setQueueTracks(tracks: QueuedTrack[], options: { skipPersistence?: boolean } = {}): void {
     queue$.tracks.set(tracks);
     if (!options.skipPersistence) {
-        persistPlaybackIndex(localPlayerState$.currentIndex.peek());
+        persistPlaybackIndex(audioPlayerState$.currentIndex.peek());
     }
 
     // Save to M3U file when queue changes (but not during initial load)
@@ -409,17 +409,17 @@ function getPlaybackSettings() {
     };
 }
 
-localPlayerState$.currentIndex.onChange(({ value }) => {
+audioPlayerState$.currentIndex.onChange(({ value }) => {
     persistPlaybackIndex(typeof value === "number" ? value : -1);
 });
 
-localPlayerState$.currentTime.onChange(({ value }) => {
+audioPlayerState$.currentTime.onChange(({ value }) => {
     latestPlaybackTime = Math.max(0, typeof value === "number" ? value : 0);
 });
 
-localPlayerState$.isPlaying.onChange(({ value }) => {
+audioPlayerState$.isPlaying.onChange(({ value }) => {
     if (!value) {
-        latestPlaybackTime = Math.max(0, localPlayerState$.currentTime.peek());
+        latestPlaybackTime = Math.max(0, audioPlayerState$.currentTime.peek());
     }
 });
 
@@ -440,21 +440,23 @@ function initializeAppExitHandler(): void {
 }
 
 function resetPlayerForEmptyQueue(): void {
+    const currentTrack = audioPlayerState$.currentTrack.peek();
+    const currentProvider = currentTrack ? getPlaybackProviderForTrack(currentTrack) : null;
     resetSavedPlaybackState();
     resetProgressState();
-    localPlayerState$.currentTrack.set(null);
-    localPlayerState$.currentIndex.set(-1);
-    localPlayerState$.currentTime.set(0);
-    localPlayerState$.duration.set(0);
-    localPlayerState$.isPlaying.set(false);
+    audioPlayerState$.currentTrack.set(null);
+    audioPlayerState$.currentIndex.set(-1);
+    audioPlayerState$.currentTime.set(0);
+    audioPlayerState$.duration.set(0);
+    audioPlayerState$.isPlaying.set(false);
     pendingInitialTrackRestore = null;
-    localPlaybackProvider.stop?.().catch((error) => console.error("Error stopping playback:", error));
-    localPlaybackProvider.clearNowPlayingInfo?.();
+    currentProvider?.stop?.().catch((error) => console.error("Error stopping playback:", error));
+    currentProvider?.clearNowPlayingInfo?.();
 }
 
 async function play(): Promise<void> {
     perfLog("LocalAudioControls.play");
-    const currentTrack = localPlayerState$.currentTrack.peek();
+    const currentTrack = audioPlayerState$.currentTrack.peek();
     const provider = currentTrack ? getPlaybackProviderForTrack(currentTrack) : null;
     if (!provider) {
         return;
@@ -462,12 +464,12 @@ async function play(): Promise<void> {
 
     try {
         if (provider.id === "local") {
-            const duration = localPlayerState$.duration.peek();
-            const currentTime = localPlayerState$.currentTime.peek();
+            const duration = audioPlayerState$.duration.peek();
+            const currentTime = audioPlayerState$.currentTime.peek();
             const shouldRestart = duration > 0 && duration - currentTime <= 2;
 
             if (shouldRestart) {
-                localPlayerState$.currentTime.set(0);
+                audioPlayerState$.currentTime.set(0);
                 try {
                     await provider.seek(0);
                 } catch (seekError) {
@@ -482,13 +484,13 @@ async function play(): Promise<void> {
         if (provider.id === "spotify") {
             showToast(error instanceof Error ? error.message : "Spotify playback failed", "error");
         }
-        localPlayerState$.error.set(error instanceof Error ? error.message : "Play failed");
+        audioPlayerState$.error.set(error instanceof Error ? error.message : "Play failed");
     }
 }
 
 async function pause(): Promise<void> {
     perfLog("LocalAudioControls.pause");
-    const currentTrack = localPlayerState$.currentTrack.peek();
+    const currentTrack = audioPlayerState$.currentTrack.peek();
     const provider = currentTrack ? getPlaybackProviderForTrack(currentTrack) : null;
     if (!provider) {
         return;
@@ -511,7 +513,7 @@ async function loadTrackInternal(track: LocalTrack, options: LoadTrackOptions = 
         }
     }
 
-    const previousTrack = localPlayerState$.currentTrack.peek();
+    const previousTrack = audioPlayerState$.currentTrack.peek();
     const previousProvider = previousTrack ? getPlaybackProviderForTrack(previousTrack) : null;
     const nextProvider = getPlaybackProviderForTrack(track);
     if (previousProvider && nextProvider && previousProvider.id !== nextProvider.id) {
@@ -525,11 +527,11 @@ async function loadTrackInternal(track: LocalTrack, options: LoadTrackOptions = 
 
     pendingInitialTrackRestore = null;
     resetProgressState();
-    localPlayerState$.currentTrack.set(track);
-    localPlayerState$.currentTime.set(0);
-    localPlayerState$.duration.set(0);
-    localPlayerState$.isLoading.set(true);
-    localPlayerState$.error.set(null);
+    audioPlayerState$.currentTrack.set(track);
+    audioPlayerState$.currentTime.set(0);
+    audioPlayerState$.duration.set(0);
+    audioPlayerState$.isLoading.set(true);
+    audioPlayerState$.error.set(null);
     const queueEntryId = isQueuedTrack(track) ? track.queueEntryId : undefined;
 
     if (!nextProvider) {
@@ -573,13 +575,13 @@ function playTrackFromQueue(index: number, options: PlayTrackFromQueueOptions = 
         return;
     }
 
-    const currentIndex = localPlayerState$.currentIndex.peek();
+    const currentIndex = audioPlayerState$.currentIndex.peek();
     if (options.recordHistory && currentIndex !== -1 && currentIndex !== targetIndex) {
         pushHistory(currentIndex);
     }
 
     const track = tracks[targetIndex];
-    localPlayerState$.currentIndex.set(targetIndex);
+    audioPlayerState$.currentIndex.set(targetIndex);
     void loadTrackInternal(track).then((shouldPlayLocal) => {
         if (shouldPlayLocal && (options.playImmediately ?? true)) {
             void play();
@@ -639,7 +641,7 @@ function queueInsertNext(input: QueueInput, options: QueueUpdateOptions = {}): v
         return;
     }
 
-    const currentIndex = localPlayerState$.currentIndex.peek();
+    const currentIndex = audioPlayerState$.currentIndex.peek();
     const insertPosition = currentIndex >= 0 ? Math.min(currentIndex + 1, existing.length) : existing.length;
     const queuedAdditions = additions.map(createQueuedTrack);
     const nextQueue = [...existing.slice(0, insertPosition), ...queuedAdditions, ...existing.slice(insertPosition)];
@@ -673,7 +675,7 @@ function queueInsertAt(position: number, input: QueueInput, options: QueueUpdate
     perfLog("Queue.insertAt", { additions: additions.length, position: boundedPosition });
     setQueueTracks(nextQueue);
 
-    const currentIndex = localPlayerState$.currentIndex.peek();
+    const currentIndex = audioPlayerState$.currentIndex.peek();
     if (currentIndex === -1) {
         playTrackFromQueue(0, {
             playImmediately: options.playImmediately ?? true,
@@ -688,7 +690,7 @@ function queueInsertAt(position: number, input: QueueInput, options: QueueUpdate
     }
 
     if (currentIndex >= boundedPosition) {
-        localPlayerState$.currentIndex.set(currentIndex + queuedAdditions.length);
+        audioPlayerState$.currentIndex.set(currentIndex + queuedAdditions.length);
     }
 }
 
@@ -729,22 +731,22 @@ function queueReorder(fromIndex: number, toIndex: number): void {
     nextQueue.splice(insertIndex, 0, moved);
     setQueueTracks(nextQueue);
 
-    const currentIndex = localPlayerState$.currentIndex.peek();
+    const currentIndex = audioPlayerState$.currentIndex.peek();
     if (currentIndex === -1) {
         return;
     }
 
     const currentTrack = tracks[currentIndex];
     if (!currentTrack) {
-        localPlayerState$.currentIndex.set(Math.min(currentIndex, nextQueue.length - 1));
+        audioPlayerState$.currentIndex.set(Math.min(currentIndex, nextQueue.length - 1));
         return;
     }
 
     const nextCurrentIndex = nextQueue.findIndex((track) => track.queueEntryId === currentTrack.queueEntryId);
     if (nextCurrentIndex !== -1) {
-        localPlayerState$.currentIndex.set(nextCurrentIndex);
+        audioPlayerState$.currentIndex.set(nextCurrentIndex);
     } else {
-        localPlayerState$.currentIndex.set(Math.min(currentIndex, nextQueue.length - 1));
+        audioPlayerState$.currentIndex.set(Math.min(currentIndex, nextQueue.length - 1));
     }
 }
 
@@ -778,7 +780,7 @@ function queueRemoveIndices(indices: number[]): void {
         return;
     }
 
-    const currentIndex = localPlayerState$.currentIndex.peek();
+    const currentIndex = audioPlayerState$.currentIndex.peek();
     if (currentIndex === -1) {
         return;
     }
@@ -786,7 +788,7 @@ function queueRemoveIndices(indices: number[]): void {
     const removedBeforeCurrent = uniqueSorted.filter((index) => index < currentIndex).length;
 
     if (removalSet.has(currentIndex)) {
-        const isPlaying = localPlayerState$.isPlaying.peek();
+        const isPlaying = audioPlayerState$.isPlaying.peek();
         const nextIndex = Math.min(currentIndex - removedBeforeCurrent, nextQueue.length - 1);
 
         if (nextIndex >= 0) {
@@ -798,7 +800,7 @@ function queueRemoveIndices(indices: number[]): void {
     }
 
     const nextIndex = Math.max(0, currentIndex - removedBeforeCurrent);
-    localPlayerState$.currentIndex.set(nextIndex);
+    audioPlayerState$.currentIndex.set(nextIndex);
 }
 
 function queueClear(): void {
@@ -836,11 +838,11 @@ function initializeQueueFromCache(): void {
 
             if (resolvedIndex >= 0) {
                 const currentTrack = queuedTracks[resolvedIndex];
-                localPlayerState$.currentTrack.set(currentTrack);
-                localPlayerState$.currentIndex.set(resolvedIndex);
+                audioPlayerState$.currentTrack.set(currentTrack);
+                audioPlayerState$.currentIndex.set(resolvedIndex);
                 applyDurationFromTrack(currentTrack);
                 if (savedPlaybackTime > 0) {
-                    localPlayerState$.currentTime.set(
+                    audioPlayerState$.currentTime.set(
                         Math.min(savedPlaybackTime, parseDurationToSeconds(currentTrack.duration)),
                     );
                 }
@@ -850,8 +852,8 @@ function initializeQueueFromCache(): void {
                 };
                 void hydrateCurrentTrackMetadata(currentTrack);
             } else {
-                localPlayerState$.currentTrack.set(null);
-                localPlayerState$.currentIndex.set(-1);
+                audioPlayerState$.currentTrack.set(null);
+                audioPlayerState$.currentIndex.set(-1);
                 pendingInitialTrackRestore = null;
             }
 
@@ -873,7 +875,7 @@ function initializeQueueFromCache(): void {
             perfMark("Queue.initializeQueueFromCache.end", { durationMs });
         }
         queueInitialized = true;
-        localPlayerState$.isLoading.set(false);
+        audioPlayerState$.isLoading.set(false);
     }
 }
 
@@ -910,7 +912,7 @@ async function loadTrack(arg1: LocalTrack | string, arg2?: QueueUpdateOptions | 
     }
 
     const options = (arg2 as QueueUpdateOptions | undefined) ?? {};
-    localPlayerState$.currentIndex.set(-1);
+    audioPlayerState$.currentIndex.set(-1);
     await loadTrackInternal(arg1);
     if (options.playImmediately ?? true) {
         await play();
@@ -922,9 +924,9 @@ function loadPlaylist(playlist: LocalTrack[], startIndex = 0, options: QueueUpda
 }
 
 async function togglePlayPause(): Promise<void> {
-    perfLog("LocalAudioControls.togglePlayPause", { isPlaying: localPlayerState$.isPlaying.get() });
-    if (localPlayerState$.currentTrack.get()) {
-        const isPlaying = localPlayerState$.isPlaying.get();
+    perfLog("LocalAudioControls.togglePlayPause", { isPlaying: audioPlayerState$.isPlaying.get() });
+    if (audioPlayerState$.currentTrack.get()) {
+        const isPlaying = audioPlayerState$.isPlaying.get();
         if (isPlaying) {
             await pause();
         } else {
@@ -955,7 +957,7 @@ function setRepeatMode(mode: RepeatMode): void {
 
 function playPrevious(): void {
     const { shuffle, repeatMode } = getPlaybackSettings();
-    const currentIndex = localPlayerState$.currentIndex.peek();
+    const currentIndex = audioPlayerState$.currentIndex.peek();
     const tracks = getQueueSnapshot();
     perfLog("LocalAudioControls.playPrevious", { currentIndex, queueLength: tracks.length, shuffle, repeatMode });
 
@@ -1002,7 +1004,7 @@ function playPrevious(): void {
 
 function playNext(): void {
     const { shuffle, repeatMode } = getPlaybackSettings();
-    const currentIndex = localPlayerState$.currentIndex.peek();
+    const currentIndex = audioPlayerState$.currentIndex.peek();
     const tracks = getQueueSnapshot();
     perfLog("LocalAudioControls.playNext", { currentIndex, queueLength: tracks.length, shuffle, repeatMode });
 
@@ -1036,9 +1038,9 @@ function playNext(): void {
     }
 
     if (nextIndex === -1) {
-        const duration = localPlayerState$.duration.peek();
-        localPlayerState$.currentTime.set(duration);
-        localPlayerState$.isPlaying.set(false);
+        const duration = audioPlayerState$.duration.peek();
+        audioPlayerState$.currentTime.set(duration);
+        audioPlayerState$.isPlaying.set(false);
         return;
     }
 
@@ -1062,8 +1064,8 @@ function playTrackAtIndex(index: number): void {
 async function setVolume(volume: number): Promise<void> {
     perfLog("LocalAudioControls.setVolume", { volume });
     const clampedVolume = Math.max(0, Math.min(1, volume));
-    localPlayerState$.volume.set(clampedVolume);
-    const currentTrack = localPlayerState$.currentTrack.peek();
+    audioPlayerState$.volume.set(clampedVolume);
+    const currentTrack = audioPlayerState$.currentTrack.peek();
     const provider = currentTrack ? getPlaybackProviderForTrack(currentTrack) : localPlaybackProvider;
     if (!provider) {
         return;
@@ -1087,7 +1089,7 @@ async function seek(seconds: number): Promise<void> {
     }
 
     const clampedSeconds = Math.max(0, nextSeconds);
-    const currentTrack = localPlayerState$.currentTrack.peek();
+    const currentTrack = audioPlayerState$.currentTrack.peek();
     const provider = currentTrack ? getPlaybackProviderForTrack(currentTrack) : null;
     if (!provider) {
         return;
@@ -1100,8 +1102,8 @@ async function seek(seconds: number): Promise<void> {
     }
 }
 
-function getCurrentState(): LocalPlayerState {
-    return localPlayerState$.get();
+function getCurrentState(): AudioPlayerState {
+    return audioPlayerState$.get();
 }
 
 async function restoreTrackFromSnapshotIfNeeded({
@@ -1148,7 +1150,7 @@ async function restoreTrackFromSnapshotIfNeeded({
                         if (!provider?.startsPlaybackOnLoad) {
                             await seek(playbackTime);
                         }
-                        localPlayerState$.currentTime.set(playbackTime);
+                        audioPlayerState$.currentTime.set(playbackTime);
                     } catch (seekError) {
                         console.error("Failed to restore playback position", seekError);
                     }
@@ -1168,8 +1170,8 @@ async function restoreTrackFromSnapshotIfNeeded({
     }, "LocalAudioPlayer.restoreTrackFromSnapshot");
 }
 
-// Expose control methods for local audio
-export const localAudioControls = {
+// Expose control methods for playback
+export const audioControls = {
     loadTrack,
     loadPlaylist,
     play,
@@ -1187,15 +1189,15 @@ export const localAudioControls = {
     queue: queueControls,
 };
 
-export function initializeLocalAudioPlayer(): void {
+export function initializeAudioPlayer(): void {
     const localPlaybackAvailable = localPlaybackProvider.isAvailable
         ? localPlaybackProvider.isAvailable()
         : true;
-    if (localAudioPlayerInitialized) {
+    if (audioPlayerInitialized) {
         return;
     }
 
-    localAudioPlayerInitialized = true;
+    audioPlayerInitialized = true;
     perfCount("LocalAudioPlayer.initialize");
     if (localPlaybackAvailable && localPlaybackProvider.onStateChange) {
         localPlaybackProvider.onStateChange((update) => {
