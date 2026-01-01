@@ -66,6 +66,7 @@ let queueEntryCounter = 0;
 let jsProgressTimer: ReturnType<typeof setTimeout> | null = null;
 let lastNativeProgressTime = 0;
 let lastNativeProgressTimestamp = 0;
+let hasPlaybackProgress = false;
 let isWindowOccluded = false;
 let latestPlaybackTime = 0;
 const stateSavedPersistPlugin = getPersistPlugin(stateSaved$);
@@ -89,8 +90,58 @@ interface QueueUpdateOptions {
     startIndex?: number;
 }
 
+interface LoadTrackOptions {
+    startPositionSeconds?: number;
+}
+
 const isSpotifyTrack = (track: LocalTrack | null | undefined): track is LocalTrack & { provider: "spotify" } =>
     Boolean(track && track.provider === "spotify");
+
+interface SpotifyPlaybackState {
+    position?: number;
+    duration?: number;
+    paused?: boolean;
+    track_window?: {
+        current_track?: {
+            uri?: string;
+            id?: string;
+            album?: {
+                images?: ({ url?: string } | string)[];
+            };
+        };
+    };
+}
+
+const normalizeSpotifyTrackId = (value: string): string => value.replace(/^spotify:track:/i, "");
+
+const getSpotifyTrackId = (track: LocalTrack | null | undefined): string | null => {
+    if (!track) {
+        return null;
+    }
+    return track.uri || track.id || track.filePath || null;
+};
+
+const getSpotifyStateTrackId = (state: SpotifyPlaybackState): string | null =>
+    state.track_window?.current_track?.uri || state.track_window?.current_track?.id || null;
+
+const getSpotifyStateArtwork = (state: SpotifyPlaybackState): string | null => {
+    const image = state.track_window?.current_track?.album?.images?.[0];
+    if (!image) {
+        return null;
+    }
+    return typeof image === "string" ? image : image.url ?? null;
+};
+
+const doesSpotifyStateMatchTrack = (state: SpotifyPlaybackState, track: LocalTrack): boolean => {
+    const stateTrackId = getSpotifyStateTrackId(state);
+    const currentTrackId = getSpotifyTrackId(track);
+
+    if (!stateTrackId || !currentTrackId) {
+        return true;
+    }
+
+    return normalizeSpotifyTrackId(stateTrackId) === normalizeSpotifyTrackId(currentTrackId);
+};
 
 const getDurationSeconds = (track: LocalTrack): number => {
     if (typeof track.durationMs === "number") {
@@ -116,6 +167,18 @@ function stopJsProgressTimer(): void {
 function anchorProgress(time: number): void {
     lastNativeProgressTime = time;
     lastNativeProgressTimestamp = Date.now();
+}
+
+function setProgressAnchor(time: number): void {
+    hasPlaybackProgress = true;
+    anchorProgress(time);
+}
+
+function resetProgressState(): void {
+    stopJsProgressTimer();
+    hasPlaybackProgress = false;
+    lastNativeProgressTime = 0;
+    lastNativeProgressTimestamp = 0;
 }
 
 function getMsUntilNextProgressSecond(): number {
@@ -160,7 +223,7 @@ function tickJsProgress(): void {
 }
 
 function startJsProgressTimer(): void {
-    if (jsProgressTimer || !lastNativeProgressTimestamp) {
+    if (!hasPlaybackProgress || jsProgressTimer || !lastNativeProgressTimestamp) {
         return;
     }
 
@@ -366,19 +429,35 @@ spotifyWebPlayerState$.lastState.onChange(({ value }) => {
     if (!isSpotifyTrack(current) || !value) {
         return;
     }
-    const state = value as { position?: number; duration?: number; paused?: boolean };
+    const state = value as SpotifyPlaybackState;
+    if (!doesSpotifyStateMatchTrack(state, current)) {
+        return;
+    }
+    const artwork = getSpotifyStateArtwork(state);
+    if (artwork && !current.thumbnail) {
+        const updates = { thumbnail: artwork };
+        const queueEntryId = (current as Partial<QueuedTrack>).queueEntryId;
+        if (queueEntryId) {
+            updateQueueEntry(queueEntryId, updates);
+        }
+        localPlayerState$.currentTrack.set({ ...current, ...updates });
+    }
     if (typeof state.duration === "number") {
         localPlayerState$.duration.set(state.duration / 1000);
     }
+    let didAnchor = false;
     if (typeof state.position === "number" && !playbackInteractionState$.isScrubbing.peek()) {
         const nextTime = state.position / 1000;
-        anchorProgress(nextTime);
+        setProgressAnchor(nextTime);
         localPlayerState$.currentTime.set(nextTime);
+        didAnchor = true;
     }
     if (typeof state.paused === "boolean") {
         localPlayerState$.isPlaying.set(!state.paused);
         if (!state.paused && !isWindowOccluded) {
-            anchorProgress(localPlayerState$.currentTime.peek());
+            if (!didAnchor && hasPlaybackProgress) {
+                anchorProgress(localPlayerState$.currentTime.peek());
+            }
             startJsProgressTimer();
         } else {
             stopJsProgressTimer();
@@ -404,6 +483,7 @@ function initializeAppExitHandler(): void {
 
 function resetPlayerForEmptyQueue(): void {
     resetSavedPlaybackState();
+    resetProgressState();
     localPlayerState$.currentTrack.set(null);
     localPlayerState$.currentIndex.set(-1);
     localPlayerState$.currentTime.set(0);
@@ -483,7 +563,7 @@ async function pause(): Promise<void> {
     stopJsProgressTimer();
 }
 
-async function loadTrackInternal(track: LocalTrack): Promise<boolean> {
+async function loadTrackInternal(track: LocalTrack, options: LoadTrackOptions = {}): Promise<boolean> {
     perfLog("LocalAudioControls.loadTrack", { id: track.id, filePath: track.filePath });
     if (__DEV__) {
         if (DEBUG_AUDIO_LOGS) {
@@ -491,8 +571,18 @@ async function loadTrackInternal(track: LocalTrack): Promise<boolean> {
         }
     }
 
-    stopJsProgressTimer();
-    anchorProgress(0);
+    const previousTrack = localPlayerState$.currentTrack.peek();
+    if (isSpotifyTrack(track) && audioPlayer && previousTrack && !isSpotifyTrack(previousTrack)) {
+        try {
+            await audioPlayer.stop();
+        } catch (error) {
+            console.error("Error stopping local playback before Spotify:", error);
+        }
+        audioPlayer.clearNowPlayingInfo();
+    }
+
+    pendingInitialTrackRestore = null;
+    resetProgressState();
     localPlayerState$.currentTrack.set(track);
     localPlayerState$.currentTime.set(0);
     localPlayerState$.duration.set(0);
@@ -508,7 +598,12 @@ async function loadTrackInternal(track: LocalTrack): Promise<boolean> {
                 throw new Error("Missing Spotify URI");
             }
             await transferSpotifyPlayback();
-            await playSpotifyUri({ uri, positionMs: 0 });
+            const startPositionSeconds =
+                typeof options.startPositionSeconds === "number" && Number.isFinite(options.startPositionSeconds)
+                    ? Math.max(0, options.startPositionSeconds)
+                    : 0;
+            const positionMs = Math.round(startPositionSeconds * 1000);
+            await playSpotifyUri({ uri, positionMs });
             localPlayerState$.duration.set(getDurationSeconds(track));
             localPlayerState$.isLoading.set(false);
             localPlayerState$.isPlaying.set(true);
@@ -1128,7 +1223,7 @@ async function seek(seconds: number): Promise<void> {
     if (isSpotifyTrack(currentTrack)) {
         try {
             await seekSpotify(positionMs);
-            anchorProgress(clampedSeconds);
+            setProgressAnchor(clampedSeconds);
             localPlayerState$.currentTime.set(clampedSeconds);
             if (localPlayerState$.isPlaying.peek() && !isWindowOccluded) {
                 startJsProgressTimer();
@@ -1161,7 +1256,11 @@ async function restoreTrackFromSnapshotIfNeeded({
     force?: boolean;
     playAfterLoad?: boolean;
 } = {}): Promise<void> {
-    if (!audioPlayer || !pendingInitialTrackRestore) {
+    if (!pendingInitialTrackRestore) {
+        return;
+    }
+
+    if (!audioPlayer && !isSpotifyTrack(pendingInitialTrackRestore.track)) {
         return;
     }
 
@@ -1172,6 +1271,7 @@ async function restoreTrackFromSnapshotIfNeeded({
     const snapshot = pendingInitialTrackRestore;
     pendingInitialTrackRestore = null;
     const { track, playbackTime } = snapshot;
+    const isSpotify = isSpotifyTrack(track);
 
     runAfterInteractionsWithLabel(() => {
         const start = perfMark("LocalAudioPlayer.restoreTrackFromSnapshot.start", {
@@ -1180,11 +1280,17 @@ async function restoreTrackFromSnapshotIfNeeded({
         });
         void (async () => {
             try {
-                await loadTrackInternal(track);
+                await loadTrackInternal(track, {
+                    startPositionSeconds: isSpotify && playbackTime > 0 ? playbackTime : undefined,
+                });
                 if (playbackTime > 0) {
                     try {
-                        await seek(playbackTime);
-                        localPlayerState$.currentTime.set(playbackTime);
+                        if (isSpotify) {
+                            localPlayerState$.currentTime.set(playbackTime);
+                        } else {
+                            await seek(playbackTime);
+                            localPlayerState$.currentTime.set(playbackTime);
+                        }
                     } catch (seekError) {
                         console.error("Failed to restore playback position", seekError);
                     }
@@ -1271,7 +1377,7 @@ export function initializeLocalAudioPlayer(): void {
     });
 
     audioPlayer.addListener("onProgress", (data) => {
-        anchorProgress(data.currentTime);
+        setProgressAnchor(data.currentTime);
         if (!isWindowOccluded && !playbackInteractionState$.isScrubbing.peek()) {
             localPlayerState$.currentTime.set(data.currentTime);
         }
