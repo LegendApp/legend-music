@@ -68,16 +68,25 @@ export type PlaybackStateUpdate = {
     positionSeconds?: number;
     durationSeconds?: number;
     artwork?: string | null;
+    isLoading?: boolean;
+    error?: string | null;
+    didComplete?: boolean;
+    isOccluded?: boolean;
+    command?: "play" | "pause" | "toggle" | "next" | "previous";
 };
 
 export interface PlaybackProvider {
     id: ProviderId;
     canHandle: (track: LocalTrack) => boolean;
+    startsPlaybackOnLoad?: boolean;
+    isAvailable?: () => boolean;
     load: (track: LocalTrack, options?: { startPositionSeconds?: number }) => Promise<void>;
     play: () => Promise<void>;
     pause: () => Promise<void>;
     seek: (positionSeconds: number) => Promise<void>;
     setVolume: (volume: number) => Promise<void>;
+    stop?: () => Promise<void>;
+    clearNowPlayingInfo?: () => void;
     getDurationSeconds: (track: LocalTrack) => number;
     hydrateTrackMetadata?: (track: LocalTrack) => Promise<Partial<LocalTrack> | null>;
     onStateChange?: (handler: (update: PlaybackStateUpdate) => void) => () => void;
