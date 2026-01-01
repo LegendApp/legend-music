@@ -44,7 +44,7 @@ Extract Spotify-specific playback behavior out of `src/components/LocalAudioPlay
 
 ## Steps
 - [x] Define `PlaybackProvider` interface and provider registry/lookup helper in `src/providers/types.ts`.
-- [ ] Extract local-file playback into `src/providers/local/playbackProvider.ts` and adjust `LocalAudioPlayer` to use it.
+- [x] Extract local-file playback into `src/providers/local/playbackProvider.ts` and adjust `LocalAudioPlayer` to use it.
 - [ ] Extract Spotify playback + state handling into `src/providers/spotify/playbackProvider.ts` and `src/providers/spotify/playerState.ts`.
 - [ ] Rename `src/components/LocalAudioPlayer.tsx` to `src/components/AudioPlayer.tsx` and make it provider-agnostic.
 - [ ] Update imports/usages (UI and tests) to use the new `AudioPlayer` module.
