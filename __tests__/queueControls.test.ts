@@ -1,4 +1,4 @@
-import { localAudioControls, localPlayerState$, queue$ } from "../src/components/LocalAudioPlayer";
+import { audioControls, audioPlayerState$, queue$ } from "../src/components/AudioPlayer";
 import type { LocalTrack } from "../src/systems/LocalMusicState";
 
 function createQueuedTrack(id: string, overrides: Partial<LocalTrack> = {}) {
@@ -33,20 +33,20 @@ describe("queueControls.insertAt", () => {
             createQueuedTrack("b"),
             createQueuedTrack("c"),
         ]);
-        localPlayerState$.currentIndex.set(1);
-        localPlayerState$.currentTrack.set(createTrack("b"));
+        audioPlayerState$.currentIndex.set(1);
+        audioPlayerState$.currentTrack.set(createTrack("b"));
     });
 
     afterEach(() => {
         queue$.tracks.set([]);
-        localPlayerState$.currentIndex.set(-1);
-        localPlayerState$.currentTrack.set(null);
+        audioPlayerState$.currentIndex.set(-1);
+        audioPlayerState$.currentTrack.set(null);
     });
 
     it("inserts tracks at the requested position", () => {
         const newTrack = createTrack("mid");
 
-        localAudioControls.queue.insertAt(1, newTrack);
+        audioControls.queue.insertAt(1, newTrack);
 
         const tracks = queue$.tracks.get();
         expect(tracks).toHaveLength(4);
@@ -56,16 +56,16 @@ describe("queueControls.insertAt", () => {
     it("shifts the current index forward when inserting before the playing track", () => {
         const newTrack = createTrack("before-current");
 
-        localAudioControls.queue.insertAt(1, newTrack);
+        audioControls.queue.insertAt(1, newTrack);
 
-        expect(localPlayerState$.currentIndex.get()).toBe(2);
+        expect(audioPlayerState$.currentIndex.get()).toBe(2);
     });
 
     it("keeps the current index when inserting after the playing track", () => {
         const newTrack = createTrack("after-current");
 
-        localAudioControls.queue.insertAt(3, newTrack);
+        audioControls.queue.insertAt(3, newTrack);
 
-        expect(localPlayerState$.currentIndex.get()).toBe(1);
+        expect(audioPlayerState$.currentIndex.get()).toBe(1);
     });
 });

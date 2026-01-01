@@ -6,7 +6,7 @@ import { Button } from "@/components/Button";
 import type { DropdownMenuRootRef } from "@/components/DropdownMenu";
 import { JumpSearchMenuDropdown } from "@/components/JumpSearchMenuDropdown";
 import { SavePlaylistDropdown } from "@/components/SavePlaylistDropdown";
-import { queue$ } from "@/components/LocalAudioPlayer";
+import { queue$ } from "@/components/AudioPlayer";
 import { usePlaybackControlLayout } from "@/hooks/useUIControls";
 import { SUPPORT_PLAYLISTS } from "@/systems/constants";
 import { useOnHotkeys } from "@/systems/keyboard/Keyboard";

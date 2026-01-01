@@ -2,7 +2,7 @@ import { useValue } from "@legendapp/state/react";
 import { useCallback, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { AlbumArt } from "@/components/AlbumArt";
-import { localAudioControls, localPlayerState$ } from "@/components/LocalAudioPlayer";
+import { audioControls, audioPlayerState$ } from "@/components/AudioPlayer";
 import { PlaybackControls } from "@/components/PlaybackControls";
 import { PlaybackTimeline } from "@/components/PlaybackTimeline";
 import { SpotifySourceBadge } from "@/components/SpotifySourceBadge";
@@ -26,9 +26,9 @@ type PlaybackAreaProps = {
 
 export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaProps = {}) {
     perfCount("PlaybackArea.render");
-    const currentTrack = useValue(localPlayerState$.currentTrack);
-    const isPlaying = useValue(localPlayerState$.isPlaying);
-    const currentLocalTime$ = localPlayerState$.currentTime;
+    const currentTrack = useValue(audioPlayerState$.currentTrack);
+    const isPlaying = useValue(audioPlayerState$.isPlaying);
+    const currentLocalTime$ = audioPlayerState$.currentTime;
     const thumbnailVersion = useValue(localMusicState$.thumbnailVersion);
     const handleSlidingStart = useCallback(() => setIsScrubbing(true), []);
     const handleSlidingEnd = useCallback(() => setIsScrubbing(false), []);
@@ -48,11 +48,11 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
     const sliderRowNode = showTimeline ? (
         <PlaybackTimeline
             currentLocalTime$={currentLocalTime$}
-            duration$={localPlayerState$.duration}
+            duration$={audioPlayerState$.duration}
             disabled={!currentTrack}
             onSlidingStart={handleSlidingStart}
             onSlidingComplete={(value) => {
-                localAudioControls.seek(value);
+                audioControls.seek(value);
             }}
             onSlidingEnd={handleSlidingEnd}
             overlayMode={overlayMode}
@@ -90,7 +90,7 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
                     />
                     <Pressable
                         className="absolute inset-0 opacity-0 hover:opacity-100 transition-all duration-300 items-center justify-center"
-                        onPress={localAudioControls.togglePlayPause}
+                        onPress={audioControls.togglePlayPause}
                     >
                         <Icon name={isPlaying ? "pause.fill" : "play.fill"} size={24} color="#fff" />
                     </Pressable>

@@ -1,5 +1,5 @@
 import { View } from "react-native";
-import { initializeLocalAudioPlayer, localAudioControls } from "@/components/LocalAudioPlayer";
+import { initializeAudioPlayer, audioControls } from "@/components/AudioPlayer";
 import { PlaybackArea } from "@/components/PlaybackArea";
 import { Playlist } from "@/components/Playlist";
 import { PlaylistSelector } from "@/components/PlaylistSelector";
@@ -11,7 +11,7 @@ import { perfCount, perfLog } from "@/utils/perfLogger";
 import { preloadPersistence } from "@/utils/preloadPersistence";
 
 preloadPersistence();
-initializeLocalAudioPlayer();
+initializeAudioPlayer();
 
 export function MainContainer() {
     perfCount("MainContainer.render");
@@ -19,17 +19,17 @@ export function MainContainer() {
 
     useOnHotkeys({
         // These are handled by native media keys, don't need to handle them here
-        // PlayPause: localAudioControls.togglePlayPause,
-        // NextTrack: localAudioControls.playNext,
-        // PreviousTrack: localAudioControls.playPrevious,
-        ToggleShuffle: localAudioControls.toggleShuffle,
-        ToggleRepeatMode: localAudioControls.cycleRepeatMode,
+        // PlayPause: audioControls.togglePlayPause,
+        // NextTrack: audioControls.playNext,
+        // PreviousTrack: audioControls.playPrevious,
+        ToggleShuffle: audioControls.toggleShuffle,
+        ToggleRepeatMode: audioControls.cycleRepeatMode,
         // Only handle space bar globally when no track is selected in the playlist
-        PlayPauseSpace: localAudioControls.togglePlayPause,
+        PlayPauseSpace: audioControls.togglePlayPause,
     });
 
     perfLog("MainContainer.hotkeys", {
-        activeTrack: localAudioControls.getCurrentState().currentTrack?.title,
+        activeTrack: audioControls.getCurrentState().currentTrack?.title,
     });
 
     return (

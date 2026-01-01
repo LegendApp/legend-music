@@ -3,14 +3,14 @@ import { useCallback, useMemo } from "react";
 import type { LayoutChangeEvent } from "react-native";
 import { Text, View } from "react-native";
 
-import { localPlayerState$ } from "@/components/LocalAudioPlayer";
+import { audioPlayerState$ } from "@/components/AudioPlayer";
 import { Select, type SelectOption } from "@/components/Select";
 import { visualizerPreferences$ } from "@/visualizer/preferences";
 import { defaultVisualizerPresetId, getVisualizerPresetById, visualizerPresets } from "@/visualizer/presets";
 
 export default function VisualizerWindow() {
-    const track = useValue(localPlayerState$.currentTrack);
-    const isPlaying = useValue(localPlayerState$.isPlaying);
+    const track = useValue(audioPlayerState$.currentTrack);
+    const isPlaying = useValue(audioPlayerState$.isPlaying);
     const storedPresetId = useValue(visualizerPreferences$.visualizer.selectedPresetId);
     const storedBinCount = useValue(visualizerPreferences$.visualizer.binCount);
     const binCount = storedBinCount ?? 64;

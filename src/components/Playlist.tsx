@@ -4,7 +4,7 @@ import { type ElementRef, useCallback, useMemo, useRef, useState } from "react";
 import { findNodeHandle, type NativeSyntheticEvent, Platform, StyleSheet, Text, UIManager, View } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 import { Button } from "@/components/Button";
-import { localAudioControls, localPlayerState$, type QueuedTrack, queue$ } from "@/components/LocalAudioPlayer";
+import { audioControls, audioPlayerState$, type QueuedTrack, queue$ } from "@/components/AudioPlayer";
 import { showToast } from "@/components/Toast";
 import { type TrackData, TrackItem } from "@/components/TrackItem";
 import { usePlaylistSelection } from "@/hooks/usePlaylistSelection";
@@ -74,9 +74,9 @@ export function Playlist() {
     const localMusicState = useValue(localMusicState$);
     const libraryPaths = useValue(librarySettings$.paths);
     const queueTracks = useValue(queue$.tracks);
-    const currentTrackIndex = useValue(localPlayerState$.currentIndex);
-    const currentTrack = useValue(localPlayerState$.currentTrack);
-    const isPlayerActive = useValue(localPlayerState$.isPlaying);
+    const currentTrackIndex = useValue(audioPlayerState$.currentIndex);
+    const currentTrack = useValue(audioPlayerState$.currentTrack);
+    const isPlayerActive = useValue(audioPlayerState$.isPlaying);
     const playlistStyle = useValue(settings$.general.playlistStyle);
     const queueLength = queueTracks.length;
     const hasConfiguredLibrary = libraryPaths.length > 0;
@@ -143,7 +143,7 @@ export function Playlist() {
         }
 
         perfLog("Playlist.handleDeleteSelection", { count: indices.length });
-        localAudioControls.queue.remove(indices);
+        audioControls.queue.remove(indices);
     }, []);
 
     const {
@@ -295,9 +295,9 @@ export function Playlist() {
     });
 
     useObserveEffect(() => {
-        const nextIndex = localPlayerState$.currentIndex.get();
+        const nextIndex = audioPlayerState$.currentIndex.get();
         const queueEntryId =
-            (localPlayerState$.currentTrack.get() as Partial<QueuedTrack> | null)?.queueEntryId ?? null;
+            (audioPlayerState$.currentTrack.get() as Partial<QueuedTrack> | null)?.queueEntryId ?? null;
         const previous = previousScrolledTrackRef.current;
         const trackChanged =
             queueEntryId != null
@@ -324,7 +324,7 @@ export function Playlist() {
     });
 
     useObserveEffect(() => {
-        const isPlayerActive = localPlayerState$.isPlaying.get();
+        const isPlayerActive = audioPlayerState$.isPlaying.get();
         wasPlayingRef.current = isPlayerActive;
     });
 
@@ -362,7 +362,7 @@ export function Playlist() {
                     return;
                 }
 
-                localAudioControls.queue.reorder(sourceIndex, boundedTarget);
+                audioControls.queue.reorder(sourceIndex, boundedTarget);
                 syncSelectionAfterReorder(sourceIndex, boundedTarget);
                 return;
             }
@@ -380,7 +380,7 @@ export function Playlist() {
                     return;
                 }
 
-                localAudioControls.queue.insertAt(boundedTarget, filtered, { playImmediately: false });
+                audioControls.queue.insertAt(boundedTarget, filtered, { playImmediately: false });
 
                 if (skipped > 0) {
                     showDropFeedback({
@@ -412,7 +412,7 @@ export function Playlist() {
 
             const boundedPosition = Math.max(0, Math.min(dropIndex ?? queueLength, queueLength));
 
-            localAudioControls.queue.insertAt(boundedPosition, filtered, { playImmediately: false });
+            audioControls.queue.insertAt(boundedPosition, filtered, { playImmediately: false });
 
             if (skipped > 0) {
                 showDropFeedback({
@@ -549,7 +549,7 @@ export function Playlist() {
             console.log("Queue -> play index", index);
         }
         handleTrackClickBase(index);
-        localAudioControls.playTrackAtIndex(index);
+        audioControls.playTrackAtIndex(index);
     };
 
     const handleDirectoryDrop = useCallback(
@@ -600,7 +600,7 @@ export function Playlist() {
             }
 
             if (queuedTracks.length > 0) {
-                localAudioControls.queue.append(queuedTracks);
+                audioControls.queue.append(queuedTracks);
                 queuedTracks.forEach((track) => {
                     void ensureLocalTrackThumbnail(track);
                 });
@@ -668,7 +668,7 @@ export function Playlist() {
                     return;
                 }
 
-                localAudioControls.queue.append(tracksToAdd);
+                audioControls.queue.append(tracksToAdd);
                 tracksToAdd.forEach((track) => {
                     void ensureLocalTrackThumbnail(track);
                 });

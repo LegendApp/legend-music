@@ -1,4 +1,4 @@
-import { localAudioControls, localPlayerState$, queue$ } from "@/components/LocalAudioPlayer";
+import { audioControls, audioPlayerState$, queue$ } from "@/components/AudioPlayer";
 import { AutoUpdaterModule } from "@/native-modules/AutoUpdater";
 import { menuManager, type MenuShortcut } from "@/native-modules/NativeMenuManager";
 import { savePlaylistUI$ } from "@/state/savePlaylistUIState";
@@ -184,19 +184,19 @@ export function initializeMenuManager() {
                 toggleVisualizerWindow();
                 break;
             case "playbackPrevious":
-                localAudioControls.playPrevious();
+                audioControls.playPrevious();
                 break;
             case "playbackPlayPause":
-                void localAudioControls.togglePlayPause();
+                void audioControls.togglePlayPause();
                 break;
             case "playbackNext":
-                localAudioControls.playNext();
+                audioControls.playNext();
                 break;
             case "playbackToggleShuffle":
-                localAudioControls.toggleShuffle();
+                audioControls.toggleShuffle();
                 break;
             case "playbackToggleRepeat":
-                localAudioControls.cycleRepeatMode();
+                audioControls.cycleRepeatMode();
                 break;
             case "checkForUpdates":
                 void AutoUpdaterModule.checkForUpdates();
@@ -208,7 +208,7 @@ export function initializeMenuManager() {
 
     updateShuffleMenu(settings$.playback.shuffle.get());
     updateRepeatMenu(settings$.playback.repeatMode.get());
-    updatePlayPauseMenu(localPlayerState$.isPlaying.get());
+    updatePlayPauseMenu(audioPlayerState$.isPlaying.get());
     updateWindowToggleMenus();
     updateSavePlaylistMenuEnabled();
     updatePlaybackMenuShortcuts();
@@ -219,7 +219,7 @@ export function initializeMenuManager() {
     settings$.playback.repeatMode.onChange(({ value }) => {
         updateRepeatMenu(value as RepeatMode);
     });
-    localPlayerState$.isPlaying.onChange(({ value }) => {
+    audioPlayerState$.isPlaying.onChange(({ value }) => {
         updatePlayPauseMenu(!!value);
     });
     stateSaved$.libraryIsOpen.onChange(() => {
