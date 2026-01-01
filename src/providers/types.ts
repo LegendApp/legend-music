@@ -1,3 +1,5 @@
+import type { LocalTrack } from "@/systems/LocalMusicState";
+
 export type ProviderId = "local" | "spotify" | (string & {});
 
 export interface ProviderCapabilities {
@@ -59,4 +61,39 @@ export interface Provider {
     completeLogin(params: { code: string; state: string }): Promise<void>;
     logout(): Promise<void>;
     refresh(): Promise<void>;
+}
+
+export type PlaybackStateUpdate = {
+    isPlaying?: boolean;
+    positionSeconds?: number;
+    durationSeconds?: number;
+    artwork?: string | null;
+};
+
+export interface PlaybackProvider {
+    id: ProviderId;
+    canHandle: (track: LocalTrack) => boolean;
+    load: (track: LocalTrack, options?: { startPositionSeconds?: number }) => Promise<void>;
+    play: () => Promise<void>;
+    pause: () => Promise<void>;
+    seek: (positionSeconds: number) => Promise<void>;
+    setVolume: (volume: number) => Promise<void>;
+    getDurationSeconds: (track: LocalTrack) => number;
+    hydrateTrackMetadata?: (track: LocalTrack) => Promise<Partial<LocalTrack> | null>;
+    onStateChange?: (handler: (update: PlaybackStateUpdate) => void) => () => void;
+}
+
+const playbackRegistry: Record<ProviderId, PlaybackProvider> = {};
+
+export function registerPlaybackProvider(provider: PlaybackProvider): void {
+    playbackRegistry[provider.id] = provider;
+}
+
+export function getPlaybackProvider(providerId: ProviderId): PlaybackProvider | undefined {
+    return playbackRegistry[providerId];
+}
+
+export function getPlaybackProviderForTrack(track: LocalTrack): PlaybackProvider | undefined {
+    const providerId = track.provider ?? "local";
+    return getPlaybackProvider(providerId) ?? Object.values(playbackRegistry).find((entry) => entry.canHandle(track));
 }
