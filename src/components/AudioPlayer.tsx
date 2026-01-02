@@ -220,7 +220,11 @@ function applyPlaybackStateUpdate(update: PlaybackStateUpdate): void {
     if (typeof update.isPlaying === "boolean") {
         audioPlayerState$.isPlaying.set(update.isPlaying);
         if (update.isPlaying && !isWindowOccluded) {
-            anchorProgress(audioPlayerState$.currentTime.peek());
+            if (!hasPlaybackProgress) {
+                setProgressAnchor(audioPlayerState$.currentTime.peek());
+            } else {
+                anchorProgress(audioPlayerState$.currentTime.peek());
+            }
             startJsProgressTimer();
         } else {
             stopJsProgressTimer();
