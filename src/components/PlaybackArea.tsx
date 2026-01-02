@@ -39,7 +39,7 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
     const handleHoverOut = useCallback(() => setIsHovered(false), []);
     const showTimeline = !overlayModeEnabled;
     const isSpotifyTrack = currentTrack?.provider === "spotify";
-    const spotifyBadgeSize = overlayModeEnabled ? 14 : 16;
+    const spotifyBadgeSize = overlayModeEnabled ? 14 : 20;
     const handleSeekDrag = useCallback(
         (value: number) => {
             if (!isSpotifyTrack) {
@@ -110,7 +110,7 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
                         <Icon name={isPlaying ? "pause.fill" : "play.fill"} size={24} color="#fff" />
                     </Pressable>
                     {isSpotifyTrack ? (
-                        <View className="absolute bottom-1 right-1 opacity-60" pointerEvents="none">
+                        <View className="absolute bottom-0.5 right-0.5 opacity-75" pointerEvents="none">
                             <SpotifySourceBadge size={spotifyBadgeSize} />
                         </View>
                     ) : null}
