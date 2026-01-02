@@ -12,9 +12,10 @@ type PlaybackTimelineProps = {
     disabled?: boolean;
     overlayMode?: OverlayPlaybackMode;
     onLayout?: (event: LayoutChangeEvent) => void;
+    onSlidingChange?: (value: number) => void;
     onSlidingComplete?: (value: number) => void;
     onSlidingStart?: () => void;
-    onSlidingEnd?: () => void;
+    onSlidingEnd?: (value: number) => void;
 };
 
 const formatTimeCache = new Map<number, string>();
@@ -117,6 +118,7 @@ export function PlaybackTimeline({
     disabled = false,
     overlayMode = undefined,
     onLayout,
+    onSlidingChange,
     onSlidingComplete,
     onSlidingStart,
     onSlidingEnd,
@@ -133,6 +135,7 @@ export function PlaybackTimeline({
                 minimumValue={0}
                 $maximumValue={duration$}
                 $value={currentLocalTime$}
+                onSlidingChange={onSlidingChange}
                 onSlidingStart={onSlidingStart}
                 onSlidingComplete={onSlidingComplete}
                 onSlidingEnd={onSlidingEnd}
