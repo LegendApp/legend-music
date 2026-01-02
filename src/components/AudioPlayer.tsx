@@ -1140,6 +1140,7 @@ async function restoreTrackFromSnapshotIfNeeded({
     pendingInitialTrackRestore = null;
     const { track, playbackTime } = snapshot;
     const provider = getPlaybackProviderForTrack(track);
+    const shouldRestorePosition = playbackTime > 0 && !provider?.startsPlaybackOnLoad;
 
     runAfterInteractionsWithLabel(() => {
         const start = perfMark("LocalAudioPlayer.restoreTrackFromSnapshot.start", {
@@ -1149,14 +1150,11 @@ async function restoreTrackFromSnapshotIfNeeded({
         void (async () => {
             try {
                 await loadTrackInternal(track, {
-                    startPositionSeconds:
-                        playbackTime > 0 && provider?.startsPlaybackOnLoad ? playbackTime : undefined,
+                    startPositionSeconds: shouldRestorePosition ? playbackTime : undefined,
                 });
-                if (playbackTime > 0) {
+                if (shouldRestorePosition) {
                     try {
-                        if (!provider?.startsPlaybackOnLoad) {
-                            await seek(playbackTime);
-                        }
+                        await seek(playbackTime);
                         audioPlayerState$.currentTime.set(playbackTime);
                     } catch (seekError) {
                         console.error("Failed to restore playback position", seekError);
