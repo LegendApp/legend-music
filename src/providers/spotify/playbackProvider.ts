@@ -22,6 +22,25 @@ const stateHandlers = new Set<(update: PlaybackStateUpdate) => void>();
 let subscriptionInitialized = false;
 let currentTrackKey: string | null = null;
 let suppressStateUntil = 0;
+const COMPLETION_THRESHOLD_MS = 1500;
+
+type SpotifyStateSnapshot = {
+    trackKey: string | null;
+    positionMs?: number;
+    durationMs?: number;
+    paused?: boolean;
+    timestampMs?: number;
+};
+
+let lastStateSnapshot: SpotifyStateSnapshot | null = null;
+let completedTrackKey: string | null = null;
+
+const isNearTrackEnd = (positionMs?: number, durationMs?: number): boolean => {
+    if (typeof positionMs !== "number" || typeof durationMs !== "number" || durationMs <= 0) {
+        return false;
+    }
+    return positionMs >= Math.max(0, durationMs - COMPLETION_THRESHOLD_MS);
+};
 
 const emitStateUpdate = (update: PlaybackStateUpdate): void => {
     for (const handler of stateHandlers) {
@@ -51,6 +70,37 @@ const ensureSubscription = (): void => {
             return;
         }
 
+        const resolvedTrackKey = stateTrackKey ?? currentTrackKey;
+        const snapshotMatches = lastStateSnapshot?.trackKey === resolvedTrackKey;
+        const lastPositionMs = snapshotMatches ? lastStateSnapshot?.positionMs : undefined;
+        const lastDurationMs = snapshotMatches ? lastStateSnapshot?.durationMs : undefined;
+        const lastPaused = snapshotMatches ? lastStateSnapshot?.paused : undefined;
+        const lastTimestampMs = snapshotMatches ? lastStateSnapshot?.timestampMs : undefined;
+        const wasPlaying = lastPaused === false;
+        const durationMs = typeof state.duration === "number" ? state.duration : lastDurationMs;
+        const positionMs = typeof state.position === "number" ? state.position : lastPositionMs;
+        if (
+            completedTrackKey === resolvedTrackKey &&
+            state.paused === false &&
+            typeof positionMs === "number" &&
+            positionMs < COMPLETION_THRESHOLD_MS
+        ) {
+            completedTrackKey = null;
+        }
+        const wasNearEnd = snapshotMatches ? isNearTrackEnd(lastPositionMs, lastDurationMs) : false;
+        const isNearEnd = isNearTrackEnd(positionMs, durationMs);
+        const elapsedMs =
+            wasPlaying && typeof lastTimestampMs === "number" ? Math.max(0, stateTimestamp - lastTimestampMs) : 0;
+        const projectedPositionMs =
+            wasPlaying && typeof lastPositionMs === "number" ? lastPositionMs + elapsedMs : undefined;
+        const projectedNearEnd = isNearTrackEnd(projectedPositionMs, durationMs);
+        const shouldMarkComplete =
+            resolvedTrackKey &&
+            completedTrackKey !== resolvedTrackKey &&
+            state.paused === true &&
+            wasPlaying &&
+            (isNearEnd || wasNearEnd || projectedNearEnd);
+
         const update: PlaybackStateUpdate = {};
         if (typeof state.duration === "number") {
             update.durationSeconds = state.duration / 1000;
@@ -66,6 +116,19 @@ const ensureSubscription = (): void => {
         if (artwork && stateTrackKey) {
             update.artwork = artwork;
         }
+
+        if (shouldMarkComplete) {
+            completedTrackKey = resolvedTrackKey;
+            update.didComplete = true;
+        }
+
+        lastStateSnapshot = {
+            trackKey: resolvedTrackKey,
+            positionMs: typeof state.position === "number" ? state.position : lastPositionMs,
+            durationMs: typeof state.duration === "number" ? state.duration : lastDurationMs,
+            paused: typeof state.paused === "boolean" ? state.paused : lastPaused,
+            timestampMs: stateTimestamp,
+        };
 
         if (Object.keys(update).length > 0) {
             emitStateUpdate(update);
@@ -100,6 +163,8 @@ export const spotifyPlaybackProvider: PlaybackProvider = {
         }
 
         currentTrackKey = getSpotifyTrackKey(track);
+        lastStateSnapshot = null;
+        completedTrackKey = null;
 
         await transferSpotifyPlayback();
         const startPositionSeconds =
