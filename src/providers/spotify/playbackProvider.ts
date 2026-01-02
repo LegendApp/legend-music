@@ -21,6 +21,7 @@ import type { LocalTrack } from "@/systems/LocalMusicState";
 const stateHandlers = new Set<(update: PlaybackStateUpdate) => void>();
 let subscriptionInitialized = false;
 let currentTrackKey: string | null = null;
+let suppressStateUntil = 0;
 
 const emitStateUpdate = (update: PlaybackStateUpdate): void => {
     for (const handler of stateHandlers) {
@@ -40,6 +41,10 @@ const ensureSubscription = (): void => {
         }
 
         const state = value as SpotifyPlaybackState;
+        const stateTimestamp = typeof state.timestamp === "number" ? state.timestamp : Date.now();
+        if (stateTimestamp < suppressStateUntil) {
+            return;
+        }
         const stateTrackKey = getSpotifyStateTrackKey(state);
         if (!stateTrackKey || stateTrackKey !== currentTrackKey) {
             return;
@@ -121,6 +126,7 @@ export const spotifyPlaybackProvider: PlaybackProvider = {
     },
     async seek(positionSeconds) {
         const positionMs = Math.round(Math.max(0, positionSeconds) * 1000);
+        suppressStateUntil = Date.now() + 300;
         await seekSpotify(positionMs);
         emitStateUpdate({ positionSeconds: Math.max(0, positionSeconds) });
     },
