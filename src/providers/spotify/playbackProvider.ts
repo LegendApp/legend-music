@@ -112,7 +112,6 @@ export const spotifyPlaybackProvider: PlaybackProvider = {
             durationSeconds: getDurationSeconds(track),
             isLoading: false,
             isPlaying: true,
-            positionSeconds: startPositionSeconds > 0 ? startPositionSeconds : undefined,
         });
     },
     async play() {
