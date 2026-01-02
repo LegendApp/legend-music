@@ -4,6 +4,7 @@ export type SpotifyPlaybackState = {
     position?: number;
     duration?: number;
     paused?: boolean;
+    timestamp?: number;
     track_window?: {
         current_track?: {
             uri?: string;

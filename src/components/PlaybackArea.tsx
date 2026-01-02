@@ -51,16 +51,12 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
     const handleSeekRelease = useCallback(
         (value: number) => {
             if (isSpotifyTrack) {
-                void audioControls.seek(value).finally(() => setIsScrubbing(false));
+                audioControls.seek(value);
             }
         },
         [isSpotifyTrack],
     );
-    const handleSlidingEnd = useCallback(() => {
-        if (!isSpotifyTrack) {
-            setIsScrubbing(false);
-        }
-    }, [isSpotifyTrack]);
+    const handleSlidingEnd = useCallback(() => setIsScrubbing(false), []);
 
     // const hoverContentVisible = isHovered && overlayControlsVisible;
     // const hoverContentVisible = isWindowHovered && overlayControlsVisible;

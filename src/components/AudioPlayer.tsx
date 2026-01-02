@@ -1096,6 +1096,13 @@ async function seek(seconds: number): Promise<void> {
     }
 
     try {
+        if (provider.id === "spotify") {
+            setProgressAnchor(clampedSeconds);
+            audioPlayerState$.currentTime.set(clampedSeconds);
+            if (audioPlayerState$.isPlaying.peek() && !isWindowOccluded) {
+                startJsProgressTimer();
+            }
+        }
         await provider.seek(clampedSeconds);
     } catch (error) {
         console.error("Error seeking:", error);
