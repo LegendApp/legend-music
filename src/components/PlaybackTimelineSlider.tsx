@@ -14,9 +14,10 @@ interface PlaybackTimelineSliderProps {
     $value: Observable<number>;
     minimumValue: number;
     $maximumValue: Observable<number>;
+    onSlidingChange?: (value: number) => void;
     onSlidingComplete?: (value: number) => void;
     onSlidingStart?: () => void;
-    onSlidingEnd?: () => void;
+    onSlidingEnd?: (value: number) => void;
     onHoverChange?: (hovered: boolean) => void;
     disabled?: boolean;
     style?: any;
@@ -28,6 +29,7 @@ export function PlaybackTimelineSlider({
     $value,
     minimumValue,
     $maximumValue,
+    onSlidingChange,
     onSlidingComplete,
     onSlidingStart,
     onSlidingEnd,
@@ -69,7 +71,7 @@ export function PlaybackTimelineSlider({
     const updateValueFromLocation = useCallback(
         (locationX: number) => {
             if (sliderWidth <= 0) {
-                return;
+                return null;
             }
 
             const maximumValue = $maximumValue.get();
@@ -86,11 +88,13 @@ export function PlaybackTimelineSlider({
             $value.set(newValue);
 
             if (newValue !== lastCommittedValueRef.current) {
-                onSlidingComplete?.(newValue);
+                onSlidingChange?.(newValue);
                 lastCommittedValueRef.current = newValue;
             }
+
+            return newValue;
         },
-        [$maximumValue, $value, minimumValue, onSlidingComplete, sliderWidth],
+        [$maximumValue, $value, minimumValue, onSlidingChange, sliderWidth],
     );
 
     const handleTrackLayout = (event: LayoutChangeEvent) => {
@@ -124,21 +128,27 @@ export function PlaybackTimelineSlider({
                     perfLog("PlaybackTimelineSlider.panRelease", { disabled: isDisabled$.get() });
                     if (isDisabled$.get()) return;
 
-                    updateValueFromLocation(event.nativeEvent.locationX);
+                    const nextValue = updateValueFromLocation(event.nativeEvent.locationX);
                     isDragging$.set(false);
-                    onSlidingEnd?.();
+                    if (typeof nextValue === "number") {
+                        onSlidingEnd?.(nextValue);
+                        onSlidingComplete?.(nextValue);
+                    }
                 },
                 onPanResponderTerminationRequest: () => false,
                 onPanResponderTerminate: (event: GestureResponderEvent) => {
                     perfLog("PlaybackTimelineSlider.panTerminate", { disabled: isDisabled$.get() });
                     if (isDisabled$.get()) return;
 
-                    updateValueFromLocation(event.nativeEvent.locationX);
+                    const nextValue = updateValueFromLocation(event.nativeEvent.locationX);
                     isDragging$.set(false);
-                    onSlidingEnd?.();
+                    if (typeof nextValue === "number") {
+                        onSlidingEnd?.(nextValue);
+                        onSlidingComplete?.(nextValue);
+                    }
                 },
             }),
-        [isDisabled$, isDragging$, onSlidingEnd, onSlidingStart, updateValueFromLocation],
+        [isDisabled$, isDragging$, onSlidingComplete, onSlidingEnd, onSlidingStart, updateValueFromLocation],
     );
 
     const handleHoverIn = () => {

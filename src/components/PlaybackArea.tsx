@@ -31,7 +31,6 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
     const currentLocalTime$ = audioPlayerState$.currentTime;
     const thumbnailVersion = useValue(localMusicState$.thumbnailVersion);
     const handleSlidingStart = useCallback(() => setIsScrubbing(true), []);
-    const handleSlidingEnd = useCallback(() => setIsScrubbing(false), []);
     const overlayModeEnabled = overlayMode?.enabled ?? false;
     const [isHovered, setIsHovered] = useState(false);
     const playbackControlsEnabled = useValue(settings$.ui.playbackControlsEnabled) ?? true;
@@ -41,6 +40,27 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
     const showTimeline = !overlayModeEnabled;
     const isSpotifyTrack = currentTrack?.provider === "spotify";
     const spotifyBadgeSize = overlayModeEnabled ? 14 : 16;
+    const handleSeekDrag = useCallback(
+        (value: number) => {
+            if (!isSpotifyTrack) {
+                audioControls.seek(value);
+            }
+        },
+        [isSpotifyTrack],
+    );
+    const handleSeekRelease = useCallback(
+        (value: number) => {
+            if (isSpotifyTrack) {
+                void audioControls.seek(value).finally(() => setIsScrubbing(false));
+            }
+        },
+        [isSpotifyTrack],
+    );
+    const handleSlidingEnd = useCallback(() => {
+        if (!isSpotifyTrack) {
+            setIsScrubbing(false);
+        }
+    }, [isSpotifyTrack]);
 
     // const hoverContentVisible = isHovered && overlayControlsVisible;
     // const hoverContentVisible = isWindowHovered && overlayControlsVisible;
@@ -51,9 +71,8 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
             duration$={audioPlayerState$.duration}
             disabled={!currentTrack}
             onSlidingStart={handleSlidingStart}
-            onSlidingComplete={(value) => {
-                audioControls.seek(value);
-            }}
+            onSlidingChange={handleSeekDrag}
+            onSlidingComplete={handleSeekRelease}
             onSlidingEnd={handleSlidingEnd}
             overlayMode={overlayMode}
         />
