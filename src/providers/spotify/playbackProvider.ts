@@ -45,8 +45,9 @@ const ensureSubscription = (): void => {
         if (stateTimestamp < suppressStateUntil) {
             return;
         }
+
         const stateTrackKey = getSpotifyStateTrackKey(state);
-        if (!stateTrackKey || stateTrackKey !== currentTrackKey) {
+        if (stateTrackKey && stateTrackKey !== currentTrackKey) {
             return;
         }
 
@@ -54,15 +55,15 @@ const ensureSubscription = (): void => {
         if (typeof state.duration === "number") {
             update.durationSeconds = state.duration / 1000;
         }
-        if (typeof state.position === "number") {
-            update.positionSeconds = state.position / 1000;
-        }
         if (typeof state.paused === "boolean") {
             update.isPlaying = !state.paused;
         }
+        if (stateTrackKey && typeof state.position === "number") {
+            update.positionSeconds = state.position / 1000;
+        }
 
         const artwork = getSpotifyStateArtwork(state);
-        if (artwork) {
+        if (artwork && stateTrackKey) {
             update.artwork = artwork;
         }
 

@@ -549,6 +549,18 @@ async function loadTrackInternal(track: LocalTrack, options: LoadTrackOptions = 
         if (queueEntryId) {
             void hydrateCurrentTrackMetadata(track as QueuedTrack);
         }
+        if (nextProvider.id === "spotify") {
+            if (audioPlayerState$.duration.peek() <= 0) {
+                applyDurationFromTrack(track);
+            }
+            if (!audioPlayerState$.isPlaying.peek()) {
+                audioPlayerState$.isPlaying.set(true);
+                setProgressAnchor(audioPlayerState$.currentTime.peek());
+                if (!isWindowOccluded) {
+                    startJsProgressTimer();
+                }
+            }
+        }
     } catch (error) {
         if (error instanceof LocalTrackNotFoundError) {
             handleMissingTrackFile(track, queueEntryId);
