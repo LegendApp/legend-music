@@ -64,6 +64,7 @@ interface UseDropdownKeyboardNavigationOptions {
     resultsLength: number;
     onSubmit: (index: number, action: QueueAction) => void;
     onEscape?: () => void;
+    onEnter?: () => boolean;
 }
 
 const createDefaultModifierState = () => ({
@@ -79,6 +80,7 @@ export function useDropdownKeyboardNavigation({
     resultsLength,
     onSubmit,
     onEscape,
+    onEnter,
 }: UseDropdownKeyboardNavigationOptions) {
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
     const modifierStateRef = useRef(createDefaultModifierState());
@@ -115,7 +117,7 @@ export function useDropdownKeyboardNavigation({
         const removeKeyDown = KeyboardManager.addKeyDownListener((event) => {
             updateModifierState(event);
 
-            if (!isOpen || resultsLength === 0) {
+            if (!isOpen) {
                 return false;
             }
 
@@ -126,6 +128,9 @@ export function useDropdownKeyboardNavigation({
             }
 
             if (event.keyCode === KeyCodes.KEY_DOWN) {
+                if (resultsLength === 0) {
+                    return false;
+                }
                 setHighlightedIndex((prev) => {
                     if (prev < 0) {
                         return 0;
@@ -136,6 +141,9 @@ export function useDropdownKeyboardNavigation({
             }
 
             if (event.keyCode === KeyCodes.KEY_UP) {
+                if (resultsLength === 0) {
+                    return false;
+                }
                 setHighlightedIndex((prev) => {
                     if (prev < 0) {
                         return resultsLength - 1;
@@ -145,14 +153,21 @@ export function useDropdownKeyboardNavigation({
                 return true;
             }
 
-            if (event.keyCode === KeyCodes.KEY_RETURN && resultsLength > 0) {
-                const action = getQueueAction({
-                    modifierState: modifierStateRef.current,
-                });
-                const index = highlightedIndex >= 0 ? highlightedIndex : 0;
-                onSubmit(index, action);
-                resetModifiers();
-                return true;
+            if (event.keyCode === KeyCodes.KEY_RETURN) {
+                if (onEnter?.()) {
+                    resetModifiers();
+                    return true;
+                }
+
+                if (resultsLength > 0) {
+                    const action = getQueueAction({
+                        modifierState: modifierStateRef.current,
+                    });
+                    const index = highlightedIndex >= 0 ? highlightedIndex : 0;
+                    onSubmit(index, action);
+                    resetModifiers();
+                    return true;
+                }
             }
 
             return false;
@@ -170,7 +185,7 @@ export function useDropdownKeyboardNavigation({
             removeKeyDown();
             removeKeyUp();
         };
-    }, [highlightedIndex, isOpen, onEscape, onSubmit, resetModifiers, resultsLength, updateModifierState]);
+    }, [highlightedIndex, isOpen, onEnter, onEscape, onSubmit, resetModifiers, resultsLength, updateModifierState]);
 
     return {
         highlightedIndex,

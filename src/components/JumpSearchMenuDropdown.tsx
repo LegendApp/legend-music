@@ -108,6 +108,28 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
             }
         }, [isSpotifyEnabled, searchQuery, spotifySearchQuery]);
 
+        const handleEnter = useCallback(() => {
+            if (!isSpotifyEnabled) {
+                return false;
+            }
+
+            if (spotifySearchProvider.searchMode !== "submit") {
+                return false;
+            }
+
+            const trimmedQuery = searchQuery.trim();
+            if (!trimmedQuery) {
+                return false;
+            }
+
+            if (spotifySearchQuery === trimmedQuery) {
+                return false;
+            }
+
+            void handleSpotifySearch();
+            return true;
+        }, [handleSpotifySearch, isSpotifyEnabled, searchQuery, spotifySearchQuery]);
+
         const handleSearchResultAction = useCallback(
             (result: SearchResult, action: QueueAction) => {
                 if (result.type === "track") {
@@ -125,6 +147,7 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
             isOpen,
             resultsLength: searchResults.length,
             onEscape: () => handleOpenChange(false),
+            onEnter: handleEnter,
             onSubmit: (index, action) => {
                 const result = searchResults[index];
                 if (result) {
