@@ -7,18 +7,13 @@ import { Button } from "@/components/Button";
 import { DropdownMenu, type DropdownMenuRootRef } from "@/components/DropdownMenu";
 import { TextInputSearch, type TextInputSearchRef } from "@/components/TextInputSearch";
 import { TrackItem } from "@/components/TrackItem";
+import type { SearchResult } from "@/providers/search/types";
 import type { LibraryItem } from "@/systems/LibraryState";
 import { library$ } from "@/systems/LibraryState";
 import type { LocalPlaylist, LocalTrack } from "@/systems/LocalMusicState";
 import { cn } from "@/utils/cn";
 import { getQueueAction, type QueueAction } from "@/utils/queueActions";
-
-import {
-    type SearchResult,
-    useDropdownKeyboardNavigation,
-    usePlaylistSearchResults,
-    useSearchDropdownState,
-} from "./JumpSearchMenuDropdown/hooks";
+import { useDropdownKeyboardNavigation, usePlaylistSearchResults, useSearchDropdownState } from "./JumpSearchMenuDropdown/hooks";
 
 interface JumpSearchMenuDropdownProps {
     tracks: LocalTrack[];

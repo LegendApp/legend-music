@@ -1,6 +1,6 @@
 import type { LibraryItem } from "@/systems/LibraryState";
 import type { LocalPlaylist, LocalTrack } from "@/systems/LocalMusicState";
-import { buildSearchResults } from "../hooks";
+import { buildLocalSearchResults } from "@/providers/local/search";
 
 const tracks: LocalTrack[] = [
     {
@@ -38,9 +38,9 @@ const albums: LibraryItem[] = [{ id: "album-1", type: "album", name: "Album Alph
 
 const artists: LibraryItem[] = [{ id: "artist-1", type: "artist", name: "Artist One", trackCount: 20 }];
 
-describe("buildSearchResults", () => {
-    it("returns results grouped by playlists, albums, artists, then tracks", () => {
-        const results = buildSearchResults({
+describe("buildLocalSearchResults", () => {
+    it("returns results grouped by tracks, playlists, then library items", () => {
+        const results = buildLocalSearchResults({
             query: "a",
             tracks,
             playlists,
@@ -54,7 +54,7 @@ describe("buildSearchResults", () => {
     });
 
     it("returns an empty array when query is blank", () => {
-        const results = buildSearchResults({
+        const results = buildLocalSearchResults({
             query: "  ",
             tracks,
             playlists,

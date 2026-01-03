@@ -2,16 +2,12 @@ import type { Observable } from "@legendapp/state";
 import { useObservable, useValue } from "@legendapp/state/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { buildLocalSearchResults } from "@/providers/local/search";
 import { playlistNavigationState$ } from "@/state/playlistNavigationState";
 import KeyboardManager, { type KeyboardEvent, KeyCodes } from "@/systems/keyboard/KeyboardManager";
 import type { LibraryItem } from "@/systems/LibraryState";
 import type { LocalPlaylist, LocalTrack } from "@/systems/LocalMusicState";
 import { getQueueAction, type QueueAction } from "@/utils/queueActions";
-
-export type SearchResult =
-    | { type: "track"; item: LocalTrack }
-    | { type: "library"; item: LibraryItem }
-    | { type: "playlist"; item: LocalPlaylist };
 
 export interface UseSearchDropdownStateResult {
     searchQuery$: Observable<string>;
@@ -42,72 +38,6 @@ export function useSearchDropdownState(onOpenChange?: (open: boolean) => void): 
     return { searchQuery$, searchQuery, isOpen$, isOpen, handleOpenChange };
 }
 
-interface BuildSearchResultsInput {
-    query: string;
-    tracks: LocalTrack[];
-    playlists: LocalPlaylist[];
-    albums: LibraryItem[];
-    artists: LibraryItem[];
-}
-
-export function buildSearchResults({
-    query,
-    tracks,
-    playlists,
-    albums,
-    artists,
-}: BuildSearchResultsInput): SearchResult[] {
-    const trimmed = query.trim();
-    if (!trimmed) {
-        return [];
-    }
-
-    const MAX_RESULTS = 20;
-    const lowerQuery = trimmed.toLowerCase();
-    const results: SearchResult[] = [];
-
-    for (const track of tracks) {
-        if (results.length >= MAX_RESULTS) {
-            break;
-        }
-        const title = track.title.toLowerCase();
-        const artist = track.artist.toLowerCase();
-        const album = track.album?.toLowerCase();
-        if (title.includes(lowerQuery) || artist.includes(lowerQuery) || album?.includes(lowerQuery)) {
-            results.push({ type: "track", item: track });
-        }
-    }
-
-    for (const playlist of playlists) {
-        if (results.length >= MAX_RESULTS) {
-            break;
-        }
-        if (playlist.name.toLowerCase().includes(lowerQuery)) {
-            results.push({ type: "playlist", item: playlist });
-        }
-    }
-
-    for (const artist of artists) {
-        if (results.length >= MAX_RESULTS) {
-            break;
-        }
-        if (artist.name.toLowerCase().includes(lowerQuery)) {
-            results.push({ type: "library", item: artist });
-        }
-    }
-
-    for (const album of albums) {
-        if (results.length >= MAX_RESULTS) {
-            break;
-        }
-        if (album.name.toLowerCase().includes(lowerQuery)) {
-            results.push({ type: "library", item: album });
-        }
-    }
-
-    return results;
-}
-
 interface UsePlaylistSearchResultsOptions {
     tracks: LocalTrack[];
     playlists: LocalPlaylist[];
@@ -124,7 +54,7 @@ export function usePlaylistSearchResults({
     query,
 }: UsePlaylistSearchResultsOptions) {
     return useMemo(
-        () => buildSearchResults({ query, tracks, playlists, albums, artists }),
+        () => buildLocalSearchResults({ query, tracks, playlists, albums, artists }),
         [albums, artists, playlists, query, tracks],
     );
 }
