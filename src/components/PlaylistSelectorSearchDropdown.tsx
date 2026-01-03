@@ -156,6 +156,7 @@ export const PlaylistSelectorSearchDropdown = forwardRef<DropdownMenuRootRef, Pl
             isOpen,
             resultsLength: searchResults.length,
             onEnter: handleEnter,
+            onEscape: () => handleOpenChange(false),
             onSubmit: (index, action) => {
                 const result = searchResults[index];
                 if (result) {
