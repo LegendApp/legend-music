@@ -17,9 +17,9 @@ import type { LocalPlaylist, LocalTrack } from "@/systems/LocalMusicState";
 import { cn } from "@/utils/cn";
 import { getQueueAction, type QueueAction } from "@/utils/queueActions";
 
-import { useDropdownKeyboardNavigation, usePlaylistSearchResults, useSearchDropdownState } from "./PlaylistSelectorSearchDropdown/hooks";
+import { useDropdownKeyboardNavigation, usePlaylistSearchResults, useSearchDropdownState } from "./JumpSearchMenuDropdown/hooks";
 
-interface PlaylistSelectorSearchDropdownProps {
+interface JumpSearchMenuDropdownProps {
     tracks: LocalTrack[];
     playlists: LocalPlaylist[];
     onSelectTrack: (track: LocalTrack, action: QueueAction) => void;
@@ -29,8 +29,8 @@ interface PlaylistSelectorSearchDropdownProps {
     dropdownWidth?: number;
 }
 
-export const PlaylistSelectorSearchDropdown = forwardRef<DropdownMenuRootRef, PlaylistSelectorSearchDropdownProps>(
-    function PlaylistSelectorSearchDropdown(
+export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearchMenuDropdownProps>(
+    function JumpSearchMenuDropdown(
         { tracks, playlists, onSelectTrack, onSelectLibraryItem, onSelectPlaylist, onOpenChange, dropdownWidth },
         ref,
     ) {

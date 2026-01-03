@@ -1,5 +1,5 @@
 [x] The dropdown PlaylistSelector.tsx should be the width of the window and the height should flex to the size of its content, with a minimum of 200px and maximum of 600px.
-[x] PlaylistSelectorSearchDropdown should source from the playlists in localMusicState$ in addition to tracks as it does now. If a playlist is selected it should replace the queue with the contents of the playlist.
+[x] JumpSearchMenuDropdown should source from the playlists in localMusicState$ in addition to tracks as it does now. If a playlist is selected it should replace the queue with the contents of the playlist.
 
 ## Punt (do not do these)
 1. Try to fix album art

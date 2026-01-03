@@ -5,7 +5,7 @@ import type { SFSymbol } from "sf-symbols-typescript";
 import { Button } from "@/components/Button";
 import type { DropdownMenuRootRef } from "@/components/DropdownMenu";
 import { queue$ } from "@/components/AudioPlayer";
-import { PlaylistSelectorSearchDropdown } from "@/components/PlaylistSelectorSearchDropdown";
+import { JumpSearchMenuDropdown } from "@/components/JumpSearchMenuDropdown";
 import { usePlaybackControlLayout } from "@/hooks/useUIControls";
 import { SUPPORT_PLAYLISTS } from "@/systems/constants";
 import { useOnHotkeys } from "@/systems/keyboard/Keyboard";
@@ -149,7 +149,7 @@ export function PlaylistSelector({ variant = "default", className }: PlaylistSel
                     switch (controlId) {
                         case "search":
                             return (
-                                <PlaylistSelectorSearchDropdown
+                                <JumpSearchMenuDropdown
                                     key="search"
                                     ref={dropdownMenuRef}
                                     tracks={localMusicState.tracks}
