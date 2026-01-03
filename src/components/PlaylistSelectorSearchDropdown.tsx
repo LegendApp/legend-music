@@ -109,6 +109,28 @@ export const PlaylistSelectorSearchDropdown = forwardRef<DropdownMenuRootRef, Pl
             }
         }, [isSpotifyEnabled, searchQuery, spotifySearchQuery]);
 
+        const handleEnter = useCallback(() => {
+            if (!isSpotifyEnabled) {
+                return false;
+            }
+
+            if (spotifySearchProvider.searchMode !== "submit") {
+                return false;
+            }
+
+            const trimmedQuery = searchQuery.trim();
+            if (!trimmedQuery) {
+                return false;
+            }
+
+            if (spotifySearchQuery === trimmedQuery) {
+                return false;
+            }
+
+            void handleSpotifySearch();
+            return true;
+        }, [handleSpotifySearch, isSpotifyEnabled, searchQuery, spotifySearchQuery]);
+
         const handleSearchResultAction = useCallback(
             (result: SearchResult, action: QueueAction) => {
                 if (result.type === "track") {
@@ -125,6 +147,7 @@ export const PlaylistSelectorSearchDropdown = forwardRef<DropdownMenuRootRef, Pl
         const { highlightedIndex, modifierStateRef, resetModifiers } = useDropdownKeyboardNavigation({
             isOpen,
             resultsLength: searchResults.length,
+            onEnter: handleEnter,
             onSubmit: (index, action) => {
                 const result = searchResults[index];
                 if (result) {
