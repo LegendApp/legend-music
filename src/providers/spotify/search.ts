@@ -1,4 +1,6 @@
+import type { ProviderSearchInput, ProviderSearchProvider } from "@/providers/search/types";
 import type { ProviderTrack } from "@/providers/types";
+import { buildSpotifyLocalTrack } from "@/providers/spotify/trackMapping";
 import { SPOTIFY_API_BASE } from "./constants";
 import { ensureSpotifyAccessToken } from "./auth";
 
@@ -51,3 +53,19 @@ export async function searchSpotifyTracks(query: string, limit = 10): Promise<Pr
         isExplicit: track.explicit,
     }));
 }
+
+const SPOTIFY_SEARCH_LIMIT = 20;
+
+export const spotifySearchProvider: ProviderSearchProvider = {
+    id: "spotify",
+    searchMode: "submit",
+    async search({ query }: ProviderSearchInput) {
+        const trimmed = query.trim();
+        if (!trimmed) {
+            return [];
+        }
+
+        const tracks = await searchSpotifyTracks(trimmed, SPOTIFY_SEARCH_LIMIT);
+        return tracks.map((track) => ({ type: "track", item: buildSpotifyLocalTrack(track) }));
+    },
+};

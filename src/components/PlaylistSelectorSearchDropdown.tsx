@@ -1,13 +1,15 @@
 import { LegendList } from "@legendapp/list";
 import { useValue } from "@legendapp/state/react";
-import { forwardRef, useCallback, useEffect, useMemo, useRef } from "react";
+import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type GestureResponderEvent, Text, useWindowDimensions, View } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 import { Button } from "@/components/Button";
 import { DropdownMenu, type DropdownMenuRootRef } from "@/components/DropdownMenu";
 import { TextInputSearch, type TextInputSearchRef } from "@/components/TextInputSearch";
 import { TrackItem } from "@/components/TrackItem";
+import { activeProviderId$ } from "@/providers/providerRegistry";
 import type { SearchResult } from "@/providers/search/types";
+import { spotifySearchProvider } from "@/providers/spotify/search";
 import type { LibraryItem } from "@/systems/LibraryState";
 import { library$ } from "@/systems/LibraryState";
 import type { LocalPlaylist, LocalTrack } from "@/systems/LocalMusicState";
@@ -36,17 +38,76 @@ export const PlaylistSelectorSearchDropdown = forwardRef<DropdownMenuRootRef, Pl
         const { width: windowWidth } = useWindowDimensions();
 
         const library = useValue(library$);
+        const activeProviderId = useValue(activeProviderId$);
+        const isSpotifyEnabled = activeProviderId === "spotify";
         const effectiveWindowWidth = Math.max(windowWidth, 1);
         const fallbackWidth = Math.max(effectiveWindowWidth - 16, 1);
         const resolvedDropdownWidth = Math.max(dropdownWidth ?? fallbackWidth, 1);
 
-        const searchResults = usePlaylistSearchResults({
+        const [spotifyResults, setSpotifyResults] = useState<SearchResult[]>([]);
+        const [spotifySearchQuery, setSpotifySearchQuery] = useState("");
+        const spotifySearchRequestIdRef = useRef(0);
+
+        const resetSpotifySearch = useCallback(() => {
+            spotifySearchRequestIdRef.current += 1;
+            setSpotifyResults([]);
+            setSpotifySearchQuery("");
+        }, []);
+
+        useEffect(() => {
+            resetSpotifySearch();
+        }, [resetSpotifySearch, searchQuery]);
+
+        useEffect(() => {
+            if (!isSpotifyEnabled) {
+                resetSpotifySearch();
+            }
+        }, [isSpotifyEnabled, resetSpotifySearch]);
+
+        const localSearchResults = usePlaylistSearchResults({
             tracks,
             playlists,
             albums: library.albums,
             artists: library.artists,
             query: searchQuery,
         });
+
+        const searchResults = useMemo(
+            () => (isSpotifyEnabled ? [...localSearchResults, ...spotifyResults] : localSearchResults),
+            [isSpotifyEnabled, localSearchResults, spotifyResults],
+        );
+
+        const handleSpotifySearch = useCallback(async () => {
+            if (!isSpotifyEnabled) {
+                return;
+            }
+
+            const trimmedQuery = searchQuery.trim();
+            if (!trimmedQuery) {
+                return;
+            }
+
+            if (spotifySearchQuery === trimmedQuery) {
+                return;
+            }
+
+            const requestId = (spotifySearchRequestIdRef.current += 1);
+            setSpotifySearchQuery(trimmedQuery);
+
+            try {
+                const results = await spotifySearchProvider.search({ query: trimmedQuery });
+                if (spotifySearchRequestIdRef.current !== requestId) {
+                    return;
+                }
+                setSpotifyResults(results);
+            } catch (error) {
+                if (spotifySearchRequestIdRef.current !== requestId) {
+                    return;
+                }
+                console.error("Spotify search failed", error);
+                setSpotifyResults([]);
+            }
+        }, [isSpotifyEnabled, searchQuery, spotifySearchQuery]);
 
         const handleSearchResultAction = useCallback(
             (result: SearchResult, action: QueueAction) => {

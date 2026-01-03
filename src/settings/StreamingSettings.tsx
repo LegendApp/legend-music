@@ -8,6 +8,7 @@ import { showToast } from "@/components/Toast";
 import { providerSettings$, setActiveProvider } from "@/providers/providerRegistry";
 import { completeSpotifyLogin, logoutSpotify, spotifyAuthState$, startSpotifyLogin } from "@/providers/spotify";
 import { searchSpotifyTracks } from "@/providers/spotify/search";
+import { buildSpotifyLocalTrack } from "@/providers/spotify/trackMapping";
 import type { ProviderTrack } from "@/providers/types";
 import { SettingsPage, SettingsRow, SettingsSection } from "@/settings/components";
 import { formatSecondsToMmSs } from "@/utils/m3u";
@@ -112,22 +113,7 @@ export function StreamingSettings() {
     }, [isSpotifyEnabled, searchQuery]);
 
     const queueSpotifyTrack = useCallback((track: ProviderTrack) => {
-        const durationSeconds = track.durationMs ? track.durationMs / 1000 : 0;
-        const durationString = durationSeconds ? formatSecondsToMmSs(durationSeconds) : " ";
-        const localTrack = {
-            id: track.uri ?? track.id,
-            title: track.name,
-            artist: (track.artists ?? []).join(", "),
-            album: track.album,
-            duration: durationString,
-            filePath: track.uri ?? track.id,
-            fileName: track.name,
-            thumbnail: track.thumbnail,
-            provider: "spotify",
-            uri: track.uri,
-            durationMs: track.durationMs,
-            isMissing: false,
-        };
+        const localTrack = buildSpotifyLocalTrack(track);
         audioControls.queue.append(localTrack, { playImmediately: true });
         showToast(`Queued ${track.name}`, "success");
     }, []);

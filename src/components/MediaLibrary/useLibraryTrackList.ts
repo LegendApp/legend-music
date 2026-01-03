@@ -9,8 +9,9 @@ import { showToast } from "@/components/Toast";
 import type { TrackData } from "@/components/TrackItem";
 import { usePlaylistSelection } from "@/hooks/usePlaylistSelection";
 import { type ContextMenuItem, showContextMenu } from "@/native-modules/ContextMenu";
+import { buildSpotifyLocalTrack } from "@/providers/spotify/trackMapping";
 import { fetchSpotifyPlaylistTracks, isSpotifyAuthenticated$, spotifyPlaylists$ } from "@/providers/spotify";
-import type { ProviderId, ProviderTrack } from "@/providers/types";
+import type { ProviderId } from "@/providers/types";
 import {
     getArtistKey,
     type LibraryTrack,
@@ -23,7 +24,6 @@ import {
 } from "@/systems/LibraryState";
 import { type LocalPlaylist, localMusicState$, saveLocalPlaylistTracks } from "@/systems/LocalMusicState";
 import { addTracksToPlaylist } from "@/systems/LocalPlaylists";
-import { formatSecondsToMmSs } from "@/utils/m3u";
 import { getQueueAction, type QueueAction } from "@/utils/queueActions";
 import { buildTrackContextMenuItems, handleTrackContextMenuSelection } from "@/utils/trackContextMenu";
 import { buildTrackFromPlaylistEntry, buildTrackLookup, isSpotifyUri } from "@/utils/trackResolution";
@@ -189,28 +189,6 @@ const sortAlbumGroupTracks = (
         return sortTracksByDateAdded(tracks, direction);
     }
     return sortTracksByTrackNumber(tracks, direction);
-};
-
-const buildSpotifyLibraryTrack = (track: ProviderTrack, index: number): LibraryTrack => {
-    const durationSeconds = typeof track.durationMs === "number" ? track.durationMs / 1000 : 0;
-    const duration = durationSeconds ? formatSecondsToMmSs(durationSeconds) : " ";
-    const uri = track.uri ?? track.id;
-
-    return {
-        id: uri,
-        title: track.name,
-        artist: (track.artists ?? []).join(", "),
-        album: track.album,
-        duration,
-        filePath: uri,
-        fileName: track.name,
-        thumbnail: track.thumbnail,
-        provider: "spotify",
-        uri: track.uri,
-        durationMs: track.durationMs,
-        trackNumber: index + 1,
-        addedAt: track.addedAt,
-    };
 };
 
 interface UseLibraryTrackListResult {
@@ -507,7 +485,7 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
         }
 
         const tracks = spotifyTracksByPlaylistId[selectedPlaylistId] ?? [];
-        return tracks.map((track, index) => buildSpotifyLibraryTrack(track, index));
+        return tracks.map((track, index) => buildSpotifyLocalTrack(track, { index }));
     }, [selectedPlaylistId, selectedPlaylistProvider, spotifyTracksByPlaylistId]);
 
     useEffect(() => {
