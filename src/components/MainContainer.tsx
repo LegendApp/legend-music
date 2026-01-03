@@ -16,12 +16,24 @@ initializeAudioPlayer();
 export function MainContainer() {
     perfCount("MainContainer.render");
     // const _playlistNavigation = useValue(playlistNavigationState$);
+    const isSpotifyActive = () => audioControls.getCurrentState().currentTrack?.provider === "spotify";
 
     useOnHotkeys({
-        // These are handled by native media keys, don't need to handle them here
-        // PlayPause: audioControls.togglePlayPause,
-        // NextTrack: audioControls.playNext,
-        // PreviousTrack: audioControls.playPrevious,
+        PlayPause: () => {
+            if (isSpotifyActive()) {
+                void audioControls.togglePlayPause();
+            }
+        },
+        NextTrack: () => {
+            if (isSpotifyActive()) {
+                audioControls.playNext();
+            }
+        },
+        PreviousTrack: () => {
+            if (isSpotifyActive()) {
+                audioControls.playPrevious();
+            }
+        },
         ToggleShuffle: audioControls.toggleShuffle,
         ToggleRepeatMode: audioControls.cycleRepeatMode,
         // Only handle space bar globally when no track is selected in the playlist

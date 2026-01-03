@@ -72,6 +72,10 @@ function createQueueEntryId(seed: string): string {
 
 let pendingInitialTrackRestore: { track: QueuedTrack; playbackTime: number } | null = null;
 
+function isSpotifyTrack(track: LocalTrack | null): boolean {
+    return track?.provider === "spotify";
+}
+
 const playbackHistory: number[] = [];
 const MAX_HISTORY_LENGTH = 100;
 
@@ -304,7 +308,8 @@ function persistPlaybackIndex(index: number): void {
 }
 
 async function persistPlaybackTimeNow(): Promise<void> {
-    const timeToPersist = Math.max(0, latestPlaybackTime);
+    const currentTrack = audioPlayerState$.currentTrack.peek();
+    const timeToPersist = isSpotifyTrack(currentTrack) ? 0 : Math.max(0, latestPlaybackTime);
     try {
         stateSaved$.playbackTime.set(timeToPersist);
         console.log("persistPlaybackTimeNow", timeToPersist);
@@ -418,11 +423,21 @@ audioPlayerState$.currentIndex.onChange(({ value }) => {
 });
 
 audioPlayerState$.currentTime.onChange(({ value }) => {
+    const currentTrack = audioPlayerState$.currentTrack.peek();
+    if (isSpotifyTrack(currentTrack)) {
+        latestPlaybackTime = 0;
+        return;
+    }
     latestPlaybackTime = Math.max(0, typeof value === "number" ? value : 0);
 });
 
 audioPlayerState$.isPlaying.onChange(({ value }) => {
     if (!value) {
+        const currentTrack = audioPlayerState$.currentTrack.peek();
+        if (isSpotifyTrack(currentTrack)) {
+            latestPlaybackTime = 0;
+            return;
+        }
         latestPlaybackTime = Math.max(0, audioPlayerState$.currentTime.peek());
     }
 });
@@ -467,6 +482,10 @@ async function play(): Promise<void> {
     }
 
     try {
+        if (provider.id === "spotify" && currentTrack) {
+            await loadTrackInternal(currentTrack, { startPositionSeconds: 0 });
+            return;
+        }
         if (provider.id === "local") {
             const duration = audioPlayerState$.duration.peek();
             const currentTime = audioPlayerState$.currentTime.peek();
@@ -854,17 +873,19 @@ function initializeQueueFromCache(): void {
 
             if (resolvedIndex >= 0) {
                 const currentTrack = queuedTracks[resolvedIndex];
+                const playbackTimeToRestore =
+                    savedPlaybackTime > 0 && !isSpotifyTrack(currentTrack) ? savedPlaybackTime : 0;
                 audioPlayerState$.currentTrack.set(currentTrack);
                 audioPlayerState$.currentIndex.set(resolvedIndex);
                 applyDurationFromTrack(currentTrack);
-                if (savedPlaybackTime > 0) {
+                if (playbackTimeToRestore > 0) {
                     audioPlayerState$.currentTime.set(
-                        Math.min(savedPlaybackTime, parseDurationToSeconds(currentTrack.duration)),
+                        Math.min(playbackTimeToRestore, parseDurationToSeconds(currentTrack.duration)),
                     );
                 }
                 pendingInitialTrackRestore = {
                     track: currentTrack,
-                    playbackTime: savedPlaybackTime > 0 ? savedPlaybackTime : 0,
+                    playbackTime: playbackTimeToRestore,
                 };
                 void hydrateCurrentTrackMetadata(currentTrack);
             } else {
@@ -877,9 +898,13 @@ function initializeQueueFromCache(): void {
                 console.log(`Restored queue with ${queuedTracks.length} tracks from cache`);
             }
             persistPlaybackIndex(resolvedIndex);
-            if (savedPlaybackTime > 0) {
-                stateSaved$.playbackTime.set(savedPlaybackTime);
-            }
+            stateSaved$.playbackTime.set(
+                resolvedIndex >= 0 && queuedTracks[resolvedIndex]
+                    ? savedPlaybackTime > 0 && !isSpotifyTrack(queuedTracks[resolvedIndex])
+                        ? savedPlaybackTime
+                        : 0
+                    : 0,
+            );
         } else {
             resetSavedPlaybackState();
         }
@@ -929,8 +954,8 @@ async function loadTrack(arg1: LocalTrack | string, arg2?: QueueUpdateOptions | 
 
     const options = (arg2 as QueueUpdateOptions | undefined) ?? {};
     audioPlayerState$.currentIndex.set(-1);
-    await loadTrackInternal(arg1);
-    if (options.playImmediately ?? true) {
+    const shouldPlayLocal = await loadTrackInternal(arg1);
+    if (shouldPlayLocal && (options.playImmediately ?? true)) {
         await play();
     }
 }
@@ -1157,6 +1182,7 @@ async function restoreTrackFromSnapshotIfNeeded({
     const { track, playbackTime } = snapshot;
     const provider = getPlaybackProviderForTrack(track);
     const shouldRestorePosition = playbackTime > 0 && !provider?.startsPlaybackOnLoad;
+    const shouldPlayAfterLoad = Boolean(playAfterLoad) && !provider?.startsPlaybackOnLoad;
 
     runAfterInteractionsWithLabel(() => {
         const start = perfMark("LocalAudioPlayer.restoreTrackFromSnapshot.start", {
@@ -1176,7 +1202,7 @@ async function restoreTrackFromSnapshotIfNeeded({
                         console.error("Failed to restore playback position", seekError);
                     }
                 }
-                if (playAfterLoad) {
+                if (shouldPlayAfterLoad) {
                     await play();
                 }
             } finally {
