@@ -46,13 +46,17 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
         const resolvedDropdownWidth = Math.max(dropdownWidth ?? fallbackWidth, 1);
 
         const [spotifyResults, setSpotifyResults] = useState<SearchResult[]>([]);
-        const [spotifySearchQuery, setSpotifySearchQuery] = useState("");
+        const [spotifySearchStatus, setSpotifySearchStatus] = useState<"idle" | "searching" | "success" | "error">(
+            "idle",
+        );
         const spotifySearchRequestIdRef = useRef(0);
+        const spotifySearchQueryRef = useRef("");
 
         const resetSpotifySearch = useCallback(() => {
             spotifySearchRequestIdRef.current += 1;
+            spotifySearchQueryRef.current = "";
             setSpotifyResults([]);
-            setSpotifySearchQuery("");
+            setSpotifySearchStatus("idle");
         }, []);
 
         useEffect(() => {
@@ -88,12 +92,18 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
                 return;
             }
 
-            if (spotifySearchQuery === trimmedQuery) {
+            if (spotifySearchStatus === "searching") {
+                return;
+            }
+
+            if (spotifySearchQueryRef.current === trimmedQuery && spotifySearchStatus === "success") {
                 return;
             }
 
             const requestId = (spotifySearchRequestIdRef.current += 1);
-            setSpotifySearchQuery(trimmedQuery);
+            spotifySearchQueryRef.current = trimmedQuery;
+            setSpotifyResults([]);
+            setSpotifySearchStatus("searching");
 
             try {
                 const results = await spotifySearchProvider.search({ query: trimmedQuery });
@@ -101,43 +111,54 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
                     return;
                 }
                 setSpotifyResults(results);
+                setSpotifySearchStatus("success");
             } catch (error) {
                 if (spotifySearchRequestIdRef.current !== requestId) {
                     return;
                 }
                 console.error("Spotify search failed", error);
+                spotifySearchQueryRef.current = "";
                 setSpotifyResults([]);
+                setSpotifySearchStatus("error");
             }
-        }, [isSpotifyEnabled, searchQuery, spotifySearchQuery]);
-
-        const handleEnter = useCallback(() => {
-            if (!isSpotifyEnabled) {
-                return false;
-            }
-
-            if (spotifySearchProvider.searchMode !== "submit") {
-                return false;
-            }
-
-            const trimmedQuery = searchQuery.trim();
-            if (!trimmedQuery) {
-                return false;
-            }
-
-            if (spotifySearchQuery === trimmedQuery) {
-                return false;
-            }
-
-            void handleSpotifySearch();
-            return true;
-        }, [handleSpotifySearch, isSpotifyEnabled, searchQuery, spotifySearchQuery]);
+        }, [isSpotifyEnabled, searchQuery, spotifySearchStatus]);
 
         const trimmedQuery = searchQuery.trim();
-        const shouldShowSpotifySubmitHint =
-            isSpotifyEnabled &&
-            spotifySearchProvider.searchMode === "submit" &&
-            trimmedQuery.length > 0 &&
-            spotifySearchQuery !== trimmedQuery;
+        const hasSpotifyQuery = trimmedQuery.length > 0;
+        const hasSearchedSpotify =
+            spotifySearchQueryRef.current === trimmedQuery && spotifySearchStatus === "success";
+        const isSpotifySearching = spotifySearchStatus === "searching";
+        const shouldShowSpotifyAction = isSpotifyEnabled && hasSpotifyQuery && !isSpotifySearching && !hasSearchedSpotify;
+        const spotifyStatusText = useMemo(() => {
+            if (!isSpotifyEnabled || !hasSpotifyQuery) {
+                return null;
+            }
+
+            if (isSpotifySearching) {
+                return "Searching Spotify...";
+            }
+
+            if (spotifySearchStatus === "error") {
+                return "Spotify search failed. Press Cmd+Enter to retry.";
+            }
+
+            if (hasSearchedSpotify && spotifyResults.length === 0) {
+                return "No Spotify results.";
+            }
+
+            if (!hasSearchedSpotify) {
+                return "Press Cmd+Enter to search Spotify.";
+            }
+
+            return null;
+        }, [
+            hasSearchedSpotify,
+            hasSpotifyQuery,
+            isSpotifyEnabled,
+            isSpotifySearching,
+            spotifyResults.length,
+            spotifySearchStatus,
+        ]);
 
         const handleSearchResultAction = useCallback(
             (result: SearchResult, action: QueueAction) => {
@@ -155,7 +176,13 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
         const { highlightedIndex, modifierStateRef, resetModifiers } = useDropdownKeyboardNavigation({
             isOpen,
             resultsLength: searchResults.length,
-            onEnter: handleEnter,
+            onEnter: (modifierState) => {
+                if (!isSpotifyEnabled || !trimmedQuery || !modifierState.meta) {
+                    return false;
+                }
+                void handleSpotifySearch();
+                return true;
+            },
             onEscape: () => handleOpenChange(false),
             onSubmit: (index, action) => {
                 const result = searchResults[index];
@@ -273,7 +300,7 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
         );
 
         return (
-            <DropdownMenu.Root ref={ref} isOpen$={isOpen$} onOpenChange={handleDropdownOpenChange}>
+            <DropdownMenu.Root ref={ref} isOpen$={isOpen$} onOpenChange={handleDropdownOpenChange} closeOnSelect={false}>
                 <DropdownMenu.Trigger asChild>
                     <Button
                         icon="magnifyingglass"
@@ -319,10 +346,23 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
                                 ) : (
                                     <Text className="text-white/60 text-sm p-2">No results found</Text>
                                 )}
-                                {shouldShowSpotifySubmitHint ? (
-                                    <Text className="text-white/60 text-xs px-2 pb-2 pt-1">
-                                        Press enter to search Spotify
-                                    </Text>
+                                {shouldShowSpotifyAction ? (
+                                    <DropdownMenu.Item
+                                        variant="unstyled"
+                                        onSelect={() => {
+                                            void handleSpotifySearch();
+                                        }}
+                                        className="mt-1 rounded-md hover:bg-white/10 w-full"
+                                    >
+                                        <View className="px-2 py-2">
+                                            <Text className="text-white/80 text-sm">
+                                                {`Search Spotify for "${trimmedQuery}"`}
+                                            </Text>
+                                        </View>
+                                    </DropdownMenu.Item>
+                                ) : null}
+                                {spotifyStatusText ? (
+                                    <Text className="text-white/60 text-xs px-2 pb-2 pt-1">{spotifyStatusText}</Text>
                                 ) : null}
                             </View>
                         ) : null}
