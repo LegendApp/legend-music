@@ -156,6 +156,7 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
             resultsLength: searchResults.length,
             onEscape: () => handleOpenChange(false),
             onEnter: handleEnter,
+            onEscape: () => handleOpenChange(false),
             onSubmit: (index, action) => {
                 const result = searchResults[index];
                 if (result) {

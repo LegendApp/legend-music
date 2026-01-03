@@ -65,6 +65,7 @@ interface UseDropdownKeyboardNavigationOptions {
     onSubmit: (index: number, action: QueueAction) => void;
     onEscape?: () => void;
     onEnter?: () => boolean;
+    onEscape?: () => void;
 }
 
 const createDefaultModifierState = () => ({
@@ -81,6 +82,7 @@ export function useDropdownKeyboardNavigation({
     onSubmit,
     onEscape,
     onEnter,
+    onEscape,
 }: UseDropdownKeyboardNavigationOptions) {
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
     const modifierStateRef = useRef(createDefaultModifierState());
