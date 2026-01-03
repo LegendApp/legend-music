@@ -18,9 +18,9 @@ import {
     useDropdownKeyboardNavigation,
     usePlaylistSearchResults,
     useSearchDropdownState,
-} from "./PlaylistSelectorSearchDropdown/hooks";
+} from "./JumpSearchMenuDropdown/hooks";
 
-interface PlaylistSelectorSearchDropdownProps {
+interface JumpSearchMenuDropdownProps {
     tracks: LocalTrack[];
     playlists: LocalPlaylist[];
     onSelectTrack: (track: LocalTrack, action: QueueAction) => void;
@@ -30,8 +30,8 @@ interface PlaylistSelectorSearchDropdownProps {
     dropdownWidth?: number;
 }
 
-export const PlaylistSelectorSearchDropdown = forwardRef<DropdownMenuRootRef, PlaylistSelectorSearchDropdownProps>(
-    function PlaylistSelectorSearchDropdown(
+export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearchMenuDropdownProps>(
+    function JumpSearchMenuDropdown(
         { tracks, playlists, onSelectTrack, onSelectLibraryItem, onSelectPlaylist, onOpenChange, dropdownWidth },
         ref,
     ) {

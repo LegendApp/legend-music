@@ -36,9 +36,9 @@
 - `src/components/DropdownMenu.tsx:102`: mirror dropdown open state to a shared observable and parent `onOpenChange`.
 - [x] `src/components/DropdownMenu.tsx:415`: close a submenu when another submenu becomes active.
 - [x] `src/components/DropdownMenu.tsx:498`: toggle submenu content visibility based on the active submenu id.
-- `src/components/PlaylistSelectorSearchDropdown.tsx:81`: focus the search input when the dropdown opens.
-- `src/components/PlaylistSelectorSearchDropdown/hooks.ts:154`: reset highlighted index based on open state and result count.
-- `src/components/PlaylistSelectorSearchDropdown/hooks.ts:168`: attach keyboard listeners for navigation and submission while the dropdown is open.
+- `src/components/JumpSearchMenuDropdown.tsx:81`: focus the search input when the dropdown opens.
+- `src/components/JumpSearchMenuDropdown/hooks.ts:154`: reset highlighted index based on open state and result count.
+- `src/components/JumpSearchMenuDropdown/hooks.ts:168`: attach keyboard listeners for navigation and submission while the dropdown is open.
 
 ### Drag/drop and layout registration
 - `src/components/dnd/DroppableZone.tsx:50`: register/unregister drop zones with measured rects.
