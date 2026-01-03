@@ -63,12 +63,19 @@ interface UseDropdownKeyboardNavigationOptions {
     isOpen: boolean;
     resultsLength: number;
     onSubmit: (index: number, action: QueueAction) => void;
-    onEscape?: () => void;
-    onEnter?: () => boolean;
+    onEnter?: (modifierState: ModifierState) => boolean;
     onEscape?: () => void;
 }
 
-const createDefaultModifierState = () => ({
+type ModifierState = {
+    shift: boolean;
+    option: boolean;
+    alt: boolean;
+    ctrl: boolean;
+    meta: boolean;
+};
+
+const createDefaultModifierState = (): ModifierState => ({
     shift: false,
     option: false,
     alt: false,
@@ -82,7 +89,6 @@ export function useDropdownKeyboardNavigation({
     onSubmit,
     onEscape,
     onEnter,
-    onEscape,
 }: UseDropdownKeyboardNavigationOptions) {
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
     const modifierStateRef = useRef(createDefaultModifierState());
@@ -156,7 +162,7 @@ export function useDropdownKeyboardNavigation({
             }
 
             if (event.keyCode === KeyCodes.KEY_RETURN) {
-                if (onEnter?.()) {
+                if (onEnter?.(modifierStateRef.current)) {
                     resetModifiers();
                     return true;
                 }
