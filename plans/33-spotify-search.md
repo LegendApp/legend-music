@@ -1,11 +1,11 @@
 ## Plan
-Expand `PlaylistSelectorSearchDropdown` to support provider-backed search (local immediate, Spotify submit) and show
+Expand `JumpSearchMenuDropdown` to support provider-backed search (local immediate, Spotify submit) and show
 Spotify results on demand with a helper hint.
 
 ## Research Notes
-- `src/components/PlaylistSelectorSearchDropdown.tsx` uses `usePlaylistSearchResults` and `buildSearchResults` in
-  `src/components/PlaylistSelectorSearchDropdown/hooks.ts` for local tracks/playlists/library.
-- Keyboard handling uses `useDropdownKeyboardNavigation` in `src/components/PlaylistSelectorSearchDropdown/hooks.ts`,
+- `src/components/JumpSearchMenuDropdown.tsx` uses `usePlaylistSearchResults` and `buildSearchResults` in
+  `src/components/JumpSearchMenuDropdown/hooks.ts` for local tracks/playlists/library.
+- Keyboard handling uses `useDropdownKeyboardNavigation` in `src/components/JumpSearchMenuDropdown/hooks.ts`,
   which consumes Enter to select the highlighted item.
 - Spotify search already exists in `src/providers/spotify/search.ts` and requires auth.
 - Spotify badge component lives at `src/components/SpotifySourceBadge.tsx`.

@@ -17,7 +17,6 @@ import type { LocalPlaylist, LocalTrack } from "@/systems/LocalMusicState";
 import { cn } from "@/utils/cn";
 import { getQueueAction, type QueueAction } from "@/utils/queueActions";
 import { useDropdownKeyboardNavigation, usePlaylistSearchResults, useSearchDropdownState } from "./JumpSearchMenuDropdown/hooks";
-
 interface JumpSearchMenuDropdownProps {
     tracks: LocalTrack[];
     playlists: LocalPlaylist[];
@@ -156,7 +155,6 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
             resultsLength: searchResults.length,
             onEscape: () => handleOpenChange(false),
             onEnter: handleEnter,
-            onEscape: () => handleOpenChange(false),
             onSubmit: (index, action) => {
                 const result = searchResults[index];
                 if (result) {
