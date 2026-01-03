@@ -50,3 +50,7 @@ export function getProviderSession(providerId: ProviderId): ProviderSession | nu
     const provider = getProvider(providerId);
     return provider ? provider.getSession() : null;
 }
+
+export function isProviderEnabled(providerId: ProviderId): boolean {
+    return activeProviderId$.get() === providerId;
+}
