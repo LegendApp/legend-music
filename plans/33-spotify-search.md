@@ -46,7 +46,7 @@ Spotify results on demand with a helper hint.
 ## Steps
 - [x] Define the search provider config (search mode + search function) and wire provider-enabled checks.
 - [x] Move local search logic into the local provider and update dropdown/tests to use it.
-- [ ] Add Spotify search provider logic with query tracking, result clearing on input change, and track mapping.
+- [x] Add Spotify search provider logic with query tracking, result clearing on input change, and track mapping.
 - [ ] Update dropdown keyboard handling so Enter triggers Spotify search once per query and does not select a result
   when it does.
 - [ ] Add Spotify icon rendering for Spotify results and the "Press enter" helper text.
