@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useValue } from "@legendapp/state/react";
 import { ensureSpotifyAccessToken } from "@/providers/spotify/auth";
 import { spotifyAuthState$ } from "@/providers/spotify/authState";
+import { logSpotifyDebug, shouldLogSpotify, warnSpotifyDebug } from "@/providers/spotify/logging";
+import type { SpotifyPlaybackState } from "@/providers/spotify/playerState";
 import { SpotifyWebPlayerHost, type SpotifyWebPlayerHandle } from "@/providers/spotify/SpotifyWebPlayerHost";
 import {
     setSpotifyDevice,
@@ -14,15 +16,11 @@ let webPlayerHandle: SpotifyWebPlayerHandle | null = null;
 
 export function activateSpotifyWebPlayer(): void {
     if (!webPlayerHandle) {
-        if (__DEV__) {
-            console.warn("[SpotifyWebPlayerBridge] activate requested before host is ready");
-        }
+        warnSpotifyDebug("[SpotifyWebPlayerBridge] activate requested before host is ready");
         return;
     }
 
-    if (__DEV__) {
-        console.log("[SpotifyWebPlayerBridge] activate requested");
-    }
+    logSpotifyDebug("[SpotifyWebPlayerBridge] activate requested");
     webPlayerHandle.activate();
 }
 
@@ -35,9 +33,7 @@ export function SpotifyWebPlayerBridge() {
         try {
             const nextToken = await ensureSpotifyAccessToken();
             setToken(nextToken);
-            if (__DEV__) {
-                console.log("[SpotifyWebPlayerBridge] token refresh", { hasToken: Boolean(nextToken) });
-            }
+            logSpotifyDebug("[SpotifyWebPlayerBridge] token refresh", { hasToken: Boolean(nextToken) });
             return nextToken;
         } catch (error) {
             setSpotifyWebPlayerError(error instanceof Error ? error.message : String(error));
@@ -72,30 +68,36 @@ export function SpotifyWebPlayerBridge() {
     const handleTokenRequest = useCallback(async () => refreshTokenIfNeeded(), [refreshTokenIfNeeded]);
 
     const handleReady = useCallback((deviceId: string) => {
-        if (__DEV__) {
-            console.log("[SpotifyWebPlayerBridge] player ready", { deviceId });
-        }
+        logSpotifyDebug("[SpotifyWebPlayerBridge] player ready", { deviceId });
         setSpotifyDevice(deviceId);
         spotifyWebPlayerState$.lastError.set(null);
     }, []);
 
     const handleNotReady = useCallback((deviceId?: string) => {
-        if (__DEV__) {
-            console.log("[SpotifyWebPlayerBridge] player not ready", { deviceId });
-        }
+        logSpotifyDebug("[SpotifyWebPlayerBridge] player not ready", { deviceId });
         if (spotifyWebPlayerState$.deviceId.peek() === deviceId) {
             setSpotifyDevice(null);
         }
     }, []);
 
     const handleState = useCallback((state: unknown) => {
+        if (shouldLogSpotify()) {
+            const snapshot = state as SpotifyPlaybackState;
+            logSpotifyDebug("[SpotifyWebPlayerBridge] state", {
+                deviceId: spotifyWebPlayerState$.deviceId.peek(),
+                isReady: spotifyWebPlayerState$.isReady.peek(),
+                trackUri: snapshot.track_window?.current_track?.uri ?? snapshot.track_window?.current_track?.id,
+                positionMs: snapshot.position,
+                durationMs: snapshot.duration,
+                paused: snapshot.paused,
+                timestamp: snapshot.timestamp,
+            });
+        }
         setSpotifyWebPlayerState(state);
     }, []);
 
     const handleError = useCallback((kind: string, message?: string) => {
-        if (__DEV__) {
-            console.log("[SpotifyWebPlayerBridge] player error", { kind, message });
-        }
+        logSpotifyDebug("[SpotifyWebPlayerBridge] player error", { kind, message });
         setSpotifyWebPlayerError(message ?? kind);
     }, []);
 
