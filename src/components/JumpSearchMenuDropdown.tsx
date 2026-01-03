@@ -68,6 +68,7 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
         const { highlightedIndex, modifierStateRef, resetModifiers } = useDropdownKeyboardNavigation({
             isOpen,
             resultsLength: searchResults.length,
+            onEscape: () => handleOpenChange(false),
             onSubmit: (index, action) => {
                 const result = searchResults[index];
                 if (result) {
