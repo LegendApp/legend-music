@@ -206,7 +206,6 @@ class KeyboardManager {
                 // If any listener returns true, consider the event handled
                 if (listener(event)) {
                     handled = true;
-                    break;
                 }
             }
 
@@ -227,7 +226,6 @@ class KeyboardManager {
                 // If any listener returns true, consider the event handled
                 if (listener(event)) {
                     handled = true;
-                    break;
                 }
             }
 
