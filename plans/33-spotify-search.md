@@ -49,7 +49,7 @@ Spotify results on demand with a helper hint.
 - [x] Add Spotify search provider logic with query tracking, result clearing on input change, and track mapping.
 - [x] Update dropdown keyboard handling so Enter triggers Spotify search once per query and does not select a result
   when it does.
-- [ ] Add Spotify icon rendering for Spotify results and the "Press enter" helper text.
+- [x] Add Spotify icon rendering for Spotify results and the "Press enter" helper text.
 
 Validation: Run the search dropdown manually; verify local results still appear immediately, Enter triggers Spotify
 search once per query when Spotify is enabled, results clear on text change, and Spotify items show the badge.

@@ -5,6 +5,7 @@ import { type GestureResponderEvent, Text, useWindowDimensions, View } from "rea
 import type { NativeMouseEvent } from "react-native-macos";
 import { Button } from "@/components/Button";
 import { DropdownMenu, type DropdownMenuRootRef } from "@/components/DropdownMenu";
+import { SpotifySourceBadge } from "@/components/SpotifySourceBadge";
 import { TextInputSearch, type TextInputSearchRef } from "@/components/TextInputSearch";
 import { TrackItem } from "@/components/TrackItem";
 import { activeProviderId$ } from "@/providers/providerRegistry";
@@ -130,6 +131,13 @@ export const PlaylistSelectorSearchDropdown = forwardRef<DropdownMenuRootRef, Pl
             void handleSpotifySearch();
             return true;
         }, [handleSpotifySearch, isSpotifyEnabled, searchQuery, spotifySearchQuery]);
+
+        const trimmedQuery = searchQuery.trim();
+        const shouldShowSpotifySubmitHint =
+            isSpotifyEnabled &&
+            spotifySearchProvider.searchMode === "submit" &&
+            trimmedQuery.length > 0 &&
+            spotifySearchQuery !== trimmedQuery;
 
         const handleSearchResultAction = useCallback(
             (result: SearchResult, action: QueueAction) => {
@@ -293,7 +301,7 @@ export const PlaylistSelectorSearchDropdown = forwardRef<DropdownMenuRootRef, Pl
                             />
                         </View>
 
-                        {searchQuery.trim() ? (
+                        {trimmedQuery ? (
                             <View>
                                 {searchResults.length > 0 ? (
                                     <View style={{ maxHeight: 256 }}>
@@ -310,6 +318,11 @@ export const PlaylistSelectorSearchDropdown = forwardRef<DropdownMenuRootRef, Pl
                                 ) : (
                                     <Text className="text-white/60 text-sm p-2">No results found</Text>
                                 )}
+                                {shouldShowSpotifySubmitHint ? (
+                                    <Text className="text-white/60 text-xs px-2 pb-2 pt-1">
+                                        Press enter to search Spotify
+                                    </Text>
+                                ) : null}
                             </View>
                         ) : null}
                     </View>
@@ -343,6 +356,9 @@ function SearchResultContent({ result, index, highlighted, onSelect, getActionFr
     );
 
     if (result.type === "track") {
+        const isSpotifyTrack = result.item.provider === "spotify";
+        const rightAccessory = isSpotifyTrack ? <SpotifySourceBadge size={12} /> : null;
+
         return (
             // <View className={cn(highlighted && "bg-white/10")}>
             <TrackItem
@@ -351,6 +367,7 @@ function SearchResultContent({ result, index, highlighted, onSelect, getActionFr
                 onClick={(_, event) => handleClick(event)}
                 onRightClick={handleContextMenu}
                 showIndex={false}
+                rightAccessory={rightAccessory}
             />
         );
     }

@@ -1,5 +1,6 @@
 import type { Observable } from "@legendapp/state";
 import { useValue } from "@legendapp/state/react";
+import type { ReactNode } from "react";
 import { Text, View, type DimensionValue } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 import { Button } from "@/components/Button";
@@ -42,6 +43,7 @@ interface TrackItemProps {
     disableHover?: boolean;
     suppressActiveState?: boolean;
     artistMaxWidth?: DimensionValue;
+    rightAccessory?: ReactNode;
 }
 
 export const TrackItem = ({
@@ -56,6 +58,7 @@ export const TrackItem = ({
     disableHover = false,
     suppressActiveState = false,
     artistMaxWidth,
+    rightAccessory,
 }: TrackItemProps) => {
     perfCount("TrackItem.render");
     const listItemStyles = useListItemStyles();
@@ -188,20 +191,23 @@ export const TrackItem = ({
                 </Text>
             )}
 
-            <Text
-                className={cn(
-                    listItemStyles.getMetaClassName({
-                        className: cn(
-                            "text-xs ml-4",
-                            track.fromSuggestions ? listItemStyles.text.muted : "",
-                            durationTone,
-                        ),
-                    }),
-                    isPlaying && "text-accent-primary",
-                )}
-            >
-                {track.duration}
-            </Text>
+            <View className="flex-row items-center gap-2">
+                <Text
+                    className={cn(
+                        listItemStyles.getMetaClassName({
+                            className: cn(
+                                "text-xs ml-4",
+                                track.fromSuggestions ? listItemStyles.text.muted : "",
+                                durationTone,
+                            ),
+                        }),
+                        isPlaying && "text-accent-primary",
+                    )}
+                >
+                    {track.duration}
+                </Text>
+                {rightAccessory ? <View>{rightAccessory}</View> : null}
+            </View>
         </Button>
     );
     // }
