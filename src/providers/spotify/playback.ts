@@ -13,18 +13,66 @@ const buildHeaders = (token: string) => ({
     "Content-Type": "application/json",
 });
 
-function getDeviceId(deviceId?: string): string {
-    const id = deviceId || spotifyWebPlayerState$.deviceId.peek();
-    if (!id) {
-        if (__DEV__) {
-            console.warn("[SpotifyPlayback] missing device id", {
-                deviceId,
-                webPlayerState: spotifyWebPlayerState$.get(),
-            });
-        }
-        throw new Error("Spotify player is not ready. Connect the Web Playback SDK first.");
+const DEVICE_READY_TIMEOUT_MS = 5000;
+
+async function getDeviceId(deviceId?: string): Promise<string> {
+    if (deviceId) {
+        return deviceId;
     }
-    return id;
+
+    const current = spotifyWebPlayerState$.deviceId.peek();
+    if (current) {
+        return current;
+    }
+
+    if (__DEV__) {
+        console.warn("[SpotifyPlayback] waiting for device id", {
+            deviceId,
+            webPlayerState: spotifyWebPlayerState$.get(),
+        });
+    }
+
+    return new Promise((resolve, reject) => {
+        let settled = false;
+        let timeoutId: ReturnType<typeof setTimeout> | null = null;
+        let unsubscribe = () => {};
+
+        const cleanup = () => {
+            if (settled) {
+                return;
+            }
+            settled = true;
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+            }
+            unsubscribe();
+        };
+
+        unsubscribe = spotifyWebPlayerState$.deviceId.onChange(({ value }) => {
+            if (!value) {
+                return;
+            }
+            cleanup();
+            resolve(value);
+        });
+
+        if (settled) {
+            unsubscribe();
+            return;
+        }
+
+        const updated = spotifyWebPlayerState$.deviceId.peek();
+        if (updated) {
+            cleanup();
+            resolve(updated);
+            return;
+        }
+
+        timeoutId = setTimeout(() => {
+            cleanup();
+            reject(new Error("Spotify player is not ready. Connect the Web Playback SDK first."));
+        }, DEVICE_READY_TIMEOUT_MS);
+    });
 }
 
 async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
@@ -44,7 +92,7 @@ async function apiFetch(path: string, init: RequestInit = {}): Promise<Response>
 }
 
 export async function transferSpotifyPlayback(deviceId?: string, play = false): Promise<void> {
-    const targetDevice = getDeviceId(deviceId);
+    const targetDevice = await getDeviceId(deviceId);
     if (__DEV__) {
         console.log("[SpotifyPlayback] transfer", { deviceId: targetDevice, play });
     }
@@ -62,10 +110,11 @@ export async function transferSpotifyPlayback(deviceId?: string, play = false): 
 }
 
 export async function playSpotifyUri(request: PlayRequest): Promise<void> {
-    const deviceId = getDeviceId(request.deviceId);
+    const deviceId = await getDeviceId(request.deviceId);
     if (__DEV__) {
         console.log("[SpotifyPlayback] play", { deviceId, uri: request.uri });
     }
+    console.log("playing uri", request);
     const body = {
         uris: [request.uri],
         position_ms: request.positionMs ?? 0,
@@ -82,7 +131,7 @@ export async function playSpotifyUri(request: PlayRequest): Promise<void> {
 }
 
 export async function pauseSpotify(deviceId?: string): Promise<void> {
-    const targetDevice = getDeviceId(deviceId);
+    const targetDevice = await getDeviceId(deviceId);
     const response = await apiFetch(`/me/player/pause?device_id=${encodeURIComponent(targetDevice)}`, {
         method: "PUT",
     });
@@ -94,7 +143,8 @@ export async function pauseSpotify(deviceId?: string): Promise<void> {
 }
 
 export async function resumeSpotify(deviceId?: string): Promise<void> {
-    const targetDevice = getDeviceId(deviceId);
+    console.log("resuming spotify");
+    const targetDevice = await getDeviceId(deviceId);
     const response = await apiFetch(`/me/player/play?device_id=${encodeURIComponent(targetDevice)}`, {
         method: "PUT",
     });
@@ -106,7 +156,7 @@ export async function resumeSpotify(deviceId?: string): Promise<void> {
 }
 
 export async function seekSpotify(positionMs: number, deviceId?: string): Promise<void> {
-    const targetDevice = getDeviceId(deviceId);
+    const targetDevice = await getDeviceId(deviceId);
     const response = await apiFetch(
         `/me/player/seek?position_ms=${encodeURIComponent(positionMs)}&device_id=${encodeURIComponent(targetDevice)}`,
         {
@@ -121,7 +171,7 @@ export async function seekSpotify(positionMs: number, deviceId?: string): Promis
 }
 
 export async function setSpotifyVolume(volume: number, deviceId?: string): Promise<void> {
-    const targetDevice = getDeviceId(deviceId);
+    const targetDevice = await getDeviceId(deviceId);
     const percentage = Math.max(0, Math.min(100, Math.round(volume * 100)));
     const response = await apiFetch(
         `/me/player/volume?volume_percent=${percentage}&device_id=${encodeURIComponent(targetDevice)}`,
