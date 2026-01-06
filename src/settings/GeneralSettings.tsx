@@ -1,13 +1,18 @@
+import { useValue } from "@legendapp/state/react";
 import { Linking, Text, View } from "react-native";
 
 import { Button } from "@/components/Button";
 import { Checkbox } from "@/components/Checkbox";
+import { HotkeyCapture } from "@/components/HotkeyCapture";
 import { SettingsPage, SettingsRow, SettingsSection } from "@/settings/components";
 import { Icon } from "@/systems/Icon";
 import { settings$ } from "@/systems/Settings";
 import packageJson from "../../package.json";
 
 export const GeneralSettings = function GeneralSettings() {
+    const globalHotkeyEnabled = useValue(settings$.general.globalHotkeyEnabled);
+    const globalHotkey = useValue(settings$.general.globalHotkey);
+
     // const playlistStyleOptions = [
     //     { value: "compact", label: "Compact" },
     //     { value: "comfortable", label: "Comfortable" },
@@ -39,6 +44,24 @@ export const GeneralSettings = function GeneralSettings() {
                     title="Show Titlebar on Hover"
                     description="Reveal macOS window controls when hovering near the top edge"
                     control={<Checkbox $checked={settings$.general.showTitleBarOnHover} />}
+                />
+            </SettingsSection>
+
+            <SettingsSection title="Shortcuts">
+                <SettingsRow
+                    title="Global Hotkey"
+                    description="Show the main window from anywhere"
+                    align="center"
+                    control={
+                        <View className="flex-row items-center gap-3">
+                            <Checkbox $checked={settings$.general.globalHotkeyEnabled} />
+                            <HotkeyCapture
+                                value={globalHotkey}
+                                onChange={(next) => settings$.general.globalHotkey.set(next)}
+                                disabled={!globalHotkeyEnabled}
+                            />
+                        </View>
+                    }
                 />
             </SettingsSection>
 
