@@ -5,6 +5,7 @@ import type { SFSymbol } from "sf-symbols-typescript";
 import { Button } from "@/components/Button";
 import type { DropdownMenuRootRef } from "@/components/DropdownMenu";
 import { JumpSearchMenuDropdown } from "@/components/JumpSearchMenuDropdown";
+import { SavePlaylistDropdown } from "@/components/SavePlaylistDropdown";
 import { queue$ } from "@/components/LocalAudioPlayer";
 import { usePlaybackControlLayout } from "@/hooks/useUIControls";
 import { SUPPORT_PLAYLISTS } from "@/systems/constants";
@@ -162,16 +163,10 @@ export function PlaylistSelector({ variant = "default", className }: PlaylistSel
                             );
                         case "savePlaylist":
                             return SUPPORT_PLAYLISTS ? (
-                                <Button
+                                <SavePlaylistDropdown
                                     key="savePlaylist"
-                                    icon="square.and.arrow.down"
-                                    variant="icon-hover"
-                                    size="xs"
-                                    iconSize={14}
-                                    iconYOffset={2}
-                                    onClick={handleSavePlaylist}
                                     disabled={queue.tracks.length === 0}
-                                    tooltip="Save playlist"
+                                    onSave={handleSavePlaylist}
                                 />
                             ) : null;
                         case "toggleVisualizer": {
