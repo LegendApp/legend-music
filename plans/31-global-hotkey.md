@@ -30,7 +30,7 @@ This work should reuse the existing keyboard keycode/text mapping and settings p
 - Escape or blur cancels capture (no save), and capture mode exits cleanly.
 
 ### C) Activation
-- When the global hotkey fires, the main window is shown/activated.
+- When the global hotkey fires, the main window is shown/activated (open if needed).
 
 ## Data Model Changes
 - Add a persisted setting for global hotkey, e.g.
@@ -66,7 +66,7 @@ Files: `src/native-modules/GlobalHotkey.ts`, `src/systems/GlobalHotkey.ts`
 - No-op on non-mac platforms.
 
 ## Steps
-- [ ] Confirm the hotkey setting location (General vs separate section) and default binding.
+- [x] Confirm the hotkey setting location (General vs separate section) and default binding.
 - [ ] Add the persisted global hotkey fields to `settings$` and a typed hotkey format.
 - [ ] Build the hotkey capture control (UI + capture logic + display formatting).
 - [ ] Wire the settings row to enable/disable and update the stored hotkey.
@@ -79,5 +79,5 @@ Validation:
 - Optional: `bun run lint`.
 
 ## Open Questions
-- What should the default hotkey be?
-- Should activation always focus the main window or attempt to reopen if closed?
+- Default hotkey: Command+Shift+L.
+- Activation: focus main window, opening if closed.
