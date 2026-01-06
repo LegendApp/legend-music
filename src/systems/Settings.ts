@@ -1,3 +1,5 @@
+import type { KeyboardEventCodeHotkey } from "@/systems/keyboard/Keyboard";
+import { KeyCodes } from "@/systems/keyboard/KeyboardManager";
 import { createJSONManager } from "@/utils/JSONManager";
 
 export type PlaylistStyle = "compact";
@@ -60,6 +62,8 @@ export interface AppSettings {
         playlistStyle: PlaylistStyle;
         showHints: boolean;
         showTitleBarOnHover: boolean;
+        globalHotkeyEnabled: boolean;
+        globalHotkey: KeyboardEventCodeHotkey | null;
     };
     registration: {
         isRegistered: boolean;
@@ -91,6 +95,8 @@ export const settings$ = createJSONManager<AppSettings>({
             playlistStyle: "compact",
             showHints: true,
             showTitleBarOnHover: true,
+            globalHotkeyEnabled: false,
+            globalHotkey: `${KeyCodes.MODIFIER_COMMAND}+${KeyCodes.MODIFIER_SHIFT}+${KeyCodes.KEY_L}` as KeyboardEventCodeHotkey,
         },
         // Registration settings
         registration: {
