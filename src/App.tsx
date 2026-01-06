@@ -15,6 +15,7 @@ import { CurrentSongOverlayController } from "@/overlay/CurrentSongOverlayContro
 import { CurrentSongOverlayWindowManager } from "@/overlay/CurrentSongOverlayWindowManager";
 import { SettingsWindowManager } from "@/settings/SettingsWindowManager";
 import { IS_TAHOE } from "@/systems/constants";
+import { GlobalHotkeyManager } from "@/systems/GlobalHotkey";
 import { HookKeyboard } from "@/systems/keyboard/HookKeyboard";
 import { hydrateLibraryFromCache } from "@/systems/LibraryState";
 import { initializeLocalMusic } from "@/systems/LocalMusicState";
@@ -106,6 +107,7 @@ function App(): React.JSX.Element | null {
         <WindowProvider id="main">
             <ThemeProvider>
                 <HookKeyboard />
+                <GlobalHotkeyManager />
                 <EffectView glassStyle="regular" style={{ flex: 1 }}>
                     {content}
                 </EffectView>

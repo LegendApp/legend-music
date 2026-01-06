@@ -6,12 +6,14 @@ import { Checkbox } from "@/components/Checkbox";
 import { HotkeyCapture } from "@/components/HotkeyCapture";
 import { SettingsPage, SettingsRow, SettingsSection } from "@/settings/components";
 import { Icon } from "@/systems/Icon";
+import { globalHotkeyStatus$ } from "@/systems/GlobalHotkey";
 import { settings$ } from "@/systems/Settings";
 import packageJson from "../../package.json";
 
 export const GeneralSettings = function GeneralSettings() {
     const globalHotkeyEnabled = useValue(settings$.general.globalHotkeyEnabled);
     const globalHotkey = useValue(settings$.general.globalHotkey);
+    const globalHotkeyError = useValue(globalHotkeyStatus$.error);
 
     // const playlistStyleOptions = [
     //     { value: "compact", label: "Compact" },
@@ -53,13 +55,19 @@ export const GeneralSettings = function GeneralSettings() {
                     description="Show the main window from anywhere"
                     align="center"
                     control={
-                        <View className="flex-row items-center gap-3">
-                            <Checkbox $checked={settings$.general.globalHotkeyEnabled} />
-                            <HotkeyCapture
-                                value={globalHotkey}
-                                onChange={(next) => settings$.general.globalHotkey.set(next)}
-                                disabled={!globalHotkeyEnabled}
-                            />
+                        <View className="flex-col items-end gap-2">
+                            <View className="flex-row items-center gap-3">
+                                <Checkbox $checked={settings$.general.globalHotkeyEnabled} />
+                                <HotkeyCapture
+                                    value={globalHotkey}
+                                    onChange={(next) => settings$.general.globalHotkey.set(next)}
+                                    disabled={!globalHotkeyEnabled}
+                                    className={globalHotkeyError ? "border-red-400" : undefined}
+                                />
+                            </View>
+                            {globalHotkeyError ? (
+                                <Text className="text-xs text-red-200">{globalHotkeyError}</Text>
+                            ) : null}
                         </View>
                     }
                 />

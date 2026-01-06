@@ -71,7 +71,7 @@ Files: `src/native-modules/GlobalHotkey.ts`, `src/systems/GlobalHotkey.ts`
 - [x] Build the hotkey capture control (UI + capture logic + display formatting).
 - [x] Wire the settings row to enable/disable and update the stored hotkey.
 - [x] Implement the macOS native global hotkey module + JS bridge + activation event.
-- [ ] Register/unregister the hotkey on settings changes and show the main window on activation.
+- [x] Register/unregister the hotkey on settings changes and show the main window on activation.
 - [ ] Manual validation on macOS (capture, persistence, registration failures, activation).
 
 Validation:

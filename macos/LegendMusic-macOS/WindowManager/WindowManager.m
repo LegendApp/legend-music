@@ -461,6 +461,19 @@ RCT_EXPORT_METHOD(closeFrontmostWindow:(RCTPromiseResolveBlock)resolve
   resolve(@{@"success": @YES});
 }
 
+RCT_EXPORT_METHOD(showMainWindow:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject) {
+  NSWindow *mainWindow = [WindowManager getMainWindow];
+  if (!mainWindow) {
+    resolve(@{@"success": @NO, @"message": @"Main window not found"});
+    return;
+  }
+
+  [NSApp activateIgnoringOtherApps:YES];
+  [mainWindow makeKeyAndOrderFront:nil];
+  resolve(@{@"success": @YES});
+}
+
 RCT_EXPORT_METHOD(setWindowBlur:(NSString *)identifier
                   radius:(nonnull NSNumber *)radiusNumber
                   duration:(nonnull NSNumber *)durationNumber
