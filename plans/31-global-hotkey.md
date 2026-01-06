@@ -68,7 +68,7 @@ Files: `src/native-modules/GlobalHotkey.ts`, `src/systems/GlobalHotkey.ts`
 ## Steps
 - [x] Confirm the hotkey setting location (General vs separate section) and default binding.
 - [x] Add the persisted global hotkey fields to `settings$` and a typed hotkey format.
-- [ ] Build the hotkey capture control (UI + capture logic + display formatting).
+- [x] Build the hotkey capture control (UI + capture logic + display formatting).
 - [ ] Wire the settings row to enable/disable and update the stored hotkey.
 - [ ] Implement the macOS native global hotkey module + JS bridge + activation event.
 - [ ] Register/unregister the hotkey on settings changes and show the main window on activation.
