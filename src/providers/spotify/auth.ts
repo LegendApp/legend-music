@@ -1,13 +1,8 @@
+import { stateSaved$ } from "@/systems/State";
 import { clearSpotifyAuth, setPKCEState, setSpotifyTokens, setSpotifyUser, spotifyAuthState$ } from "./authState";
-import { clearSpotifyPlaylistsCache } from "./playlistsState";
-import {
-    SPOTIFY_AUTH_SCOPES,
-    SPOTIFY_AUTH_URL,
-    SPOTIFY_CLIENT_ID,
-    SPOTIFY_REDIRECT_URI,
-    SPOTIFY_TOKEN_URL,
-} from "./constants";
+import { SPOTIFY_AUTH_SCOPES, SPOTIFY_AUTH_URL, SPOTIFY_REDIRECT_URI, SPOTIFY_TOKEN_URL } from "./constants";
 import { createPKCEChallenge } from "./pkce";
+import { clearSpotifyPlaylistsCache } from "./playlistsState";
 import type { SpotifyAuthState, SpotifyTokens, SpotifyUserProfile } from "./types";
 
 type TokenResponse = {
@@ -29,8 +24,9 @@ const encodeForm = (params: Record<string, string>): string =>
 
 export function buildAuthorizeUrl(state: string, codeChallenge: string): string {
     const scopes = SPOTIFY_AUTH_SCOPES.join(" ");
+    const clientId = stateSaved$.spotifyClientId.peek() ?? "";
     const params = encodeForm({
-        client_id: SPOTIFY_CLIENT_ID,
+        client_id: clientId,
         response_type: "code",
         redirect_uri: SPOTIFY_REDIRECT_URI,
         code_challenge_method: "S256",
@@ -42,10 +38,14 @@ export function buildAuthorizeUrl(state: string, codeChallenge: string): string 
 }
 
 async function fetchToken(params: Record<string, string>): Promise<TokenResponse> {
+    const clientId = stateSaved$.spotifyClientId.peek() ?? "";
+    if (!clientId) {
+        throw new Error("Missing Spotify client ID. Enter it in Settings → Spotify before logging in.");
+    }
     const response = await fetch(SPOTIFY_TOKEN_URL, {
         method: "POST",
         headers: FORM_HEADERS,
-        body: encodeForm({ client_id: SPOTIFY_CLIENT_ID, ...params }),
+        body: encodeForm({ client_id: clientId, ...params }),
     });
 
     if (!response.ok) {
@@ -57,8 +57,9 @@ async function fetchToken(params: Record<string, string>): Promise<TokenResponse
 }
 
 export async function startSpotifyLogin(): Promise<{ authorizeUrl: string; state: string; verifier: string }> {
-    if (!SPOTIFY_CLIENT_ID) {
-        throw new Error("Missing SPOTIFY_CLIENT_ID. Set env or config before login.");
+    const clientId = stateSaved$.spotifyClientId.peek() ?? "";
+    if (!clientId) {
+        throw new Error("Missing Spotify client ID. Enter it in Settings → Spotify before logging in.");
     }
 
     const { verifier, challenge } = await createPKCEChallenge();

@@ -22,6 +22,7 @@ type SavedState = {
     libraryWindowSize: { width: number; height: number };
     playbackIndex: number;
     playbackTime: number;
+    spotifyClientId: string;
 };
 
 export const stateSaved$ = createJSONManager<SavedState>({
@@ -33,5 +34,6 @@ export const stateSaved$ = createJSONManager<SavedState>({
         libraryWindowSize: { width: 0, height: 0 },
         playbackIndex: -1,
         playbackTime: 0,
+        spotifyClientId: "",
     },
 });
