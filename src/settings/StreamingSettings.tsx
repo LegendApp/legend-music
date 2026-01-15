@@ -1,9 +1,10 @@
 import { useValue } from "@legendapp/state/react";
+import { $TextInput } from "@legendapp/state/react-native";
 import { useCallback, useEffect, useState } from "react";
 import { Linking, Text, TextInput, View } from "react-native";
+import { audioControls } from "@/components/AudioPlayer";
 import { Button } from "@/components/Button";
 import { Checkbox } from "@/components/Checkbox";
-import { audioControls } from "@/components/AudioPlayer";
 import { showToast } from "@/components/Toast";
 import { providerSettings$, setActiveProvider } from "@/providers/providerRegistry";
 import { completeSpotifyLogin, logoutSpotify, spotifyAuthState$, startSpotifyLogin } from "@/providers/spotify";
@@ -11,6 +12,7 @@ import { searchSpotifyTracks } from "@/providers/spotify/search";
 import { buildSpotifyLocalTrack } from "@/providers/spotify/trackMapping";
 import type { ProviderTrack } from "@/providers/types";
 import { SettingsPage, SettingsRow, SettingsSection } from "@/settings/components";
+import { stateSaved$ } from "@/systems/State";
 import { formatSecondsToMmSs } from "@/utils/m3u";
 
 const parseAuthParams = (url: string): { code?: string; state?: string } => {
@@ -28,10 +30,13 @@ const parseAuthParams = (url: string): { code?: string; state?: string } => {
 export function StreamingSettings() {
     const auth = useValue(spotifyAuthState$);
     const providerSettings = useValue(providerSettings$);
+    const spotifyClientId = useValue(stateSaved$.spotifyClientId);
     const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState<ProviderTrack[]>([]);
     const [isSearching, setIsSearching] = useState(false);
+
+    const hasSpotifyClientId = Boolean(spotifyClientId.trim());
 
     const handleAuthUrl = useCallback(async (url: string) => {
         const { code, state } = parseAuthParams(url);
@@ -42,7 +47,7 @@ export function StreamingSettings() {
 
         try {
             await completeSpotifyLogin({ code, state });
-            showToast("Spotify connected", "success");
+            showToast("Spotify connected", "info");
             setIsLoggingIn(false);
         } catch (error) {
             console.error("Spotify login failed", error);
@@ -115,20 +120,40 @@ export function StreamingSettings() {
     const queueSpotifyTrack = useCallback((track: ProviderTrack) => {
         const localTrack = buildSpotifyLocalTrack(track);
         audioControls.queue.append(localTrack, { playImmediately: true });
-        showToast(`Queued ${track.name}`, "success");
+        showToast(`Queued ${track.name}`, "info");
     }, []);
 
     return (
         <SettingsPage>
-            <SettingsSection
-                title="Spotify"
-                description="Enable or disable Spotify playback and search."
-                first
-            >
+            <SettingsSection title="Spotify" description="Enable or disable Spotify playback and search." first>
                 <SettingsRow
                     title="Enable Spotify"
                     description="Use Spotify as the active streaming provider."
                     control={<Checkbox checked={isSpotifyEnabled} onChange={handleSpotifyToggle} />}
+                />
+                <SettingsRow
+                    title="Client ID"
+                    description="Create a Spotify app and paste its Client ID to enable login."
+                    control={
+                        <View className="flex flex-row items-center gap-2">
+                            <$TextInput
+                                className="flex-1 rounded-md border border-border-primary bg-background-tertiary px-2 py-2 text-text-primary"
+                                placeholder="Spotify Client ID"
+                                placeholderTextColor="#9ca3af"
+                                $value={stateSaved$.spotifyClientId}
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                            />
+                            <Button
+                                variant="secondary"
+                                size="medium"
+                                onClick={() => Linking.openURL("https://developer.spotify.com/dashboard")}
+                            >
+                                <Text className="text-text-primary text-sm font-medium">Get ID</Text>
+                            </Button>
+                        </View>
+                    }
+                    controlWrapperClassName="ml-6 w-[360px]"
                 />
             </SettingsSection>
 
@@ -141,16 +166,18 @@ export function StreamingSettings() {
                     description={
                         !isSpotifyEnabled
                             ? "Enable Spotify to connect your account."
-                            : isAuthenticated
-                              ? "Spotify is connected and ready for playback."
-                              : "Connect a Spotify Premium account to enable streaming."
+                            : !hasSpotifyClientId
+                              ? "Enter your Spotify client ID above to connect your account."
+                              : isAuthenticated
+                                ? "Spotify is connected and ready for playback."
+                                : "Connect a Spotify Premium account to enable streaming."
                     }
                     control={
                         <View className="flex flex-row flex-wrap gap-2">
                             <Button
                                 variant="primary"
                                 size="medium"
-                                disabled={isLoggingIn || !isSpotifyEnabled}
+                                disabled={isLoggingIn || !isSpotifyEnabled || !hasSpotifyClientId}
                                 onClick={handleLogin}
                             >
                                 <Text className="text-text-primary text-sm font-medium">
@@ -178,8 +205,8 @@ export function StreamingSettings() {
                                 {!isSpotifyEnabled
                                     ? "Spotify is disabled."
                                     : isAuthenticated
-                                    ? `Signed in as ${auth.user?.displayName ?? auth.user?.email ?? auth.user?.id ?? "Unknown"}`
-                                    : "Not signed in"}
+                                      ? `Signed in as ${auth.user?.displayName ?? auth.user?.email ?? auth.user?.id ?? "Unknown"}`
+                                      : "Not signed in"}
                             </Text>
                             {isSpotifyEnabled && auth.user?.product ? (
                                 <Text className="text-sm text-text-secondary">Plan: {auth.user.product}</Text>
