@@ -3,3 +3,8 @@ export * from "./plugin";
 export * from "./search";
 export * from "./trackMapping";
 export * from "./types";
+export * from "./logging";
+export * from "./playerState";
+export * from "./YoutubeMusicWebPlayerBridge";
+export * from "./YoutubeMusicWebPlayerHost";
+export * from "./webPlayerState";
