@@ -44,7 +44,7 @@ music.youtube.com WebView while emitting playback state changes like Spotify.
 - [x] Add hidden WebView playback for music.youtube.com and bridge playback events.
 - [x] Wire play/pause/seek commands through the provider interface.
 - [x] Hook search results into existing UI and add provider badges while excluding YTM from library sources.
-- [ ] Validate playback state changes and cleanup on provider switch/close.
+- [x] Validate playback state changes and cleanup on provider switch/close.
 
 Validation: Configure an API key, search for a track, play a result, and confirm playback events mirror Spotify
 (playing/paused/time updates/ended) while the WebView stays hidden.
