@@ -42,7 +42,7 @@ music.youtube.com WebView while emitting playback state changes like Spotify.
 - [x] Add YouTube Music plugin skeleton, enablement state, and settings wiring.
 - [x] Implement YouTube Data API search and map results to provider tracks.
 - [x] Add hidden WebView playback for music.youtube.com and bridge playback events.
-- [ ] Wire play/pause/seek commands through the provider interface.
+- [x] Wire play/pause/seek commands through the provider interface.
 - [ ] Hook search results into existing UI and add provider badges while excluding YTM from library sources.
 - [ ] Validate playback state changes and cleanup on provider switch/close.
 

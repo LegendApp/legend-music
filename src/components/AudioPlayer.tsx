@@ -2,6 +2,7 @@ import { observable } from "@legendapp/state";
 import { showToast } from "@/components/Toast";
 import { localPlaybackProvider, LocalTrackNotFoundError } from "@/providers/local/playbackProvider";
 import { spotifyPlaybackProvider } from "@/providers/spotify/playbackProvider";
+import { youtubeMusicPlaybackProvider } from "@/providers/youtubeMusic/playbackProvider";
 import { getPlaybackProviderForTrack, registerPlaybackProvider, type PlaybackStateUpdate } from "@/providers/types";
 import appExit from "@/native-modules/AppExit";
 import { appState$ } from "@/observables/appState";
@@ -41,6 +42,7 @@ export const audioPlayerState$ = observable<AudioPlayerState>({
 
 registerPlaybackProvider(localPlaybackProvider);
 registerPlaybackProvider(spotifyPlaybackProvider);
+registerPlaybackProvider(youtubeMusicPlaybackProvider);
 
 export interface QueuedTrack extends LocalTrack {
     queueEntryId: string;
@@ -72,8 +74,8 @@ function createQueueEntryId(seed: string): string {
 
 let pendingInitialTrackRestore: { track: QueuedTrack; playbackTime: number } | null = null;
 
-function isSpotifyTrack(track: LocalTrack | null): boolean {
-    return track?.provider === "spotify";
+function isStreamingTrack(track: LocalTrack | null): boolean {
+    return track?.provider === "spotify" || track?.provider === "youtubeMusic";
 }
 
 const playbackHistory: number[] = [];
@@ -309,7 +311,7 @@ function persistPlaybackIndex(index: number): void {
 
 async function persistPlaybackTimeNow(): Promise<void> {
     const currentTrack = audioPlayerState$.currentTrack.peek();
-    const timeToPersist = isSpotifyTrack(currentTrack) ? 0 : Math.max(0, latestPlaybackTime);
+    const timeToPersist = isStreamingTrack(currentTrack) ? 0 : Math.max(0, latestPlaybackTime);
     try {
         stateSaved$.playbackTime.set(timeToPersist);
         console.log("persistPlaybackTimeNow", timeToPersist);
@@ -424,7 +426,7 @@ audioPlayerState$.currentIndex.onChange(({ value }) => {
 
 audioPlayerState$.currentTime.onChange(({ value }) => {
     const currentTrack = audioPlayerState$.currentTrack.peek();
-    if (isSpotifyTrack(currentTrack)) {
+    if (isStreamingTrack(currentTrack)) {
         latestPlaybackTime = 0;
         return;
     }
@@ -434,7 +436,7 @@ audioPlayerState$.currentTime.onChange(({ value }) => {
 audioPlayerState$.isPlaying.onChange(({ value }) => {
     if (!value) {
         const currentTrack = audioPlayerState$.currentTrack.peek();
-        if (isSpotifyTrack(currentTrack)) {
+        if (isStreamingTrack(currentTrack)) {
             latestPlaybackTime = 0;
             return;
         }
@@ -568,7 +570,7 @@ async function loadTrackInternal(track: LocalTrack, options: LoadTrackOptions = 
         if (queueEntryId) {
             void hydrateCurrentTrackMetadata(track as QueuedTrack);
         }
-        if (nextProvider.id === "spotify") {
+        if (nextProvider.startsPlaybackOnLoad) {
             if (audioPlayerState$.duration.peek() <= 0) {
                 applyDurationFromTrack(track);
             }
@@ -587,7 +589,7 @@ async function loadTrackInternal(track: LocalTrack, options: LoadTrackOptions = 
         }
         const errorMessage = error instanceof Error ? error.message : "Failed to load track";
         perfLog("LocalAudioControls.loadTrack.error", errorMessage);
-        if (nextProvider.id === "spotify") {
+        if (nextProvider.startsPlaybackOnLoad) {
             showToast(errorMessage, "error");
         }
         handleTrackLoadFailure(track, queueEntryId, errorMessage);
@@ -874,7 +876,7 @@ function initializeQueueFromCache(): void {
             if (resolvedIndex >= 0) {
                 const currentTrack = queuedTracks[resolvedIndex];
                 const playbackTimeToRestore =
-                    savedPlaybackTime > 0 && !isSpotifyTrack(currentTrack) ? savedPlaybackTime : 0;
+                    savedPlaybackTime > 0 && !isStreamingTrack(currentTrack) ? savedPlaybackTime : 0;
                 audioPlayerState$.currentTrack.set(currentTrack);
                 audioPlayerState$.currentIndex.set(resolvedIndex);
                 applyDurationFromTrack(currentTrack);
@@ -900,7 +902,7 @@ function initializeQueueFromCache(): void {
             persistPlaybackIndex(resolvedIndex);
             stateSaved$.playbackTime.set(
                 resolvedIndex >= 0 && queuedTracks[resolvedIndex]
-                    ? savedPlaybackTime > 0 && !isSpotifyTrack(queuedTracks[resolvedIndex])
+                    ? savedPlaybackTime > 0 && !isStreamingTrack(queuedTracks[resolvedIndex])
                         ? savedPlaybackTime
                         : 0
                     : 0,
@@ -1137,7 +1139,7 @@ async function seek(seconds: number): Promise<void> {
     }
 
     try {
-        if (provider.id === "spotify") {
+        if (provider.startsPlaybackOnLoad) {
             setProgressAnchor(clampedSeconds);
             audioPlayerState$.currentTime.set(clampedSeconds);
             if (audioPlayerState$.isPlaying.peek() && !isWindowOccluded) {
@@ -1253,6 +1255,11 @@ export function initializeAudioPlayer(): void {
     }
     if (spotifyPlaybackProvider.onStateChange) {
         spotifyPlaybackProvider.onStateChange((update) => {
+            applyPlaybackStateUpdate(update);
+        });
+    }
+    if (youtubeMusicPlaybackProvider.onStateChange) {
+        youtubeMusicPlaybackProvider.onStateChange((update) => {
             applyPlaybackStateUpdate(update);
         });
     }
