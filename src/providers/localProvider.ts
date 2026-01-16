@@ -1,8 +1,8 @@
 import type { Provider, ProviderCapabilities, ProviderInitOptions, ProviderSession } from "./types";
 
 const capabilities: ProviderCapabilities = {
-    supportsSearch: false,
-    supportsLibrary: false,
+    supportsSearch: true,
+    supportsLibrary: true,
     supportsPlayback: true,
     requiresPremium: false,
     requiresWebView: false,

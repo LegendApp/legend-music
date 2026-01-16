@@ -6,11 +6,12 @@ import type { NativeMouseEvent } from "react-native-macos";
 import { Button } from "@/components/Button";
 import { DropdownMenu, type DropdownMenuRootRef } from "@/components/DropdownMenu";
 import { SpotifySourceBadge } from "@/components/SpotifySourceBadge";
+import { YoutubeMusicSourceBadge } from "@/components/YoutubeMusicSourceBadge";
 import { TextInputSearch, type TextInputSearchRef } from "@/components/TextInputSearch";
 import { TrackItem } from "@/components/TrackItem";
-import { activeProviderId$ } from "@/providers/providerRegistry";
+import { activeProviderId$, getProvider } from "@/providers/providerRegistry";
+import { getSearchProvider } from "@/providers/search/registry";
 import type { SearchResult } from "@/providers/search/types";
-import { spotifySearchProvider } from "@/providers/spotify/search";
 import type { LibraryItem } from "@/systems/LibraryState";
 import { library$ } from "@/systems/LibraryState";
 import type { LocalPlaylist, LocalTrack } from "@/systems/LocalMusicState";
@@ -38,34 +39,37 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
 
         const library = useValue(library$);
         const activeProviderId = useValue(activeProviderId$);
-        const isSpotifyEnabled = activeProviderId === "spotify";
+        const activeProvider = getProvider(activeProviderId);
+        const activeProviderName = activeProvider?.name ?? "Provider";
+        const remoteSearchProvider = activeProviderId !== "local" ? getSearchProvider(activeProviderId) : null;
+        const isRemoteSearchEnabled = Boolean(remoteSearchProvider);
         const effectiveWindowWidth = Math.max(windowWidth, 1);
         const fallbackWidth = Math.max(effectiveWindowWidth - 16, 1);
         const resolvedDropdownWidth = Math.max(dropdownWidth ?? fallbackWidth, 1);
 
-        const [spotifyResults, setSpotifyResults] = useState<SearchResult[]>([]);
-        const [spotifySearchStatus, setSpotifySearchStatus] = useState<"idle" | "searching" | "success" | "error">(
+        const [providerResults, setProviderResults] = useState<SearchResult[]>([]);
+        const [providerSearchStatus, setProviderSearchStatus] = useState<"idle" | "searching" | "success" | "error">(
             "idle",
         );
-        const spotifySearchRequestIdRef = useRef(0);
-        const spotifySearchQueryRef = useRef("");
+        const providerSearchRequestIdRef = useRef(0);
+        const providerSearchQueryRef = useRef("");
 
-        const resetSpotifySearch = useCallback(() => {
-            spotifySearchRequestIdRef.current += 1;
-            spotifySearchQueryRef.current = "";
-            setSpotifyResults([]);
-            setSpotifySearchStatus("idle");
+        const resetProviderSearch = useCallback(() => {
+            providerSearchRequestIdRef.current += 1;
+            providerSearchQueryRef.current = "";
+            setProviderResults([]);
+            setProviderSearchStatus("idle");
         }, []);
 
         useEffect(() => {
-            resetSpotifySearch();
-        }, [resetSpotifySearch, searchQuery]);
+            resetProviderSearch();
+        }, [resetProviderSearch, searchQuery]);
 
         useEffect(() => {
-            if (!isSpotifyEnabled) {
-                resetSpotifySearch();
+            if (!isRemoteSearchEnabled) {
+                resetProviderSearch();
             }
-        }, [isSpotifyEnabled, resetSpotifySearch]);
+        }, [isRemoteSearchEnabled, resetProviderSearch]);
 
         const localSearchResults = usePlaylistSearchResults({
             tracks,
@@ -76,12 +80,12 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
         });
 
         const searchResults = useMemo(
-            () => (isSpotifyEnabled ? [...localSearchResults, ...spotifyResults] : localSearchResults),
-            [isSpotifyEnabled, localSearchResults, spotifyResults],
+            () => (isRemoteSearchEnabled ? [...localSearchResults, ...providerResults] : localSearchResults),
+            [isRemoteSearchEnabled, localSearchResults, providerResults],
         );
 
-        const handleSpotifySearch = useCallback(async () => {
-            if (!isSpotifyEnabled) {
+        const handleProviderSearch = useCallback(async () => {
+            if (!isRemoteSearchEnabled || !remoteSearchProvider) {
                 return;
             }
 
@@ -90,72 +94,74 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
                 return;
             }
 
-            if (spotifySearchStatus === "searching") {
+            if (providerSearchStatus === "searching") {
                 return;
             }
 
-            if (spotifySearchQueryRef.current === trimmedQuery && spotifySearchStatus === "success") {
+            if (providerSearchQueryRef.current === trimmedQuery && providerSearchStatus === "success") {
                 return;
             }
 
-            const requestId = (spotifySearchRequestIdRef.current += 1);
-            spotifySearchQueryRef.current = trimmedQuery;
-            setSpotifyResults([]);
-            setSpotifySearchStatus("searching");
+            const requestId = (providerSearchRequestIdRef.current += 1);
+            providerSearchQueryRef.current = trimmedQuery;
+            setProviderResults([]);
+            setProviderSearchStatus("searching");
 
             try {
-                const results = await spotifySearchProvider.search({ query: trimmedQuery });
-                if (spotifySearchRequestIdRef.current !== requestId) {
+                const results = await remoteSearchProvider.search({ query: trimmedQuery });
+                if (providerSearchRequestIdRef.current !== requestId) {
                     return;
                 }
-                setSpotifyResults(results);
-                setSpotifySearchStatus("success");
+                setProviderResults(results);
+                setProviderSearchStatus("success");
             } catch (error) {
-                if (spotifySearchRequestIdRef.current !== requestId) {
+                if (providerSearchRequestIdRef.current !== requestId) {
                     return;
                 }
-                console.error("Spotify search failed", error);
-                spotifySearchQueryRef.current = "";
-                setSpotifyResults([]);
-                setSpotifySearchStatus("error");
+                console.error("Provider search failed", error);
+                providerSearchQueryRef.current = "";
+                setProviderResults([]);
+                setProviderSearchStatus("error");
             }
-        }, [isSpotifyEnabled, searchQuery, spotifySearchStatus]);
+        }, [isRemoteSearchEnabled, providerSearchStatus, remoteSearchProvider, searchQuery]);
 
         const trimmedQuery = searchQuery.trim();
-        const hasSpotifyQuery = trimmedQuery.length > 0;
-        const hasSearchedSpotify =
-            spotifySearchQueryRef.current === trimmedQuery && spotifySearchStatus === "success";
-        const isSpotifySearching = spotifySearchStatus === "searching";
-        const shouldShowSpotifyAction = isSpotifyEnabled && hasSpotifyQuery && !isSpotifySearching && !hasSearchedSpotify;
-        const spotifyStatusText = useMemo(() => {
-            if (!isSpotifyEnabled || !hasSpotifyQuery) {
+        const hasProviderQuery = trimmedQuery.length > 0;
+        const hasSearchedProvider =
+            providerSearchQueryRef.current === trimmedQuery && providerSearchStatus === "success";
+        const isProviderSearching = providerSearchStatus === "searching";
+        const shouldShowProviderAction =
+            isRemoteSearchEnabled && hasProviderQuery && !isProviderSearching && !hasSearchedProvider;
+        const providerStatusText = useMemo(() => {
+            if (!isRemoteSearchEnabled || !hasProviderQuery) {
                 return null;
             }
 
-            if (isSpotifySearching) {
-                return "Searching Spotify...";
+            if (isProviderSearching) {
+                return `Searching ${activeProviderName}...`;
             }
 
-            if (spotifySearchStatus === "error") {
-                return "Spotify search failed. Press Cmd+Enter to retry.";
+            if (providerSearchStatus === "error") {
+                return `${activeProviderName} search failed. Press Cmd+Enter to retry.`;
             }
 
-            if (hasSearchedSpotify && spotifyResults.length === 0) {
-                return "No Spotify results.";
+            if (hasSearchedProvider && providerResults.length === 0) {
+                return `No ${activeProviderName} results.`;
             }
 
-            if (!hasSearchedSpotify) {
-                return "Press Cmd+Enter to search Spotify.";
+            if (!hasSearchedProvider) {
+                return `Press Cmd+Enter to search ${activeProviderName}.`;
             }
 
             return null;
         }, [
-            hasSearchedSpotify,
-            hasSpotifyQuery,
-            isSpotifyEnabled,
-            isSpotifySearching,
-            spotifyResults.length,
-            spotifySearchStatus,
+            activeProviderName,
+            hasProviderQuery,
+            hasSearchedProvider,
+            isProviderSearching,
+            isRemoteSearchEnabled,
+            providerResults.length,
+            providerSearchStatus,
         ]);
 
         const handleSearchResultAction = useCallback(
@@ -175,10 +181,10 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
             isOpen,
             resultsLength: searchResults.length,
             onEnter: (modifierState) => {
-                if (!isSpotifyEnabled || !trimmedQuery || !modifierState.meta) {
+                if (!isRemoteSearchEnabled || !trimmedQuery || !modifierState.meta) {
                     return false;
                 }
-                void handleSpotifySearch();
+                void handleProviderSearch();
                 return true;
             },
             onEscape: () => handleOpenChange(false),
@@ -344,23 +350,23 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
                                 ) : (
                                     <Text className="text-white/60 text-sm p-2">No results found</Text>
                                 )}
-                                {shouldShowSpotifyAction ? (
+                                {shouldShowProviderAction ? (
                                     <DropdownMenu.Item
                                         variant="unstyled"
                                         onSelect={() => {
-                                            void handleSpotifySearch();
+                                            void handleProviderSearch();
                                         }}
                                         className="mt-1 rounded-md hover:bg-white/10 w-full"
                                     >
                                         <View className="px-2 py-2">
                                             <Text className="text-white/80 text-sm">
-                                                {`Search Spotify for "${trimmedQuery}"`}
+                                                {`Search ${activeProviderName} for "${trimmedQuery}"`}
                                             </Text>
                                         </View>
                                     </DropdownMenu.Item>
                                 ) : null}
-                                {spotifyStatusText ? (
-                                    <Text className="text-white/60 text-xs px-2 pb-2 pt-1">{spotifyStatusText}</Text>
+                                {providerStatusText ? (
+                                    <Text className="text-white/60 text-xs px-2 pb-2 pt-1">{providerStatusText}</Text>
                                 ) : null}
                             </View>
                         ) : null}
@@ -395,8 +401,13 @@ function SearchResultContent({ result, index, highlighted, onSelect, getActionFr
     );
 
     if (result.type === "track") {
-        const isSpotifyTrack = result.item.provider === "spotify";
-        const rightAccessory = isSpotifyTrack ? <SpotifySourceBadge size={12} /> : null;
+        const providerId = result.item.provider;
+        const rightAccessory =
+            providerId === "spotify" ? (
+                <SpotifySourceBadge size={12} />
+            ) : providerId === "youtubeMusic" ? (
+                <YoutubeMusicSourceBadge size={12} />
+            ) : null;
 
         return (
             // <View className={cn(highlighted && "bg-white/10")}>

@@ -27,7 +27,7 @@ import { useListItemStyles } from "@/hooks/useListItemStyles";
 import { type ContextMenuItem, showContextMenu } from "@/native-modules/ContextMenu";
 import { DragDropView } from "@/native-modules/DragDropView";
 import { showInFinder } from "@/native-modules/FileDialog";
-import { activeProviderId$ } from "@/providers/providerRegistry";
+import { activeProviderId$, getProvider } from "@/providers/providerRegistry";
 import {
     fetchSpotifyPlaylists,
     isSpotifyAuthenticated$,
@@ -75,6 +75,8 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
     const searchQuery = useValue(libraryUI$.searchQuery);
     const localPlaylists = useValue(localMusicState$.playlists);
     const activeProviderId = useValue(activeProviderId$);
+    const activeProvider = getProvider(activeProviderId);
+    const libraryProviderId = activeProvider?.capabilities.supportsLibrary ? activeProviderId : "local";
     const isSpotifyAuthenticated = useValue(isSpotifyAuthenticated$);
     const spotifyPlaylists = useValue(spotifyPlaylists$.playlists);
     const spotifyPlaylistsLoading = useValue(spotifyPlaylistsStatus$.isLoading);
@@ -86,7 +88,7 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
     const [editingPlaylistId, setEditingPlaylistId] = useState<string | null>(null);
     const [editingPlaylistName, setEditingPlaylistName] = useState("");
     const shouldUseNativeLibraryList = useNativeLibraryList && Platform.OS === "macos";
-    const isSpotifyProvider = activeProviderId === "spotify";
+    const isSpotifyProvider = libraryProviderId === "spotify";
     const [outerWidth, setWidth] = useState(0);
     const width = Math.max(outerWidth - 28, 0);
     const showLocalPlaylists = SUPPORT_PLAYLISTS && !isSpotifyProvider;
@@ -102,6 +104,12 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
             showToast(error instanceof Error ? error.message : "Failed to load Spotify playlists", "error");
         });
     }, [isSpotifyAuthenticated, isSpotifyProvider]);
+
+    useEffect(() => {
+        if (selectedPlaylistProvider === "spotify" && !isSpotifyProvider) {
+            selectLibraryView("songs");
+        }
+    }, [isSpotifyProvider, selectedPlaylistProvider]);
 
     const onNativeSidebarLayout = useCallback(
         (layout: { width: number; height: number }) => {

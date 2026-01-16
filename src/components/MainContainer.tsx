@@ -16,21 +16,23 @@ initializeAudioPlayer();
 export function MainContainer() {
     perfCount("MainContainer.render");
     // const _playlistNavigation = useValue(playlistNavigationState$);
-    const isSpotifyActive = () => audioControls.getCurrentState().currentTrack?.provider === "spotify";
+    const isStreamingActive = () =>
+        audioControls.getCurrentState().currentTrack?.provider === "spotify" ||
+        audioControls.getCurrentState().currentTrack?.provider === "youtubeMusic";
 
     useOnHotkeys({
         PlayPause: () => {
-            if (isSpotifyActive()) {
+            if (isStreamingActive()) {
                 void audioControls.togglePlayPause();
             }
         },
         NextTrack: () => {
-            if (isSpotifyActive()) {
+            if (isStreamingActive()) {
                 audioControls.playNext();
             }
         },
         PreviousTrack: () => {
-            if (isSpotifyActive()) {
+            if (isStreamingActive()) {
                 audioControls.playPrevious();
             }
         },
