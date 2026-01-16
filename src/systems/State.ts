@@ -23,7 +23,6 @@ type SavedState = {
     playbackIndex: number;
     playbackTime: number;
     spotifyClientId: string;
-    youtubeMusicApiKey: string;
 };
 
 export const stateSaved$ = createJSONManager<SavedState>({
@@ -36,6 +35,5 @@ export const stateSaved$ = createJSONManager<SavedState>({
         playbackIndex: -1,
         playbackTime: 0,
         spotifyClientId: "",
-        youtubeMusicApiKey: "",
     },
 });

@@ -1,6 +1,6 @@
 import type { ProviderSearchInput, ProviderSearchProvider } from "@/providers/search/types";
 import type { ProviderTrack } from "@/providers/types";
-import { stateSaved$ } from "@/systems/State";
+import Config from "react-native-config";
 import { buildYoutubeMusicLocalTrack, buildYoutubeMusicUri } from "@/providers/youtubeMusic/trackMapping";
 import type { YoutubeSearchItem, YoutubeSearchResponse, YoutubeVideoResponse } from "@/providers/youtubeMusic/types";
 
@@ -39,12 +39,12 @@ const parseIsoDurationToSeconds = (value?: string): number | null => {
     return hours * 3600 + minutes * 60 + seconds;
 };
 
-const getYoutubeApiKey = (): string => stateSaved$.youtubeMusicApiKey.get().trim();
+const getYoutubeApiKey = (): string => (Config.YOUTUBE_CLIENT_ID ?? "").trim();
 
 const ensureYoutubeApiKey = (): string => {
     const apiKey = getYoutubeApiKey();
     if (!apiKey) {
-        throw new Error("YouTube Data API key required before searching");
+        throw new Error("Missing YouTube client ID config");
     }
     return apiKey;
 };

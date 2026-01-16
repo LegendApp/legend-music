@@ -2,6 +2,7 @@ import { useValue } from "@legendapp/state/react";
 import { $TextInput } from "@legendapp/state/react-native";
 import { useCallback, useEffect, useState } from "react";
 import { Linking, Text, TextInput, View } from "react-native";
+import Config from "react-native-config";
 import { audioControls } from "@/components/AudioPlayer";
 import { Button } from "@/components/Button";
 import { Checkbox } from "@/components/Checkbox";
@@ -31,14 +32,13 @@ export function StreamingSettings() {
     const auth = useValue(spotifyAuthState$);
     const providerSettings = useValue(providerSettings$);
     const spotifyClientId = useValue(stateSaved$.spotifyClientId);
-    const youtubeMusicApiKey = useValue(stateSaved$.youtubeMusicApiKey);
     const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState<ProviderTrack[]>([]);
     const [isSearching, setIsSearching] = useState(false);
 
     const hasSpotifyClientId = Boolean(spotifyClientId.trim());
-    const hasYoutubeMusicApiKey = Boolean(youtubeMusicApiKey.trim());
+    const hasYoutubeMusicClientId = Boolean((Config.YOUTUBE_CLIENT_ID ?? "").trim());
 
     const handleAuthUrl = useCallback(async (url: string) => {
         const { code, state } = parseAuthParams(url);
@@ -173,30 +173,6 @@ export function StreamingSettings() {
                     control={<Checkbox checked={isYoutubeMusicEnabled} onChange={handleYoutubeMusicToggle} />}
                 />
                 <SettingsRow
-                    title="API Key"
-                    description="Create a YouTube Data API key and paste it here to enable search."
-                    control={
-                        <View className="flex flex-row items-center gap-2">
-                            <$TextInput
-                                className="flex-1 rounded-md border border-border-primary bg-background-tertiary px-2 py-2 text-text-primary"
-                                placeholder="YouTube Data API Key"
-                                placeholderTextColor="#9ca3af"
-                                $value={stateSaved$.youtubeMusicApiKey}
-                                autoCapitalize="none"
-                                autoCorrect={false}
-                            />
-                            <Button
-                                variant="secondary"
-                                size="medium"
-                                onClick={() => Linking.openURL("https://console.cloud.google.com/apis/credentials")}
-                            >
-                                <Text className="text-text-primary text-sm font-medium">Get Key</Text>
-                            </Button>
-                        </View>
-                    }
-                    controlWrapperClassName="ml-6 w-[360px]"
-                />
-                <SettingsRow
                     title="Status"
                     description="Check if YouTube Music search is ready."
                     control={
@@ -204,9 +180,9 @@ export function StreamingSettings() {
                             <Text className="text-sm text-text-secondary">
                                 {!isYoutubeMusicEnabled
                                     ? "YouTube Music is disabled."
-                                    : hasYoutubeMusicApiKey
-                                      ? "API key configured."
-                                      : "Add an API key to enable search."}
+                                    : hasYoutubeMusicClientId
+                                      ? "Client ID configured."
+                                      : "Missing bundled client ID."}
                             </Text>
                         </View>
                     }
