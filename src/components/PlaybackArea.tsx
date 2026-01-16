@@ -6,6 +6,7 @@ import { audioControls, audioPlayerState$ } from "@/components/AudioPlayer";
 import { PlaybackControls } from "@/components/PlaybackControls";
 import { PlaybackTimeline } from "@/components/PlaybackTimeline";
 import { SpotifySourceBadge } from "@/components/SpotifySourceBadge";
+import { YoutubeMusicSourceBadge } from "@/components/YoutubeMusicSourceBadge";
 import { OVERLAY_WINDOW_WIDTH_COMPACT } from "@/overlay/OverlayConstants";
 import { Icon } from "@/systems/Icon";
 import { localMusicState$ } from "@/systems/LocalMusicState";
@@ -38,23 +39,23 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
     const handleHoverIn = useCallback(() => setIsHovered(true), []);
     const handleHoverOut = useCallback(() => setIsHovered(false), []);
     const showTimeline = !overlayModeEnabled;
-    const isSpotifyTrack = currentTrack?.provider === "spotify";
-    const spotifyBadgeSize = overlayModeEnabled ? 14 : 20;
+    const isRemoteTrack = currentTrack?.provider === "spotify" || currentTrack?.provider === "youtubeMusic";
+    const providerBadgeSize = overlayModeEnabled ? 14 : 20;
     const handleSeekDrag = useCallback(
         (value: number) => {
-            if (!isSpotifyTrack) {
+            if (!isRemoteTrack) {
                 audioControls.seek(value);
             }
         },
-        [isSpotifyTrack],
+        [isRemoteTrack],
     );
     const handleSeekRelease = useCallback(
         (value: number) => {
-            if (isSpotifyTrack) {
+            if (isRemoteTrack) {
                 audioControls.seek(value);
             }
         },
-        [isSpotifyTrack],
+        [isRemoteTrack],
     );
     const handleSlidingEnd = useCallback(() => setIsScrubbing(false), []);
 
@@ -109,9 +110,13 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
                     >
                         <Icon name={isPlaying ? "pause.fill" : "play.fill"} size={24} color="#fff" />
                     </Pressable>
-                    {isSpotifyTrack ? (
+                    {currentTrack?.provider === "spotify" ? (
                         <View className="absolute bottom-0.5 right-0.5 opacity-75" pointerEvents="none">
-                            <SpotifySourceBadge size={spotifyBadgeSize} />
+                            <SpotifySourceBadge size={providerBadgeSize} />
+                        </View>
+                    ) : currentTrack?.provider === "youtubeMusic" ? (
+                        <View className="absolute bottom-0.5 right-0.5 opacity-75" pointerEvents="none">
+                            <YoutubeMusicSourceBadge size={providerBadgeSize} />
                         </View>
                     ) : null}
                 </View>
