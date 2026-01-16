@@ -38,7 +38,7 @@ music.youtube.com WebView while emitting playback state changes like Spotify.
 - Playback state should update the same UI surfaces as Spotify.
 
 ## Steps
-- [ ] Add shared provider base interface with optional capabilities; update Spotify to conform.
+- [x] Add shared provider base interface with optional capabilities; update Spotify to conform.
 - [ ] Add YouTube Music plugin skeleton, enablement state, and settings wiring.
 - [ ] Implement YouTube Data API search and map results to provider tracks.
 - [ ] Add hidden WebView playback for music.youtube.com and bridge playback events.

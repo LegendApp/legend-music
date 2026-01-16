@@ -6,6 +6,7 @@ export * from "./provider";
 export * from "./playback";
 export * from "./playlists";
 export * from "./playlistsState";
+export * from "./plugin";
 export * from "./SpotifyWebPlayerHost";
 export * from "./SpotifyWebPlayerBridge";
 export * from "./search";

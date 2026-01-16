@@ -1,6 +1,6 @@
-import { localProvider } from "@/providers/localProvider";
-import { registerProvider } from "@/providers/providerRegistry";
-import { spotifyProvider } from "@/providers/spotify";
+import { localPlugin } from "@/providers/local/plugin";
+import { registerProviderPlugin } from "@/providers/pluginRegistry";
+import { spotifyPlugin } from "@/providers/spotify/plugin";
 
 let initialized = false;
 
@@ -8,7 +8,7 @@ export function ensureProvidersRegistered(): void {
     if (initialized) {
         return;
     }
-    registerProvider(localProvider);
-    registerProvider(spotifyProvider);
+    registerProviderPlugin(localPlugin);
+    registerProviderPlugin(spotifyPlugin);
     initialized = true;
 }
