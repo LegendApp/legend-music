@@ -28,6 +28,12 @@ const emitStateUpdate = (update: PlaybackStateUpdate): void => {
     }
 };
 
+const resetPlaybackFlags = (): void => {
+    pendingSeekSeconds = null;
+    pendingPlay = false;
+    pendingPlayAttempts = 0;
+};
+
 const buildYoutubeMusicUrl = (videoId: string): string =>
     `https://music.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
 
@@ -101,6 +107,14 @@ const ensureSubscription = (): void => {
         }
         handleStateUpdate(value);
     });
+    youtubeMusicWebPlayerState$.lastError.onChange(({ value }) => {
+        if (!currentVideoId) {
+            return;
+        }
+        if (value) {
+            emitStateUpdate({ error: value });
+        }
+    });
 };
 
 const getDurationSeconds = (track: LocalTrack): number => {
@@ -137,9 +151,9 @@ export const youtubeMusicPlaybackProvider: PlaybackProvider = {
                 : 0;
 
         currentVideoId = videoId;
+        resetPlaybackFlags();
         pendingSeekSeconds = startPositionSeconds > 0 ? startPositionSeconds : null;
         pendingPlay = true;
-        pendingPlayAttempts = 0;
 
         const url = buildYoutubeMusicUrl(videoId);
         logYoutubeMusicDebug("[YoutubeMusicPlaybackProvider] load", { videoId, url, startPositionSeconds });
@@ -172,6 +186,8 @@ export const youtubeMusicPlaybackProvider: PlaybackProvider = {
         setYoutubeMusicVolume(volume);
     },
     async stop() {
+        currentVideoId = null;
+        resetPlaybackFlags();
         pauseYoutubeMusic();
         emitStateUpdate({ isPlaying: false });
     },
