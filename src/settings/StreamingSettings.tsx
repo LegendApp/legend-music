@@ -31,12 +31,14 @@ export function StreamingSettings() {
     const auth = useValue(spotifyAuthState$);
     const providerSettings = useValue(providerSettings$);
     const spotifyClientId = useValue(stateSaved$.spotifyClientId);
+    const youtubeMusicApiKey = useValue(stateSaved$.youtubeMusicApiKey);
     const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState<ProviderTrack[]>([]);
     const [isSearching, setIsSearching] = useState(false);
 
     const hasSpotifyClientId = Boolean(spotifyClientId.trim());
+    const hasYoutubeMusicApiKey = Boolean(youtubeMusicApiKey.trim());
 
     const handleAuthUrl = useCallback(async (url: string) => {
         const { code, state } = parseAuthParams(url);
@@ -90,9 +92,13 @@ export function StreamingSettings() {
 
     const activeProvider = providerSettings.activeProviderId;
     const isSpotifyEnabled = activeProvider === "spotify";
+    const isYoutubeMusicEnabled = activeProvider === "youtubeMusic";
     const isAuthenticated = Boolean(auth.accessToken && auth.refreshToken);
     const handleSpotifyToggle = useCallback((enabled: boolean) => {
         setActiveProvider(enabled ? "spotify" : "local");
+    }, []);
+    const handleYoutubeMusicToggle = useCallback((enabled: boolean) => {
+        setActiveProvider(enabled ? "youtubeMusic" : "local");
     }, []);
 
     const handleSearch = useCallback(async () => {
@@ -154,6 +160,57 @@ export function StreamingSettings() {
                         </View>
                     }
                     controlWrapperClassName="ml-6 w-[360px]"
+                />
+            </SettingsSection>
+
+            <SettingsSection
+                title="YouTube Music"
+                description="Enable YouTube Music playback and search using the YouTube Data API."
+            >
+                <SettingsRow
+                    title="Enable YouTube Music"
+                    description="Use YouTube Music as the active streaming provider."
+                    control={<Checkbox checked={isYoutubeMusicEnabled} onChange={handleYoutubeMusicToggle} />}
+                />
+                <SettingsRow
+                    title="API Key"
+                    description="Create a YouTube Data API key and paste it here to enable search."
+                    control={
+                        <View className="flex flex-row items-center gap-2">
+                            <$TextInput
+                                className="flex-1 rounded-md border border-border-primary bg-background-tertiary px-2 py-2 text-text-primary"
+                                placeholder="YouTube Data API Key"
+                                placeholderTextColor="#9ca3af"
+                                $value={stateSaved$.youtubeMusicApiKey}
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                            />
+                            <Button
+                                variant="secondary"
+                                size="medium"
+                                onClick={() => Linking.openURL("https://console.cloud.google.com/apis/credentials")}
+                            >
+                                <Text className="text-text-primary text-sm font-medium">Get Key</Text>
+                            </Button>
+                        </View>
+                    }
+                    controlWrapperClassName="ml-6 w-[360px]"
+                />
+                <SettingsRow
+                    title="Status"
+                    description="Check if YouTube Music search is ready."
+                    control={
+                        <View className="items-end gap-1">
+                            <Text className="text-sm text-text-secondary">
+                                {!isYoutubeMusicEnabled
+                                    ? "YouTube Music is disabled."
+                                    : hasYoutubeMusicApiKey
+                                      ? "API key configured."
+                                      : "Add an API key to enable search."}
+                            </Text>
+                        </View>
+                    }
+                    controlWrapperClassName="ml-6"
                 />
             </SettingsSection>
 
