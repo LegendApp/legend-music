@@ -14,6 +14,7 @@ import { MediaLibraryWindowManager } from "@/media-library/MediaLibraryWindowMan
 import { CurrentSongOverlayController } from "@/overlay/CurrentSongOverlayController";
 import { CurrentSongOverlayWindowManager } from "@/overlay/CurrentSongOverlayWindowManager";
 import { SpotifyWebPlayerBridge } from "@/providers/spotify/SpotifyWebPlayerBridge";
+import { YoutubeMusicWebPlayerBridge } from "@/providers/youtubeMusic/YoutubeMusicWebPlayerBridge";
 import { ensureProvidersRegistered } from "@/providers/setupProviders";
 import { SettingsWindowManager } from "@/settings/SettingsWindowManager";
 import { IS_TAHOE } from "@/systems/constants";
@@ -102,6 +103,7 @@ function App(): React.JSX.Element | null {
                     </DragDropProvider>
                 </TooltipProvider>
                 <SpotifyWebPlayerBridge />
+                <YoutubeMusicWebPlayerBridge />
             </PortalProvider>
         </View>
     );
