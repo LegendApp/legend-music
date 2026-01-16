@@ -1,6 +1,6 @@
 import { computed } from "@legendapp/state";
+import Config from "react-native-config";
 import type { Provider, ProviderCapabilities, ProviderInitOptions, ProviderSession } from "@/providers/types";
-import { stateSaved$ } from "@/systems/State";
 
 const capabilities: ProviderCapabilities = {
     supportsSearch: true,
@@ -11,7 +11,7 @@ const capabilities: ProviderCapabilities = {
 };
 
 const session$ = computed<ProviderSession>(() => {
-    const apiKey = stateSaved$.youtubeMusicApiKey.get().trim();
+    const apiKey = (Config.YOUTUBE_CLIENT_ID ?? "").trim();
     return {
         isAuthenticated: apiKey.length > 0,
         userDisplayName: "YouTube Music",
@@ -19,7 +19,6 @@ const session$ = computed<ProviderSession>(() => {
 });
 
 let stateListener: ProviderInitOptions["onStateChange"] | undefined;
-let sessionUnsubscribe: (() => void) | null = null;
 
 export const youtubeMusicProvider: Provider = {
     id: "youtubeMusic",
@@ -27,16 +26,10 @@ export const youtubeMusicProvider: Provider = {
     capabilities,
     async initialize(options?: ProviderInitOptions) {
         stateListener = options?.onStateChange;
-        sessionUnsubscribe?.();
-        sessionUnsubscribe = stateSaved$.youtubeMusicApiKey.onChange(() => {
-            stateListener?.(session$.get());
-        });
         stateListener?.(session$.get());
     },
     teardown() {
         stateListener = undefined;
-        sessionUnsubscribe?.();
-        sessionUnsubscribe = null;
     },
     getSession() {
         return session$.get();
