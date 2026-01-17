@@ -10,6 +10,8 @@ import {
     YoutubeMusicWebPlayerHost,
     type YoutubeMusicWebPlayerHandle,
 } from "@/providers/youtubeMusic/YoutubeMusicWebPlayerHost";
+import { audioPlayerState$ } from "@/components/AudioPlayer";
+import { activeProviderId$ } from "@/providers/providerRegistry";
 
 let webPlayerHandle: YoutubeMusicWebPlayerHandle | null = null;
 
@@ -74,6 +76,23 @@ export function YoutubeMusicWebPlayerBridge() {
     }, []);
 
     const handleState = useCallback((state: YoutubeMusicPlaybackState) => {
+        const activeProviderId = activeProviderId$.peek();
+        const currentTrack = audioPlayerState$.currentTrack.peek();
+        const isPlaying = audioPlayerState$.isPlaying.peek();
+        const isYoutubePlaybackActive =
+            activeProviderId === "youtubeMusic" && currentTrack?.provider === "youtubeMusic" && isPlaying;
+
+        if (!isYoutubePlaybackActive) {
+            if (shouldLogYoutubeMusic()) {
+                logYoutubeMusicDebug("[YoutubeMusicWebPlayerBridge] state ignored", {
+                    activeProviderId,
+                    isPlaying,
+                    currentTrackProvider: currentTrack?.provider,
+                });
+            }
+            return;
+        }
+
         if (shouldLogYoutubeMusic()) {
             logYoutubeMusicDebug("[YoutubeMusicWebPlayerBridge] state", state);
         }
