@@ -4,8 +4,7 @@ import type { ProviderTrack } from "@/providers/types";
 import { ensureAppleMusicDeveloperToken } from "@/providers/appleMusic/auth";
 import { appleMusicAuthState$, isAppleMusicAuthorized$ } from "@/providers/appleMusic/authState";
 import { APPLE_MUSIC_API_BASE } from "@/providers/appleMusic/constants";
-import type { LocalTrack } from "@/systems/LocalMusicState";
-import { formatSecondsToMmSs } from "@/utils/m3u";
+import { buildAppleMusicLocalTrack } from "@/providers/appleMusic/trackMapping";
 
 type AppleMusicArtwork = {
     url?: string;
@@ -49,26 +48,6 @@ const resolveArtworkUrl = (artwork?: AppleMusicArtwork): string | undefined => {
 };
 
 const toAppleMusicTrackUri = (trackId: string): string => `apple-music:track:${trackId}`;
-
-const buildAppleMusicLocalTrack = (track: ProviderTrack): LocalTrack => {
-    const durationSeconds = typeof track.durationMs === "number" ? track.durationMs / 1000 : 0;
-    const duration = durationSeconds ? formatSecondsToMmSs(durationSeconds) : " ";
-    const uri = track.uri ?? track.id;
-
-    return {
-        id: uri,
-        title: track.name,
-        artist: (track.artists ?? []).join(", "),
-        album: track.album,
-        duration,
-        filePath: uri,
-        fileName: track.name,
-        thumbnail: track.thumbnail,
-        provider: "appleMusic",
-        uri: track.uri,
-        durationMs: track.durationMs,
-    };
-};
 
 export async function searchAppleMusicTracks(query: string, limit = 10): Promise<ProviderTrack[]> {
     if (!query.trim()) {
