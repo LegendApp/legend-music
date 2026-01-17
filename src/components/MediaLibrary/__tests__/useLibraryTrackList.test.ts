@@ -199,27 +199,27 @@ describe("buildTrackItems", () => {
         expect(result.trackItems.filter((item) => item.isSeparator).length).toBe(1);
     });
 
-    it("spotify playlist view uses provider tracks", () => {
-        const spotifyTracks: LibraryTrack[] = [
+    it("remote playlist view uses provider tracks", () => {
+        const providerTracks: LibraryTrack[] = [
             {
-                id: "spotify:track:1",
-                title: "Spotify Song 1",
+                id: "remote:track:1",
+                title: "Remote Song 1",
                 artist: "Artist A",
                 album: "Album A",
                 duration: "3:00",
-                filePath: "spotify:track:1",
-                fileName: "Spotify Song 1",
-                provider: "spotify",
+                filePath: "remote:track:1",
+                fileName: "Remote Song 1",
+                provider: "remote",
             },
             {
-                id: "spotify:track:2",
-                title: "Spotify Song 2",
+                id: "remote:track:2",
+                title: "Remote Song 2",
                 artist: "Artist B",
                 album: "Album B",
                 duration: "2:30",
-                filePath: "spotify:track:2",
-                fileName: "Spotify Song 2",
-                provider: "spotify",
+                filePath: "remote:track:2",
+                fileName: "Remote Song 2",
+                provider: "remote",
             },
         ];
 
@@ -227,15 +227,15 @@ describe("buildTrackItems", () => {
             tracks: mockTracks,
             playlists: [],
             selectedView: "playlist",
-            selectedPlaylistId: "spotify:playlist:1",
-            selectedPlaylistProvider: "spotify",
-            selectedPlaylistTracks: spotifyTracks,
+            selectedPlaylistId: "remote:playlist:1",
+            selectedPlaylistProvider: "remote",
+            selectedPlaylistTracks: providerTracks,
             searchQuery: "",
             playlistSort: "playlist-order",
             playlistSortDirection: "asc",
         });
 
-        expect(result.trackItems.map((item) => item.id)).toEqual(["spotify:track:1", "spotify:track:2"]);
+        expect(result.trackItems.map((item) => item.id)).toEqual(["remote:track:1", "remote:track:2"]);
     });
 
     it("playlist view preserves order and flags missing tracks", () => {

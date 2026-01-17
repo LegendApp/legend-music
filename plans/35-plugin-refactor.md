@@ -88,7 +88,7 @@ export type ProviderPlugin = {
 - [x] Replace Spotify-specific search/library usage in shared UI with plugin-based lookups.
 - [x] Route now playing and playback controls through the active playback plugin derived from the active track.
 - [x] Update Spotify/YTM plugin exports to conform to the new interface (playlists, search, playback, UI).
-- [ ] Add/adjust tests for plugin selection, fan-out search/library, and active playback routing.
+- [x] Add/adjust tests for plugin selection, fan-out search/library, and active playback routing.
 
 Validation: Start app, verify local scan runs on init, search hits all plugins, Spotify playlists load via plugin
 library, and playback controls operate on the active track's provider.
