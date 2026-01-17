@@ -8,43 +8,84 @@ import { Sidebar } from "@/components/Sidebar";
 import { TooltipProvider } from "@/components/TooltipProvider";
 import { SidebarSplitView } from "@/native-modules/SidebarSplitView";
 import { setWindowTitle } from "@/native-modules/WindowManager";
+import { getProviderPlugin, getProviderPlugins } from "@/providers/pluginRegistry";
+import { ensureProvidersRegistered } from "@/providers/setupProviders";
+import type { ProviderId } from "@/providers/types";
 import { AccountSettings } from "@/settings/AccountSettings";
 import { CustomizeUISettings } from "@/settings/CustomizeUISettings";
 import { GeneralSettings } from "@/settings/GeneralSettings";
 import { LibrarySettings } from "@/settings/LibrarySettings";
 import { OpenSourceSettings } from "@/settings/OpenSourceSettings";
 import { OverlaySettings } from "@/settings/OverlaySettings";
-import { SpotifySettings } from "@/settings/SpotifySettings";
-import { YoutubeMusicSettings } from "@/settings/YoutubeMusicSettings";
 import { SUPPORT_ACCOUNTS } from "@/systems/constants";
 import { state$ } from "@/systems/State";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 import { ax } from "@/utils/ax";
 
-export type SettingsPage =
-    | "general"
-    | "library"
-    | "overlay"
-    | "ui-customize"
-    | "spotify"
-    | "youtube-music"
-    | "account"
-    | "open-source";
+export type SettingsPage = string;
+
+const PROVIDER_SETTINGS_PREFIX = "provider:";
+const buildProviderSettingsId = (providerId: ProviderId): SettingsPage => `${PROVIDER_SETTINGS_PREFIX}${providerId}`;
+const parseProviderSettingsId = (value: string): ProviderId | null =>
+    value.startsWith(PROVIDER_SETTINGS_PREFIX)
+        ? (value.slice(PROVIDER_SETTINGS_PREFIX.length) as ProviderId)
+        : null;
+const normalizeSettingsKey = (value: string): string =>
+    value
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+
+const coerceSettingsPage = (value: string): SettingsPage => {
+    if (value.startsWith(PROVIDER_SETTINGS_PREFIX)) {
+        return value;
+    }
+
+    const normalizedValue = normalizeSettingsKey(value);
+    const providerMatch = getProviderPlugins().find((plugin) => {
+        const idKey = normalizeSettingsKey(plugin.provider.id);
+        const nameKey = normalizeSettingsKey(plugin.provider.name);
+        return normalizedValue === idKey || normalizedValue === nameKey;
+    });
+
+    if (providerMatch?.ui?.settings) {
+        return buildProviderSettingsId(providerMatch.provider.id);
+    }
+
+    return value;
+};
 
 // Define the categories for settings
-const SETTING_PAGES: { id: SettingsPage; name: string }[] = ax([
-    { id: "general", name: "General" },
-    { id: "library", name: "Library" },
-    { id: "overlay", name: "Overlay" },
-    { id: "spotify", name: "Spotify" },
-    { id: "youtube-music", name: "YouTube Music" },
-    { id: "ui-customize", name: "Customize UI" },
-    SUPPORT_ACCOUNTS && { id: "account", name: "Account" },
-    { id: "open-source", name: "Open Source" },
-]);
+ensureProvidersRegistered();
+
+const buildSettingPages = (): { id: SettingsPage; name: string }[] => {
+    const providerPages = getProviderPlugins()
+        .filter((plugin) => plugin.ui?.settings)
+        .map((plugin) => ({
+            id: buildProviderSettingsId(plugin.provider.id),
+            name: plugin.provider.name,
+        }));
+
+    return ax([
+        { id: "general", name: "General" },
+        { id: "library", name: "Library" },
+        { id: "overlay", name: "Overlay" },
+        ...providerPages,
+        { id: "ui-customize", name: "Customize UI" },
+        SUPPORT_ACCOUNTS && { id: "account", name: "Account" },
+        { id: "open-source", name: "Open Source" },
+    ]);
+};
 
 function Content({ selectedItem$ }: { selectedItem$: Observable<SettingsPage> }) {
     const selectedItem = useValue(selectedItem$);
+    const providerId = parseProviderSettingsId(selectedItem);
+
+    if (providerId) {
+        const ProviderSettings = getProviderPlugin(providerId)?.ui?.settings ?? null;
+        return ProviderSettings ? <ProviderSettings /> : null;
+    }
 
     switch (selectedItem) {
         case "general":
@@ -53,10 +94,6 @@ function Content({ selectedItem$ }: { selectedItem$: Observable<SettingsPage> })
             return <LibrarySettings />;
         case "overlay":
             return <OverlaySettings />;
-        case "spotify":
-            return <SpotifySettings />;
-        case "youtube-music":
-            return <YoutubeMusicSettings />;
         case "ui-customize":
             return <CustomizeUISettings />;
         case "open-source":
@@ -70,18 +107,19 @@ function Content({ selectedItem$ }: { selectedItem$: Observable<SettingsPage> })
 
 export default function SettingsContainer() {
     const showSettingsPage = useValue(state$.showSettingsPage);
-    const selectedItem$ = useObservable<SettingsPage>(showSettingsPage || "general");
+    const selectedItem$ = useObservable<SettingsPage>(coerceSettingsPage(showSettingsPage || "general"));
     const selectedItem = useValue(selectedItem$);
     const isMacOS = Platform.OS === "macos";
+    const settingPages = useMemo(() => buildSettingPages(), []);
 
     const nativeItems = useMemo(() => {
-        return SETTING_PAGES.map((item) => ({ id: item.id, label: item.name }));
-    }, []);
+        return settingPages.map((item) => ({ id: item.id, label: item.name }));
+    }, [settingPages]);
 
     useEffect(() => {
-        const pageName = SETTING_PAGES.find((page) => page.id === selectedItem)?.name ?? "Settings";
+        const pageName = settingPages.find((page) => page.id === selectedItem)?.name ?? "Settings";
         setWindowTitle("settings", pageName);
-    }, [selectedItem]);
+    }, [selectedItem, settingPages]);
 
     const handleSelectionChange = useCallback(
         (id: string) => {
@@ -109,7 +147,7 @@ export default function SettingsContainer() {
                         ) : (
                             <View className="flex flex-1 flex-row">
                                 <Sidebar
-                                    items={SETTING_PAGES}
+                                    items={settingPages}
                                     selectedItem$={selectedItem$}
                                     width={140}
                                     className="py-2"

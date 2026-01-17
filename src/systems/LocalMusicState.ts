@@ -23,6 +23,7 @@ import { loadQueueFromM3U } from "@/utils/m3uManager";
 import { perfCount, perfLog } from "@/utils/perfLogger";
 import { runAfterInteractions, runAfterInteractionsWithLabel } from "@/utils/runAfterInteractions";
 import { buildThumbnailUri } from "@/utils/thumbnails";
+import { getProviderIdForUri } from "@/providers/pluginRegistry";
 import { DEFAULT_LOCAL_PLAYLIST_ID } from "./localMusicConstants";
 import type { ProviderId } from "@/providers/types";
 
@@ -1060,7 +1061,7 @@ const resolveTrackPathForPlaylist = (playlistFilePath: string, entryPath: string
         return filePath;
     }
 
-    if (filePath.toLowerCase().startsWith("spotify:")) {
+    if (getProviderIdForUri(filePath)) {
         return filePath;
     }
 

@@ -13,8 +13,7 @@ import { TooltipProvider } from "@/components/TooltipProvider";
 import { MediaLibraryWindowManager } from "@/media-library/MediaLibraryWindowManager";
 import { CurrentSongOverlayController } from "@/overlay/CurrentSongOverlayController";
 import { CurrentSongOverlayWindowManager } from "@/overlay/CurrentSongOverlayWindowManager";
-import { SpotifyWebPlayerBridge } from "@/providers/spotify/SpotifyWebPlayerBridge";
-import { YoutubeMusicWebPlayerBridge } from "@/providers/youtubeMusic/YoutubeMusicWebPlayerBridge";
+import { getProviderPlugins } from "@/providers/pluginRegistry";
 import { ensureProvidersRegistered, initializeProviderPlugins } from "@/providers/setupProviders";
 import { SettingsWindowManager } from "@/settings/SettingsWindowManager";
 import { IS_TAHOE } from "@/systems/constants";
@@ -34,9 +33,16 @@ LogBox.ignoreLogs(["Open debugger", "unknown error"]);
 
 perfMark("App.moduleLoad");
 initializeUpdater();
+ensureProvidersRegistered();
 
 function App(): React.JSX.Element | null {
     const hasLoggedFirstLayout = useRef(false);
+    const providerBridges = getProviderPlugins()
+        .map((plugin) => {
+            const Bridge = plugin.ui?.bridge;
+            return Bridge ? <Bridge key={`provider-bridge-${plugin.provider.id}`} /> : null;
+        })
+        .filter(Boolean);
 
     perfMark("App.render");
     useMount(() => {
@@ -109,8 +115,7 @@ function App(): React.JSX.Element | null {
                         <MainContainer />
                     </DragDropProvider>
                 </TooltipProvider>
-                <SpotifyWebPlayerBridge />
-                <YoutubeMusicWebPlayerBridge />
+                {providerBridges}
             </PortalProvider>
         </View>
     );

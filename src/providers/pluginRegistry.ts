@@ -50,6 +50,7 @@ export type ProviderPlugin = {
     ui?: {
         bridge?: ComponentType | null;
         settings?: ComponentType | null;
+        badge?: ComponentType<{ size?: number }>;
     };
 };
 

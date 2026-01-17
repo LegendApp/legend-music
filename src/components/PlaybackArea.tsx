@@ -5,9 +5,8 @@ import { AlbumArt } from "@/components/AlbumArt";
 import { audioControls, audioPlayerState$ } from "@/components/AudioPlayer";
 import { PlaybackControls } from "@/components/PlaybackControls";
 import { PlaybackTimeline } from "@/components/PlaybackTimeline";
-import { SpotifySourceBadge } from "@/components/SpotifySourceBadge";
-import { YoutubeMusicSourceBadge } from "@/components/YoutubeMusicSourceBadge";
 import { OVERLAY_WINDOW_WIDTH_COMPACT } from "@/overlay/OverlayConstants";
+import { getProviderPlugin } from "@/providers/pluginRegistry";
 import { getPlaybackProviderForTrack } from "@/providers/types";
 import { Icon } from "@/systems/Icon";
 import { localMusicState$ } from "@/systems/LocalMusicState";
@@ -43,6 +42,9 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
     const playbackProvider = currentTrack ? getPlaybackProviderForTrack(currentTrack) : null;
     const isRemoteTrack = playbackProvider ? playbackProvider.id !== "local" : false;
     const providerBadgeSize = overlayModeEnabled ? 14 : 20;
+    const ProviderBadge = currentTrack?.provider
+        ? getProviderPlugin(currentTrack.provider)?.ui?.badge ?? null
+        : null;
     const handleSeekDrag = useCallback(
         (value: number) => {
             if (!isRemoteTrack) {
@@ -112,13 +114,9 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
                     >
                         <Icon name={isPlaying ? "pause.fill" : "play.fill"} size={24} color="#fff" />
                     </Pressable>
-                    {currentTrack?.provider === "spotify" ? (
+                    {ProviderBadge ? (
                         <View className="absolute bottom-0.5 right-0.5 opacity-75" pointerEvents="none">
-                            <SpotifySourceBadge size={providerBadgeSize} />
-                        </View>
-                    ) : currentTrack?.provider === "youtubeMusic" ? (
-                        <View className="absolute bottom-0.5 right-0.5 opacity-75" pointerEvents="none">
-                            <YoutubeMusicSourceBadge size={providerBadgeSize} />
+                            <ProviderBadge size={providerBadgeSize} />
                         </View>
                     ) : null}
                 </View>
