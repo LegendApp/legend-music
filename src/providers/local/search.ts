@@ -15,6 +15,8 @@ export function buildLocalSearchResults({
     }
 
     const lowerQuery = trimmed.toLowerCase();
+    const tokens = lowerQuery.split(/\s+/).filter(Boolean);
+    const matchesAllTokens = (value: string): boolean => tokens.every((token) => value.includes(token));
     const results: SearchResult[] = [];
 
     for (const track of tracks) {
@@ -24,7 +26,8 @@ export function buildLocalSearchResults({
         const title = track.title.toLowerCase();
         const artist = track.artist.toLowerCase();
         const album = track.album?.toLowerCase();
-        if (title.includes(lowerQuery) || artist.includes(lowerQuery) || album?.includes(lowerQuery)) {
+        const haystack = [title, artist, album].filter(Boolean).join(" ");
+        if (matchesAllTokens(haystack)) {
             results.push({ type: "track", item: track });
         }
     }
@@ -33,7 +36,7 @@ export function buildLocalSearchResults({
         if (results.length >= MAX_RESULTS) {
             break;
         }
-        if (playlist.name.toLowerCase().includes(lowerQuery)) {
+        if (matchesAllTokens(playlist.name.toLowerCase())) {
             results.push({ type: "playlist", item: playlist });
         }
     }
@@ -42,7 +45,7 @@ export function buildLocalSearchResults({
         if (results.length >= MAX_RESULTS) {
             break;
         }
-        if (artist.name.toLowerCase().includes(lowerQuery)) {
+        if (matchesAllTokens(artist.name.toLowerCase())) {
             results.push({ type: "library", item: artist });
         }
     }
@@ -51,7 +54,7 @@ export function buildLocalSearchResults({
         if (results.length >= MAX_RESULTS) {
             break;
         }
-        if (album.name.toLowerCase().includes(lowerQuery)) {
+        if (matchesAllTokens(album.name.toLowerCase())) {
             results.push({ type: "library", item: album });
         }
     }

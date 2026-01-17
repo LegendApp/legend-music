@@ -64,4 +64,18 @@ describe("buildLocalSearchResults", () => {
 
         expect(results).toEqual([]);
     });
+
+    it("matches all query tokens across fields", () => {
+        const results = buildLocalSearchResults({
+            query: "artist one",
+            tracks,
+            playlists,
+            albums,
+            artists,
+        });
+
+        expect(results.map((result) => result.type)).toEqual(["track", "library"]);
+        expect(results[0]).toMatchObject({ type: "track", item: tracks[0] });
+        expect(results[1]).toMatchObject({ type: "library", item: artists[0] });
+    });
 });
