@@ -1,6 +1,7 @@
 import { localPlugin } from "@/providers/local/plugin";
 import { getProviderPlugins, registerProviderPlugin, type ProviderPluginInitContext } from "@/providers/pluginRegistry";
 import { setProviderSession } from "@/providers/providerRegistry";
+import { appleMusicPlugin } from "@/providers/appleMusic/plugin";
 import { spotifyPlugin } from "@/providers/spotify/plugin";
 import { youtubeMusicPlugin } from "@/providers/youtubeMusic/plugin";
 
@@ -11,6 +12,7 @@ export function ensureProvidersRegistered(): void {
         return;
     }
     registerProviderPlugin(localPlugin);
+    registerProviderPlugin(appleMusicPlugin);
     registerProviderPlugin(spotifyPlugin);
     registerProviderPlugin(youtubeMusicPlugin);
     initialized = true;
