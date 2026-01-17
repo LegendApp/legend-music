@@ -30,7 +30,7 @@ Developer token will be fetched from a backend endpoint placeholder (TEMPORARY_U
       and model mapping utilities.
 - [x] Implement library playlists + tracks fetch with caching/status (`state.ts`, `playlistsState.ts`, `playlists.ts`).
 - [x] Implement catalog search provider for jump menu (search.ts + isEnabled$).
-- [ ] Implement native MusicKit bridge + playback provider, plus track mapping to `LocalTrack`.
+- [x] Implement native MusicKit bridge + playback provider, plus track mapping to `LocalTrack`.
 - [ ] Build Apple Music settings page (enabled toggle, sign-in/out, status) and source badge.
 - [ ] Register the plugin in `src/providers/setupProviders.ts` and export from `src/providers/index.ts`.
 

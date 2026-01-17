@@ -7,6 +7,7 @@ import {
     setAppleMusicUserToken,
     appleMusicAuthState$,
 } from "./authState";
+import { clearAppleMusicPlaylistsCache } from "./playlistsState";
 import { APPLE_MUSIC_DEVELOPER_TOKEN_URL } from "./constants";
 import type { AppleMusicAuthState } from "./types";
 
@@ -88,4 +89,5 @@ export async function authorizeAppleMusic(): Promise<AppleMusicAuthState> {
 export async function logoutAppleMusic(): Promise<void> {
     await appleMusicNative.unauthorize();
     clearAppleMusicAuth();
+    clearAppleMusicPlaylistsCache();
 }
