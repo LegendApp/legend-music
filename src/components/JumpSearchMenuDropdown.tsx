@@ -9,8 +9,8 @@ import { SpotifySourceBadge } from "@/components/SpotifySourceBadge";
 import { YoutubeMusicSourceBadge } from "@/components/YoutubeMusicSourceBadge";
 import { TextInputSearch, type TextInputSearchRef } from "@/components/TextInputSearch";
 import { TrackItem } from "@/components/TrackItem";
-import { activeProviderId$, getProvider } from "@/providers/providerRegistry";
-import { getSearchProvider } from "@/providers/search/registry";
+import { getProvider } from "@/providers/providerRegistry";
+import { enabledSearchProviderIds$, getSearchProvider } from "@/providers/search/registry";
 import type { SearchResult } from "@/providers/search/types";
 import type { LibraryItem } from "@/systems/LibraryState";
 import { library$ } from "@/systems/LibraryState";
@@ -18,6 +18,19 @@ import type { LocalPlaylist, LocalTrack } from "@/systems/LocalMusicState";
 import { cn } from "@/utils/cn";
 import { getQueueAction, type QueueAction } from "@/utils/queueActions";
 import { useDropdownKeyboardNavigation, usePlaylistSearchResults, useSearchDropdownState } from "./JumpSearchMenuDropdown/hooks";
+
+const formatProviderNames = (names: string[]): string => {
+    if (names.length === 0) {
+        return "providers";
+    }
+    if (names.length === 1) {
+        return names[0];
+    }
+    if (names.length === 2) {
+        return `${names[0]} and ${names[1]}`;
+    }
+    return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
+};
 interface JumpSearchMenuDropdownProps {
     tracks: LocalTrack[];
     playlists: LocalPlaylist[];
@@ -38,27 +51,45 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
         const { width: windowWidth } = useWindowDimensions();
 
         const library = useValue(library$);
-        const activeProviderId = useValue(activeProviderId$);
-        const activeProvider = getProvider(activeProviderId);
-        const activeProviderName = activeProvider?.name ?? "Provider";
-        const remoteSearchProvider = activeProviderId !== "local" ? getSearchProvider(activeProviderId) : null;
-        const isRemoteSearchEnabled = Boolean(remoteSearchProvider);
+        const enabledSearchProviderIds = useValue(enabledSearchProviderIds$);
+        const remoteSearchProviders = useMemo(() => {
+            return enabledSearchProviderIds
+                .filter((providerId) => providerId !== "local")
+                .map((providerId) => {
+                    const provider = getProvider(providerId);
+                    const searchProvider = getSearchProvider(providerId);
+                    if (!provider || !searchProvider) {
+                        return null;
+                    }
+                    return { id: providerId, name: provider.name ?? "Provider", searchProvider };
+                })
+                .filter((provider): provider is NonNullable<typeof provider> => Boolean(provider));
+        }, [enabledSearchProviderIds]);
+        const remoteSearchProviderNames = useMemo(
+            () => remoteSearchProviders.map((provider) => provider.name),
+            [remoteSearchProviders],
+        );
+        const remoteSearchProviderLabel = useMemo(
+            () => formatProviderNames(remoteSearchProviderNames),
+            [remoteSearchProviderNames],
+        );
+        const isRemoteSearchEnabled = remoteSearchProviders.length > 0;
         const effectiveWindowWidth = Math.max(windowWidth, 1);
         const fallbackWidth = Math.max(effectiveWindowWidth - 16, 1);
         const resolvedDropdownWidth = Math.max(dropdownWidth ?? fallbackWidth, 1);
 
-        const [providerResults, setProviderResults] = useState<SearchResult[]>([]);
-        const [providerSearchStatus, setProviderSearchStatus] = useState<"idle" | "searching" | "success" | "error">(
-            "idle",
-        );
+        const [providerResultsById, setProviderResultsById] = useState<Record<string, SearchResult[]>>({});
+        const [providerSearchStatusById, setProviderSearchStatusById] = useState<
+            Record<string, "idle" | "searching" | "success" | "error">
+        >({});
         const providerSearchRequestIdRef = useRef(0);
         const providerSearchQueryRef = useRef("");
 
         const resetProviderSearch = useCallback(() => {
             providerSearchRequestIdRef.current += 1;
             providerSearchQueryRef.current = "";
-            setProviderResults([]);
-            setProviderSearchStatus("idle");
+            setProviderResultsById({});
+            setProviderSearchStatusById({});
         }, []);
 
         useEffect(() => {
@@ -71,6 +102,10 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
             }
         }, [isRemoteSearchEnabled, resetProviderSearch]);
 
+        useEffect(() => {
+            resetProviderSearch();
+        }, [resetProviderSearch, remoteSearchProviders]);
+
         const localSearchResults = usePlaylistSearchResults({
             tracks,
             playlists,
@@ -79,13 +114,23 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
             query: searchQuery,
         });
 
+        const providerResults = useMemo(() => {
+            if (!isRemoteSearchEnabled) {
+                return [];
+            }
+            return remoteSearchProviders.flatMap((provider) => providerResultsById[provider.id] ?? []);
+        }, [isRemoteSearchEnabled, providerResultsById, remoteSearchProviders]);
+
         const searchResults = useMemo(
             () => (isRemoteSearchEnabled ? [...localSearchResults, ...providerResults] : localSearchResults),
             [isRemoteSearchEnabled, localSearchResults, providerResults],
         );
 
+        const providerStatuses = useMemo(() => Object.values(providerSearchStatusById), [providerSearchStatusById]);
+        const isProviderSearching = providerStatuses.some((status) => status === "searching");
+        const hasProviderError = providerStatuses.some((status) => status === "error");
         const handleProviderSearch = useCallback(async () => {
-            if (!isRemoteSearchEnabled || !remoteSearchProvider) {
+            if (!isRemoteSearchEnabled || remoteSearchProviders.length === 0) {
                 return;
             }
 
@@ -94,74 +139,100 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
                 return;
             }
 
-            if (providerSearchStatus === "searching") {
+            if (isProviderSearching) {
                 return;
             }
 
-            if (providerSearchQueryRef.current === trimmedQuery && providerSearchStatus === "success") {
+            if (providerSearchQueryRef.current === trimmedQuery && !hasProviderError) {
                 return;
             }
 
             const requestId = (providerSearchRequestIdRef.current += 1);
             providerSearchQueryRef.current = trimmedQuery;
-            setProviderResults([]);
-            setProviderSearchStatus("searching");
+            const searchingState: Record<string, "searching"> = {};
+            for (const provider of remoteSearchProviders) {
+                searchingState[provider.id] = "searching";
+            }
+            setProviderResultsById({});
+            setProviderSearchStatusById(searchingState);
 
             try {
-                const results = await remoteSearchProvider.search({ query: trimmedQuery });
+                const nextResults: Record<string, SearchResult[]> = {};
+                const nextStatuses: Record<string, "success" | "error"> = {};
+                await Promise.all(
+                    remoteSearchProviders.map(async ({ id, searchProvider }) => {
+                        try {
+                            const results = await searchProvider.search({ query: trimmedQuery });
+                            nextResults[id] = results;
+                            nextStatuses[id] = "success";
+                        } catch (error) {
+                            console.error("Provider search failed", { providerId: id, error });
+                            nextResults[id] = [];
+                            nextStatuses[id] = "error";
+                        }
+                    }),
+                );
                 if (providerSearchRequestIdRef.current !== requestId) {
                     return;
                 }
-                setProviderResults(results);
-                setProviderSearchStatus("success");
+                setProviderResultsById(nextResults);
+                setProviderSearchStatusById(nextStatuses);
             } catch (error) {
                 if (providerSearchRequestIdRef.current !== requestId) {
                     return;
                 }
                 console.error("Provider search failed", error);
                 providerSearchQueryRef.current = "";
-                setProviderResults([]);
-                setProviderSearchStatus("error");
+                setProviderResultsById({});
+                setProviderSearchStatusById({});
             }
-        }, [isRemoteSearchEnabled, providerSearchStatus, remoteSearchProvider, searchQuery]);
+        }, [hasProviderError, isProviderSearching, isRemoteSearchEnabled, remoteSearchProviders, searchQuery]);
 
         const trimmedQuery = searchQuery.trim();
         const hasProviderQuery = trimmedQuery.length > 0;
         const hasSearchedProvider =
-            providerSearchQueryRef.current === trimmedQuery && providerSearchStatus === "success";
-        const isProviderSearching = providerSearchStatus === "searching";
+            providerSearchQueryRef.current === trimmedQuery &&
+            providerStatuses.length > 0 &&
+            !isProviderSearching &&
+            !hasProviderError;
         const shouldShowProviderAction =
-            isRemoteSearchEnabled && hasProviderQuery && !isProviderSearching && !hasSearchedProvider;
+            isRemoteSearchEnabled && hasProviderQuery && !isProviderSearching && (!hasSearchedProvider || hasProviderError);
         const providerStatusText = useMemo(() => {
             if (!isRemoteSearchEnabled || !hasProviderQuery) {
                 return null;
             }
 
             if (isProviderSearching) {
-                return `Searching ${activeProviderName}...`;
+                return `Searching ${remoteSearchProviderLabel}...`;
             }
 
-            if (providerSearchStatus === "error") {
-                return `${activeProviderName} search failed. Press Cmd+Enter to retry.`;
+            if (hasProviderError) {
+                const failedProviders = remoteSearchProviders
+                    .filter((provider) => providerSearchStatusById[provider.id] === "error")
+                    .map((provider) => provider.name);
+                const failedLabel = formatProviderNames(failedProviders);
+                return `${failedLabel} search failed. Press Cmd+Enter to retry.`;
             }
 
             if (hasSearchedProvider && providerResults.length === 0) {
-                return `No ${activeProviderName} results.`;
+                return `No ${remoteSearchProviderLabel} results.`;
             }
 
             if (!hasSearchedProvider) {
-                return `Press Cmd+Enter to search ${activeProviderName}.`;
+                return `Press Cmd+Enter to search ${remoteSearchProviderLabel}.`;
             }
 
             return null;
         }, [
-            activeProviderName,
             hasProviderQuery,
             hasSearchedProvider,
+            hasProviderError,
             isProviderSearching,
             isRemoteSearchEnabled,
             providerResults.length,
-            providerSearchStatus,
+            providerSearchStatusById,
+            remoteSearchProviderLabel,
+            remoteSearchProviders,
         ]);
 
         const handleSearchResultAction = useCallback(
@@ -360,7 +431,7 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
                                     >
                                         <View className="px-2 py-2">
                                             <Text className="text-white/80 text-sm">
-                                                {`Search ${activeProviderName} for "${trimmedQuery}"`}
+                                                {`Search ${remoteSearchProviderLabel} for "${trimmedQuery}"`}
                                             </Text>
                                         </View>
                                     </DropdownMenu.Item>

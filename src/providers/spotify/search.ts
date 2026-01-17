@@ -1,6 +1,8 @@
+import { computed } from "@legendapp/state";
 import type { ProviderSearchInput, ProviderSearchProvider } from "@/providers/search/types";
 import type { ProviderTrack } from "@/providers/types";
 import { buildSpotifyLocalTrack } from "@/providers/spotify/trackMapping";
+import { spotifyAuthState$ } from "@/providers/spotify/authState";
 import { SPOTIFY_API_BASE } from "./constants";
 import { ensureSpotifyAccessToken } from "./auth";
 
@@ -56,9 +58,16 @@ export async function searchSpotifyTracks(query: string, limit = 10): Promise<Pr
 
 const SPOTIFY_SEARCH_LIMIT = 20;
 
+export const isSpotifySearchEnabled$ = computed(() => {
+    const auth = spotifyAuthState$.get();
+    const hasValidAccessToken = Boolean(auth.accessToken && auth.expiresAt && auth.expiresAt > Date.now());
+    return Boolean(auth.refreshToken || hasValidAccessToken);
+});
+
 export const spotifySearchProvider: ProviderSearchProvider = {
     id: "spotify",
     searchMode: "submit",
+    isEnabled$: isSpotifySearchEnabled$,
     async search({ query }: ProviderSearchInput) {
         const trimmed = query.trim();
         if (!trimmed) {

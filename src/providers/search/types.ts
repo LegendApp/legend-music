@@ -1,3 +1,4 @@
+import type { Observable } from "@legendapp/state";
 import type { ProviderId } from "@/providers/types";
 import type { LibraryItem } from "@/systems/LibraryState";
 import type { LocalPlaylist, LocalTrack } from "@/systems/LocalMusicState";
@@ -21,4 +22,5 @@ export interface ProviderSearchProvider {
     id: ProviderId;
     searchMode: ProviderSearchMode;
     search: (input: ProviderSearchInput) => Promise<SearchResult[]> | SearchResult[];
+    isEnabled$?: Observable<boolean>;
 }

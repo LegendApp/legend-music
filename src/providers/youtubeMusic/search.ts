@@ -1,11 +1,19 @@
+import { computed } from "@legendapp/state";
 import type { ProviderSearchInput, ProviderSearchProvider } from "@/providers/search/types";
 import type { ProviderTrack } from "@/providers/types";
 import { buildYoutubeMusicLocalTrack, buildYoutubeMusicUri } from "@/providers/youtubeMusic/trackMapping";
 import type { YoutubeSearchItem, YoutubeSearchResponse, YoutubeVideoResponse } from "@/providers/youtubeMusic/types";
 import { ensureYoutubeMusicAccessToken } from "@/providers/youtubeMusic/auth";
+import { youtubeAuthState$ } from "@/providers/youtubeMusic/authState";
 
 const YOUTUBE_API_BASE = "https://www.googleapis.com/youtube/v3";
 const DEFAULT_SEARCH_LIMIT = 20;
+
+export const isYoutubeMusicSearchEnabled$ = computed(() => {
+    const auth = youtubeAuthState$.get();
+    const hasValidAccessToken = Boolean(auth.accessToken && auth.expiresAt && auth.expiresAt > Date.now());
+    return Boolean(auth.refreshToken || hasValidAccessToken);
+});
 
 const pickThumbnail = (item: YoutubeSearchItem): string | undefined => {
     const thumbnails = item.snippet?.thumbnails;
@@ -105,6 +113,7 @@ export async function searchYoutubeMusicTracks(query: string, limit = DEFAULT_SE
 export const youtubeMusicSearchProvider: ProviderSearchProvider = {
     id: "youtubeMusic",
     searchMode: "submit",
+    isEnabled$: isYoutubeMusicSearchEnabled$,
     async search({ query }: ProviderSearchInput) {
         const trimmed = query.trim();
         if (!trimmed) {
