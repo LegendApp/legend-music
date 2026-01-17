@@ -5,6 +5,6 @@ import { youtubeMusicPlaybackProvider } from "@/providers/youtubeMusic/playbackP
 
 export const youtubeMusicPlugin: ProviderPlugin = {
     provider: youtubeMusicProvider,
-    searchProvider: youtubeMusicSearchProvider,
-    playbackProvider: youtubeMusicPlaybackProvider,
+    search: youtubeMusicSearchProvider,
+    playback: youtubeMusicPlaybackProvider,
 };

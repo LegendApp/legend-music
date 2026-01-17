@@ -5,6 +5,6 @@ import { spotifySearchProvider } from "@/providers/spotify/search";
 
 export const spotifyPlugin: ProviderPlugin = {
     provider: spotifyProvider,
-    searchProvider: spotifySearchProvider,
-    playbackProvider: spotifyPlaybackProvider,
+    search: spotifySearchProvider,
+    playback: spotifyPlaybackProvider,
 };
