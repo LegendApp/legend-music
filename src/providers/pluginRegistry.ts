@@ -24,12 +24,19 @@ export type ProviderLibraryPlugin = {
     listPlaylists?: (options?: { force?: boolean }) => Promise<ProviderPlaylist[]>;
     listPlaylistTracks?: (playlistId: string, options?: { force?: boolean }) => Promise<ProviderTrack[]>;
     playlists$?: Observable<ProviderPlaylist[]>;
-    status$?: Observable<{ isLoading: boolean; error: string | null }>;
+    status$?: Observable<ProviderLibraryStatus>;
+};
+
+export type ProviderLibraryStatus = {
+    isLoading: boolean;
+    error: string | null;
+    tracksLoading?: Record<string, boolean>;
+    tracksError?: Record<string, string | null>;
 };
 
 export type ProviderTrackMapper = {
     isUri?: (value: string) => boolean;
-    toLocalTrack?: (track: ProviderTrack) => LocalTrack;
+    toLocalTrack?: (track: ProviderTrack, options?: { index?: number }) => LocalTrack;
 };
 
 export type ProviderPlugin = {
@@ -65,4 +72,16 @@ export function getProviderPlugin(providerId: ProviderId): ProviderPlugin | unde
 
 export function getProviderPlugins(): ProviderPlugin[] {
     return Object.values(registry);
+}
+
+export function getProviderPluginForUri(value: string): ProviderPlugin | undefined {
+    if (!value) {
+        return undefined;
+    }
+
+    return getProviderPlugins().find((plugin) => plugin.tracks?.isUri?.(value));
+}
+
+export function getProviderIdForUri(value: string): ProviderId | null {
+    return getProviderPluginForUri(value)?.provider.id ?? null;
 }
