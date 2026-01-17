@@ -50,7 +50,7 @@ type AppleMusicNativeType = {
 
 const appleMusicEmitter = new NativeEventEmitter(AppleMusic);
 
-const appleMusicNative: AppleMusicNativeType & {
+const appleMusicApi: AppleMusicNativeType & {
     addListener: <T extends keyof AppleMusicEvents>(
         eventType: T,
         listener: AppleMusicEvents[T],
@@ -73,8 +73,8 @@ const appleMusicNative: AppleMusicNativeType & {
     },
 };
 
-export const useAppleMusicNative = (): typeof appleMusicNative => appleMusicNative;
+export const useAppleMusicNative = (): typeof appleMusicApi => appleMusicApi;
 
-export const appleMusicNative: AppleMusicNativeType = AppleMusic as AppleMusicNativeType;
+export const appleMusicNative = appleMusicApi;
 
-export default appleMusicNative;
+export default appleMusicApi;
