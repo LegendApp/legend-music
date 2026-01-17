@@ -86,7 +86,7 @@ export type ProviderPlugin = {
 - [x] Define the new `ProviderPlugin` interface and update the registry to support library, UI, and init hooks.
 - [x] Add plugin initialization fan-out and move local filesystem scan into the local MP3 plugin.
 - [x] Replace Spotify-specific search/library usage in shared UI with plugin-based lookups.
-- [ ] Route now playing and playback controls through the active playback plugin derived from the active track.
+- [x] Route now playing and playback controls through the active playback plugin derived from the active track.
 - [ ] Update Spotify/YTM plugin exports to conform to the new interface (playlists, search, playback, UI).
 - [ ] Add/adjust tests for plugin selection, fan-out search/library, and active playback routing.
 

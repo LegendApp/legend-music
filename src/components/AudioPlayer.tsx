@@ -1,9 +1,10 @@
 import { observable } from "@legendapp/state";
 import { showToast } from "@/components/Toast";
 import { localPlaybackProvider, LocalTrackNotFoundError } from "@/providers/local/playbackProvider";
-import { spotifyPlaybackProvider } from "@/providers/spotify/playbackProvider";
-import { youtubeMusicPlaybackProvider } from "@/providers/youtubeMusic/playbackProvider";
-import { getPlaybackProviderForTrack, registerPlaybackProvider, type PlaybackStateUpdate } from "@/providers/types";
+import { getProviderPlugins } from "@/providers/pluginRegistry";
+import { getProvider } from "@/providers/providerRegistry";
+import { ensureProvidersRegistered } from "@/providers/setupProviders";
+import { getPlaybackProviderForTrack, type PlaybackProvider, type PlaybackStateUpdate } from "@/providers/types";
 import appExit from "@/native-modules/AppExit";
 import { appState$ } from "@/observables/appState";
 import { DEBUG_AUDIO_LOGS } from "@/systems/constants";
@@ -40,9 +41,6 @@ export const audioPlayerState$ = observable<AudioPlayerState>({
     currentIndex: -1,
 });
 
-registerPlaybackProvider(localPlaybackProvider);
-registerPlaybackProvider(spotifyPlaybackProvider);
-registerPlaybackProvider(youtubeMusicPlaybackProvider);
 
 export interface QueuedTrack extends LocalTrack {
     queueEntryId: string;
@@ -75,7 +73,7 @@ function createQueueEntryId(seed: string): string {
 let pendingInitialTrackRestore: { track: QueuedTrack; playbackTime: number } | null = null;
 
 function isStreamingTrack(track: LocalTrack | null): boolean {
-    return track?.provider === "spotify" || track?.provider === "youtubeMusic";
+    return Boolean(track?.provider && track.provider !== "local");
 }
 
 const playbackHistory: number[] = [];
@@ -484,7 +482,7 @@ async function play(): Promise<void> {
     }
 
     try {
-        if (provider.id === "spotify" && currentTrack) {
+        if (provider.startsPlaybackOnLoad && currentTrack && audioPlayerState$.duration.peek() <= 0) {
             await loadTrackInternal(currentTrack, { startPositionSeconds: 0 });
             return;
         }
@@ -506,9 +504,8 @@ async function play(): Promise<void> {
         await provider.play();
     } catch (error) {
         console.error("Error playing:", error);
-        if (provider.id === "spotify") {
-            showToast(error instanceof Error ? error.message : "Spotify playback failed", "error");
-        }
+        const providerName = getProvider(provider.id)?.name ?? "Playback";
+        showToast(error instanceof Error ? error.message : `${providerName} playback failed`, "error");
         audioPlayerState$.error.set(error instanceof Error ? error.message : "Play failed");
     }
 }
@@ -1239,27 +1236,28 @@ export const audioControls = {
 };
 
 export function initializeAudioPlayer(): void {
-    const localPlaybackAvailable = localPlaybackProvider.isAvailable
-        ? localPlaybackProvider.isAvailable()
-        : true;
     if (audioPlayerInitialized) {
         return;
     }
 
     audioPlayerInitialized = true;
+    ensureProvidersRegistered();
     perfCount("LocalAudioPlayer.initialize");
-    if (localPlaybackAvailable && localPlaybackProvider.onStateChange) {
-        localPlaybackProvider.onStateChange((update) => {
-            applyPlaybackStateUpdate(update);
-        });
-    }
-    if (spotifyPlaybackProvider.onStateChange) {
-        spotifyPlaybackProvider.onStateChange((update) => {
-            applyPlaybackStateUpdate(update);
-        });
-    }
-    if (youtubeMusicPlaybackProvider.onStateChange) {
-        youtubeMusicPlaybackProvider.onStateChange((update) => {
+    const playbackProviders = getProviderPlugins()
+        .map((plugin) => plugin.playback)
+        .filter((provider): provider is PlaybackProvider => Boolean(provider));
+
+    for (const provider of playbackProviders) {
+        const isAvailable = provider.isAvailable ? provider.isAvailable() : true;
+        if (!isAvailable || !provider.onStateChange) {
+            continue;
+        }
+        provider.onStateChange((update) => {
+            const currentTrack = audioPlayerState$.currentTrack.peek();
+            const activeProviderId = currentTrack?.provider ?? "local";
+            if (activeProviderId !== provider.id) {
+                return;
+            }
             applyPlaybackStateUpdate(update);
         });
     }

@@ -16,9 +16,10 @@ initializeAudioPlayer();
 export function MainContainer() {
     perfCount("MainContainer.render");
     // const _playlistNavigation = useValue(playlistNavigationState$);
-    const isStreamingActive = () =>
-        audioControls.getCurrentState().currentTrack?.provider === "spotify" ||
-        audioControls.getCurrentState().currentTrack?.provider === "youtubeMusic";
+    const isStreamingActive = () => {
+        const providerId = audioControls.getCurrentState().currentTrack?.provider;
+        return Boolean(providerId && providerId !== "local");
+    };
 
     useOnHotkeys({
         PlayPause: () => {
