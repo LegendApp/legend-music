@@ -133,7 +133,7 @@ export function SpotifySettings() {
                     title="Client ID"
                     description="Create a Spotify app and paste its Client ID to enable login."
                     control={
-                        <View className="flex flex-row items-center gap-2">
+                        <View className="flex flex-row items-center gap-2 w-full">
                             <$TextInput
                                 className="flex-1 rounded-md border border-border-primary bg-background-tertiary px-2 py-2 text-text-primary"
                                 placeholder="Spotify Client ID"
@@ -151,7 +151,9 @@ export function SpotifySettings() {
                             </Button>
                         </View>
                     }
-                    controlWrapperClassName="ml-6 w-[360px]"
+                    className="flex-col items-stretch gap-3"
+                    contentClassName="pr-0"
+                    controlWrapperClassName="ml-0 w-full"
                 />
             </SettingsSection>
 
@@ -229,7 +231,7 @@ export function SpotifySettings() {
                     title="Search"
                     description="Find tracks by song or artist."
                     control={
-                        <View className="flex flex-row items-center gap-2">
+                        <View className="flex flex-row items-center gap-2 w-full">
                             <TextInput
                                 className="flex-1 rounded-md border border-border-primary bg-background-tertiary px-2 py-2 text-text-primary"
                                 placeholder="Search songs or artists"
@@ -251,7 +253,9 @@ export function SpotifySettings() {
                             </Button>
                         </View>
                     }
-                    controlWrapperClassName="ml-6 w-[360px]"
+                    className="flex-col items-stretch gap-3"
+                    contentClassName="pr-0"
+                    controlWrapperClassName="ml-0 w-full"
                 />
                 {!isSpotifyEnabled ? (
                     <View className="rounded-xl border border-border-primary bg-background-tertiary px-5 py-4">
