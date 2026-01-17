@@ -5,8 +5,7 @@ import { type GestureResponderEvent, Text, useWindowDimensions, View } from "rea
 import type { NativeMouseEvent } from "react-native-macos";
 import { Button } from "@/components/Button";
 import { DropdownMenu, type DropdownMenuRootRef } from "@/components/DropdownMenu";
-import { SpotifySourceBadge } from "@/components/SpotifySourceBadge";
-import { YoutubeMusicSourceBadge } from "@/components/YoutubeMusicSourceBadge";
+import { getProviderPlugin } from "@/providers/pluginRegistry";
 import { TextInputSearch, type TextInputSearchRef } from "@/components/TextInputSearch";
 import { TrackItem } from "@/components/TrackItem";
 import { getProvider } from "@/providers/providerRegistry";
@@ -475,12 +474,8 @@ function SearchResultContent({ result, index, highlighted, onSelect, getActionFr
 
     if (result.type === "track") {
         const providerId = result.item.provider;
-        const rightAccessory =
-            providerId === "spotify" ? (
-                <SpotifySourceBadge size={12} />
-            ) : providerId === "youtubeMusic" ? (
-                <YoutubeMusicSourceBadge size={12} />
-            ) : null;
+        const ProviderBadge = providerId ? getProviderPlugin(providerId)?.ui?.badge ?? null : null;
+        const rightAccessory = ProviderBadge ? <ProviderBadge size={12} /> : null;
 
         return (
             // <View className={cn(highlighted && "bg-white/10")}>

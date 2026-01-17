@@ -1,6 +1,7 @@
 import { File } from "expo-file-system/next";
 import { DEBUG_QUEUE_LOGS } from "@/systems/constants";
 import type { LocalTrack } from "@/systems/LocalMusicState";
+import { getProviderIdForUri } from "@/providers/pluginRegistry";
 import { ensureCacheDirectory, getCacheDirectory, getPlaylistsDirectory } from "@/utils/cacheDirectories";
 import { formatSecondsToMmSs, type M3UTrack, parseDurationToSeconds, parseM3U, writeM3U } from "@/utils/m3u";
 
@@ -68,9 +69,9 @@ function localTrackToM3UTrack(track: LocalTrack): M3UTrack | null {
 function m3uTrackToLocalTrack(track: M3UTrack): LocalTrack {
     const durationSeconds = Number.isFinite(track.duration) && track.duration > 0 ? track.duration : 0;
     const durationString = durationSeconds > 0 ? formatSecondsToMmSs(durationSeconds) : " ";
-    const isSpotify = track.filePath.toLowerCase().startsWith("spotify:");
+    const providerId = getProviderIdForUri(track.filePath);
     const fallbackTitle = track.title || track.filePath.split("/").pop() || track.filePath;
-    const fileName = isSpotify ? fallbackTitle : track.filePath.split("/").pop() || track.filePath;
+    const fileName = providerId ? fallbackTitle : track.filePath.split("/").pop() || track.filePath;
 
     return {
         id: track.filePath,
@@ -81,8 +82,8 @@ function m3uTrackToLocalTrack(track: M3UTrack): LocalTrack {
         fileName,
         thumbnail: resolveThumbnailBase(track.logo),
         addedAt: track.addedAt,
-        provider: isSpotify ? "spotify" : undefined,
-        uri: isSpotify ? track.filePath : undefined,
+        provider: providerId ?? undefined,
+        uri: providerId ? track.filePath : undefined,
         durationMs: durationSeconds > 0 ? durationSeconds * 1000 : undefined,
     };
 }

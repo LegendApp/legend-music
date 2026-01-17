@@ -87,7 +87,7 @@ export type ProviderPlugin = {
 - [x] Add plugin initialization fan-out and move local filesystem scan into the local MP3 plugin.
 - [x] Replace Spotify-specific search/library usage in shared UI with plugin-based lookups.
 - [x] Route now playing and playback controls through the active playback plugin derived from the active track.
-- [ ] Update Spotify/YTM plugin exports to conform to the new interface (playlists, search, playback, UI).
+- [x] Update Spotify/YTM plugin exports to conform to the new interface (playlists, search, playback, UI).
 - [ ] Add/adjust tests for plugin selection, fan-out search/library, and active playback routing.
 
 Validation: Start app, verify local scan runs on init, search hits all plugins, Spotify playlists load via plugin

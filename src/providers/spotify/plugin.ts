@@ -1,11 +1,14 @@
 import type { ProviderPlugin } from "@/providers/pluginRegistry";
+import { SpotifySourceBadge } from "@/components/SpotifySourceBadge";
 import { isSpotifyAuthenticated$ } from "@/providers/spotify/authState";
 import { spotifyPlaybackProvider } from "@/providers/spotify/playbackProvider";
 import { fetchSpotifyPlaylistTracks, fetchSpotifyPlaylists } from "@/providers/spotify/playlists";
 import { spotifyPlaylists$, spotifyPlaylistsStatus$ } from "@/providers/spotify/playlistsState";
 import { spotifyProvider } from "@/providers/spotify/provider";
 import { spotifySearchProvider } from "@/providers/spotify/search";
+import { SpotifyWebPlayerBridge } from "@/providers/spotify/SpotifyWebPlayerBridge";
 import { buildSpotifyLocalTrack } from "@/providers/spotify/trackMapping";
+import { SpotifySettings } from "@/settings/SpotifySettings";
 
 const isSpotifyUri = (value: string): boolean => value.toLowerCase().startsWith("spotify:");
 
@@ -33,5 +36,10 @@ export const spotifyPlugin: ProviderPlugin = {
     tracks: {
         isUri: isSpotifyUri,
         toLocalTrack: (track, options) => buildSpotifyLocalTrack(track, options),
+    },
+    ui: {
+        bridge: SpotifyWebPlayerBridge,
+        settings: SpotifySettings,
+        badge: SpotifySourceBadge,
     },
 };
