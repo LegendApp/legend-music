@@ -2,7 +2,6 @@ import { useValue } from "@legendapp/state/react";
 import { $TextInput } from "@legendapp/state/react-native";
 import { useCallback, useEffect, useState } from "react";
 import { Linking, Text, TextInput, View } from "react-native";
-import Config from "react-native-config";
 import { audioControls } from "@/components/AudioPlayer";
 import { Button } from "@/components/Button";
 import { Checkbox } from "@/components/Checkbox";
@@ -28,7 +27,7 @@ const parseAuthParams = (url: string): { code?: string; state?: string } => {
     }
 };
 
-export function StreamingSettings() {
+export function SpotifySettings() {
     const auth = useValue(spotifyAuthState$);
     const providerSettings = useValue(providerSettings$);
     const spotifyClientId = useValue(stateSaved$.spotifyClientId);
@@ -38,8 +37,6 @@ export function StreamingSettings() {
     const [isSearching, setIsSearching] = useState(false);
 
     const hasSpotifyClientId = Boolean(spotifyClientId.trim());
-    const hasYoutubeMusicClientId = Boolean((Config.YOUTUBE_CLIENT_ID ?? "").trim());
-
     const handleAuthUrl = useCallback(async (url: string) => {
         const { code, state } = parseAuthParams(url);
         console.log("auth url", url, code, state);
@@ -92,15 +89,10 @@ export function StreamingSettings() {
 
     const activeProvider = providerSettings.activeProviderId;
     const isSpotifyEnabled = activeProvider === "spotify";
-    const isYoutubeMusicEnabled = activeProvider === "youtubeMusic";
     const isAuthenticated = Boolean(auth.accessToken && auth.refreshToken);
     const handleSpotifyToggle = useCallback((enabled: boolean) => {
         setActiveProvider(enabled ? "spotify" : "local");
     }, []);
-    const handleYoutubeMusicToggle = useCallback((enabled: boolean) => {
-        setActiveProvider(enabled ? "youtubeMusic" : "local");
-    }, []);
-
     const handleSearch = useCallback(async () => {
         if (!isSpotifyEnabled) {
             return;
@@ -160,33 +152,6 @@ export function StreamingSettings() {
                         </View>
                     }
                     controlWrapperClassName="ml-6 w-[360px]"
-                />
-            </SettingsSection>
-
-            <SettingsSection
-                title="YouTube Music"
-                description="Enable YouTube Music playback and search using the YouTube Data API."
-            >
-                <SettingsRow
-                    title="Enable YouTube Music"
-                    description="Use YouTube Music as the active streaming provider."
-                    control={<Checkbox checked={isYoutubeMusicEnabled} onChange={handleYoutubeMusicToggle} />}
-                />
-                <SettingsRow
-                    title="Status"
-                    description="Check if YouTube Music search is ready."
-                    control={
-                        <View className="items-end gap-1">
-                            <Text className="text-sm text-text-secondary">
-                                {!isYoutubeMusicEnabled
-                                    ? "YouTube Music is disabled."
-                                    : hasYoutubeMusicClientId
-                                      ? "Client ID configured."
-                                      : "Missing bundled client ID."}
-                            </Text>
-                        </View>
-                    }
-                    controlWrapperClassName="ml-6"
                 />
             </SettingsSection>
 
