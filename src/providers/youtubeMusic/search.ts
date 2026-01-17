@@ -1,8 +1,8 @@
 import type { ProviderSearchInput, ProviderSearchProvider } from "@/providers/search/types";
 import type { ProviderTrack } from "@/providers/types";
-import Config from "react-native-config";
 import { buildYoutubeMusicLocalTrack, buildYoutubeMusicUri } from "@/providers/youtubeMusic/trackMapping";
 import type { YoutubeSearchItem, YoutubeSearchResponse, YoutubeVideoResponse } from "@/providers/youtubeMusic/types";
+import { ensureYoutubeMusicAccessToken } from "@/providers/youtubeMusic/auth";
 
 const YOUTUBE_API_BASE = "https://www.googleapis.com/youtube/v3";
 const DEFAULT_SEARCH_LIMIT = 20;
@@ -39,28 +39,22 @@ const parseIsoDurationToSeconds = (value?: string): number | null => {
     return hours * 3600 + minutes * 60 + seconds;
 };
 
-const getYoutubeApiKey = (): string => (Config.YOUTUBE_CLIENT_ID ?? "").trim();
-
-const ensureYoutubeApiKey = (): string => {
-    const apiKey = getYoutubeApiKey();
-    if (!apiKey) {
-        throw new Error("Missing YouTube client ID config");
-    }
-    return apiKey;
-};
-
 export async function searchYoutubeMusicTracks(query: string, limit = DEFAULT_SEARCH_LIMIT): Promise<ProviderTrack[]> {
     const trimmed = query.trim();
     if (!trimmed) {
         return [];
     }
 
-    const apiKey = ensureYoutubeApiKey();
+    const accessToken = await ensureYoutubeMusicAccessToken();
+    if (!accessToken) {
+        throw new Error("YouTube Music login required. Connect your account in Settings -> YouTube Music.");
+    }
+    const headers = { Authorization: `Bearer ${accessToken}` };
     const searchUrl = `${YOUTUBE_API_BASE}/search?part=snippet&type=video&videoCategoryId=10&maxResults=${encodeURIComponent(
         String(limit),
-    )}&q=${encodeURIComponent(trimmed)}&key=${encodeURIComponent(apiKey)}`;
+    )}&q=${encodeURIComponent(trimmed)}`;
 
-    const response = await fetch(searchUrl);
+    const response = await fetch(searchUrl, { headers });
     if (!response.ok) {
         const text = await response.text();
         throw new Error(`YouTube search failed: ${response.status} ${text}`);
@@ -72,10 +66,8 @@ export async function searchYoutubeMusicTracks(query: string, limit = DEFAULT_SE
 
     const durations = new Map<string, number>();
     if (ids.length > 0) {
-        const detailsUrl = `${YOUTUBE_API_BASE}/videos?part=contentDetails&id=${encodeURIComponent(
-            ids.join(","),
-        )}&key=${encodeURIComponent(apiKey)}`;
-        const detailsResponse = await fetch(detailsUrl);
+        const detailsUrl = `${YOUTUBE_API_BASE}/videos?part=contentDetails&id=${encodeURIComponent(ids.join(","))}`;
+        const detailsResponse = await fetch(detailsUrl, { headers });
         if (detailsResponse.ok) {
             const detailsJson = (await detailsResponse.json()) as YoutubeVideoResponse;
             for (const item of detailsJson.items ?? []) {
