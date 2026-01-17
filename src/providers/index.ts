@@ -3,5 +3,6 @@ export * from "./pluginRegistry";
 export * from "./providerRegistry";
 export * from "./setupProviders";
 export * from "./localProvider";
+export * from "./appleMusic";
 export * from "./spotify";
 export * from "./youtubeMusic";

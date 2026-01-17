@@ -32,7 +32,7 @@ Developer token will be fetched from a backend endpoint placeholder (TEMPORARY_U
 - [x] Implement catalog search provider for jump menu (search.ts + isEnabled$).
 - [x] Implement native MusicKit bridge + playback provider, plus track mapping to `LocalTrack`.
 - [x] Build Apple Music settings page (enabled toggle, sign-in/out, status) and source badge.
-- [ ] Register the plugin in `src/providers/setupProviders.ts` and export from `src/providers/index.ts`.
+- [x] Register the plugin in `src/providers/setupProviders.ts` and export from `src/providers/index.ts`.
 
 Validation: Launch app, enable Apple Music, complete sign-in, verify playlists populate, search works in jump menu,
 and playback controls operate on Apple Music tracks via the native bridge.
