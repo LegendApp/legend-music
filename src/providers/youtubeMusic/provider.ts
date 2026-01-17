@@ -1,6 +1,16 @@
 import { computed } from "@legendapp/state";
-import Config from "react-native-config";
 import type { Provider, ProviderCapabilities, ProviderInitOptions, ProviderSession } from "@/providers/types";
+import {
+    clearYoutubeMusicAuth,
+    isYoutubeMusicAuthenticated$,
+    setYoutubeMusicTokens,
+    youtubeAuthState$,
+} from "./authState";
+import {
+    completeYoutubeMusicLogin,
+    refreshYoutubeMusicAccessToken,
+    startYoutubeMusicLogin,
+} from "./auth";
 
 const capabilities: ProviderCapabilities = {
     supportsSearch: true,
@@ -11,10 +21,15 @@ const capabilities: ProviderCapabilities = {
 };
 
 const session$ = computed<ProviderSession>(() => {
-    const apiKey = (Config.YOUTUBE_CLIENT_ID ?? "").trim();
+    const auth = youtubeAuthState$.get();
+    const isAuthenticated = isYoutubeMusicAuthenticated$.get();
     return {
-        isAuthenticated: apiKey.length > 0,
-        userDisplayName: "YouTube Music",
+        isAuthenticated,
+        userDisplayName: auth.user?.displayName ?? "YouTube Music",
+        userEmail: auth.user?.email,
+        userId: auth.user?.id,
+        scopes: auth.scope,
+        expiresAt: auth.expiresAt,
     };
 });
 
@@ -35,15 +50,30 @@ export const youtubeMusicProvider: Provider = {
         return session$.get();
     },
     async login() {
-        return { authorizeUrl: "", state: "" };
+        const { authorizeUrl, state } = await startYoutubeMusicLogin();
+        return { authorizeUrl, state };
     },
-    async completeLogin() {
-        return;
+    async completeLogin(params: { code: string; state: string }) {
+        await completeYoutubeMusicLogin(params);
+        if (stateListener) {
+            stateListener(session$.get());
+        }
     },
     async logout() {
-        return;
+        clearYoutubeMusicAuth();
+        if (stateListener) {
+            stateListener(session$.get());
+        }
     },
     async refresh() {
-        return;
+        const current = youtubeAuthState$.get();
+        if (!current.refreshToken) {
+            return;
+        }
+        const tokens = await refreshYoutubeMusicAccessToken();
+        setYoutubeMusicTokens(tokens);
+        if (stateListener) {
+            stateListener(session$.get());
+        }
     },
 };
