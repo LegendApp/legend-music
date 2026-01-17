@@ -1,3 +1,4 @@
+import { observable } from "@legendapp/state";
 import { useValue } from "@legendapp/state/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -27,13 +28,9 @@ import { useListItemStyles } from "@/hooks/useListItemStyles";
 import { type ContextMenuItem, showContextMenu } from "@/native-modules/ContextMenu";
 import { DragDropView } from "@/native-modules/DragDropView";
 import { showInFinder } from "@/native-modules/FileDialog";
-import { activeProviderId$, getProvider } from "@/providers/providerRegistry";
-import {
-    fetchSpotifyPlaylists,
-    isSpotifyAuthenticated$,
-    spotifyPlaylists$,
-    spotifyPlaylistsStatus$,
-} from "@/providers/spotify";
+import { getProviderIdForUri, getProviderPlugin } from "@/providers/pluginRegistry";
+import { activeProviderId$, getProvider, providerSessions$ } from "@/providers/providerRegistry";
+import type { ProviderId, ProviderPlaylist } from "@/providers/types";
 import { SUPPORT_PLAYLISTS } from "@/systems/constants";
 import { type LibraryView, libraryUI$, selectLibraryPlaylist, selectLibraryView } from "@/systems/LibraryState";
 import { createLocalPlaylist, type LocalPlaylist, localMusicState$ } from "@/systems/LocalMusicState";
@@ -57,11 +54,33 @@ const LIBRARY_VIEWS: { id: LibraryView; label: string; disabled?: boolean }[] = 
     { id: "starred", label: "Starred", disabled: true },
 ];
 
-const LOCAL_PLAYLIST_ITEM_PREFIX = "playlist-local:";
-const SPOTIFY_PLAYLIST_ITEM_PREFIX = "playlist-spotify:";
+const PLAYLIST_ITEM_PREFIX = "playlist-";
+const EMPTY_LIBRARY_STATUS = { isLoading: false, error: null as string | null };
+const emptyProviderPlaylists$ = observable([] as ProviderPlaylist[]);
+const emptyLibraryStatus$ = observable(EMPTY_LIBRARY_STATUS);
 
-const buildPlaylistItemId = (provider: "local" | "spotify", playlistId: string): string =>
-    `${provider === "local" ? LOCAL_PLAYLIST_ITEM_PREFIX : SPOTIFY_PLAYLIST_ITEM_PREFIX}${playlistId}`;
+const buildPlaylistItemId = (providerId: ProviderId, playlistId: string): string =>
+    `${PLAYLIST_ITEM_PREFIX}${providerId}:${playlistId}`;
+
+const parsePlaylistItemId = (itemId: string): { providerId: ProviderId; playlistId: string } | null => {
+    if (!itemId.startsWith(PLAYLIST_ITEM_PREFIX)) {
+        return null;
+    }
+
+    const raw = itemId.slice(PLAYLIST_ITEM_PREFIX.length);
+    const separatorIndex = raw.indexOf(":");
+    if (separatorIndex === -1) {
+        return null;
+    }
+
+    const providerId = raw.slice(0, separatorIndex) as ProviderId;
+    const playlistId = raw.slice(separatorIndex + 1);
+    if (!playlistId) {
+        return null;
+    }
+
+    return { providerId, playlistId };
+};
 
 interface MediaLibrarySidebarProps {
     useNativeLibraryList?: boolean;
@@ -77,9 +96,11 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
     const activeProviderId = useValue(activeProviderId$);
     const activeProvider = getProvider(activeProviderId);
     const libraryProviderId = activeProvider?.capabilities.supportsLibrary ? activeProviderId : "local";
-    const isSpotifyAuthenticated = useValue(isSpotifyAuthenticated$);
-    const spotifyPlaylists = useValue(spotifyPlaylists$.playlists);
-    const spotifyPlaylistsLoading = useValue(spotifyPlaylistsStatus$.isLoading);
+    const libraryPlugin = getProviderPlugin(libraryProviderId);
+    const librarySession = useValue(providerSessions$[libraryProviderId]);
+    const libraryPlaylists = useValue(libraryPlugin?.library?.playlists$ ?? emptyProviderPlaylists$);
+    const libraryStatus = useValue(libraryPlugin?.library?.status$ ?? emptyLibraryStatus$);
+    const libraryProviderName = libraryPlugin?.provider.name ?? activeProvider?.name ?? "Provider";
     const listItemStyles = useListItemStyles();
     const searchInputRef = useRef<TextInputSearchRef | null>(null);
     const [tempPlaylistId, setTempPlaylistId] = useState<string | null>(null);
@@ -88,28 +109,41 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
     const [editingPlaylistId, setEditingPlaylistId] = useState<string | null>(null);
     const [editingPlaylistName, setEditingPlaylistName] = useState("");
     const shouldUseNativeLibraryList = useNativeLibraryList && Platform.OS === "macos";
-    const isSpotifyProvider = libraryProviderId === "spotify";
+    const isRemoteLibraryProvider = libraryProviderId !== "local";
     const [outerWidth, setWidth] = useState(0);
     const width = Math.max(outerWidth - 28, 0);
-    const showLocalPlaylists = SUPPORT_PLAYLISTS && !isSpotifyProvider;
-    const showSpotifyPlaylists = SUPPORT_PLAYLISTS && isSpotifyProvider;
+    const showLocalPlaylists = SUPPORT_PLAYLISTS && !isRemoteLibraryProvider;
+    const showProviderPlaylists = SUPPORT_PLAYLISTS && isRemoteLibraryProvider && Boolean(libraryPlugin?.library);
+    const isLibraryAuthenticated = librarySession?.isAuthenticated ?? false;
+    const playlistHeaderLabel = isRemoteLibraryProvider ? `${libraryProviderName} Playlists` : "Playlists";
 
     useEffect(() => {
-        if (!isSpotifyProvider || !isSpotifyAuthenticated) {
+        if (!showProviderPlaylists || !libraryPlugin?.library?.listPlaylists) {
             return;
         }
 
-        void fetchSpotifyPlaylists().catch((error) => {
-            console.error("Failed to load Spotify playlists", error);
-            showToast(error instanceof Error ? error.message : "Failed to load Spotify playlists", "error");
+        if (!isLibraryAuthenticated) {
+            return;
+        }
+
+        void libraryPlugin.library.listPlaylists().catch((error) => {
+            console.error(`Failed to load ${libraryProviderName} playlists`, error);
+            showToast(
+                error instanceof Error ? error.message : `Failed to load ${libraryProviderName} playlists`,
+                "error",
+            );
         });
-    }, [isSpotifyAuthenticated, isSpotifyProvider]);
+    }, [isLibraryAuthenticated, libraryPlugin, libraryProviderName, showProviderPlaylists]);
 
     useEffect(() => {
-        if (selectedPlaylistProvider === "spotify" && !isSpotifyProvider) {
+        if (!selectedPlaylistProvider || selectedPlaylistProvider === "local") {
+            return;
+        }
+
+        if (selectedPlaylistProvider !== libraryProviderId) {
             selectLibraryView("songs");
         }
-    }, [isSpotifyProvider, selectedPlaylistProvider]);
+    }, [libraryProviderId, selectedPlaylistProvider]);
 
     const onNativeSidebarLayout = useCallback(
         (layout: { width: number; height: number }) => {
@@ -123,7 +157,7 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
 
     const handleAddPlaylist = useCallback(() => {
         console.log("handleAddPlaylist");
-        if (isSpotifyProvider || tempPlaylistId) {
+        if (!showLocalPlaylists || tempPlaylistId) {
             return;
         }
 
@@ -140,7 +174,7 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
         setTempPlaylistId(id);
         setTempPlaylistName(defaultName);
         selectLibraryPlaylist(id, "local");
-    }, [isSpotifyProvider, tempPlaylistId]);
+    }, [showLocalPlaylists, tempPlaylistId]);
 
     const finalizeTempPlaylist = useCallback(async () => {
         if (!tempPlaylistId) {
@@ -361,25 +395,16 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
     // Compute selected ID for native sidebar
     const nativeSidebarSelectedId = useMemo(() => {
         if (selectedView === "playlist" && selectedPlaylistId && selectedPlaylistProvider) {
-            if (selectedPlaylistProvider === "spotify") {
-                return buildPlaylistItemId("spotify", selectedPlaylistId);
-            }
-            if (selectedPlaylistProvider === "local") {
-                return buildPlaylistItemId("local", selectedPlaylistId);
-            }
+            return buildPlaylistItemId(selectedPlaylistProvider, selectedPlaylistId);
         }
         return selectedView;
     }, [selectedPlaylistId, selectedPlaylistProvider, selectedView]);
 
     const handleNativeSidebarSelection = useCallback(
         (id: string) => {
-            if (id.startsWith(LOCAL_PLAYLIST_ITEM_PREFIX)) {
-                selectLibraryPlaylist(id.replace(LOCAL_PLAYLIST_ITEM_PREFIX, ""), "local");
-                return;
-            }
-
-            if (id.startsWith(SPOTIFY_PLAYLIST_ITEM_PREFIX)) {
-                selectLibraryPlaylist(id.replace(SPOTIFY_PLAYLIST_ITEM_PREFIX, ""), "spotify");
+            const parsed = parsePlaylistItemId(id);
+            if (parsed) {
+                selectLibraryPlaylist(parsed.playlistId, parsed.providerId);
                 return;
             }
 
@@ -419,7 +444,7 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                     <SidebarItem itemId="header-playlists" selectable={false} rowHeight={36}>
                         <View className="flex-row items-center justify-between pt-3" style={{ width }}>
                             <Text className="text-xs font-semibold text-white/40 uppercase tracking-wider">
-                                {isSpotifyProvider ? "Spotify Playlists" : "Playlists"}
+                                {playlistHeaderLabel}
                             </Text>
                             {showLocalPlaylists ? (
                                 <Button
@@ -436,24 +461,30 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                 ) : null}
 
                 {/* Playlist Items */}
-                {showSpotifyPlaylists ? (
-                    !isSpotifyAuthenticated ? (
-                        <SidebarItem itemId="spotify-playlists-disabled" selectable={false}>
-                            <Text className="text-sm text-white/40">Connect Spotify to view playlists</Text>
+                {showProviderPlaylists ? (
+                    !isLibraryAuthenticated ? (
+                        <SidebarItem itemId="provider-playlists-disabled" selectable={false}>
+                            <Text className="text-sm text-white/40">
+                                Connect {libraryProviderName} to view playlists
+                            </Text>
                         </SidebarItem>
-                    ) : spotifyPlaylistsLoading ? (
-                        <SidebarItem itemId="spotify-playlists-loading" selectable={false}>
-                            <Text className="text-sm text-white/40">Loading Spotify playlists...</Text>
+                    ) : libraryStatus.isLoading ? (
+                        <SidebarItem itemId="provider-playlists-loading" selectable={false}>
+                            <Text className="text-sm text-white/40">
+                                Loading {libraryProviderName} playlists...
+                            </Text>
                         </SidebarItem>
-                    ) : spotifyPlaylists.length === 0 ? (
-                        <SidebarItem itemId="spotify-playlists-empty" selectable={false}>
-                            <Text className="text-sm text-white/40">No Spotify playlists found</Text>
+                    ) : libraryPlaylists.length === 0 ? (
+                        <SidebarItem itemId="provider-playlists-empty" selectable={false}>
+                            <Text className="text-sm text-white/40">
+                                No {libraryProviderName} playlists found
+                            </Text>
                         </SidebarItem>
                     ) : (
-                        spotifyPlaylists.map((playlist) => (
+                        libraryPlaylists.map((playlist) => (
                             <SidebarItem
                                 key={playlist.id}
-                                itemId={buildPlaylistItemId("spotify", playlist.id)}
+                                itemId={buildPlaylistItemId(libraryProviderId, playlist.id)}
                             >
                                 <View className="flex-row items-center justify-between">
                                     <Text className="text-sm text-text-primary flex-1 py-1" numberOfLines={1}>
@@ -586,7 +617,7 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                     <View className="pb-3">
                         <View className="flex-row items-center justify-between px-3 pt-2 pb-1">
                             <Text className="text-xs font-semibold text-white/40 uppercase tracking-wider">
-                                {isSpotifyProvider ? "Spotify Playlists" : "Playlists"}
+                                {playlistHeaderLabel}
                             </Text>
                             {showLocalPlaylists ? (
                                 <Button
@@ -601,24 +632,30 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                             ) : null}
                         </View>
 
-                        {showSpotifyPlaylists ? (
-                            !isSpotifyAuthenticated ? (
+                        {showProviderPlaylists ? (
+                            !isLibraryAuthenticated ? (
                                 <View className="px-3 py-1">
-                                    <Text className="text-sm text-white/40">Connect Spotify to view playlists</Text>
+                                    <Text className="text-sm text-white/40">
+                                        Connect {libraryProviderName} to view playlists
+                                    </Text>
                                 </View>
-                            ) : spotifyPlaylistsLoading ? (
+                            ) : libraryStatus.isLoading ? (
                                 <View className="px-3 py-1">
-                                    <Text className="text-sm text-white/40">Loading Spotify playlists...</Text>
+                                    <Text className="text-sm text-white/40">
+                                        Loading {libraryProviderName} playlists...
+                                    </Text>
                                 </View>
-                            ) : spotifyPlaylists.length === 0 ? (
+                            ) : libraryPlaylists.length === 0 ? (
                                 <View className="px-3 py-1">
-                                    <Text className="text-sm text-white/40">No Spotify playlists found</Text>
+                                    <Text className="text-sm text-white/40">
+                                        No {libraryProviderName} playlists found
+                                    </Text>
                                 </View>
                             ) : (
-                                spotifyPlaylists.map((playlist) => {
+                                libraryPlaylists.map((playlist) => {
                                     const isSelected =
                                         selectedView === "playlist" &&
-                                        selectedPlaylistProvider === "spotify" &&
+                                        selectedPlaylistProvider === libraryProviderId &&
                                         selectedPlaylistId === playlist.id;
                                     return (
                                         <Button
@@ -627,7 +664,7 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                                                 variant: "compact",
                                                 isSelected,
                                             })}
-                                            onClick={() => selectLibraryPlaylist(playlist.id, "spotify")}
+                                            onClick={() => selectLibraryPlaylist(playlist.id, libraryProviderId)}
                                         >
                                             <View className="flex-1 flex-row items-center justify-between overflow-hidden">
                                                 <Text
@@ -780,7 +817,7 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                                                       .map((track) => track.filePath ?? track.id)
                                                       .filter(
                                                           (path): path is string =>
-                                                              Boolean(path) && !path.startsWith("spotify:"),
+                                                              Boolean(path) && !getProviderIdForUri(path),
                                                       );
                                                   if (isDroppable && trackPaths.length > 0) {
                                                       void handleAddTracks(playlist.id, trackPaths);
@@ -811,7 +848,9 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                                                       return false;
                                                   }
 
-                                                  return data.tracks.some((track) => track.provider !== "spotify");
+                                                  return data.tracks.some(
+                                                      (track) => !track.provider || track.provider === "local",
+                                                  );
                                               }}
                                               onDrop={(item: DraggedItem) => {
                                                   const data = item.data as MediaLibraryDragData;
@@ -820,7 +859,7 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                                                   }
 
                                                   const trackPaths = data.tracks
-                                                      .filter((track) => track.provider !== "spotify")
+                                                      .filter((track) => !track.provider || track.provider === "local")
                                                       .map((track) => track.filePath)
                                                       .filter((path): path is string => Boolean(path));
                                                   if (trackPaths.length === 0) {

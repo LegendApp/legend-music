@@ -2,6 +2,8 @@ import { getArtistKey, type LibraryItem, type LibraryTrack } from "@/systems/Lib
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import { DEFAULT_LOCAL_PLAYLIST_ID } from "@/systems/localMusicConstants";
 import { formatSecondsToMmSs, type M3UTrack } from "@/utils/m3u";
+import { getProviderIdForUri } from "@/providers/pluginRegistry";
+import type { ProviderId } from "@/providers/types";
 
 export interface PlaylistResolutionSource {
     id: string;
@@ -16,14 +18,13 @@ export interface PlaylistResolutionResult {
     missingPaths: string[];
 }
 
-export const isSpotifyUri = (value: string): boolean => value.toLowerCase().startsWith("spotify:");
-
-export function buildTrackFromPlaylistEntry(entry: M3UTrack): LocalTrack {
+export function buildTrackFromPlaylistEntry(entry: M3UTrack, providerId?: ProviderId | null): LocalTrack {
     const durationSeconds = Number.isFinite(entry.duration) && entry.duration > 0 ? entry.duration : 0;
     const duration = durationSeconds > 0 ? formatSecondsToMmSs(durationSeconds) : " ";
     const title = entry.title || entry.filePath.split("/").pop() || entry.filePath;
     const artist = entry.artist ?? "Unknown Artist";
-    const isSpotify = isSpotifyUri(entry.filePath);
+    const resolvedProviderId = providerId ?? getProviderIdForUri(entry.filePath);
+    const hasProvider = Boolean(resolvedProviderId);
 
     return {
         id: entry.id || entry.filePath,
@@ -34,8 +35,8 @@ export function buildTrackFromPlaylistEntry(entry: M3UTrack): LocalTrack {
         fileName: title,
         thumbnail: entry.logo,
         addedAt: entry.addedAt,
-        provider: isSpotify ? "spotify" : undefined,
-        uri: isSpotify ? entry.filePath : undefined,
+        provider: resolvedProviderId ?? undefined,
+        uri: hasProvider ? entry.filePath : undefined,
         durationMs: durationSeconds > 0 ? durationSeconds * 1000 : undefined,
     };
 }
@@ -77,8 +78,9 @@ export function resolvePlaylistTracks(
             continue;
         }
 
-        if (isSpotifyUri(entry.filePath)) {
-            resolvedTracks.push(buildTrackFromPlaylistEntry(entry));
+        const providerId = getProviderIdForUri(entry.filePath);
+        if (providerId) {
+            resolvedTracks.push(buildTrackFromPlaylistEntry(entry, providerId));
             continue;
         }
 

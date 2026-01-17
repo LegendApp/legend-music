@@ -9,8 +9,7 @@ import { showToast } from "@/components/Toast";
 import type { TrackData } from "@/components/TrackItem";
 import { usePlaylistSelection } from "@/hooks/usePlaylistSelection";
 import { type ContextMenuItem, showContextMenu } from "@/native-modules/ContextMenu";
-import { buildSpotifyLocalTrack } from "@/providers/spotify/trackMapping";
-import { fetchSpotifyPlaylistTracks, isSpotifyAuthenticated$, spotifyPlaylists$ } from "@/providers/spotify";
+import { getProviderIdForUri, getProviderPlugin } from "@/providers/pluginRegistry";
 import type { ProviderId } from "@/providers/types";
 import {
     getArtistKey,
@@ -26,12 +25,14 @@ import { type LocalPlaylist, localMusicState$, saveLocalPlaylistTracks } from "@
 import { addTracksToPlaylist } from "@/systems/LocalPlaylists";
 import { getQueueAction, type QueueAction } from "@/utils/queueActions";
 import { buildTrackContextMenuItems, handleTrackContextMenuSelection } from "@/utils/trackContextMenu";
-import { buildTrackFromPlaylistEntry, buildTrackLookup, isSpotifyUri } from "@/utils/trackResolution";
+import { buildTrackFromPlaylistEntry, buildTrackLookup } from "@/utils/trackResolution";
 
 type TrackListItem = TrackData;
 type LibraryTrackListItem = TrackData & { sourceTrack?: LibraryTrack };
 
 const ADD_TO_PLAYLIST_MENU_ITEM: ContextMenuItem = { id: "add-to-playlist", title: "Add to Playlist…" };
+const isLocalProviderTrack = (track?: { provider?: ProviderId | null }): boolean =>
+    !track?.provider || track.provider === "local";
 
 const getSortableTrackNumber = (track: LibraryTrack): number | null => {
     const trackNumber = track.trackNumber;
@@ -403,7 +404,7 @@ export function buildTrackItems({
             });
         };
 
-        if (selectedPlaylistProvider === "spotify") {
+        if (selectedPlaylistProvider && selectedPlaylistProvider !== "local") {
             return {
                 trackItems: buildPlaylistItems(selectedPlaylistTracks ?? []),
             };
@@ -448,8 +449,9 @@ export function buildTrackItems({
                 return resolved;
             }
 
-            if (isSpotifyUri(entry.filePath)) {
-                return buildTrackFromPlaylistEntry(entry) as LibraryTrack;
+            const remoteProviderId = getProviderIdForUri(entry.filePath);
+            if (remoteProviderId) {
+                return buildTrackFromPlaylistEntry(entry, remoteProviderId) as LibraryTrack;
             }
 
             return makeMissingTrack(entry.filePath, entry.title, entry.addedAt);
@@ -474,46 +476,59 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
     const playlistSortDirection = useValue(libraryUI$.playlistSortDirection);
     const allTracks = useValue(library$.tracks);
     const playlists = useValue(localMusicState$.playlists);
-    const spotifyTracksByPlaylistId = useValue(spotifyPlaylists$.tracksByPlaylistId);
-    const spotifyTracksFetchedAtByPlaylistId = useValue(spotifyPlaylists$.tracksFetchedAtByPlaylistId);
-    const isSpotifyAuthenticated = useValue(isSpotifyAuthenticated$);
+    const providerPlugin = selectedPlaylistProvider ? getProviderPlugin(selectedPlaylistProvider) : null;
+    const [providerPlaylistTracks, setProviderPlaylistTracks] = useState<LibraryTrack[]>([]);
     const skipClickRef = useRef(false);
 
-    const spotifyPlaylistTracks = useMemo(() => {
-        if (selectedPlaylistProvider !== "spotify" || !selectedPlaylistId) {
-            return [] as LibraryTrack[];
-        }
-
-        const tracks = spotifyTracksByPlaylistId[selectedPlaylistId] ?? [];
-        return tracks.map((track, index) => buildSpotifyLocalTrack(track, { index }));
-    }, [selectedPlaylistId, selectedPlaylistProvider, spotifyTracksByPlaylistId]);
-
     useEffect(() => {
-        if (selectedView !== "playlist" || selectedPlaylistProvider !== "spotify" || !selectedPlaylistId) {
+        if (
+            selectedView !== "playlist" ||
+            !selectedPlaylistProvider ||
+            selectedPlaylistProvider === "local" ||
+            !selectedPlaylistId
+        ) {
+            setProviderPlaylistTracks([]);
             return;
         }
 
-        if (!isSpotifyAuthenticated) {
+        const listPlaylistTracks = providerPlugin?.library?.listPlaylistTracks;
+        const toLocalTrack = providerPlugin?.tracks?.toLocalTrack;
+        if (!listPlaylistTracks || !toLocalTrack) {
+            setProviderPlaylistTracks([]);
             return;
         }
 
-        if (spotifyTracksFetchedAtByPlaylistId[selectedPlaylistId]) {
-            return;
-        }
+        let didCancel = false;
 
-        void fetchSpotifyPlaylistTracks(selectedPlaylistId).catch((error) => {
-            console.error("Failed to load Spotify playlist tracks", error);
-            showToast(
-                error instanceof Error ? error.message : "Failed to load Spotify playlist tracks",
-                "error",
-            );
-        });
+        void (async () => {
+            try {
+                const tracks = await listPlaylistTracks(selectedPlaylistId);
+                if (didCancel) {
+                    return;
+                }
+                setProviderPlaylistTracks(tracks.map((track, index) => toLocalTrack(track, { index })));
+            } catch (error) {
+                if (didCancel) {
+                    return;
+                }
+                const providerName = providerPlugin?.provider.name ?? "provider";
+                console.error(`Failed to load ${providerName} playlist tracks`, error);
+                showToast(
+                    error instanceof Error ? error.message : `Failed to load ${providerName} playlist tracks`,
+                    "error",
+                );
+                setProviderPlaylistTracks([]);
+            }
+        })();
+
+        return () => {
+            didCancel = true;
+        };
     }, [
-        isSpotifyAuthenticated,
+        selectedView,
+        providerPlugin,
         selectedPlaylistId,
         selectedPlaylistProvider,
-        selectedView,
-        spotifyTracksFetchedAtByPlaylistId,
     ]);
 
     const { trackItems } = useMemo(
@@ -524,7 +539,7 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
                 selectedView,
                 selectedPlaylistId,
                 selectedPlaylistProvider,
-                selectedPlaylistTracks: spotifyPlaylistTracks,
+                selectedPlaylistTracks: providerPlaylistTracks,
                 searchQuery,
                 playlistSort,
                 playlistSortDirection,
@@ -538,7 +553,7 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
             selectedPlaylistId,
             selectedPlaylistProvider,
             selectedView,
-            spotifyPlaylistTracks,
+            providerPlaylistTracks,
         ],
     );
 
@@ -640,17 +655,17 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
             const x = event.pageX ?? event.x ?? 0;
             const y = event.pageY ?? event.y ?? 0;
             const sourceTrack = trackItems[index]?.sourceTrack;
-            const isSpotifyTrack = sourceTrack?.provider === "spotify";
+            const isRemoteTrack = !isLocalProviderTrack(sourceTrack);
             const menuItems = buildTrackContextMenuItems({
                 includeQueueActions: true,
-                includeFinder: !isSpotifyTrack,
-                extraItems: isSpotifyTrack ? [] : [ADD_TO_PLAYLIST_MENU_ITEM],
+                includeFinder: !isRemoteTrack,
+                extraItems: isRemoteTrack ? [] : [ADD_TO_PLAYLIST_MENU_ITEM],
             });
             const selection = await showContextMenu(menuItems, { x, y });
 
             await handleTrackContextMenuSelection({
                 selection,
-                filePath: isSpotifyTrack ? null : sourceTrack?.filePath,
+                filePath: isRemoteTrack ? null : sourceTrack?.filePath,
                 onQueueAction: (action) => {
                     handleTrackAction(index, action === "play-next" ? "play-next" : "enqueue");
                 },
@@ -659,7 +674,7 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
                         return;
                     }
 
-                    if (sourceTrack?.provider === "spotify") {
+                    if (!isLocalProviderTrack(sourceTrack)) {
                         return;
                     }
 
@@ -755,11 +770,11 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
             const tracksToInclude = indices
                 .map((trackIndex) => trackItems[trackIndex]?.sourceTrack)
                 .filter((track): track is LibraryTrack => Boolean(track))
-                .filter((track) => track.provider !== "spotify")
+                .filter(isLocalProviderTrack)
                 .map((track) => ({ ...track }));
 
             const activeTrack = trackItems[activeIndex]?.sourceTrack;
-            if (tracksToInclude.length === 0 && activeTrack && activeTrack.provider !== "spotify") {
+            if (tracksToInclude.length === 0 && isLocalProviderTrack(activeTrack)) {
                 tracksToInclude.push({ ...activeTrack });
             }
 

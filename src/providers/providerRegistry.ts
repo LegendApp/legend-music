@@ -16,9 +16,10 @@ const providerSettings$ = createJSONManager<ProviderSettings>({
 });
 
 const registry = observable<Record<ProviderId, Provider>>({});
+const providerSessions$ = observable<Record<ProviderId, ProviderSession | null>>({});
 
 export const activeProviderId$ = computed(() => providerSettings$.activeProviderId.get());
-export { providerSettings$ };
+export { providerSettings$, providerSessions$ };
 
 export function registerProvider(provider: Provider): void {
     const current = registry.get();
@@ -26,6 +27,7 @@ export function registerProvider(provider: Provider): void {
         ...current,
         [provider.id]: provider,
     });
+    providerSessions$[provider.id].set(provider.getSession());
 }
 
 export function getProvider(providerId: ProviderId): Provider | undefined {
@@ -49,6 +51,10 @@ export function getRegisteredProviders(): Provider[] {
 export function getProviderSession(providerId: ProviderId): ProviderSession | null {
     const provider = getProvider(providerId);
     return provider ? provider.getSession() : null;
+}
+
+export function setProviderSession(providerId: ProviderId, session: ProviderSession | null): void {
+    providerSessions$[providerId].set(session);
 }
 
 export function isProviderEnabled(providerId: ProviderId): boolean {

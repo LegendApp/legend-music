@@ -40,6 +40,7 @@ const session$ = computed<ProviderSession>(() => {
 });
 
 let stateListener: ProviderInitOptions["onStateChange"] | undefined;
+let authSubscription: (() => void) | null = null;
 
 export const spotifyProvider: Provider = {
     id: "spotify",
@@ -47,12 +48,16 @@ export const spotifyProvider: Provider = {
     capabilities,
     async initialize(options?: ProviderInitOptions) {
         stateListener = options?.onStateChange;
-        if (stateListener) {
-            stateListener(session$.get());
-        }
+        authSubscription?.();
+        authSubscription = spotifyAuthState$.onChange(() => {
+            stateListener?.(session$.get());
+        });
+        stateListener?.(session$.get());
     },
     teardown() {
         stateListener = undefined;
+        authSubscription?.();
+        authSubscription = null;
     },
     getSession() {
         return session$.get();

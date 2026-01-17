@@ -34,6 +34,7 @@ const session$ = computed<ProviderSession>(() => {
 });
 
 let stateListener: ProviderInitOptions["onStateChange"] | undefined;
+let authSubscription: (() => void) | null = null;
 
 export const youtubeMusicProvider: Provider = {
     id: "youtubeMusic",
@@ -41,10 +42,16 @@ export const youtubeMusicProvider: Provider = {
     capabilities,
     async initialize(options?: ProviderInitOptions) {
         stateListener = options?.onStateChange;
+        authSubscription?.();
+        authSubscription = youtubeAuthState$.onChange(() => {
+            stateListener?.(session$.get());
+        });
         stateListener?.(session$.get());
     },
     teardown() {
         stateListener = undefined;
+        authSubscription?.();
+        authSubscription = null;
     },
     getSession() {
         return session$.get();

@@ -1,5 +1,5 @@
 import { LegendList } from "@legendapp/list";
-import type { Observable } from "@legendapp/state";
+import { observable, type Observable } from "@legendapp/state";
 import { useValue } from "@legendapp/state/react";
 import { useCallback, useMemo } from "react";
 import { Platform, Text, View } from "react-native";
@@ -22,7 +22,8 @@ import type { TrackData } from "@/components/TrackItem";
 import { useListItemStyles } from "@/hooks/useListItemStyles";
 import { type ContextMenuItem, showContextMenu } from "@/native-modules/ContextMenu";
 import { type NativeDragTrack, TrackDragSource } from "@/native-modules/TrackDragSource";
-import { spotifyPlaylists$ } from "@/providers/spotify";
+import { getProviderPlugin } from "@/providers/pluginRegistry";
+import type { ProviderPlaylist } from "@/providers/types";
 import { Icon } from "@/systems/Icon";
 import { libraryUI$ } from "@/systems/LibraryState";
 import { localMusicState$, saveLocalPlaylistTracks } from "@/systems/LocalMusicState";
@@ -32,6 +33,8 @@ import type { QueueAction } from "@/utils/queueActions";
 import { useLibraryTrackList } from "./useLibraryTrackList";
 
 type TrackListProps = {};
+
+const emptyProviderPlaylists$ = observable([] as ProviderPlaylist[]);
 
 const formatAddedDate = (timestamp?: number): string => {
     if (!timestamp) {
@@ -71,7 +74,8 @@ export function TrackList(_props: TrackListProps) {
     const playlistSort = useValue(libraryUI$.playlistSort);
     const playlistSortDirection = useValue(libraryUI$.playlistSortDirection);
     const playlists = useValue(localMusicState$.playlists);
-    const spotifyPlaylists = useValue(spotifyPlaylists$.playlists);
+    const providerPlugin = selectedPlaylistProvider ? getProviderPlugin(selectedPlaylistProvider) : null;
+    const providerPlaylists = useValue(providerPlugin?.library?.playlists$ ?? emptyProviderPlaylists$);
 
     const nonSeparatorTrackCount = useMemo(
         () => tracks.reduce((count, track) => (track.isSeparator ? count : count + 1), 0),
@@ -86,13 +90,18 @@ export function TrackList(_props: TrackListProps) {
         return playlists.find((pl) => pl.id === selectedPlaylistId) ?? null;
     }, [playlists, selectedPlaylistId, selectedPlaylistProvider, selectedView]);
 
-    const selectedSpotifyPlaylist = useMemo(() => {
-        if (selectedView !== "playlist" || selectedPlaylistProvider !== "spotify" || !selectedPlaylistId) {
+    const selectedProviderPlaylist = useMemo(() => {
+        if (
+            selectedView !== "playlist" ||
+            !selectedPlaylistProvider ||
+            selectedPlaylistProvider === "local" ||
+            !selectedPlaylistId
+        ) {
             return null;
         }
 
-        return spotifyPlaylists.find((pl) => pl.id === selectedPlaylistId) ?? null;
-    }, [selectedPlaylistId, selectedPlaylistProvider, selectedView, spotifyPlaylists]);
+        return providerPlaylists.find((pl) => pl.id === selectedPlaylistId) ?? null;
+    }, [providerPlaylists, selectedPlaylistId, selectedPlaylistProvider, selectedView]);
 
     const headerConfig = useMemo(() => {
         if (selectedView === "playlist") {
@@ -100,10 +109,10 @@ export function TrackList(_props: TrackListProps) {
                 return { title: selectedLocalPlaylist.name, count: selectedLocalPlaylist.trackCount };
             }
 
-            if (selectedPlaylistProvider === "spotify") {
+            if (selectedPlaylistProvider && selectedPlaylistProvider !== "local") {
                 return {
-                    title: selectedSpotifyPlaylist?.name ?? "Playlist",
-                    count: selectedSpotifyPlaylist?.trackCount ?? nonSeparatorTrackCount,
+                    title: selectedProviderPlaylist?.name ?? "Playlist",
+                    count: selectedProviderPlaylist?.trackCount ?? nonSeparatorTrackCount,
                 };
             }
         }
@@ -125,7 +134,7 @@ export function TrackList(_props: TrackListProps) {
         nonSeparatorTrackCount,
         selectedLocalPlaylist,
         selectedPlaylistProvider,
-        selectedSpotifyPlaylist,
+        selectedProviderPlaylist,
         selectedView,
     ]);
 
