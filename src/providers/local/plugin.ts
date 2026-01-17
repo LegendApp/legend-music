@@ -5,6 +5,6 @@ import { localProvider } from "@/providers/localProvider";
 
 export const localPlugin: ProviderPlugin = {
     provider: localProvider,
-    searchProvider: localSearchProvider,
-    playbackProvider: localPlaybackProvider,
+    search: localSearchProvider,
+    playback: localPlaybackProvider,
 };
