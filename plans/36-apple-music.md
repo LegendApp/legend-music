@@ -26,7 +26,7 @@ Developer token will be fetched from a backend endpoint placeholder (TEMPORARY_U
 - Add macOS entitlements/config changes required for MusicKit (sign-in, music user token access).
 
 ## Steps
-- [ ] Create `src/providers/appleMusic/` with auth state, token fetch (TEMPORARY_URL TODO), provider session,
+- [x] Create `src/providers/appleMusic/` with auth state, token fetch (TEMPORARY_URL TODO), provider session,
       and model mapping utilities.
 - [ ] Implement library playlists + tracks fetch with caching/status (`state.ts`, `playlistsState.ts`, `playlists.ts`).
 - [ ] Implement catalog search provider for jump menu (search.ts + isEnabled$).
