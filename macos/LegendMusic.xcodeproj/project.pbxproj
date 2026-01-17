@@ -42,6 +42,8 @@
 		69F4D1012F0A123400CCB7F7 /* FileDialog.m in Sources */ = {isa = PBXBuildFile; fileRef = 69F4D0FF2F0A123400CCB7F7 /* FileDialog.m */; };
 		69F8D1A32F12345600ABCDEF /* AppExit.m in Sources */ = {isa = PBXBuildFile; fileRef = 69F8D1A22F12345600ABCDEF /* AppExit.m */; };
 		A1B2C3D4E5F607801234567 /* AudioPlayer.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D6E5F607801234567 /* AudioPlayer.m */; };
+		7A1B2C3D4E5F607801234568 /* AppleMusic.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1B2C3D4E5F60780123456A /* AppleMusic.swift */; };
+		7A1B2C3D4E5F607801234569 /* AppleMusicBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 7A1B2C3D4E5F60780123456B /* AppleMusicBridge.m */; };
 		B3C4A1412FF0A8B500A2C1E9 /* ID3TagEditor in Frameworks */ = {isa = PBXBuildFile; productRef = B3C4A1422FF0A8B500A2C1E9 /* ID3TagEditor */; };
 		B3C4A1452FF0A8F900A2C1E9 /* ID3TagEditorBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3C4A1442FF0A8F900A2C1E9 /* ID3TagEditorBridge.swift */; };
 		BEF2DD5FAECBF3C737045F10 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E3812CA0776629430D89D5DA /* PrivacyInfo.xcprivacy */; };
@@ -100,6 +102,8 @@
 		69F8D1A22F12345600ABCDEF /* AppExit.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppExit.m; sourceTree = "<group>"; };
 		A1B2C3D5E5F607801234567 /* AudioPlayer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AudioPlayer.h; sourceTree = "<group>"; };
 		A1B2C3D6E5F607801234567 /* AudioPlayer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AudioPlayer.m; sourceTree = "<group>"; };
+		7A1B2C3D4E5F60780123456A /* AppleMusic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleMusic.swift; sourceTree = "<group>"; };
+		7A1B2C3D4E5F60780123456B /* AppleMusicBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppleMusicBridge.m; sourceTree = "<group>"; };
 		B3C4A1442FF0A8F900A2C1E9 /* ID3TagEditorBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ID3TagEditorBridge.swift; sourceTree = "<group>"; };
 		D923D34EAC788A5DE1EAAF00 /* libPods-LegendMusic-macOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-LegendMusic-macOS.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		E3812CA0776629430D89D5DA /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
@@ -163,6 +167,7 @@
 				514201572437B4B40078DB4F /* main.m */,
 				514201532437B4B40078DB4F /* Main.storyboard */,
 				A1B2C3D7E5F607801234567 /* AudioPlayer */,
+				7A1B2C3D4E5F60780123456C /* AppleMusic */,
 				69EDA8102DC910FA00CCB7F7 /* MenuEvents */,
 				69EDB1022DCA10FA00CCB7F7 /* ContextMenuManager */,
 				69A6F0203E5AAB9D00ABCDE1 /* AutoUpdater */,
@@ -330,6 +335,15 @@
 				69F8D1A22F12345600ABCDEF /* AppExit.m */,
 			);
 			path = AppExit;
+			sourceTree = "<group>";
+		};
+		7A1B2C3D4E5F60780123456C /* AppleMusic */ = {
+			isa = PBXGroup;
+			children = (
+				7A1B2C3D4E5F60780123456A /* AppleMusic.swift */,
+				7A1B2C3D4E5F60780123456B /* AppleMusicBridge.m */,
+			);
+			path = AppleMusic;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -626,6 +640,8 @@
 			files = (
 				514201582437B4B40078DB4F /* main.m in Sources */,
 				A1B2C3D4E5F607801234567 /* AudioPlayer.m in Sources */,
+				7A1B2C3D4E5F607801234568 /* AppleMusic.swift in Sources */,
+				7A1B2C3D4E5F607801234569 /* AppleMusicBridge.m in Sources */,
 				B3C4A1452FF0A8F900A2C1E9 /* ID3TagEditorBridge.swift in Sources */,
 				69EDA8112DC910FA00CCB7F7 /* MenuEvents.m in Sources */,
 				699DCD2A2EB69511003BDB37 /* FileSystemWatcher.swift in Sources */,
