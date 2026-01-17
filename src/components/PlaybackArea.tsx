@@ -8,6 +8,7 @@ import { PlaybackTimeline } from "@/components/PlaybackTimeline";
 import { SpotifySourceBadge } from "@/components/SpotifySourceBadge";
 import { YoutubeMusicSourceBadge } from "@/components/YoutubeMusicSourceBadge";
 import { OVERLAY_WINDOW_WIDTH_COMPACT } from "@/overlay/OverlayConstants";
+import { getPlaybackProviderForTrack } from "@/providers/types";
 import { Icon } from "@/systems/Icon";
 import { localMusicState$ } from "@/systems/LocalMusicState";
 import { setIsScrubbing } from "@/systems/PlaybackInteractionState";
@@ -39,7 +40,8 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
     const handleHoverIn = useCallback(() => setIsHovered(true), []);
     const handleHoverOut = useCallback(() => setIsHovered(false), []);
     const showTimeline = !overlayModeEnabled;
-    const isRemoteTrack = currentTrack?.provider === "spotify" || currentTrack?.provider === "youtubeMusic";
+    const playbackProvider = currentTrack ? getPlaybackProviderForTrack(currentTrack) : null;
+    const isRemoteTrack = playbackProvider ? playbackProvider.id !== "local" : false;
     const providerBadgeSize = overlayModeEnabled ? 14 : 20;
     const handleSeekDrag = useCallback(
         (value: number) => {
