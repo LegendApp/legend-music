@@ -15,12 +15,11 @@ import { CurrentSongOverlayController } from "@/overlay/CurrentSongOverlayContro
 import { CurrentSongOverlayWindowManager } from "@/overlay/CurrentSongOverlayWindowManager";
 import { SpotifyWebPlayerBridge } from "@/providers/spotify/SpotifyWebPlayerBridge";
 import { YoutubeMusicWebPlayerBridge } from "@/providers/youtubeMusic/YoutubeMusicWebPlayerBridge";
-import { ensureProvidersRegistered } from "@/providers/setupProviders";
+import { ensureProvidersRegistered, initializeProviderPlugins } from "@/providers/setupProviders";
 import { SettingsWindowManager } from "@/settings/SettingsWindowManager";
 import { IS_TAHOE } from "@/systems/constants";
 import { HookKeyboard } from "@/systems/keyboard/HookKeyboard";
 import { hydrateLibraryFromCache } from "@/systems/LibraryState";
-import { initializeLocalMusic } from "@/systems/LocalMusicState";
 import { initializeMenuManager } from "@/systems/MenuManager";
 import { initializeUpdater } from "@/systems/Updater";
 import { perfMark } from "@/utils/perfLogger";
@@ -45,9 +44,16 @@ function App(): React.JSX.Element | null {
         const initializeHandle = runAfterInteractionsWithLabel(() => {
             perfMark("App.initializeMenuManager");
             initializeMenuManager();
-            perfMark("App.initializeLocalMusic.start");
-            initializeLocalMusic();
-            perfMark("App.initializeLocalMusic.end");
+            void (async () => {
+                perfMark("App.initializeProviders.start");
+                try {
+                    await initializeProviderPlugins({ reason: "app-start" });
+                } catch (error) {
+                    console.error("Failed to initialize provider plugins:", error);
+                } finally {
+                    perfMark("App.initializeProviders.end");
+                }
+            })();
         }, "App.initializeMenuManager");
 
         const hydrateHandle = runAfterInteractionsWithLabel(() => {
