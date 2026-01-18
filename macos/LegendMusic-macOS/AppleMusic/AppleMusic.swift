@@ -1,3 +1,5 @@
+import AudioToolbox
+import CoreAudio
 import Foundation
 import MusicKit
 import React
@@ -12,11 +14,9 @@ class AppleMusic: RCTEventEmitter {
     private var currentDurationSeconds: Double?
     private var developerToken: String?
     private var userToken: String?
+    @available(macOS 14.0, *)
     private var musicPlayer: ApplicationMusicPlayer? {
-        if #available(macOS 12.0, *) {
-            return ApplicationMusicPlayer.shared
-        }
-        return nil
+        return ApplicationMusicPlayer.shared
     }
 
     @objc override static func requiresMainQueueSetup() -> Bool {
@@ -37,15 +37,32 @@ class AppleMusic: RCTEventEmitter {
         stopPlaybackPolling()
     }
 
+    @objc func getDeveloperToken(_ resolve: @escaping RCTPromiseResolveBlock,
+                                 rejecter reject: @escaping RCTPromiseRejectBlock) {
+        guard #available(macOS 12.0, *) else {
+            reject("unsupported", "Apple Music requires macOS 12 or newer.", nil)
+            return
+        }
+
+        Task {
+            do {
+                let token = try await resolveDeveloperToken(provided: nil)
+                DispatchQueue.main.async {
+                    resolve(token)
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    reject("developer_token_failed", error.localizedDescription, error)
+                }
+            }
+        }
+    }
+
     @objc func authorize(_ params: NSDictionary,
                          resolver resolve: @escaping RCTPromiseResolveBlock,
                          rejecter reject: @escaping RCTPromiseRejectBlock) {
         guard #available(macOS 12.0, *) else {
             reject("unsupported", "Apple Music requires macOS 12 or newer.", nil)
-            return
-        }
-        guard let developerToken = params["developerToken"] as? String, !developerToken.isEmpty else {
-            reject("missing_token", "Missing Apple Music developer token.", nil)
             return
         }
 
@@ -56,20 +73,22 @@ class AppleMusic: RCTEventEmitter {
                     throw NSError(domain: "AppleMusic", code: 1, userInfo: [NSLocalizedDescriptionKey: "Apple Music authorization denied"])
                 }
 
-                let userToken = try await MusicUserTokenProvider.shared.userToken(forDeveloperToken: developerToken)
+                let developerToken = try await resolveDeveloperToken(provided: params["developerToken"] as? String)
+                let userToken = try await MusicUserTokenProvider().userToken(for: developerToken, options: [])
                 self.developerToken = developerToken
                 self.userToken = userToken
 
                 let storefront = try await fetchStorefront(developerToken: developerToken, userToken: userToken)
                 let subscription = await fetchSubscriptionLabel()
+                let userPayload: [String: Any] = [
+                    "name": "Apple Music",
+                    "subscription": subscription ?? NSNull(),
+                    "storefront": storefront ?? NSNull(),
+                ]
                 let payload: [String: Any] = [
                     "userToken": userToken,
                     "storefront": storefront ?? NSNull(),
-                    "user": [
-                        "name": "Apple Music",
-                        "subscription": subscription ?? NSNull(),
-                        "storefront": storefront ?? NSNull(),
-                    ]
+                    "user": userPayload,
                 ]
                 DispatchQueue.main.async {
                     resolve(payload)
@@ -101,23 +120,28 @@ class AppleMusic: RCTEventEmitter {
             reject("unsupported", "Apple Music requires macOS 12 or newer.", nil)
             return
         }
-        guard let developerToken = params["developerToken"] as? String, !developerToken.isEmpty else {
-            reject("missing_token", "Missing Apple Music developer token.", nil)
-            return
-        }
 
-        self.developerToken = developerToken
-        self.userToken = params["userToken"] as? String
-        DispatchQueue.main.async {
-            resolve(["success": true])
+        Task {
+            do {
+                let developerToken = try await resolveDeveloperToken(provided: params["developerToken"] as? String)
+                self.developerToken = developerToken
+                self.userToken = params["userToken"] as? String
+                DispatchQueue.main.async {
+                    resolve(["success": true])
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    reject("configure_failed", error.localizedDescription, error)
+                }
+            }
         }
     }
 
     @objc func loadTrack(_ params: NSDictionary,
                          resolver resolve: @escaping RCTPromiseResolveBlock,
                          rejecter reject: @escaping RCTPromiseRejectBlock) {
-        guard #available(macOS 12.0, *) else {
-            reject("unsupported", "Apple Music requires macOS 12 or newer.", nil)
+        guard #available(macOS 14.0, *) else {
+            reject("unsupported", "Apple Music playback requires macOS 14 or newer.", nil)
             return
         }
         guard let player = musicPlayer else {
@@ -131,7 +155,7 @@ class AppleMusic: RCTEventEmitter {
 
         Task {
             do {
-                let request = MusicCatalogResourceRequest<Song>(matching: \Song.id, equalTo: MusicItemID(trackId))
+                var request = MusicCatalogResourceRequest<Song>(matching: \SongFilter.id, equalTo: MusicItemID(trackId))
                 request.limit = 1
                 let response = try await request.response()
                 guard let song = response.items.first else {
@@ -169,8 +193,8 @@ class AppleMusic: RCTEventEmitter {
 
     @objc func play(_ resolve: @escaping RCTPromiseResolveBlock,
                     rejecter reject: @escaping RCTPromiseRejectBlock) {
-        guard #available(macOS 12.0, *) else {
-            reject("unsupported", "Apple Music requires macOS 12 or newer.", nil)
+        guard #available(macOS 14.0, *) else {
+            reject("unsupported", "Apple Music playback requires macOS 14 or newer.", nil)
             return
         }
         guard let player = musicPlayer else {
@@ -194,8 +218,8 @@ class AppleMusic: RCTEventEmitter {
 
     @objc func pause(_ resolve: @escaping RCTPromiseResolveBlock,
                      rejecter reject: @escaping RCTPromiseRejectBlock) {
-        guard #available(macOS 12.0, *) else {
-            reject("unsupported", "Apple Music requires macOS 12 or newer.", nil)
+        guard #available(macOS 14.0, *) else {
+            reject("unsupported", "Apple Music playback requires macOS 14 or newer.", nil)
             return
         }
         guard let player = musicPlayer else {
@@ -211,8 +235,8 @@ class AppleMusic: RCTEventEmitter {
     @objc func seek(_ positionSeconds: NSNumber,
                     resolver resolve: @escaping RCTPromiseResolveBlock,
                     rejecter reject: @escaping RCTPromiseRejectBlock) {
-        guard #available(macOS 12.0, *) else {
-            reject("unsupported", "Apple Music requires macOS 12 or newer.", nil)
+        guard #available(macOS 14.0, *) else {
+            reject("unsupported", "Apple Music playback requires macOS 14 or newer.", nil)
             return
         }
         guard let player = musicPlayer else {
@@ -228,24 +252,25 @@ class AppleMusic: RCTEventEmitter {
     @objc func setVolume(_ volume: NSNumber,
                          resolver resolve: @escaping RCTPromiseResolveBlock,
                          rejecter reject: @escaping RCTPromiseRejectBlock) {
-        guard #available(macOS 12.0, *) else {
-            reject("unsupported", "Apple Music requires macOS 12 or newer.", nil)
+        guard #available(macOS 14.0, *) else {
+            reject("unsupported", "Apple Music playback requires macOS 14 or newer.", nil)
             return
         }
-        guard let player = musicPlayer else {
-            reject("unsupported", "Apple Music player is unavailable.", nil)
+        let rawValue = volume.doubleValue
+        let clampedValue = Float32(max(0.0, min(1.0, rawValue.isFinite ? rawValue : 0.0)))
+        if setSystemVolume(clampedValue) {
+            DispatchQueue.main.async {
+                resolve(["success": true])
+            }
             return
         }
-        player.volume = Float(max(0.0, min(1.0, volume.doubleValue)))
-        DispatchQueue.main.async {
-            resolve(["success": true])
-        }
+        reject("unsupported", "Apple Music volume control is unavailable on this output device.", nil)
     }
 
     @objc func getPlaybackState(_ resolve: @escaping RCTPromiseResolveBlock,
                                 rejecter reject: @escaping RCTPromiseRejectBlock) {
-        guard #available(macOS 12.0, *) else {
-            reject("unsupported", "Apple Music requires macOS 12 or newer.", nil)
+        guard #available(macOS 14.0, *) else {
+            reject("unsupported", "Apple Music playback requires macOS 14 or newer.", nil)
             return
         }
         DispatchQueue.main.async {
@@ -277,7 +302,7 @@ class AppleMusic: RCTEventEmitter {
     }
 
     private func buildPlaybackState() -> [String: Any] {
-        guard #available(macOS 12.0, *) else {
+        guard #available(macOS 14.0, *) else {
             return ["error": "unsupported"]
         }
         guard let player = musicPlayer else {
@@ -286,7 +311,7 @@ class AppleMusic: RCTEventEmitter {
 
         let status = player.state.playbackStatus
         let isPlaying = status == .playing
-        let isLoading = status == .waiting
+        let isLoading = !player.isPreparedToPlay && currentTrackId != nil
         let positionSeconds = player.playbackTime
         let durationSeconds = currentDurationSeconds ?? 0
 
@@ -315,6 +340,71 @@ class AppleMusic: RCTEventEmitter {
         DispatchQueue.main.async {
             self.sendEvent(withName: "onPlaybackError", body: ["error": message])
         }
+    }
+
+    private func setSystemVolume(_ volume: Float32) -> Bool {
+        var deviceId = AudioDeviceID(0)
+        var deviceAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var deviceSize = UInt32(MemoryLayout<AudioDeviceID>.size)
+        let deviceStatus = AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &deviceAddress,
+            0,
+            nil,
+            &deviceSize,
+            &deviceId
+        )
+        guard deviceStatus == noErr, deviceId != 0 else {
+            return false
+        }
+
+        func setVolume(selector: AudioObjectPropertySelector, element: AudioObjectPropertyElement) -> Bool {
+            var address = AudioObjectPropertyAddress(
+                mSelector: selector,
+                mScope: kAudioDevicePropertyScopeOutput,
+                mElement: element
+            )
+            guard AudioObjectHasProperty(deviceId, &address) else {
+                return false
+            }
+            var isSettable: DarwinBoolean = false
+            guard AudioObjectIsPropertySettable(deviceId, &address, &isSettable) == noErr, isSettable.boolValue else {
+                return false
+            }
+            var value = volume
+            let size = UInt32(MemoryLayout<Float32>.size)
+            return AudioObjectSetPropertyData(deviceId, &address, 0, nil, size, &value) == noErr
+        }
+
+        if setVolume(selector: kAudioHardwareServiceDeviceProperty_VirtualMainVolume, element: kAudioObjectPropertyElementMain) {
+            return true
+        }
+
+        let leftChannel = setVolume(selector: kAudioDevicePropertyVolumeScalar, element: 1)
+        let rightChannel = setVolume(selector: kAudioDevicePropertyVolumeScalar, element: 2)
+        return leftChannel || rightChannel
+    }
+
+    @available(macOS 12.0, *)
+    private func resolveDeveloperToken(provided: String?) async throws -> String {
+        if let provided = provided?.trimmingCharacters(in: .whitespacesAndNewlines), !provided.isEmpty {
+            developerToken = provided
+            return provided
+        }
+
+        if let cached = developerToken, !cached.isEmpty {
+            return cached
+        }
+
+        let tokenProvider = DefaultMusicTokenProvider()
+        MusicDataRequest.tokenProvider = tokenProvider
+        let token = try await tokenProvider.developerToken(options: [])
+        developerToken = token
+        return token
     }
 
     @available(macOS 12.0, *)

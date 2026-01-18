@@ -61,15 +61,15 @@ export function AppleMusicSettings() {
                 />
                 <SettingsRow
                     title="Developer Token"
-                    description="Requires a backend endpoint to provide a MusicKit developer token."
+                    description="Generated automatically on-device by MusicKit; no backend required."
                     control={
                         <View className="items-end gap-1">
                             <Text className="text-sm text-text-secondary">
                                 {!isAppleMusicEnabled
                                     ? "Apple Music is disabled."
                                     : hasDeveloperToken
-                                      ? "Developer token fetched."
-                                      : "Missing developer token."}
+                                      ? "Developer token ready."
+                                      : "Developer token will be generated automatically."}
                             </Text>
                         </View>
                     }
@@ -85,9 +85,7 @@ export function AppleMusicSettings() {
                     description={
                         !isAppleMusicEnabled
                             ? "Enable Apple Music to connect your account."
-                            : !hasDeveloperToken
-                              ? "Developer token required before sign-in."
-                              : isAuthorized
+                            : isAuthorized
                                 ? "Apple Music is connected and ready for playback."
                                 : "Connect an Apple Music account to enable streaming."
                     }
@@ -96,7 +94,7 @@ export function AppleMusicSettings() {
                             <Button
                                 variant="primary"
                                 size="medium"
-                                disabled={isLoggingIn || !isAppleMusicEnabled || !hasDeveloperToken}
+                                disabled={isLoggingIn || !isAppleMusicEnabled}
                                 onClick={handleLogin}
                             >
                                 <Text className="text-text-primary text-sm font-medium">

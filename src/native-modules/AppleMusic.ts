@@ -37,6 +37,7 @@ export interface AppleMusicEvents {
 }
 
 type AppleMusicNativeType = {
+    getDeveloperToken: () => Promise<string>;
     authorize: (params: { developerToken: string }) => Promise<AppleMusicAuthorizationResult>;
     unauthorize: () => Promise<void>;
     configure: (params: { developerToken: string; userToken?: string | null }) => Promise<{ success: boolean }>;
@@ -56,6 +57,7 @@ const appleMusicApi: AppleMusicNativeType & {
         listener: AppleMusicEvents[T],
     ) => { remove: () => void };
 } = {
+    getDeveloperToken: () => AppleMusic.getDeveloperToken(),
     authorize: (params) => AppleMusic.authorize(params),
     unauthorize: () => AppleMusic.unauthorize(),
     configure: (params) => AppleMusic.configure(params),
