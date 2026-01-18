@@ -1,11 +1,11 @@
 import { appleMusicNative } from "@/native-modules/AppleMusic";
 import {
+    appleMusicAuthState$,
     clearAppleMusicAuth,
     setAppleMusicDeveloperToken,
     setAppleMusicStorefront,
     setAppleMusicUser,
     setAppleMusicUserToken,
-    appleMusicAuthState$,
 } from "./authState";
 import { clearAppleMusicPlaylistsCache } from "./playlistsState";
 import type { AppleMusicAuthState } from "./types";

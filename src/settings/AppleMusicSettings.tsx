@@ -32,8 +32,7 @@ export function AppleMusicSettings() {
             await authorizeAppleMusic();
             showToast("Apple Music connected", "info");
         } catch (error) {
-            console.error("Apple Music login failed", error);
-            showToast(error instanceof Error ? error.message : "Apple Music login failed", "error");
+            showToast((error as Error).message ?? "Apple Music login failed", "error");
         } finally {
             setIsLoggingIn(false);
         }
@@ -86,8 +85,8 @@ export function AppleMusicSettings() {
                         !isAppleMusicEnabled
                             ? "Enable Apple Music to connect your account."
                             : isAuthorized
-                                ? "Apple Music is connected and ready for playback."
-                                : "Connect an Apple Music account to enable streaming."
+                              ? "Apple Music is connected and ready for playback."
+                              : "Connect an Apple Music account to enable streaming."
                     }
                     control={
                         <View className="flex flex-row flex-wrap gap-2">
@@ -101,12 +100,7 @@ export function AppleMusicSettings() {
                                     {isAuthorized ? "Re-authenticate" : "Sign in to Apple Music"}
                                 </Text>
                             </Button>
-                            <Button
-                                variant="secondary"
-                                size="medium"
-                                onClick={handleLogout}
-                                disabled={!isAuthorized}
-                            >
+                            <Button variant="secondary" size="medium" onClick={handleLogout} disabled={!isAuthorized}>
                                 <Text className="text-text-primary text-sm font-medium">Log out</Text>
                             </Button>
                         </View>
