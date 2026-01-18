@@ -8,55 +8,57 @@ import {
     appleMusicAuthState$,
 } from "./authState";
 import { clearAppleMusicPlaylistsCache } from "./playlistsState";
-import { APPLE_MUSIC_DEVELOPER_TOKEN_URL } from "./constants";
 import type { AppleMusicAuthState } from "./types";
 
 const TOKEN_EXPIRY_BUFFER_MS = 60_000;
 
-type DeveloperTokenResponse = {
-    token?: string;
-    developerToken?: string;
-    expiresAt?: number;
-    expiresIn?: number;
+const decodeBase64Url = (value: string): string | null => {
+    const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    try {
+        if (typeof atob === "function") {
+            return atob(padded);
+        }
+        return Buffer.from(padded, "base64").toString("utf8");
+    } catch {
+        return null;
+    }
 };
 
-const parseDeveloperTokenResponse = (payload: string): { token: string; expiresAt: number | null } => {
-    const trimmed = payload.trim();
-    if (!trimmed) {
-        throw new Error("Empty Apple Music developer token response");
+const parseDeveloperTokenExpiresAt = (token: string): number | null => {
+    const parts = token.split(".");
+    if (parts.length < 2) {
+        return null;
+    }
+
+    const decoded = decodeBase64Url(parts[1]);
+    if (!decoded) {
+        return null;
     }
 
     try {
-        const json = JSON.parse(trimmed) as DeveloperTokenResponse;
-        const token = json.token ?? json.developerToken;
-        if (!token) {
-            throw new Error("Missing Apple Music developer token in response");
+        const payload = JSON.parse(decoded) as { exp?: number };
+        if (typeof payload.exp !== "number") {
+            return null;
         }
-        const expiresAt =
-            typeof json.expiresAt === "number"
-                ? json.expiresAt
-                : typeof json.expiresIn === "number"
-                  ? Date.now() + json.expiresIn * 1000 - TOKEN_EXPIRY_BUFFER_MS
-                  : null;
-        return { token, expiresAt };
-    } catch (error) {
-        if (error instanceof SyntaxError) {
-            return { token: trimmed, expiresAt: null };
-        }
-        throw error;
+        return payload.exp * 1000;
+    } catch {
+        return null;
     }
 };
 
-export async function fetchAppleMusicDeveloperToken(): Promise<{ token: string; expiresAt: number | null }> {
-    // TODO: Replace TEMPORARY_URL with your backend endpoint that returns a developer token.
-    const response = await fetch(APPLE_MUSIC_DEVELOPER_TOKEN_URL);
-    if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`Apple Music token error ${response.status}: ${text}`);
+const parseDeveloperToken = (token: string): { token: string; expiresAt: number | null } => {
+    const trimmed = token.trim();
+    if (!trimmed) {
+        throw new Error("Empty Apple Music developer token");
     }
 
-    const payload = await response.text();
-    return parseDeveloperTokenResponse(payload);
+    return { token: trimmed, expiresAt: parseDeveloperTokenExpiresAt(trimmed) };
+};
+
+export async function fetchAppleMusicDeveloperToken(): Promise<{ token: string; expiresAt: number | null }> {
+    const token = await appleMusicNative.getDeveloperToken();
+    return parseDeveloperToken(token);
 }
 
 export async function ensureAppleMusicDeveloperToken(): Promise<string | null> {

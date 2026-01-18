@@ -3,6 +3,9 @@
 
 @interface RCT_EXTERN_MODULE(AppleMusic, RCTEventEmitter)
 
+RCT_EXTERN_METHOD(getDeveloperToken:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
 RCT_EXTERN_METHOD(authorize:(NSDictionary *)params
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
