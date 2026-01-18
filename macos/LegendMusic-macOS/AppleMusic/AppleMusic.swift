@@ -19,6 +19,68 @@ class AppleMusic: RCTEventEmitter {
         return ApplicationMusicPlayer.shared
     }
 
+    private func log(_ message: String) {
+        NSLog("[AppleMusic] %@", message)
+    }
+
+    private func formatError(_ error: Error) -> (code: String, message: String) {
+        let nsError = error as NSError
+        let resolvedError = (nsError.userInfo[NSUnderlyingErrorKey] as? NSError) ?? nsError
+        let errorCode = "\(resolvedError.domain)_\(resolvedError.code)"
+        let message = buildErrorMessage(error: error, nsError: nsError)
+        return (errorCode, message)
+    }
+
+    private func buildErrorMessage(error: Error, nsError: NSError) -> String {
+        var parts: [String] = [nsError.localizedDescription]
+        var detailParts: [String] = []
+
+        if let failureReason = nsError.localizedFailureReason, !failureReason.isEmpty {
+            detailParts.append(failureReason)
+        }
+        if let recoverySuggestion = nsError.localizedRecoverySuggestion, !recoverySuggestion.isEmpty {
+            detailParts.append(recoverySuggestion)
+        }
+        if let debugDescription = nsError.userInfo[NSDebugDescriptionErrorKey] as? String,
+           !debugDescription.isEmpty {
+            detailParts.append(debugDescription)
+        }
+
+        if let underlying = nsError.userInfo[NSUnderlyingErrorKey] as? NSError {
+            let summary = briefErrorSummary(underlying)
+            if !summary.isEmpty {
+                detailParts.append("Underlying: \(summary)")
+            }
+        }
+
+        if detailParts.isEmpty {
+            let reflection = String(reflecting: error)
+            if !reflection.isEmpty, reflection != nsError.localizedDescription {
+                detailParts.append(reflection)
+            }
+        }
+
+        if !detailParts.isEmpty {
+            parts.append(detailParts.joined(separator: " | "))
+        }
+
+        return parts.joined(separator: " | ")
+    }
+
+    private func briefErrorSummary(_ error: NSError) -> String {
+        var parts: [String] = ["\(error.domain) \(error.code)"]
+        let description = error.localizedDescription
+        if !description.isEmpty {
+            parts.append(description)
+        }
+        if let debugDescription = error.userInfo[NSDebugDescriptionErrorKey] as? String,
+           !debugDescription.isEmpty,
+           debugDescription != description {
+            parts.append(debugDescription)
+        }
+        return parts.joined(separator: " ")
+    }
+
     @objc override static func requiresMainQueueSetup() -> Bool {
         return true
     }
@@ -68,18 +130,29 @@ class AppleMusic: RCTEventEmitter {
 
         Task {
             do {
+                let paramKeys = params.allKeys.compactMap { $0 as? String }.sorted()
+                log("authorize start (params: \(paramKeys))")
+
                 let status = await MusicAuthorization.request()
+                log("authorization status: \(status.rawValue)")
                 guard status == .authorized else {
                     throw NSError(domain: "AppleMusic", code: 1, userInfo: [NSLocalizedDescriptionKey: "Apple Music authorization denied"])
                 }
 
-                let developerToken = try await resolveDeveloperToken(provided: params["developerToken"] as? String)
+                let providedDeveloperToken = params["developerToken"] as? String
+                log("developer token provided: \(providedDeveloperToken != nil)")
+                let developerToken = try await resolveDeveloperToken(provided: providedDeveloperToken)
+                log("developer token resolved (length: \(developerToken.count))")
                 let userToken = try await MusicUserTokenProvider().userToken(for: developerToken, options: [])
+                log("user token resolved (length: \(userToken.count))")
                 self.developerToken = developerToken
                 self.userToken = userToken
 
+                log("fetching storefront")
                 let storefront = try await fetchStorefront(developerToken: developerToken, userToken: userToken)
+                log("storefront fetched: \(storefront ?? "nil")")
                 let subscription = await fetchSubscriptionLabel()
+                log("subscription fetched: \(subscription ?? "nil")")
                 let userPayload: [String: Any] = [
                     "name": "Apple Music",
                     "subscription": subscription ?? NSNull(),
@@ -94,8 +167,11 @@ class AppleMusic: RCTEventEmitter {
                     resolve(payload)
                 }
             } catch {
+                let nsError = error as NSError
+                let formattedError = formatError(error)
+                log("authorize failed: \(formattedError.code) \(formattedError.message)")
                 DispatchQueue.main.async {
-                    reject("authorize_failed", error.localizedDescription, error)
+                    reject(formattedError.code, formattedError.message, nsError)
                 }
             }
         }
