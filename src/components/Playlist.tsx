@@ -129,14 +129,6 @@ export function Playlist() {
         [queueTracks, currentTrackIndex, currentTrackQueueEntryId],
     );
 
-    const playlistContextMenuItems = useMemo(
-        () =>
-            buildTrackContextMenuItems({
-                includeFinder: true,
-            }),
-        [],
-    );
-
     const handleDeleteSelection = useCallback((indices: number[]) => {
         if (indices.length === 0) {
             return;
@@ -171,15 +163,23 @@ export function Playlist() {
         async (index: number, event: NativeMouseEvent) => {
             const x = event.pageX ?? event.x ?? 0;
             const y = event.pageY ?? event.y ?? 0;
+            const track = queueTracks[index];
+            if (!track) {
+                return;
+            }
 
-            const selection = await showContextMenu(playlistContextMenuItems, { x, y });
+            const menuItems = buildTrackContextMenuItems({ track });
+            if (menuItems.length === 0) {
+                return;
+            }
+            const selection = await showContextMenu(menuItems, { x, y });
 
             await handleTrackContextMenuSelection({
                 selection,
-                filePath: playlist[index]?.filePath,
+                track,
             });
         },
-        [playlist, playlistContextMenuItems],
+        [queueTracks],
     );
 
     const handleTrackMouseDown = useCallback(

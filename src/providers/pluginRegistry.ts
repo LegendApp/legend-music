@@ -13,6 +13,7 @@ import {
     type ProviderTrack,
 } from "@/providers/types";
 import type { LocalTrack } from "@/systems/LocalMusicState";
+import type { ContextMenuItem } from "@/native-modules/ContextMenu";
 
 export type ProviderPluginInitContext = {
     reason: "app-start" | "manual" | "background";
@@ -39,6 +40,11 @@ export type ProviderTrackMapper = {
     toLocalTrack?: (track: ProviderTrack, options?: { index?: number }) => LocalTrack;
 };
 
+export type ProviderTrackContextMenu = {
+    getItems: (track: LocalTrack) => ContextMenuItem[];
+    onSelect?: (selection: string, track: LocalTrack) => Promise<boolean> | boolean;
+};
+
 export type ProviderPlugin = {
     provider: Provider;
     initialize?: (context?: ProviderPluginInitContext) => Promise<void> | void;
@@ -47,6 +53,7 @@ export type ProviderPlugin = {
     playback?: PlaybackProvider;
     library?: ProviderLibraryPlugin;
     tracks?: ProviderTrackMapper;
+    trackContextMenu?: ProviderTrackContextMenu;
     ui?: {
         bridge?: ComponentType | null;
         settings?: ComponentType | null;

@@ -8,6 +8,7 @@ export type YoutubeSearchItem = {
     };
     snippet?: {
         title?: string;
+        channelId?: string;
         channelTitle?: string;
         thumbnails?: {
             default?: { url?: string };

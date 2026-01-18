@@ -12,8 +12,8 @@ type SpotifyTrack = {
     uri: string;
     duration_ms: number;
     explicit: boolean;
-    artists: { name: string }[];
-    album: { name: string; images?: { url: string }[] };
+    artists: { name: string; external_urls?: { spotify?: string } }[];
+    album: { name: string; images?: { url: string }[]; external_urls?: { spotify?: string } };
 };
 
 export async function searchSpotifyTracks(query: string, limit = 10): Promise<ProviderTrack[]> {
@@ -43,17 +43,25 @@ export async function searchSpotifyTracks(query: string, limit = 10): Promise<Pr
     const json = (await response.json()) as { tracks?: { items?: SpotifyTrack[] } };
     const items = json.tracks?.items ?? [];
 
-    return items.map((track) => ({
-        provider: "spotify",
-        id: track.id,
-        uri: track.uri,
-        name: track.name,
-        durationMs: track.duration_ms,
-        artists: track.artists?.map((artist) => artist.name) ?? [],
-        album: track.album?.name,
-        thumbnail: track.album?.images?.[0]?.url,
-        isExplicit: track.explicit,
-    }));
+    return items.map((track) => {
+        const artistUrls = (track.artists ?? [])
+            .map((artist) => artist.external_urls?.spotify)
+            .filter((url): url is string => Boolean(url));
+
+        return {
+            provider: "spotify",
+            id: track.id,
+            uri: track.uri,
+            name: track.name,
+            durationMs: track.duration_ms,
+            artists: track.artists?.map((artist) => artist.name) ?? [],
+            artistUrls: artistUrls.length > 0 ? artistUrls : undefined,
+            album: track.album?.name,
+            albumUrl: track.album?.external_urls?.spotify,
+            thumbnail: track.album?.images?.[0]?.url,
+            isExplicit: track.explicit,
+        };
+    });
 }
 
 const SPOTIFY_SEARCH_LIMIT = 20;

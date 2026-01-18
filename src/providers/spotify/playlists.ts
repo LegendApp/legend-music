@@ -32,8 +32,8 @@ type SpotifyTrack = {
     uri?: string;
     duration_ms?: number;
     explicit?: boolean;
-    artists?: { name: string }[];
-    album?: { name?: string; images?: SpotifyPlaylistImage[] };
+    artists?: { name: string; external_urls?: { spotify?: string } }[];
+    album?: { name?: string; images?: SpotifyPlaylistImage[]; external_urls?: { spotify?: string } };
     type?: string;
 };
 
@@ -76,6 +76,10 @@ const mapSpotifyTrack = (track: SpotifyTrack | null | undefined): ProviderTrack 
 
     const id = track.id ?? track.uri;
 
+    const artistUrls = (track.artists ?? [])
+        .map((artist) => artist.external_urls?.spotify)
+        .filter((url): url is string => Boolean(url));
+
     return {
         provider: "spotify",
         id,
@@ -83,7 +87,9 @@ const mapSpotifyTrack = (track: SpotifyTrack | null | undefined): ProviderTrack 
         name: track.name ?? "Unknown Track",
         durationMs: track.duration_ms,
         artists: track.artists?.map((artist) => artist.name) ?? [],
+        artistUrls: artistUrls.length > 0 ? artistUrls : undefined,
         album: track.album?.name,
+        albumUrl: track.album?.external_urls?.spotify,
         thumbnail: track.album?.images?.[0]?.url,
         isExplicit: track.explicit,
     };

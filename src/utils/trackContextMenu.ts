@@ -1,15 +1,15 @@
 import type { ContextMenuItem } from "@/native-modules/ContextMenu";
-import { showInFinder } from "@/native-modules/FileDialog";
+import { getProviderPlugin } from "@/providers/pluginRegistry";
+import type { LocalTrack } from "@/systems/LocalMusicState";
 
 export const TRACK_CONTEXT_MENU_ITEMS = {
     queueAdd: { id: "queue-add", title: "Add to Queue" } as const,
     queuePlayNext: { id: "queue-play-next", title: "Play Next" } as const,
-    showInFinder: { id: "show-in-finder", title: "Show in Finder" } as const,
 };
 
 type BuildTrackContextMenuOptions = {
+    track?: LocalTrack | null;
     includeQueueActions?: boolean;
-    includeFinder?: boolean;
     extraItems?: ContextMenuItem[];
 };
 
@@ -20,8 +20,12 @@ export function buildTrackContextMenuItems(options: BuildTrackContextMenuOptions
         items.push(TRACK_CONTEXT_MENU_ITEMS.queueAdd, TRACK_CONTEXT_MENU_ITEMS.queuePlayNext);
     }
 
-    if (options.includeFinder) {
-        items.push(TRACK_CONTEXT_MENU_ITEMS.showInFinder);
+    if (options.track) {
+        const providerId = options.track.provider ?? "local";
+        const providerItems = getProviderPlugin(providerId)?.trackContextMenu?.getItems(options.track) ?? [];
+        if (providerItems.length > 0) {
+            items.push(...providerItems);
+        }
     }
 
     if (options.extraItems?.length) {
@@ -35,25 +39,18 @@ type QueueAction = "enqueue" | "play-next";
 
 interface HandleTrackContextMenuSelectionOptions {
     selection: string | null;
-    filePath?: string | null;
+    track?: LocalTrack | null;
     onQueueAction?: (action: QueueAction) => void;
     onCustomSelect?: (selection: string) => void | Promise<void>;
 }
 
 export async function handleTrackContextMenuSelection({
     selection,
-    filePath,
+    track,
     onQueueAction,
     onCustomSelect,
 }: HandleTrackContextMenuSelectionOptions): Promise<void> {
     if (!selection) {
-        return;
-    }
-
-    if (selection === TRACK_CONTEXT_MENU_ITEMS.showInFinder.id) {
-        if (filePath) {
-            await showInFinder(filePath);
-        }
         return;
     }
 
@@ -65,6 +62,17 @@ export async function handleTrackContextMenuSelection({
     if (selection === TRACK_CONTEXT_MENU_ITEMS.queueAdd.id) {
         onQueueAction?.("enqueue");
         return;
+    }
+
+    if (track) {
+        const providerId = track.provider ?? "local";
+        const providerHandler = getProviderPlugin(providerId)?.trackContextMenu?.onSelect;
+        if (providerHandler) {
+            const handled = await providerHandler(selection, track);
+            if (handled) {
+                return;
+            }
+        }
     }
 
     await onCustomSelect?.(selection);
