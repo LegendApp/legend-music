@@ -29,7 +29,9 @@ export interface ProviderTrack {
     durationMs?: number;
     addedAt?: number;
     artists?: string[];
+    artistUrls?: string[];
     album?: string;
+    albumUrl?: string;
     thumbnail?: string;
     isExplicit?: boolean;
     marketRestrictions?: string[];

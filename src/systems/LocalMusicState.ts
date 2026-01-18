@@ -32,13 +32,14 @@ export interface LocalTrack {
     title: string;
     artist: string;
     album?: string;
+    albumUrl?: string;
     trackNumber?: number;
     duration: string;
     filePath: string;
     fileName: string;
     thumbnail?: string;
     thumbnailKey?: string;
-    addedAt?: number;
+    artistUrls?: string[];
     isMissing?: boolean;
     provider?: ProviderId;
     uri?: string;

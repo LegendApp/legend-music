@@ -656,17 +656,23 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
             const x = event.pageX ?? event.x ?? 0;
             const y = event.pageY ?? event.y ?? 0;
             const sourceTrack = trackItems[index]?.sourceTrack;
+            if (!sourceTrack) {
+                return;
+            }
             const isRemoteTrack = !isLocalProviderTrack(sourceTrack);
             const menuItems = buildTrackContextMenuItems({
+                track: sourceTrack,
                 includeQueueActions: true,
-                includeFinder: !isRemoteTrack,
                 extraItems: isRemoteTrack ? [] : [ADD_TO_PLAYLIST_MENU_ITEM],
             });
+            if (menuItems.length === 0) {
+                return;
+            }
             const selection = await showContextMenu(menuItems, { x, y });
 
             await handleTrackContextMenuSelection({
                 selection,
-                filePath: isRemoteTrack ? null : sourceTrack?.filePath,
+                track: sourceTrack,
                 onQueueAction: (action) => {
                     handleTrackAction(index, action === "play-next" ? "play-next" : "enqueue");
                 },

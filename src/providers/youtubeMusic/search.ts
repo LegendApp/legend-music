@@ -95,6 +95,8 @@ export async function searchYoutubeMusicTracks(query: string, limit = DEFAULT_SE
             }
             const title = item.snippet?.title ?? "Unknown Track";
             const channel = item.snippet?.channelTitle ?? "YouTube Music";
+            const channelId = item.snippet?.channelId;
+            const artistUrl = channelId ? `https://music.youtube.com/channel/${channelId}` : undefined;
             const durationSeconds = durations.get(id);
 
             return {
@@ -103,6 +105,7 @@ export async function searchYoutubeMusicTracks(query: string, limit = DEFAULT_SE
                 uri: buildYoutubeMusicUri(id),
                 name: title,
                 artists: channel ? [channel] : [],
+                artistUrls: artistUrl ? [artistUrl] : undefined,
                 thumbnail: pickThumbnail(item),
                 durationMs: typeof durationSeconds === "number" ? durationSeconds * 1000 : undefined,
             } satisfies ProviderTrack;
