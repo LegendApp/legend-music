@@ -14,6 +14,7 @@ import {
 import type { NativeMouseEvent } from "react-native-macos";
 
 import { Button } from "@/components/Button";
+import { AiPlaylistDropdown } from "@/components/MediaLibrary/AiPlaylistDropdown";
 import {
     type DraggedItem,
     DroppableZone,
@@ -447,14 +448,17 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                                 {playlistHeaderLabel}
                             </Text>
                             {showLocalPlaylists ? (
-                                <Button
-                                    icon="plus"
-                                    variant="icon-hover"
-                                    size="small"
-                                    accessibilityLabel="Add playlist"
-                                    disabled={Boolean(tempPlaylistId)}
-                                    onClick={handleAddPlaylist}
-                                />
+                                <View className="flex-row items-center gap-2">
+                                    <AiPlaylistDropdown disabled={Boolean(tempPlaylistId)} />
+                                    <Button
+                                        icon="plus"
+                                        variant="icon-hover"
+                                        size="small"
+                                        accessibilityLabel="Add playlist"
+                                        disabled={Boolean(tempPlaylistId)}
+                                        onClick={handleAddPlaylist}
+                                    />
+                                </View>
                             ) : null}
                         </View>
                     </SidebarItem>
@@ -620,15 +624,23 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                                 {playlistHeaderLabel}
                             </Text>
                             {showLocalPlaylists ? (
-                                <Button
-                                    icon="plus"
-                                    variant="icon"
-                                    size="small"
-                                    accessibilityLabel="Add playlist"
-                                    disabled={Boolean(tempPlaylistId)}
-                                    onClick={handleAddPlaylist}
-                                    className="bg-transparent hover:bg-white/10"
-                                />
+                                <View className="flex-row items-center gap-2">
+                                    <AiPlaylistDropdown
+                                        disabled={Boolean(tempPlaylistId)}
+                                        buttonVariant="icon"
+                                        buttonSize="small"
+                                        buttonClassName="bg-transparent hover:bg-white/10"
+                                    />
+                                    <Button
+                                        icon="plus"
+                                        variant="icon"
+                                        size="small"
+                                        accessibilityLabel="Add playlist"
+                                        disabled={Boolean(tempPlaylistId)}
+                                        onClick={handleAddPlaylist}
+                                        className="bg-transparent hover:bg-white/10"
+                                    />
+                                </View>
                             ) : null}
                         </View>
 

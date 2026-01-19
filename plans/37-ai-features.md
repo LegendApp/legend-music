@@ -33,7 +33,7 @@ When the queue reaches the last song, the app should call the AI with the last 1
       through provider search (fall back to local library first).
 - [x] Wire queue auto-extension in `src/components/AudioPlayer.tsx` (or a new queue watcher) with in-flight guards,
       duplicate filtering, and error toasts.
-- [ ] Add the media library "Create with AI" dialog (likely alongside `SavePlaylistDropdown` patterns) and call the
+- [x] Add the media library "Create with AI" dialog (likely alongside `SavePlaylistDropdown` patterns) and call the
       AI service to create a local playlist and populate it.
 - [ ] Add settings/feature flags and status indicators for AI availability so the UI can disable buttons when no CLI
       is installed.
