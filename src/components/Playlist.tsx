@@ -120,6 +120,7 @@ export function Playlist() {
                     thumbnail: track.thumbnail || "",
                     filePath: track.filePath,
                     fileName: track.fileName,
+                    provider: track.provider,
                     index,
                     isPlaying: isNowPlaying,
                     queueEntryId: track.queueEntryId,

@@ -7,6 +7,8 @@ import { Button } from "@/components/Button";
 import { audioPlayerState$ } from "@/components/AudioPlayer";
 import { PlaybackIndicator } from "@/components/PlaybackIndicator";
 import { useListItemStyles } from "@/hooks/useListItemStyles";
+import { getProviderPlugin } from "@/providers/pluginRegistry";
+import type { ProviderId } from "@/providers/types";
 import { Icon } from "@/systems/Icon";
 import { themeState$ } from "@/theme/ThemeProvider";
 import { cn } from "@/utils/cn";
@@ -27,6 +29,7 @@ export interface TrackData {
     fromSuggestions?: boolean;
     queueEntryId?: string;
     isMissing?: boolean;
+    provider?: ProviderId;
 }
 
 interface TrackItemProps {
@@ -131,6 +134,8 @@ export const TrackItem = ({
     const trackIndex = track.index ?? index;
     const showDisplayIndex = trackIndex >= 0;
     const shouldClampArtist = artistMaxWidth != null;
+    const ProviderBadge = track.provider ? getProviderPlugin(track.provider)?.ui?.badge ?? null : null;
+    const providerBadgeNode = ProviderBadge ? <ProviderBadge size={12} className="opacity-80" /> : null;
     const artistText = (
         <Text
             className={cn(
@@ -192,6 +197,7 @@ export const TrackItem = ({
             )}
 
             <View className="flex-row items-center gap-2">
+                {providerBadgeNode ? <View>{providerBadgeNode}</View> : null}
                 <Text
                     className={cn(
                         listItemStyles.getMetaClassName({

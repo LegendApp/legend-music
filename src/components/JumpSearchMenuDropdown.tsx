@@ -5,7 +5,6 @@ import { type GestureResponderEvent, Text, useWindowDimensions, View } from "rea
 import type { NativeMouseEvent } from "react-native-macos";
 import { Button } from "@/components/Button";
 import { DropdownMenu, type DropdownMenuRootRef } from "@/components/DropdownMenu";
-import { getProviderPlugin } from "@/providers/pluginRegistry";
 import { TextInputSearch, type TextInputSearchRef } from "@/components/TextInputSearch";
 import { TrackItem } from "@/components/TrackItem";
 import { getProvider } from "@/providers/providerRegistry";
@@ -456,10 +455,6 @@ function SearchResultContent({ result, index, highlighted, onSelect, getActionFr
     );
 
     if (result.type === "track") {
-        const providerId = result.item.provider;
-        const ProviderBadge = providerId ? getProviderPlugin(providerId)?.ui?.badge ?? null : null;
-        const rightAccessory = ProviderBadge ? <ProviderBadge size={12} /> : null;
-
         return (
             // <View className={cn(highlighted && "bg-white/10")}>
             <TrackItem
@@ -468,7 +463,6 @@ function SearchResultContent({ result, index, highlighted, onSelect, getActionFr
                 onClick={(_, event) => handleClick(event)}
                 onRightClick={handleContextMenu}
                 showIndex={false}
-                rightAccessory={rightAccessory}
             />
         );
     }
