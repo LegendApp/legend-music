@@ -35,7 +35,7 @@ When the queue reaches the last song, the app should call the AI with the last 1
       duplicate filtering, and error toasts.
 - [x] Add the media library "Create with AI" dialog (likely alongside `SavePlaylistDropdown` patterns) and call the
       AI service to create a local playlist and populate it.
-- [ ] Add settings/feature flags and status indicators for AI availability so the UI can disable buttons when no CLI
+- [x] Add settings/feature flags and status indicators for AI availability so the UI can disable buttons when no CLI
       is installed.
 - [ ] Add tests for AI response parsing and track resolution helpers; update mocks for the AI native module.
 

@@ -53,6 +53,11 @@ export interface AppSettings {
         isSidebarOpen: boolean;
         panels: Record<string, number>;
     };
+    ai: {
+        enabled: boolean;
+        autoExtendQueue: boolean;
+        playlistCreation: boolean;
+    };
     library: {
         paths: string[];
         autoScanOnStart: boolean;
@@ -84,6 +89,11 @@ export const settings$ = createJSONManager<AppSettings>({
             sidebarWidth: 140,
             isSidebarOpen: true,
             panels: {},
+        },
+        ai: {
+            enabled: true,
+            autoExtendQueue: true,
+            playlistCreation: true,
         },
         library: {
             paths: [],

@@ -16,6 +16,7 @@ import { CurrentSongOverlayWindowManager } from "@/overlay/CurrentSongOverlayWin
 import { getProviderPlugins } from "@/providers/pluginRegistry";
 import { ensureProvidersRegistered, initializeProviderPlugins } from "@/providers/setupProviders";
 import { SettingsWindowManager } from "@/settings/SettingsWindowManager";
+import { initializeAiAvailability } from "@/systems/ai";
 import { IS_TAHOE } from "@/systems/constants";
 import { GlobalHotkeyManager } from "@/systems/GlobalHotkey";
 import { HookKeyboard } from "@/systems/keyboard/HookKeyboard";
@@ -90,10 +91,15 @@ function App(): React.JSX.Element | null {
             perfMark("App.prefetchWindows.end");
         }, "App.prefetchWindows");
 
+        const aiHandle = runAfterInteractionsWithLabel(() => {
+            initializeAiAvailability();
+        }, "App.initializeAiAvailability");
+
         return () => {
             initializeHandle.cancel();
             hydrateHandle.cancel();
             prefetchHandle.cancel();
+            aiHandle.cancel();
         };
     });
 

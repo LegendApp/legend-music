@@ -5,11 +5,12 @@ import { Text, TextInput, View } from "react-native";
 import { Button } from "@/components/Button";
 import { DropdownMenu } from "@/components/DropdownMenu";
 import { showToast } from "@/components/Toast";
-import { fetchAiSuggestions } from "@/systems/ai";
+import { fetchAiSuggestions, isAiAvailable$ } from "@/systems/ai";
 import { addTracksToPlaylist } from "@/systems/LocalPlaylists";
 import { createLocalPlaylist } from "@/systems/LocalMusicState";
 import { selectLibraryPlaylist } from "@/systems/LibraryState";
 import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
+import { settings$ } from "@/systems/Settings";
 
 const DEFAULT_AI_PLAYLIST_COUNT = 10;
 
@@ -45,12 +46,16 @@ export function AiPlaylistDropdown({
     const [prompt, setPrompt] = useState("");
     const [isCreating, setIsCreating] = useState(false);
     const textInputRef = useRef<TextInput>(null);
+    const aiAvailable = useValue(isAiAvailable$);
+    const aiSettings = useValue(settings$.ai);
+    const isFeatureEnabled = aiSettings.enabled && aiSettings.playlistCreation;
+    const isDisabled = disabled || !aiAvailable || !isFeatureEnabled;
 
     const close = useCallback(() => {
         isOpen$.set(false);
     }, [isOpen$]);
 
-    const canCreate = prompt.trim().length > 0 && !isCreating && !disabled;
+    const canCreate = prompt.trim().length > 0 && !isCreating && !isDisabled;
 
     const handleCreate = useCallback(async () => {
         if (!canCreate) {
@@ -137,13 +142,13 @@ export function AiPlaylistDropdown({
 
     return (
         <DropdownMenu.Root isOpen$={isOpen$}>
-            <DropdownMenu.Trigger asChild disabled={disabled}>
+            <DropdownMenu.Trigger asChild disabled={isDisabled}>
                 <Button
                     icon="sparkles"
                     variant={buttonVariant}
                     size={buttonSize}
                     accessibilityLabel="Create playlist with AI"
-                    disabled={disabled}
+                    disabled={isDisabled}
                     className={buttonClassName}
                 />
             </DropdownMenu.Trigger>

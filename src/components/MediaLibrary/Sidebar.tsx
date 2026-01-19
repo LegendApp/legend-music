@@ -32,6 +32,7 @@ import { showInFinder } from "@/native-modules/FileDialog";
 import { getProviderIdForUri, getProviderPlugin } from "@/providers/pluginRegistry";
 import { activeProviderId$, getProvider, providerSessions$ } from "@/providers/providerRegistry";
 import type { ProviderId, ProviderPlaylist } from "@/providers/types";
+import { isAiAvailable$ } from "@/systems/ai";
 import { SUPPORT_PLAYLISTS } from "@/systems/constants";
 import { type LibraryView, libraryUI$, selectLibraryPlaylist, selectLibraryView } from "@/systems/LibraryState";
 import { createLocalPlaylist, type LocalPlaylist, localMusicState$ } from "@/systems/LocalMusicState";
@@ -42,6 +43,7 @@ import {
     exportPlaylistToFile,
     renamePlaylist,
 } from "@/systems/LocalPlaylists";
+import { settings$ } from "@/systems/Settings";
 import { cn } from "@/utils/cn";
 import { perfCount } from "@/utils/perfLogger";
 import { getQueueAction } from "@/utils/queueActions";
@@ -117,6 +119,13 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
     const showProviderPlaylists = SUPPORT_PLAYLISTS && isRemoteLibraryProvider && Boolean(libraryPlugin?.library);
     const isLibraryAuthenticated = librarySession?.isAuthenticated ?? false;
     const playlistHeaderLabel = isRemoteLibraryProvider ? `${libraryProviderName} Playlists` : "Playlists";
+    const aiAvailable = useValue(isAiAvailable$);
+    const aiSettings = useValue(settings$.ai);
+    const aiFeatureEnabled = aiSettings.enabled && aiSettings.playlistCreation;
+    const showAiStatus = showLocalPlaylists && (!aiAvailable || !aiFeatureEnabled);
+    const aiStatusLabel = !aiFeatureEnabled
+        ? "AI playlists are disabled in settings"
+        : "Install Claude Code or Codex to enable AI playlists";
 
     useEffect(() => {
         if (!showProviderPlaylists || !libraryPlugin?.library?.listPlaylists) {
@@ -464,6 +473,12 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                     </SidebarItem>
                 ) : null}
 
+                {showAiStatus ? (
+                    <SidebarItem itemId="ai-playlists-status" selectable={false}>
+                        <Text className="text-xs text-white/40">{aiStatusLabel}</Text>
+                    </SidebarItem>
+                ) : null}
+
                 {/* Playlist Items */}
                 {showProviderPlaylists ? (
                     !isLibraryAuthenticated ? (
@@ -643,6 +658,12 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                                 </View>
                             ) : null}
                         </View>
+
+                        {showAiStatus ? (
+                            <View className="px-3 pb-2">
+                                <Text className="text-xs text-white/40">{aiStatusLabel}</Text>
+                            </View>
+                        ) : null}
 
                         {showProviderPlaylists ? (
                             !isLibraryAuthenticated ? (

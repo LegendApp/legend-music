@@ -4,6 +4,7 @@ import { parseSuggestedTracks } from "@/systems/ai/parser";
 import { resolveSuggestedTracks } from "@/systems/ai/resolver";
 import type { AISuggestedTrack, AISuggestionRequest, AISuggestionResponse } from "@/systems/ai/types";
 import type { LocalTrack } from "@/systems/LocalMusicState";
+import { settings$ } from "@/systems/Settings";
 
 const DEFAULT_TRACK_COUNT = 10;
 const DEFAULT_TIMEOUT_MS = 60000;
@@ -91,6 +92,17 @@ const buildProviderPreference = (seedTracks: LocalTrack[] | undefined): string[]
 };
 
 export const fetchAiSuggestions = async (request: AISuggestionRequest): Promise<AISuggestionResponse> => {
+    const aiSettings = settings$.ai.get();
+    if (!aiSettings.enabled) {
+        throw new Error("AI features are disabled in settings.");
+    }
+    if (request.mode === "queue-extension" && !aiSettings.autoExtendQueue) {
+        throw new Error("AI queue extension is disabled in settings.");
+    }
+    if (request.mode === "playlist" && !aiSettings.playlistCreation) {
+        throw new Error("AI playlist creation is disabled in settings.");
+    }
+
     const tool = await getPreferredAITool();
     if (!tool) {
         throw new Error("No supported AI CLI detected.");

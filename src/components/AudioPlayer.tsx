@@ -8,7 +8,7 @@ import { getPlaybackProviderForTrack, type PlaybackProvider, type PlaybackStateU
 import appExit from "@/native-modules/AppExit";
 import { appState$ } from "@/observables/appState";
 import { DEBUG_AUDIO_LOGS } from "@/systems/constants";
-import { fetchAiSuggestions } from "@/systems/ai";
+import { aiAvailability$, fetchAiSuggestions, isAiAvailable$ } from "@/systems/ai";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import { playbackInteractionState$ } from "@/systems/PlaybackInteractionState";
 import { type RepeatMode, settings$ } from "@/systems/Settings";
@@ -480,6 +480,16 @@ const maybeAutoExtendQueue = async (currentIndex?: number): Promise<void> => {
 
     const queue = getQueueSnapshot();
     if (queue.length === 0) {
+        return;
+    }
+
+    const aiSettings = settings$.ai.get();
+    if (!aiSettings.enabled || !aiSettings.autoExtendQueue) {
+        return;
+    }
+
+    const availabilityCheckedAt = aiAvailability$.lastCheckedAt.get();
+    if (availabilityCheckedAt && !isAiAvailable$.get()) {
         return;
     }
 
