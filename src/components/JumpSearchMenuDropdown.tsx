@@ -49,7 +49,7 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
     ) {
         const { searchQuery$, searchQuery, isOpen, isOpen$, handleOpenChange } = useSearchDropdownState(onOpenChange);
         const textInputRef = useRef<TextInputSearchRef>(null);
-        const { width: windowWidth } = useWindowDimensions();
+        const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
         const library = useValue(library$);
         const enabledSearchProviderIds = useValue(enabledSearchProviderIds$);
@@ -78,6 +78,9 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
         const effectiveWindowWidth = Math.max(windowWidth, 1);
         const fallbackWidth = Math.max(effectiveWindowWidth - 16, 1);
         const resolvedDropdownWidth = Math.max(dropdownWidth ?? fallbackWidth, 1);
+        const maxDropdownWidth = Math.max(effectiveWindowWidth - 16, 1);
+        const dropdownContentWidth = Math.min(resolvedDropdownWidth, maxDropdownWidth);
+        const maxResultsHeight = Math.max(240, Math.round(windowHeight * 0.7));
 
         const [providerResultsById, setProviderResultsById] = useState<Record<string, SearchResult[]>>({});
         const [providerSearchStatusById, setProviderSearchStatusById] = useState<
@@ -195,8 +198,6 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
             providerStatuses.length > 0 &&
             !isProviderSearching &&
             !hasProviderError;
-        const shouldShowProviderAction =
-            isRemoteSearchEnabled && hasProviderQuery && !isProviderSearching && (!hasSearchedProvider || hasProviderError);
         const providerStatusText = useMemo(() => {
             if (!isRemoteSearchEnabled || !hasProviderQuery) {
                 return null;
@@ -281,12 +282,12 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
             const offsetTop = 16;
 
             return {
-                screenX: 8,
+                screenX: Math.max(8, Math.round((effectiveWindowWidth - dropdownContentWidth) / 2)),
                 screenY: offsetTop,
-                width: resolvedDropdownWidth,
+                width: dropdownContentWidth,
                 height: 0,
             };
-        }, [resolvedDropdownWidth]);
+        }, [dropdownContentWidth, effectiveWindowWidth]);
 
         const handleDropdownOpenChange = useCallback(
             (open: boolean) => {
@@ -394,7 +395,7 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
                     setInitialFocus
                     variant="unstyled"
                 >
-                    <View style={{ width: resolvedDropdownWidth }}>
+                    <View style={{ width: dropdownContentWidth }}>
                         <View className="bg-background-tertiary border border-border-primary rounded-md px-3 py-1.5">
                             <TextInputSearch
                                 ref={textInputRef}
@@ -407,11 +408,11 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
                         {trimmedQuery ? (
                             <View>
                                 {searchResults.length > 0 ? (
-                                    <View style={{ maxHeight: 256 }}>
+                                    <View style={{ maxHeight: maxResultsHeight }}>
                                         <LegendList
                                             data={searchResults}
                                             keyExtractor={keyExtractor}
-                                            style={{ maxHeight: 256 }}
+                                            style={{ maxHeight: maxResultsHeight }}
                                             extraData={{ highlightedIndex }}
                                             getFixedItemSize={getFixedItemSize}
                                             getItemType={getItemType}
@@ -421,21 +422,6 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
                                 ) : (
                                     <Text className="text-white/60 text-sm p-2">No results found</Text>
                                 )}
-                                {shouldShowProviderAction ? (
-                                    <DropdownMenu.Item
-                                        variant="unstyled"
-                                        onSelect={() => {
-                                            void handleProviderSearch();
-                                        }}
-                                        className="mt-1 rounded-md hover:bg-white/10 w-full"
-                                    >
-                                        <View className="px-2 py-2">
-                                            <Text className="text-white/80 text-sm">
-                                                {`Search ${remoteSearchProviderLabel} for "${trimmedQuery}"`}
-                                            </Text>
-                                        </View>
-                                    </DropdownMenu.Item>
-                                ) : null}
                                 {providerStatusText ? (
                                     <Text className="text-white/60 text-xs px-2 pb-2 pt-1">{providerStatusText}</Text>
                                 ) : null}
