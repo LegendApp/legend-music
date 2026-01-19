@@ -61,6 +61,10 @@ NativeModules.WindowManager = {
     setCanResize: jest.fn(),
 };
 const mockWindowManager = NativeModules.WindowManager;
+NativeModules.AICommandRunner = {
+    getAvailability: jest.fn(async () => ({ claude: false, codex: false, preferredTool: null })),
+    runCommand: jest.fn(async () => ({ stdout: "", stderr: "", exitCode: 0, timedOut: false })),
+};
 
 jest.mock("@/native-modules/AudioPlayer", () => ({
     __esModule: true,

@@ -37,7 +37,7 @@ When the queue reaches the last song, the app should call the AI with the last 1
       AI service to create a local playlist and populate it.
 - [x] Add settings/feature flags and status indicators for AI availability so the UI can disable buttons when no CLI
       is installed.
-- [ ] Add tests for AI response parsing and track resolution helpers; update mocks for the AI native module.
+- [x] Add tests for AI response parsing and track resolution helpers; update mocks for the AI native module.
 
 Validation: Run the app, play through a queue to the last item, confirm auto-append of 10 new tracks, and verify
 the media library AI playlist dialog creates a playlist with resolved tracks and handles missing CLI gracefully.
