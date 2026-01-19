@@ -8,6 +8,7 @@ import { getPlaybackProviderForTrack, type PlaybackProvider, type PlaybackStateU
 import appExit from "@/native-modules/AppExit";
 import { appState$ } from "@/observables/appState";
 import { DEBUG_AUDIO_LOGS } from "@/systems/constants";
+import { fetchAiSuggestions } from "@/systems/ai";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import { playbackInteractionState$ } from "@/systems/PlaybackInteractionState";
 import { type RepeatMode, settings$ } from "@/systems/Settings";
@@ -78,6 +79,11 @@ function isStreamingTrack(track: LocalTrack | null): boolean {
 
 const playbackHistory: number[] = [];
 const MAX_HISTORY_LENGTH = 100;
+const AUTO_EXTEND_SEED_COUNT = 10;
+const AUTO_EXTEND_TARGET_COUNT = 10;
+let queueAutoExtendInFlight = false;
+let lastAutoExtendQueueEntryId: string | null = null;
+let hasStartedPlayback = false;
 
 // Flag to track if queue has been loaded from cache
 let queueInitialized = false;
@@ -418,8 +424,111 @@ function getPlaybackSettings() {
     };
 }
 
+const normalizeQueueToken = (value: string): string =>
+    value
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, " ")
+        .replace(/\s+/g, " ");
+
+const getTrackIdentity = (track: LocalTrack): string => track.id || track.uri || track.filePath || "";
+
+const buildTrackSignature = (track: LocalTrack): string =>
+    `${normalizeQueueToken(track.title)}::${normalizeQueueToken(track.artist ?? "")}`;
+
+const filterNewTracks = (existing: LocalTrack[], additions: LocalTrack[]): LocalTrack[] => {
+    const seenIds = new Set<string>();
+    const seenSignatures = new Set<string>();
+
+    for (const track of existing) {
+        const id = getTrackIdentity(track);
+        if (id) {
+            seenIds.add(id);
+        }
+        const signature = buildTrackSignature(track);
+        if (signature) {
+            seenSignatures.add(signature);
+        }
+    }
+
+    const next: LocalTrack[] = [];
+    for (const track of additions) {
+        const id = getTrackIdentity(track);
+        const signature = buildTrackSignature(track);
+        if (id && seenIds.has(id)) {
+            continue;
+        }
+        if (signature && seenSignatures.has(signature)) {
+            continue;
+        }
+        if (id) {
+            seenIds.add(id);
+        }
+        if (signature) {
+            seenSignatures.add(signature);
+        }
+        next.push(track);
+    }
+
+    return next;
+};
+
+const maybeAutoExtendQueue = async (currentIndex?: number): Promise<void> => {
+    if (!hasStartedPlayback || queueAutoExtendInFlight) {
+        return;
+    }
+
+    const queue = getQueueSnapshot();
+    if (queue.length === 0) {
+        return;
+    }
+
+    const index = typeof currentIndex === "number" ? currentIndex : audioPlayerState$.currentIndex.peek();
+    if (index !== queue.length - 1) {
+        return;
+    }
+
+    const repeatMode = settings$.playback.repeatMode.get();
+    if (repeatMode !== "off") {
+        return;
+    }
+
+    const lastTrack = queue[queue.length - 1];
+    if (!lastTrack?.queueEntryId || lastAutoExtendQueueEntryId === lastTrack.queueEntryId) {
+        return;
+    }
+
+    lastAutoExtendQueueEntryId = lastTrack.queueEntryId;
+    queueAutoExtendInFlight = true;
+
+    try {
+        const seedTracks = queue.slice(Math.max(0, queue.length - AUTO_EXTEND_SEED_COUNT));
+        const { tracks } = await fetchAiSuggestions({
+            mode: "queue-extension",
+            seedTracks,
+            count: AUTO_EXTEND_TARGET_COUNT,
+        });
+
+        const additions = filterNewTracks(queue, tracks);
+        if (additions.length === 0) {
+            showToast("AI did not find new tracks to add", "info");
+            return;
+        }
+
+        queueAppend(additions);
+        const label = additions.length === 1 ? "track" : "tracks";
+        showToast(`AI added ${additions.length} ${label} to the queue`, "info");
+    } catch (error) {
+        const message = error instanceof Error ? error.message : "AI queue extension failed";
+        showToast(message, "error");
+    } finally {
+        queueAutoExtendInFlight = false;
+    }
+};
+
 audioPlayerState$.currentIndex.onChange(({ value }) => {
     persistPlaybackIndex(typeof value === "number" ? value : -1);
+    void maybeAutoExtendQueue(typeof value === "number" ? value : -1);
 });
 
 audioPlayerState$.currentTime.onChange(({ value }) => {
@@ -432,6 +541,11 @@ audioPlayerState$.currentTime.onChange(({ value }) => {
 });
 
 audioPlayerState$.isPlaying.onChange(({ value }) => {
+    if (value) {
+        hasStartedPlayback = true;
+        void maybeAutoExtendQueue(audioPlayerState$.currentIndex.peek());
+    }
+
     if (!value) {
         const currentTrack = audioPlayerState$.currentTrack.peek();
         if (isStreamingTrack(currentTrack)) {

@@ -31,7 +31,7 @@ When the queue reaches the last song, the app should call the AI with the last 1
       execute `claude`/`codex` commands with structured JSON responses.
 - [x] Create a shared AI service (`src/systems/ai/`) that builds prompts, parses responses, and resolves tracks
       through provider search (fall back to local library first).
-- [ ] Wire queue auto-extension in `src/components/AudioPlayer.tsx` (or a new queue watcher) with in-flight guards,
+- [x] Wire queue auto-extension in `src/components/AudioPlayer.tsx` (or a new queue watcher) with in-flight guards,
       duplicate filtering, and error toasts.
 - [ ] Add the media library "Create with AI" dialog (likely alongside `SavePlaylistDropdown` patterns) and call the
       AI service to create a local playlist and populate it.
