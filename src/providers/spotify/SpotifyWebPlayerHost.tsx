@@ -133,7 +133,7 @@ const playerHtml = `
                 break;
             case "seek":
                 if (player && player.seek && typeof payload?.positionMs === "number") {
-                    player.seek(payload.positionMs);
+                    // player.seek(payload.positionMs);
                 }
                 break;
             case "set-volume":
