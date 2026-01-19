@@ -7,7 +7,6 @@ export function buildLocalSearchResults({
     tracks = [],
     playlists = [],
     albums = [],
-    artists = [],
 }: ProviderSearchInput): SearchResult[] {
     const trimmed = query.trim();
     if (!trimmed) {
@@ -38,15 +37,6 @@ export function buildLocalSearchResults({
         }
         if (matchesAllTokens(playlist.name.toLowerCase())) {
             results.push({ type: "playlist", item: playlist });
-        }
-    }
-
-    for (const artist of artists) {
-        if (results.length >= MAX_RESULTS) {
-            break;
-        }
-        if (matchesAllTokens(artist.name.toLowerCase())) {
-            results.push({ type: "library", item: artist });
         }
     }
 

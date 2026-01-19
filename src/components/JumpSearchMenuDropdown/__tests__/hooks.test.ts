@@ -36,8 +36,6 @@ const playlists: LocalPlaylist[] = [
 
 const albums: LibraryItem[] = [{ id: "album-1", type: "album", name: "Album Alpha", trackCount: 12 }];
 
-const artists: LibraryItem[] = [{ id: "artist-1", type: "artist", name: "Artist One", trackCount: 20 }];
-
 describe("buildLocalSearchResults", () => {
     it("returns results grouped by tracks, playlists, then library items", () => {
         const results = buildLocalSearchResults({
@@ -45,12 +43,12 @@ describe("buildLocalSearchResults", () => {
             tracks,
             playlists,
             albums,
-            artists,
         });
 
-        expect(results.map((result) => result.type)).toEqual(["track", "track", "playlist", "library", "library"]);
+        expect(results.map((result) => result.type)).toEqual(["track", "track", "playlist", "library"]);
         expect(results[0]).toMatchObject({ type: "track", item: tracks[0] });
         expect(results[2]).toMatchObject({ type: "playlist", item: playlists[0] });
+        expect(results[3]).toMatchObject({ type: "library", item: albums[0] });
     });
 
     it("returns an empty array when query is blank", () => {
@@ -59,7 +57,6 @@ describe("buildLocalSearchResults", () => {
             tracks,
             playlists,
             albums,
-            artists,
         });
 
         expect(results).toEqual([]);
@@ -71,11 +68,9 @@ describe("buildLocalSearchResults", () => {
             tracks,
             playlists,
             albums,
-            artists,
         });
 
-        expect(results.map((result) => result.type)).toEqual(["track", "library"]);
+        expect(results.map((result) => result.type)).toEqual(["track"]);
         expect(results[0]).toMatchObject({ type: "track", item: tracks[0] });
-        expect(results[1]).toMatchObject({ type: "library", item: artists[0] });
     });
 });

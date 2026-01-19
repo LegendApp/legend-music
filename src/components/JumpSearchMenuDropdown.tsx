@@ -111,7 +111,6 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
             tracks,
             playlists,
             albums: library.albums,
-            artists: library.artists,
             query: searchQuery,
         });
 
