@@ -1,10 +1,9 @@
 import type { Observable } from "@legendapp/state";
 import { useObserveEffect, useValue } from "@legendapp/state/react";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { NativeMouseEvent } from "react-native-macos";
-
-import type { MediaLibraryDragData } from "@/components/dnd";
 import { audioControls } from "@/components/AudioPlayer";
+import type { MediaLibraryDragData } from "@/components/dnd";
 import { showToast } from "@/components/Toast";
 import type { TrackData } from "@/components/TrackItem";
 import { usePlaylistSelection } from "@/hooks/usePlaylistSelection";
@@ -69,10 +68,8 @@ const sortTracksByField = (
 ): LibraryTrack[] => {
     const indexedTracks = tracks.map((track, index) => ({ track, index }));
     indexedTracks.sort((a, b) => {
-        const valueA =
-            field === "artist" ? a.track.artist : field === "album" ? (a.track.album ?? "") : a.track.title;
-        const valueB =
-            field === "artist" ? b.track.artist : field === "album" ? (b.track.album ?? "") : b.track.title;
+        const valueA = field === "artist" ? a.track.artist : field === "album" ? (a.track.album ?? "") : a.track.title;
+        const valueB = field === "artist" ? b.track.artist : field === "album" ? (b.track.album ?? "") : b.track.title;
         const compare = applySortDirection(compareTextValues(valueA, valueB), direction);
         if (compare !== 0) {
             return compare;
@@ -125,10 +122,7 @@ const sortTracksByMode = (
     return tracks;
 };
 
-const sortTracksByAlbumThenTrackNumber = (
-    tracks: LibraryTrack[],
-    direction: PlaylistSortDirection,
-): LibraryTrack[] =>
+const sortTracksByAlbumThenTrackNumber = (tracks: LibraryTrack[], direction: PlaylistSortDirection): LibraryTrack[] =>
     [...tracks].sort((a, b) => {
         const albumInfoA = getAlbumSortInfo(a);
         const albumInfoB = getAlbumSortInfo(b);
@@ -524,12 +518,7 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
         return () => {
             didCancel = true;
         };
-    }, [
-        selectedView,
-        providerPlugin,
-        selectedPlaylistId,
-        selectedPlaylistProvider,
-    ]);
+    }, [selectedView, providerPlugin, selectedPlaylistId, selectedPlaylistProvider]);
 
     const { trackItems } = useMemo(
         () =>
