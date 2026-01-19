@@ -27,7 +27,7 @@ When the queue reaches the last song, the app should call the AI with the last 1
   - Resolve track suggestions, add matching tracks, and report any unresolved items in a toast.
 
 ## Steps
-- [ ] Add an AI CLI native module (`src/native-modules/AICommandRunner.ts` + macOS implementation) to detect and
+- [x] Add an AI CLI native module (`src/native-modules/AICommandRunner.ts` + macOS implementation) to detect and
       execute `claude`/`codex` commands with structured JSON responses.
 - [ ] Create a shared AI service (`src/systems/ai/`) that builds prompts, parses responses, and resolves tracks
       through provider search (fall back to local library first).
