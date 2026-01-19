@@ -27,11 +27,11 @@ RCT_EXTERN_METHOD(play:(RCTPromiseResolveBlock)resolve
 RCT_EXTERN_METHOD(pause:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
-RCT_EXTERN_METHOD(seek:(NSNumber *)positionSeconds
+RCT_EXTERN_METHOD(seek:(NSNumber * _Nonnull)positionSeconds
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
-RCT_EXTERN_METHOD(setVolume:(NSNumber *)volume
+RCT_EXTERN_METHOD(setVolume:(NSNumber * _Nonnull)volume
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
