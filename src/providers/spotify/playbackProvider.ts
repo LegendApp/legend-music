@@ -190,9 +190,9 @@ const ensureSubscription = (): void => {
                         uri: lastLoadUri,
                     });
                     suppressStateUntil = Date.now() + 500;
-                    void seekSpotify(0).catch((error) =>
-                        console.error("Failed to force Spotify start position", error),
-                    );
+                    // void seekSpotify(0).catch((error) =>
+                    //     console.error("Failed to force Spotify start position", error),
+                    // );
                     update.positionSeconds = 0;
                     forcedStartPosition = true;
                 }
@@ -299,7 +299,7 @@ export const spotifyPlaybackProvider: PlaybackProvider = {
                 trackKey: currentTrackKey,
                 uri,
             });
-            void seekSpotify(0).catch((error) => console.error("Failed to force Spotify start position", error));
+            // void seekSpotify(0).catch((error) => console.error("Failed to force Spotify start position", error));
         } else {
             forceStartTrackKey = null;
         }
@@ -343,7 +343,7 @@ export const spotifyPlaybackProvider: PlaybackProvider = {
             positionMs,
             suppressStateUntil,
         });
-        await seekSpotify(positionMs);
+        // await seekSpotify(positionMs);
         emitStateUpdate({ positionSeconds: Math.max(0, positionSeconds) });
     },
     async setVolume(volume) {

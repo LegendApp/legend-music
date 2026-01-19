@@ -223,7 +223,7 @@ export async function playSpotifyUri(request: PlayRequest): Promise<void> {
     void logSpotifyPlayerSnapshot("before play");
     const body = {
         uris: [request.uri],
-        position_ms: positionMs,
+        // position_ms: positionMs,
     };
     const response = await apiFetch(`/me/player/play?device_id=${encodeURIComponent(deviceId)}`, {
         method: "PUT",
@@ -276,18 +276,18 @@ export async function resumeSpotify(deviceId?: string): Promise<void> {
 export async function seekSpotify(positionMs: number, deviceId?: string): Promise<void> {
     const targetDevice = await getDeviceId(deviceId);
     logSpotifyDebug("[SpotifyPlayback] seek request", { deviceId: targetDevice, positionMs });
-    const response = await apiFetch(
-        `/me/player/seek?position_ms=${encodeURIComponent(positionMs)}&device_id=${encodeURIComponent(targetDevice)}`,
-        {
-            method: "PUT",
-        },
-    );
-
-    logSpotifyDebug("[SpotifyPlayback] seek response", { deviceId: targetDevice, positionMs, status: response.status });
-    if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`Failed to seek Spotify playback: ${response.status} ${text}`);
-    }
+    // const response = await apiFetch(
+    //     `/me/player/seek?position_ms=${encodeURIComponent(positionMs)}&device_id=${encodeURIComponent(targetDevice)}`,
+    //     {
+    //         method: "PUT",
+    //     },
+    // );
+    //
+    // logSpotifyDebug("[SpotifyPlayback] seek response", { deviceId: targetDevice, positionMs, status: response.status });
+    // if (!response.ok) {
+    //     const text = await response.text();
+    //     throw new Error(`Failed to seek Spotify playback: ${response.status} ${text}`);
+    // }
 }
 
 export async function setSpotifyVolume(volume: number, deviceId?: string): Promise<void> {
