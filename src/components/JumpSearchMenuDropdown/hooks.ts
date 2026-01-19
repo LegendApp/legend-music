@@ -42,7 +42,6 @@ interface UsePlaylistSearchResultsOptions {
     tracks: LocalTrack[];
     playlists: LocalPlaylist[];
     albums: LibraryItem[];
-    artists: LibraryItem[];
     query: string;
 }
 
@@ -50,12 +49,11 @@ export function usePlaylistSearchResults({
     tracks,
     playlists,
     albums,
-    artists,
     query,
 }: UsePlaylistSearchResultsOptions) {
     return useMemo(
-        () => buildLocalSearchResults({ query, tracks, playlists, albums, artists }),
-        [albums, artists, playlists, query, tracks],
+        () => buildLocalSearchResults({ query, tracks, playlists, albums }),
+        [albums, playlists, query, tracks],
     );
 }
 
