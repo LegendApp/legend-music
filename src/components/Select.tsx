@@ -8,6 +8,7 @@ import { cn } from "@/utils/cn";
 export interface SelectOption {
     label: string;
     value: string;
+    disabled?: boolean;
 }
 
 export interface SelectProps {
@@ -64,12 +65,15 @@ export function Select({
                     <DropdownMenu.Item
                         key={option.value}
                         onSelect={() => handleSelect(option.value)}
+                        disabled={option.disabled}
                         className={cn(
                             "px-3 py-2 hover:bg-background-tertiary",
                             value === option.value && "bg-background-tertiary",
                         )}
                     >
-                        <Text className="text-text-primary text-sm">{option.label}</Text>
+                        <Text className={cn("text-text-primary text-sm", option.disabled && "text-text-secondary")}>
+                            {option.label}
+                        </Text>
                     </DropdownMenu.Item>
                 ))}
             </DropdownMenu.Content>
