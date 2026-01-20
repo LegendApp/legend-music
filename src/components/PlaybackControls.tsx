@@ -75,7 +75,6 @@ export function PlaybackControls({ className }: PlaybackControlsProps = {}) {
         hasSearchControl
             ? {
                   Search: () => dropdownMenuRef.current?.open(),
-                  AiQueue: () => aiDropdownRef.current?.open(),
               }
             : {},
     );

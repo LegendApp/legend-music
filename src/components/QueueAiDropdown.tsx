@@ -1,12 +1,14 @@
 import { useObservable, useValue } from "@legendapp/state/react";
-import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Text, TextInput, View } from "react-native";
 
 import { Button } from "@/components/Button";
 import { DropdownMenu, type DropdownMenuRootRef } from "@/components/DropdownMenu";
 import { showToast } from "@/components/Toast";
 import { queueControls } from "@/components/AudioPlayer";
+import { finishAiQueueFill, startAiQueueFill } from "@/systems/ai";
 import { fetchSuggestions, isSelectedSuggestionProviderAvailable$, selectedSuggestionProvider$ } from "@/systems/suggestions";
+import { useOnHotkeys } from "@/systems/keyboard/Keyboard";
 import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
 import { settings$ } from "@/systems/Settings";
 
@@ -58,6 +60,7 @@ export const QueueAiDropdown = forwardRef<DropdownMenuRootRef, QueueAiDropdownPr
         const trimmedPrompt = prompt.trim();
         setErrorMessage(null);
         setIsCreating(true);
+        startAiQueueFill();
         try {
             close();
             const { tracks, unresolved } = await fetchSuggestions({
@@ -71,7 +74,7 @@ export const QueueAiDropdown = forwardRef<DropdownMenuRootRef, QueueAiDropdownPr
                 return;
             }
 
-            queueControls.replace(tracks, { startIndex: 0 });
+            queueControls.append(tracks);
 
             const addedLabel = tracks.length === 1 ? "track" : "tracks";
             showToast(`Queued ${tracks.length} ${addedLabel}`, "info");
@@ -84,8 +87,20 @@ export const QueueAiDropdown = forwardRef<DropdownMenuRootRef, QueueAiDropdownPr
             reopenWithError(message);
         } finally {
             setIsCreating(false);
+            finishAiQueueFill();
         }
     }, [canCreate, close, count, prompt, reopenWithError]);
+
+    const openAiQueue = useCallback(() => {
+        if (isDisabled) {
+            return;
+        }
+
+        isOpen$.set(true);
+    }, [isDisabled, isOpen$]);
+
+    const hotkeyHandlers = useMemo(() => ({ AiQueue: openAiQueue }), [openAiQueue]);
+    useOnHotkeys(hotkeyHandlers);
 
     useEffect(() => {
         if (!isOpen) {
