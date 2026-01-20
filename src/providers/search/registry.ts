@@ -24,3 +24,8 @@ export const enabledSearchProviderIds$ = computed(() => {
         .filter((provider) => (provider.isEnabled$ ? provider.isEnabled$.get() : true))
         .map((provider) => provider.id);
 });
+
+export const searchProviders$ = computed(() => {
+    registryVersion$.get();
+    return Object.values(registry);
+});

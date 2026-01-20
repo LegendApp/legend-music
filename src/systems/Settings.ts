@@ -1,3 +1,4 @@
+import type { ProviderId } from "@/providers/types";
 import type { KeyboardEventCodeHotkey } from "@/systems/keyboard/Keyboard";
 import { KeyCodes } from "@/systems/keyboard/KeyboardManager";
 import { createJSONManager } from "@/utils/JSONManager";
@@ -58,6 +59,7 @@ export interface AppSettings {
         autoExtendQueue: boolean;
         playlistCreation: boolean;
         suggestionProviderId: "claude" | "codex" | "spotify";
+        preferredTrackProviderId: ProviderId | "auto";
     };
     library: {
         paths: string[];
@@ -96,6 +98,7 @@ export const settings$ = createJSONManager<AppSettings>({
             autoExtendQueue: true,
             playlistCreation: true,
             suggestionProviderId: "claude",
+            preferredTrackProviderId: "auto",
         },
         library: {
             paths: [],

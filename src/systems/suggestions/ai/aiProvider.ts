@@ -1,9 +1,11 @@
 import { aiCommandRunner } from "@/native-modules/AICommandRunner";
+import type { ProviderId } from "@/providers/types";
 import { aiAvailability$ } from "@/systems/ai/availability";
 import { parseSuggestedTracks } from "@/systems/ai/parser";
 import { buildPlaylistPrompt, buildQueueExtensionPrompt } from "@/systems/ai/prompts";
 import { resolveSuggestedTracks } from "@/systems/ai/resolver";
 import type { AISuggestedTrack } from "@/systems/ai/types";
+import { settings$ } from "@/systems/Settings";
 import type { SuggestionProvider, SuggestionProviderId, SuggestionRequest, SuggestionResult } from "@/systems/suggestions/types";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 
@@ -19,12 +21,20 @@ export type AiProviderConfig = {
     parseResponse?: (raw: string, count: number) => AISuggestedTrack[];
 };
 
-const buildProviderPreference = (seedTracks: LocalTrack[] | undefined): string[] => {
-    if (!seedTracks || seedTracks.length === 0) {
-        return [];
+const buildProviderPreference = (
+    seedTracks: LocalTrack[] | undefined,
+    preferredProviderId: ProviderId | "auto" | null | undefined,
+): ProviderId[] => {
+    const preferences: ProviderId[] = [];
+    if (preferredProviderId && preferredProviderId !== "auto") {
+        preferences.push(preferredProviderId);
     }
 
-    const counts = new Map<string, number>();
+    if (!seedTracks || seedTracks.length === 0) {
+        return preferences;
+    }
+
+    const counts = new Map<ProviderId, number>();
     for (const track of seedTracks) {
         if (!track.provider) {
             continue;
@@ -32,9 +42,17 @@ const buildProviderPreference = (seedTracks: LocalTrack[] | undefined): string[]
         counts.set(track.provider, (counts.get(track.provider) ?? 0) + 1);
     }
 
-    return Array.from(counts.entries())
+    const fromSeeds = Array.from(counts.entries())
         .sort((a, b) => b[1] - a[1])
         .map(([provider]) => provider);
+
+    for (const provider of fromSeeds) {
+        if (!preferences.includes(provider)) {
+            preferences.push(provider);
+        }
+    }
+
+    return preferences;
 };
 
 const buildPromptForRequest = (request: SuggestionRequest, count: number): string => {
@@ -109,7 +127,8 @@ export const createAiSuggestionProvider = (config: AiProviderConfig): Suggestion
             throw new Error(`${config.name} response did not include any tracks.${detailSuffix}`);
         }
 
-        const preferredProviders = buildProviderPreference(request.seedTracks);
+        const preferredProviderId = settings$.ai.preferredTrackProviderId.get();
+        const preferredProviders = buildProviderPreference(request.seedTracks, preferredProviderId);
         const resolved = await resolveSuggestedTracks(suggestions, { preferredProviders });
 
         return {

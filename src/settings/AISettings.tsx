@@ -3,6 +3,8 @@ import { Text } from "react-native";
 
 import { Checkbox } from "@/components/Checkbox";
 import { Select } from "@/components/Select";
+import { getProvider } from "@/providers/providerRegistry";
+import { searchProviders$ } from "@/providers/search/registry";
 import { SettingsPage, SettingsRow, SettingsSection } from "@/settings/components";
 import { settings$ } from "@/systems/Settings";
 import {
@@ -18,6 +20,7 @@ ensureSuggestionProvidersRegistered();
 
 export function AISettings() {
     const providers = useValue(suggestionProviders$);
+    const searchProviders = useValue(searchProviders$);
     const selectedProvider = useValue(selectedSuggestionProvider$);
     const isAvailable = useValue(isSelectedSuggestionProviderAvailable$);
     const providerAvailability = useValue(suggestionProviderAvailability$);
@@ -34,6 +37,15 @@ export function AISettings() {
             }),
         [providers, providerAvailability],
     );
+
+    const preferredServiceOptions = useMemo(() => {
+        const options = [{ value: "auto", label: "Auto" }];
+        for (const provider of searchProviders) {
+            const providerName = getProvider(provider.id)?.name ?? provider.id;
+            options.push({ value: provider.id, label: providerName });
+        }
+        return options;
+    }, [searchProviders]);
 
     const hasAvailableProviders = providers.some((provider) => providerAvailability[provider.id]);
     const availabilityLabel = !hasAvailableProviders
@@ -68,6 +80,12 @@ export function AISettings() {
                     title="Suggestion Provider"
                     description="Choose which provider to use for suggestions"
                     control={<Select value$={settings$.ai.suggestionProviderId} options={providerOptions} />}
+                    controlWrapperClassName="w-48"
+                />
+                <SettingsRow
+                    title="Preferred Service"
+                    description="Prefer this service when resolving AI-suggested tracks"
+                    control={<Select value$={settings$.ai.preferredTrackProviderId} options={preferredServiceOptions} />}
                     controlWrapperClassName="w-48"
                 />
                 <SettingsRow
