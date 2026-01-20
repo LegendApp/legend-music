@@ -9,6 +9,7 @@ import type { LocalTrack } from "@/systems/LocalMusicState";
 
 const DEFAULT_TRACK_COUNT = 10;
 const DEFAULT_TIMEOUT_MS = 60000;
+const MAX_ERROR_OUTPUT_LENGTH = 300;
 
 export type AiProviderConfig = {
     id: SuggestionProviderId;
@@ -60,6 +61,17 @@ const resolveAiAvailability = (id: SuggestionProviderId): boolean => {
     return false;
 };
 
+const formatErrorOutput = (output: string): string => {
+    const trimmed = output.trim();
+    if (!trimmed) {
+        return "";
+    }
+    if (trimmed.length <= MAX_ERROR_OUTPUT_LENGTH) {
+        return trimmed;
+    }
+    return `${trimmed.slice(0, MAX_ERROR_OUTPUT_LENGTH).trim()}...`;
+};
+
 export const createAiSuggestionProvider = (config: AiProviderConfig): SuggestionProvider => {
     const isAvailable = () => resolveAiAvailability(config.id);
     const parse = config.parseResponse ?? parseSuggestedTracks;
@@ -77,17 +89,23 @@ export const createAiSuggestionProvider = (config: AiProviderConfig): Suggestion
             timeoutMs,
         });
 
-        const output = result.stdout.trim() || result.stderr.trim();
+        const stdout = result.stdout.trim();
+        const stderr = result.stderr.trim();
+        const output = stdout || stderr;
         if (result.timedOut) {
-            throw new Error(`${config.name} timed out.`);
+            throw new Error(`${config.name} timed out after ${Math.round(timeoutMs / 1000)}s.`);
         }
         if (result.exitCode !== 0) {
-            throw new Error(`${config.name} failed to run.`);
+            const detail = formatErrorOutput(stderr || stdout);
+            const detailSuffix = detail ? ` Details: ${detail}` : "";
+            throw new Error(`${config.name} failed to run (exit ${result.exitCode}).${detailSuffix}`);
         }
 
         const suggestions = parse(output, count);
         if (suggestions.length === 0) {
-            throw new Error(`${config.name} response did not include any tracks.`);
+            const detail = formatErrorOutput(output);
+            const detailSuffix = detail ? ` Output: ${detail}` : "";
+            throw new Error(`${config.name} response did not include any tracks.${detailSuffix}`);
         }
 
         const preferredProviders = buildProviderPreference(request.seedTracks);

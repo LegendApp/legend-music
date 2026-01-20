@@ -50,6 +50,7 @@ export function AiPlaylistDropdown({
     const isOpen = useValue(isOpen$);
     const [prompt, setPrompt] = useState("");
     const [isCreating, setIsCreating] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const textInputRef = useRef<TextInput>(null);
     const selectedProvider = useValue(selectedSuggestionProvider$);
     const providerName = selectedProvider?.name ?? "AI";
@@ -73,6 +74,7 @@ export function AiPlaylistDropdown({
         }
 
         const trimmedPrompt = prompt.trim();
+        setErrorMessage(null);
         setIsCreating(true);
         try {
             const { tracks, unresolved } = await fetchSuggestions({
@@ -82,7 +84,7 @@ export function AiPlaylistDropdown({
             });
 
             if (tracks.length === 0) {
-                showToast("No tracks were suggested", "error");
+                setErrorMessage("No tracks were suggested.");
                 return;
             }
 
@@ -94,7 +96,7 @@ export function AiPlaylistDropdown({
             );
 
             if (trackPaths.length === 0) {
-                showToast("No resolved tracks to add", "error");
+                setErrorMessage("No resolved tracks to add.");
                 return;
             }
 
@@ -111,7 +113,7 @@ export function AiPlaylistDropdown({
             close();
         } catch (error) {
             const message = error instanceof Error ? error.message : "Failed to create AI playlist";
-            showToast(message, "error");
+            setErrorMessage(message);
         } finally {
             setIsCreating(false);
         }
@@ -123,6 +125,7 @@ export function AiPlaylistDropdown({
         }
 
         setPrompt("");
+        setErrorMessage(null);
         setTimeout(() => {
             textInputRef.current?.focus();
         }, 0);
@@ -177,13 +180,23 @@ export function AiPlaylistDropdown({
                         <TextInput
                             ref={textInputRef}
                             value={prompt}
-                            onChangeText={setPrompt}
+                            onChangeText={(value) => {
+                                setPrompt(value);
+                                if (errorMessage) {
+                                    setErrorMessage(null);
+                                }
+                            }}
                             placeholder="Describe the playlist vibe"
                             placeholderTextColor="#6b7280"
                             multiline
                             className="text-sm text-text-primary min-h-16"
                         />
                     </View>
+                    {errorMessage ? (
+                        <View className="rounded-md border border-border-primary/60 bg-red-500/10 px-3 py-2">
+                            <Text className="text-sm text-red-200">{errorMessage}</Text>
+                        </View>
+                    ) : null}
                     <View className="flex-row justify-end gap-2">
                         <Button variant="secondary" size="small" onClick={close}>
                             <Text className="text-white text-sm">Cancel</Text>
