@@ -1,14 +1,12 @@
 import { LegendList } from "@legendapp/list";
-import { observable, type Observable } from "@legendapp/state";
+import { type Observable, observable } from "@legendapp/state";
 import { useObservable, useValue } from "@legendapp/state/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Platform, Text, TextInput, View } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
-
+import { audioPlayerState$ } from "@/components/AudioPlayer";
 import { Button } from "@/components/Button";
 import { DropdownMenu } from "@/components/DropdownMenu";
-import { SkiaSpinner } from "@/components/SkiaSpinner";
-import { showToast } from "@/components/Toast";
 import {
     type DragData,
     DraggableItem,
@@ -19,28 +17,29 @@ import {
     MEDIA_LIBRARY_DRAG_ZONE_ID,
     type MediaLibraryDragData,
 } from "@/components/dnd";
-import { audioPlayerState$ } from "@/components/AudioPlayer";
+import { SkiaSpinner } from "@/components/SkiaSpinner";
 import { Table, TableCell, type TableColumnSpec, TableHeader, TableRow } from "@/components/Table";
+import { showToast } from "@/components/Toast";
 import type { TrackData } from "@/components/TrackItem";
 import { useListItemStyles } from "@/hooks/useListItemStyles";
 import { type ContextMenuItem, showContextMenu } from "@/native-modules/ContextMenu";
 import { type NativeDragTrack, TrackDragSource } from "@/native-modules/TrackDragSource";
 import { getProviderPlugin } from "@/providers/pluginRegistry";
 import type { ProviderPlaylist } from "@/providers/types";
-import { Icon } from "@/systems/Icon";
-import { libraryUI$ } from "@/systems/LibraryState";
-import { addTracksToPlaylist, updatePlaylistMetadata } from "@/systems/LocalPlaylists";
-import { type LocalPlaylist, localMusicState$, saveLocalPlaylistTracks } from "@/systems/LocalMusicState";
 import { aiPlaylistFillState$, finishAiPlaylistFill, startAiPlaylistFill } from "@/systems/ai";
 import { buildPlaylistEntries } from "@/systems/ai/playlistTracks";
 import { generatePlaylistSummary } from "@/systems/ai/summary";
+import { Icon } from "@/systems/Icon";
 import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
+import { libraryUI$ } from "@/systems/LibraryState";
+import { type LocalPlaylist, localMusicState$, saveLocalPlaylistTracks } from "@/systems/LocalMusicState";
+import { addTracksToPlaylist, updatePlaylistMetadata } from "@/systems/LocalPlaylists";
 import { fetchSuggestions } from "@/systems/suggestions";
 import { themeState$ } from "@/theme/ThemeProvider";
 import { cn } from "@/utils/cn";
 import type { QueueAction } from "@/utils/queueActions";
-import { useLibraryTrackList } from "./useLibraryTrackList";
 import { AiPlaylistDropdown } from "./AiPlaylistDropdown";
+import { useLibraryTrackList } from "./useLibraryTrackList";
 
 type TrackListProps = {};
 
@@ -105,6 +104,14 @@ const buildPlaylistExtendPrompt = (prompt: string, playlist: LocalPlaylist | nul
     const avoidLine = "Avoid suggesting any of these tracks already in the playlist:";
     const instructionLine = "Only suggest new, non-duplicate tracks.";
     return `${prompt}\n\n${avoidLine}\n${lines.join("\n")}\n\n${instructionLine}`;
+};
+
+const getItemType = (item: TrackData) => {
+    return item.isSeparator ? "separator" : "track";
+};
+
+const getFixedItemSize = (_: number, item: TrackData) => {
+    return item.isSeparator ? 72 : 32;
 };
 
 export function TrackList(_props: TrackListProps) {
@@ -297,13 +304,7 @@ export function TrackList(_props: TrackListProps) {
             finishAiPlaylistFill();
             setIsRegenerating(false);
         }
-    }, [
-        aiPromptDraft,
-        canEditAiPrompt,
-        closeAiPromptEditor,
-        isRegenerating,
-        selectedLocalPlaylist,
-    ]);
+    }, [aiPromptDraft, canEditAiPrompt, closeAiPromptEditor, isRegenerating, selectedLocalPlaylist]);
 
     const extendPlaylist = useCallback(
         async (
@@ -670,18 +671,10 @@ export function TrackList(_props: TrackListProps) {
         ],
     );
 
-    const getItemType = useCallback((item: TrackData) => {
-        return item.isSeparator ? "separator" : "track";
-    }, []);
-
-    const getFixedItemSize = useCallback((_: number, item: TrackData, type: string | undefined) => {
-        return item.isSeparator ? 72 : 32;
-    }, []);
-
     return (
-        <View className="flex-1 pl-2">
+        <View className="flex-1 pl-2 relative">
             {headerConfig ? (
-                <View className="px-3 py-2 flex-row items-center gap-2">
+                <View className="px-3 py-2 flex-row items-start gap-3">
                     <View className="flex-1 min-w-0">
                         <Text className="text-sm font-semibold text-text-primary" numberOfLines={1}>
                             {headerConfig.title}
@@ -689,19 +682,21 @@ export function TrackList(_props: TrackListProps) {
                         <Text className="text-xs text-text-secondary" numberOfLines={1}>
                             {headerConfig.count} {headerConfig.count === 1 ? "track" : "tracks"}
                         </Text>
-                        {showAiSummary ? (
-                            <View className="mt-1 flex-row items-center gap-1">
-                                <Text className="text-xs text-text-secondary flex-1 min-w-0" numberOfLines={1}>
+                    </View>
+                    {showAiSummary ? (
+                        <View className="max-w-[45%] items-end">
+                            <View className="flex-row items-start gap-1">
+                                <Text className="text-xs text-text-secondary text-right" numberOfLines={1}>
                                     AI: {aiSummary}
                                 </Text>
                                 {canEditAiPrompt ? (
                                     <DropdownMenu.Root isOpen$={aiPromptEditorOpen$}>
                                         <DropdownMenu.Trigger asChild>
                                             <Button
-                                                icon="square.and.pencil"
+                                                icon="pencil"
                                                 variant="icon-hover"
-                                                size="xs"
-                                                iconSize={12}
+                                                size="small"
+                                                iconSize={16}
                                                 tooltip="Edit AI prompt"
                                             />
                                         </DropdownMenu.Trigger>
@@ -738,7 +733,11 @@ export function TrackList(_props: TrackListProps) {
                                                     </View>
                                                 ) : null}
                                                 <View className="flex-row justify-end gap-2">
-                                                    <Button variant="secondary" size="small" onClick={closeAiPromptEditor}>
+                                                    <Button
+                                                        variant="secondary"
+                                                        size="small"
+                                                        onClick={closeAiPromptEditor}
+                                                    >
                                                         <Text className="text-white text-sm">Cancel</Text>
                                                     </Button>
                                                     <Button
@@ -757,14 +756,8 @@ export function TrackList(_props: TrackListProps) {
                                     </DropdownMenu.Root>
                                 ) : null}
                             </View>
-                        ) : null}
-                    </View>
-                </View>
-            ) : null}
-            {showAiFillSpinner ? (
-                <View className="flex-row items-center gap-2 px-4 py-2 border-b border-white/10">
-                    <SkiaSpinner size={18} color="#7dd6ff" trailColor="rgba(255,255,255,0.08)" />
-                    <Text className="text-sm text-text-secondary">Generating AI tracks...</Text>
+                        </View>
+                    ) : null}
                 </View>
             ) : null}
             <Table
@@ -795,25 +788,29 @@ export function TrackList(_props: TrackListProps) {
                     }
                     ListFooterComponent={
                         showExtendFooter ? (
-                            <View className="px-3 py-3 border-t border-white/10">
-                                <View className="flex-row items-center gap-2">
+                            <View className="px-3 py-3">
+                                <View className="flex-row items-center gap-2 rounded-md bg-background-tertiary px-2 py-2">
                                     <Button
-                                        variant="secondary"
+                                        variant="primary"
                                         size="small"
+                                        className="px-3"
                                         onClick={handleExtendExistingPrompt}
                                         disabled={!canExtendWithExistingPrompt}
                                         tooltip="Extend with existing prompt"
                                     >
-                                        <Text className="text-white text-sm">Extend with prompt</Text>
+                                        <Text className="text-white text-sm font-medium">Extend with prompt</Text>
                                     </Button>
                                     <DropdownMenu.Root isOpen$={extendPromptOpen$}>
                                         <DropdownMenu.Trigger asChild disabled={!canExtendWithNewPrompt}>
                                             <Button
                                                 variant="secondary"
                                                 size="small"
+                                                className="px-3"
                                                 disabled={!canExtendWithNewPrompt}
                                             >
-                                                <Text className="text-white text-sm">Extend with new prompt</Text>
+                                                <Text className="text-white text-sm font-medium">
+                                                    Extend with new prompt
+                                                </Text>
                                             </Button>
                                         </DropdownMenu.Trigger>
                                         <DropdownMenu.Content
@@ -851,7 +848,11 @@ export function TrackList(_props: TrackListProps) {
                                                     </View>
                                                 ) : null}
                                                 <View className="flex-row justify-end gap-2">
-                                                    <Button variant="secondary" size="small" onClick={closeExtendPrompt}>
+                                                    <Button
+                                                        variant="secondary"
+                                                        size="small"
+                                                        onClick={closeExtendPrompt}
+                                                    >
                                                         <Text className="text-white text-sm">Cancel</Text>
                                                     </Button>
                                                     <Button
@@ -898,14 +899,22 @@ export function TrackList(_props: TrackListProps) {
                     }
                 />
             </Table>
+            {showAiFillSpinner ? (
+                <View pointerEvents="none" className="absolute left-4 right-4 bottom-3">
+                    <View className="flex-row items-center gap-2 rounded-md bg-background-tertiary border border-border-primary px-3 py-2">
+                        <SkiaSpinner size={18} color="#7dd6ff" trailColor="rgba(255,255,255,0.08)" />
+                        <Text className="text-sm text-text-secondary">Generating AI tracks...</Text>
+                    </View>
+                </View>
+            ) : null}
         </View>
     );
 }
 
 function LibrarySeparatorRow({ title }: { title: string }) {
     return (
-        <View className="flex items-center pt-6 pb-2 border-b border-white/10">
-            <Text className="text-white/90 text-xl font-semibold" numberOfLines={1}>
+        <View className="pl-4 pt-6 pb-2 border-b border-border-primary">
+            <Text className="text-white/90 text-lg font-bold" numberOfLines={1}>
                 {title.replace(/^— (.+) —$/, "$1")}
             </Text>
         </View>
@@ -994,7 +1003,7 @@ function LibraryTrackRow({
     const actionsColumn = columns.find((column) => column.id === "actions") ?? columns[columns.length - 2];
     const sourceColumn = columns.find((column) => column.id === "source") ?? columns[columns.length - 1];
     const addedAtLabel = formatAddedDate(track.addedAt);
-    const ProviderBadge = track.provider ? getProviderPlugin(track.provider)?.ui?.badge ?? null : null;
+    const ProviderBadge = track.provider ? (getProviderPlugin(track.provider)?.ui?.badge ?? null) : null;
     const providerBadgeNode = ProviderBadge ? <ProviderBadge size={12} className="opacity-80" /> : null;
 
     const handleMenuClick = useCallback(

@@ -281,15 +281,6 @@ export function buildTrackItems({
         let viewIndex = 0;
 
         for (const [artistKey, group] of sortedGroups) {
-            trackItems.push({
-                id: `sep-artist-${artistKey}`,
-                title: `— ${group.displayName} —`,
-                artist: "",
-                album: "",
-                duration: "",
-                isSeparator: true,
-            });
-
             const groupTracks = sortArtistGroupTracks(group.tracks, playlistSort, playlistSortDirection);
             for (const track of groupTracks) {
                 trackItems.push(toTrackItem(track, viewIndex));
@@ -329,15 +320,6 @@ export function buildTrackItems({
         const trackItems: LibraryTrackListItem[] = [];
         let viewIndex = 0;
         for (const group of sortedGroups) {
-            trackItems.push({
-                id: `sep-album-${group.info.key}`,
-                title: `— ${group.info.displayName} —`,
-                artist: "",
-                album: "",
-                duration: "",
-                isSeparator: true,
-            });
-
             const groupTracks = sortAlbumGroupTracks(group.tracks, playlistSort, playlistSortDirection);
             for (const track of groupTracks) {
                 trackItems.push(toTrackItem(track, viewIndex));
