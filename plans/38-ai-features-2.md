@@ -12,7 +12,7 @@ Apple Music metadata correctly, logs AI outputs for debugging, and adds a Prefer
 - `src/settings/AISettings.tsx` renders AI settings; `src/systems/Settings.ts` defines AI settings schema.
 
 ## Steps
-- [ ] Update AI playlist creation to add tracks into the currently selected local playlist instead of creating a new one,
+- [x] Update AI playlist creation to add tracks into the currently selected local playlist instead of creating a new one,
       including UX copy changes to reflect "fill current playlist" behavior.
 - [ ] Add an in-playlist progress indicator while AI suggestions are generating/resolving, shown in the track list view
       after closing the popup, and clear it on completion or error.

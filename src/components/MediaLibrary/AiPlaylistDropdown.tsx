@@ -7,8 +7,8 @@ import { DropdownMenu } from "@/components/DropdownMenu";
 import { showToast } from "@/components/Toast";
 import { fetchSuggestions, isSelectedSuggestionProviderAvailable$, selectedSuggestionProvider$ } from "@/systems/suggestions";
 import { addTracksToPlaylist } from "@/systems/LocalPlaylists";
-import { createLocalPlaylist } from "@/systems/LocalMusicState";
-import { selectLibraryPlaylist } from "@/systems/LibraryState";
+import { localMusicState$ } from "@/systems/LocalMusicState";
+import { libraryUI$ } from "@/systems/LibraryState";
 import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
 import { settings$ } from "@/systems/Settings";
 import type { SFSymbols } from "@/types/SFSymbols";
@@ -22,16 +22,6 @@ type AiPlaylistDropdownProps = {
     buttonClassName?: string;
     buttonLabel?: string;
     buttonIcon?: SFSymbols;
-};
-
-const buildPlaylistName = (prompt: string): string => {
-    const trimmed = prompt.trim();
-    if (!trimmed) {
-        return "AI Playlist";
-    }
-
-    const shortened = trimmed.length > 50 ? `${trimmed.slice(0, 47).trim()}...` : trimmed;
-    return `AI - ${shortened}`;
 };
 
 const resolveTrackPath = (track: { filePath?: string; uri?: string; id?: string }): string | null => {
@@ -52,13 +42,24 @@ export function AiPlaylistDropdown({
     const [isCreating, setIsCreating] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const textInputRef = useRef<TextInput>(null);
+    const selectedView = useValue(libraryUI$.selectedView);
+    const selectedPlaylistId = useValue(libraryUI$.selectedPlaylistId);
+    const selectedPlaylistProvider = useValue(libraryUI$.selectedPlaylistProvider);
+    const localPlaylists = useValue(localMusicState$.playlists);
     const selectedProvider = useValue(selectedSuggestionProvider$);
     const providerName = selectedProvider?.name ?? "AI";
     const providerAvailable = useValue(isSelectedSuggestionProviderAvailable$);
     const aiSettings = useValue(settings$.ai);
     const isFeatureEnabled = aiSettings.enabled && aiSettings.playlistCreation;
-    const isDisabled = disabled || !providerAvailable || !isFeatureEnabled;
-    const dialogTitle = `Create playlist with ${providerName}`;
+    const targetPlaylist =
+        selectedView === "playlist" && selectedPlaylistProvider === "local"
+            ? localPlaylists.find((playlist) => playlist.id === selectedPlaylistId) ?? null
+            : null;
+    const isTargetEditable = Boolean(targetPlaylist && targetPlaylist.source === "cache" && targetPlaylist.filePath);
+    const isDisabled = disabled || !providerAvailable || !isFeatureEnabled || !isTargetEditable;
+    const dialogTitle = targetPlaylist
+        ? `Add tracks to ${targetPlaylist.name}`
+        : `Add tracks with ${providerName}`;
     const triggerIcon = buttonIcon ?? "sparkles";
     const triggerLabel = buttonLabel?.trim();
 
@@ -66,7 +67,7 @@ export function AiPlaylistDropdown({
         isOpen$.set(false);
     }, [isOpen$]);
 
-    const canCreate = prompt.trim().length > 0 && !isCreating && !isDisabled;
+    const canCreate = prompt.trim().length > 0 && !isCreating && !isDisabled && Boolean(targetPlaylist);
 
     const handleCreate = useCallback(async () => {
         if (!canCreate) {
@@ -77,6 +78,11 @@ export function AiPlaylistDropdown({
         setErrorMessage(null);
         setIsCreating(true);
         try {
+            if (!targetPlaylist) {
+                setErrorMessage("Select a local playlist to fill.");
+                return;
+            }
+
             const { tracks, unresolved } = await fetchSuggestions({
                 mode: "playlist",
                 prompt: trimmedPrompt,
@@ -88,9 +94,6 @@ export function AiPlaylistDropdown({
                 return;
             }
 
-            const playlistName = buildPlaylistName(trimmedPrompt);
-            const playlist = createLocalPlaylist(playlistName);
-
             const trackPaths = Array.from(
                 new Set(tracks.map(resolveTrackPath).filter((path): path is string => Boolean(path))),
             );
@@ -100,11 +103,10 @@ export function AiPlaylistDropdown({
                 return;
             }
 
-            const { addedPaths, playlist: updatedPlaylist } = await addTracksToPlaylist(playlist.id, trackPaths);
-            selectLibraryPlaylist(updatedPlaylist.id, "local");
+            const { addedPaths, playlist: updatedPlaylist } = await addTracksToPlaylist(targetPlaylist.id, trackPaths);
 
             const addedLabel = addedPaths.length === 1 ? "track" : "tracks";
-            showToast(`Created ${updatedPlaylist.name} with ${addedPaths.length} ${addedLabel}`, "info");
+            showToast(`Added ${addedPaths.length} ${addedLabel} to ${updatedPlaylist.name}`, "info");
 
             if (unresolved && unresolved.length > 0) {
                 showToast(`Skipped ${unresolved.length} tracks that could not be matched`, "info");
@@ -112,12 +114,13 @@ export function AiPlaylistDropdown({
 
             close();
         } catch (error) {
+            console.error("AI playlist creation failed", error);
             const message = error instanceof Error ? error.message : "Failed to create AI playlist";
             setErrorMessage(message);
         } finally {
             setIsCreating(false);
         }
-    }, [canCreate, close, prompt]);
+    }, [canCreate, close, prompt, targetPlaylist]);
 
     useEffect(() => {
         if (!isOpen) {
@@ -186,7 +189,7 @@ export function AiPlaylistDropdown({
                                     setErrorMessage(null);
                                 }
                             }}
-                            placeholder="Describe the playlist vibe"
+                            placeholder="Describe the tracks to add"
                             placeholderTextColor="#6b7280"
                             multiline
                             className="text-sm text-text-primary min-h-16"
@@ -207,7 +210,7 @@ export function AiPlaylistDropdown({
                             onClick={() => void handleCreate()}
                             disabled={!canCreate}
                         >
-                            <Text className="text-white text-sm font-medium">Create</Text>
+                            <Text className="text-white text-sm font-medium">Add Tracks</Text>
                         </Button>
                     </View>
                 </View>
