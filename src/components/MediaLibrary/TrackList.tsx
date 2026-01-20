@@ -29,6 +29,7 @@ import { getProviderPlugin } from "@/providers/pluginRegistry";
 import type { ProviderPlaylist } from "@/providers/types";
 import { Icon } from "@/systems/Icon";
 import { libraryUI$ } from "@/systems/LibraryState";
+import { addTracksToPlaylist, updatePlaylistMetadata } from "@/systems/LocalPlaylists";
 import { localMusicState$, saveLocalPlaylistTracks } from "@/systems/LocalMusicState";
 import { aiPlaylistFillState$, finishAiPlaylistFill, startAiPlaylistFill } from "@/systems/ai";
 import { buildPlaylistEntries } from "@/systems/ai/playlistTracks";
@@ -113,10 +114,17 @@ export function TrackList(_props: TrackListProps) {
     const [aiPromptDraft, setAiPromptDraft] = useState("");
     const [aiPromptError, setAiPromptError] = useState<string | null>(null);
     const [isRegenerating, setIsRegenerating] = useState(false);
+    const extendPromptOpen$ = useObservable(false);
+    const extendPromptOpen = useValue(extendPromptOpen$);
+    const extendPromptInputRef = useRef<TextInput>(null);
+    const [extendPromptDraft, setExtendPromptDraft] = useState("");
+    const [extendPromptError, setExtendPromptError] = useState<string | null>(null);
+    const [isExtending, setIsExtending] = useState(false);
     const aiPrompt = selectedLocalPlaylist?.aiPrompt?.trim() ?? "";
     const aiSummary = selectedLocalPlaylist?.aiSummary?.trim() ?? "";
     const showAiSummary = Boolean(aiPrompt && aiSummary);
-    const canEditAiPrompt = Boolean(showAiSummary && selectedLocalPlaylist?.source === "cache");
+    const canModifyPlaylist = Boolean(selectedLocalPlaylist && selectedLocalPlaylist.source === "cache");
+    const canEditAiPrompt = Boolean(showAiSummary && canModifyPlaylist);
 
     const selectedProviderPlaylist = useMemo(() => {
         if (
@@ -170,8 +178,15 @@ export function TrackList(_props: TrackListProps) {
         aiPromptEditorOpen$.set(false);
     }, [aiPromptEditorOpen$]);
 
+    const closeExtendPrompt = useCallback(() => {
+        extendPromptOpen$.set(false);
+    }, [extendPromptOpen$]);
+
+    const isAiBusy = isRegenerating || isExtending;
     const canRegenerate =
-        aiPromptDraft.trim().length > 0 && !isRegenerating && Boolean(selectedLocalPlaylist && canEditAiPrompt);
+        aiPromptDraft.trim().length > 0 && !isAiBusy && Boolean(selectedLocalPlaylist && canEditAiPrompt);
+    const canExtendWithExistingPrompt = Boolean(aiPrompt && canModifyPlaylist && !isAiBusy);
+    const canExtendWithNewPrompt = Boolean(canModifyPlaylist && !isAiBusy);
 
     const handleRegenerate = useCallback(async () => {
         if (!selectedLocalPlaylist || !canEditAiPrompt) {
@@ -247,6 +262,109 @@ export function TrackList(_props: TrackListProps) {
         selectedLocalPlaylist,
     ]);
 
+    const extendPlaylist = useCallback(
+        async (
+            promptValue: string,
+            options: {
+                updateMetadata?: boolean;
+                onError?: (message: string) => void;
+                onSuccess?: () => void;
+            } = {},
+        ) => {
+            if (!selectedLocalPlaylist || !canModifyPlaylist) {
+                return;
+            }
+
+            const trimmedPrompt = promptValue.trim();
+            if (!trimmedPrompt) {
+                options.onError?.("Prompt cannot be empty.");
+                return;
+            }
+
+            if (isAiBusy) {
+                return;
+            }
+
+            const summaryPromise = options.updateMetadata
+                ? generatePlaylistSummary(trimmedPrompt).catch((error) => {
+                      console.warn("AI playlist summary failed", error);
+                      return null;
+                  })
+                : Promise.resolve(null);
+
+            setIsExtending(true);
+            try {
+                startAiPlaylistFill(selectedLocalPlaylist.id);
+
+                const { tracks, unresolved } = await fetchSuggestions({
+                    mode: "playlist",
+                    prompt: trimmedPrompt,
+                    count: DEFAULT_AI_SUGGESTION_COUNT,
+                });
+
+                if (tracks.length === 0) {
+                    options.onError?.("No tracks were suggested.");
+                    return;
+                }
+
+                const { trackEntries, trackPaths } = buildPlaylistEntries(tracks);
+                if (trackPaths.length === 0) {
+                    options.onError?.("No resolved tracks to add.");
+                    return;
+                }
+
+                const { addedPaths, playlist } = await addTracksToPlaylist(selectedLocalPlaylist.id, trackPaths, {
+                    trackEntries,
+                });
+
+                if (options.updateMetadata) {
+                    const summary = await summaryPromise;
+                    try {
+                        updatePlaylistMetadata(selectedLocalPlaylist.id, {
+                            aiPrompt: trimmedPrompt,
+                            aiSummary: summary ?? selectedLocalPlaylist.aiSummary,
+                        });
+                    } catch (error) {
+                        console.warn("Failed to update AI playlist metadata", error);
+                    }
+                }
+
+                const addedLabel = addedPaths.length === 1 ? "track" : "tracks";
+                showToast(`Added ${addedPaths.length} ${addedLabel} to ${playlist.name}`, "info");
+                if (unresolved && unresolved.length > 0) {
+                    showToast(`Skipped ${unresolved.length} tracks that could not be matched`, "info");
+                }
+
+                options.onSuccess?.();
+            } catch (error) {
+                console.error("AI playlist extension failed", error);
+                const message = error instanceof Error ? error.message : "Failed to extend AI playlist";
+                options.onError?.(message);
+            } finally {
+                finishAiPlaylistFill();
+                setIsExtending(false);
+            }
+        },
+        [canModifyPlaylist, isAiBusy, selectedLocalPlaylist],
+    );
+
+    const handleExtendExistingPrompt = useCallback(() => {
+        if (!aiPrompt) {
+            showToast("No AI prompt found for this playlist.", "info");
+            return;
+        }
+
+        void extendPlaylist(aiPrompt);
+    }, [aiPrompt, extendPlaylist]);
+
+    const handleExtendWithNewPrompt = useCallback(() => {
+        void extendPlaylist(extendPromptDraft, {
+            updateMetadata: true,
+            onError: (message) => setExtendPromptError(message),
+            onSuccess: closeExtendPrompt,
+        });
+    }, [closeExtendPrompt, extendPlaylist, extendPromptDraft]);
+
     useEffect(() => {
         if (!aiPromptEditorOpen) {
             return;
@@ -281,6 +399,44 @@ export function TrackList(_props: TrackListProps) {
         });
     }, [aiPromptEditorOpen, canRegenerate, closeAiPromptEditor, handleRegenerate]);
 
+    useEffect(() => {
+        if (!extendPromptOpen) {
+            return;
+        }
+
+        setExtendPromptDraft("");
+        setExtendPromptError(null);
+        setTimeout(() => {
+            extendPromptInputRef.current?.focus();
+        }, 0);
+    }, [extendPromptOpen]);
+
+    useEffect(() => {
+        if (!extendPromptOpen) {
+            return;
+        }
+
+        return KeyboardManager.addKeyDownListener((event) => {
+            if (event.keyCode === KeyCodes.KEY_ESCAPE) {
+                closeExtendPrompt();
+                return true;
+            }
+
+            if (event.keyCode === KeyCodes.KEY_RETURN) {
+                if (!isAiBusy && extendPromptDraft.trim().length > 0) {
+                    void extendPlaylist(extendPromptDraft, {
+                        updateMetadata: true,
+                        onError: (message) => setExtendPromptError(message),
+                        onSuccess: closeExtendPrompt,
+                    });
+                    return true;
+                }
+            }
+
+            return false;
+        });
+    }, [closeExtendPrompt, extendPlaylist, extendPromptDraft, extendPromptOpen, isAiBusy]);
+
     const isPlaylistEditable =
         selectedView === "playlist" &&
         selectedPlaylistProvider === "local" &&
@@ -289,6 +445,12 @@ export function TrackList(_props: TrackListProps) {
         playlistSort === "playlist-order" &&
         playlistSortDirection === "asc" &&
         searchQuery.trim().length === 0;
+
+    const showExtendFooter =
+        selectedView === "playlist" &&
+        selectedPlaylistProvider === "local" &&
+        Boolean(selectedLocalPlaylist) &&
+        canModifyPlaylist;
 
     const showDateAddedColumn = selectedView === "playlist";
 
@@ -584,6 +746,85 @@ export function TrackList(_props: TrackListProps) {
                                 allowDrop={allowPlaylistDrop}
                                 onDrop={handleDropAtPosition}
                             />
+                        ) : undefined
+                    }
+                    ListFooterComponent={
+                        showExtendFooter ? (
+                            <View className="px-3 py-3 border-t border-white/10">
+                                <View className="flex-row items-center gap-2">
+                                    <Button
+                                        variant="secondary"
+                                        size="small"
+                                        onClick={handleExtendExistingPrompt}
+                                        disabled={!canExtendWithExistingPrompt}
+                                        tooltip="Extend with existing prompt"
+                                    >
+                                        <Text className="text-white text-sm">Extend with prompt</Text>
+                                    </Button>
+                                    <DropdownMenu.Root isOpen$={extendPromptOpen$}>
+                                        <DropdownMenu.Trigger asChild disabled={!canExtendWithNewPrompt}>
+                                            <Button
+                                                variant="secondary"
+                                                size="small"
+                                                disabled={!canExtendWithNewPrompt}
+                                            >
+                                                <Text className="text-white text-sm">Extend with new prompt</Text>
+                                            </Button>
+                                        </DropdownMenu.Trigger>
+                                        <DropdownMenu.Content
+                                            directionalHint="topLeft"
+                                            minWidth={360}
+                                            maxWidth={360}
+                                            setInitialFocus
+                                            scrolls={false}
+                                        >
+                                            <View className="p-3 bg-background-tertiary border border-border-primary rounded-md gap-2">
+                                                <Text className="text-text-secondary text-xs font-medium">
+                                                    Extend with new prompt
+                                                </Text>
+                                                <View className="bg-background-secondary border border-border-primary rounded-md px-3 py-2">
+                                                    <TextInput
+                                                        ref={extendPromptInputRef}
+                                                        value={extendPromptDraft}
+                                                        onChangeText={(value) => {
+                                                            setExtendPromptDraft(value);
+                                                            if (extendPromptError) {
+                                                                setExtendPromptError(null);
+                                                            }
+                                                        }}
+                                                        placeholder="Describe the tracks to add"
+                                                        placeholderTextColor="#6b7280"
+                                                        multiline
+                                                        className="text-sm text-text-primary min-h-16"
+                                                    />
+                                                </View>
+                                                {extendPromptError ? (
+                                                    <View className="rounded-md border border-border-primary/60 bg-red-500/10 px-3 py-2">
+                                                        <Text className="text-sm text-red-200">
+                                                            {extendPromptError}
+                                                        </Text>
+                                                    </View>
+                                                ) : null}
+                                                <View className="flex-row justify-end gap-2">
+                                                    <Button variant="secondary" size="small" onClick={closeExtendPrompt}>
+                                                        <Text className="text-white text-sm">Cancel</Text>
+                                                    </Button>
+                                                    <Button
+                                                        variant="primary"
+                                                        size="small"
+                                                        onClick={handleExtendWithNewPrompt}
+                                                        disabled={isAiBusy || extendPromptDraft.trim().length === 0}
+                                                    >
+                                                        <Text className="text-white text-sm font-medium">
+                                                            {isExtending ? "Adding..." : "Add tracks"}
+                                                        </Text>
+                                                    </Button>
+                                                </View>
+                                            </View>
+                                        </DropdownMenu.Content>
+                                    </DropdownMenu.Root>
+                                </View>
+                            </View>
                         ) : undefined
                     }
                     style={{ flex: 1 }}
