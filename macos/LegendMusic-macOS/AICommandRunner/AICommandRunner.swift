@@ -13,11 +13,12 @@ class AICommandRunner: NSObject {
         let claudePath = resolveExecutable("claude")
         let codexPath = resolveExecutable("codex")
         let preferred = claudePath != nil ? "claude" : (codexPath != nil ? "codex" : nil)
+        let preferredValue: Any = preferred ?? NSNull()
 
         resolve([
             "claude": claudePath != nil,
             "codex": codexPath != nil,
-            "preferredTool": preferred ?? NSNull()
+            "preferredTool": preferredValue
         ])
     }
 

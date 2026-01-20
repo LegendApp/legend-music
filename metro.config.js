@@ -5,8 +5,11 @@ const { wrapWithReanimatedMetroConfig } = require("react-native-reanimated/metro
 
 const config = mergeConfig(getDefaultConfig(__dirname), {
     resolver: {
+        disableHierarchicalLookup: true,
+        nodeModulesPaths: [path.resolve(__dirname, "node_modules")],
         extraNodeModules: {
             "expo-constants": path.resolve(__dirname, "src/shims/expo-constants"),
+            "metro-runtime": path.resolve(__dirname, "node_modules/metro-runtime"),
         },
     },
 });
