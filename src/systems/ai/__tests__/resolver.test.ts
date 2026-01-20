@@ -46,13 +46,21 @@ describe("resolveSuggestedTracks", () => {
 
     it("uses provider search when local match is missing", async () => {
         const provider = makeProvider(async () => [
-            { type: "track", item: buildTrack({ id: "remote-1", filePath: "spotify:track:1" }) },
+            {
+                type: "track",
+                item: buildTrack({
+                    id: "remote-1",
+                    title: "Song X",
+                    artist: "Artist X",
+                    filePath: "spotify:track:1",
+                }),
+            },
         ]);
         mockGetSearchProviders.mockReturnValue([provider]);
 
         const result = await resolveSuggestedTracks([{ title: "Song X", artist: "Artist X" }]);
 
-        expect(provider.search).toHaveBeenCalledWith({ query: "Song X Artist X" });
+        expect(provider.search).toHaveBeenCalledWith({ query: 'track:"Song X" artist:"Artist X"' });
         expect(result.tracks).toHaveLength(1);
         expect(result.unresolved).toHaveLength(0);
     });
