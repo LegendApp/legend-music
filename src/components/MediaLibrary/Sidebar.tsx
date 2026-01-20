@@ -115,10 +115,11 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
     const isRemoteLibraryProvider = libraryProviderId !== "local";
     const [outerWidth, setWidth] = useState(0);
     const width = Math.max(outerWidth - 28, 0);
-    const showLocalPlaylists = SUPPORT_PLAYLISTS && !isRemoteLibraryProvider;
+    const showLocalPlaylists = SUPPORT_PLAYLISTS;
     const showProviderPlaylists = SUPPORT_PLAYLISTS && isRemoteLibraryProvider && Boolean(libraryPlugin?.library);
     const isLibraryAuthenticated = librarySession?.isAuthenticated ?? false;
-    const playlistHeaderLabel = isRemoteLibraryProvider ? `${libraryProviderName} Playlists` : "Playlists";
+    const playlistHeaderLabel = "Playlists";
+    const providerPlaylistHeaderLabel = `${libraryProviderName} Playlists`;
     const selectedSuggestionProvider = useValue(selectedSuggestionProvider$);
     const suggestionProviderAvailable = useValue(isSelectedSuggestionProviderAvailable$);
     const aiSettings = useValue(settings$.ai);
@@ -485,43 +486,6 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                     </SidebarItem>
                 ) : null}
 
-                {/* Playlist Items */}
-                {showProviderPlaylists ? (
-                    !isLibraryAuthenticated ? (
-                        <SidebarItem itemId="provider-playlists-disabled" selectable={false}>
-                            <Text className="text-sm text-white/40">
-                                Connect {libraryProviderName} to view playlists
-                            </Text>
-                        </SidebarItem>
-                    ) : libraryStatus.isLoading ? (
-                        <SidebarItem itemId="provider-playlists-loading" selectable={false}>
-                            <Text className="text-sm text-white/40">
-                                Loading {libraryProviderName} playlists...
-                            </Text>
-                        </SidebarItem>
-                    ) : libraryPlaylists.length === 0 ? (
-                        <SidebarItem itemId="provider-playlists-empty" selectable={false}>
-                            <Text className="text-sm text-white/40">
-                                No {libraryProviderName} playlists found
-                            </Text>
-                        </SidebarItem>
-                    ) : (
-                        libraryPlaylists.map((playlist) => (
-                            <SidebarItem
-                                key={playlist.id}
-                                itemId={buildPlaylistItemId(libraryProviderId, playlist.id)}
-                            >
-                                <View className="flex-row items-center justify-between">
-                                    <Text className="text-sm text-text-primary flex-1 py-1" numberOfLines={1}>
-                                        {playlist.name}
-                                    </Text>
-                                    <Text className="text-xs text-white/40">{playlist.trackCount ?? 0}</Text>
-                                </View>
-                            </SidebarItem>
-                        ))
-                    )
-                ) : null}
-
                 {showLocalPlaylists && localPlaylists.length === 0 ? (
                     <SidebarItem itemId="no-playlists" selectable={false}>
                         <Text className="text-sm text-white/40">No playlists yet</Text>
@@ -589,6 +553,52 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                           );
                       })
                     : null}
+
+                {showProviderPlaylists ? (
+                    <SidebarItem itemId="header-provider-playlists" selectable={false} rowHeight={36}>
+                        <View className="flex-row items-center justify-between pt-3" style={{ width }}>
+                            <Text className="text-xs font-semibold text-white/40 uppercase tracking-wider">
+                                {providerPlaylistHeaderLabel}
+                            </Text>
+                        </View>
+                    </SidebarItem>
+                ) : null}
+
+                {showProviderPlaylists ? (
+                    !isLibraryAuthenticated ? (
+                        <SidebarItem itemId="provider-playlists-disabled" selectable={false}>
+                            <Text className="text-sm text-white/40">
+                                Connect {libraryProviderName} to view playlists
+                            </Text>
+                        </SidebarItem>
+                    ) : libraryStatus.isLoading ? (
+                        <SidebarItem itemId="provider-playlists-loading" selectable={false}>
+                            <Text className="text-sm text-white/40">
+                                Loading {libraryProviderName} playlists...
+                            </Text>
+                        </SidebarItem>
+                    ) : libraryPlaylists.length === 0 ? (
+                        <SidebarItem itemId="provider-playlists-empty" selectable={false}>
+                            <Text className="text-sm text-white/40">
+                                No {libraryProviderName} playlists found
+                            </Text>
+                        </SidebarItem>
+                    ) : (
+                        libraryPlaylists.map((playlist) => (
+                            <SidebarItem
+                                key={playlist.id}
+                                itemId={buildPlaylistItemId(libraryProviderId, playlist.id)}
+                            >
+                                <View className="flex-row items-center justify-between">
+                                    <Text className="text-sm text-text-primary flex-1 py-1" numberOfLines={1}>
+                                        {playlist.name}
+                                    </Text>
+                                    <Text className="text-xs text-white/40">{playlist.trackCount ?? 0}</Text>
+                                </View>
+                            </SidebarItem>
+                        ))
+                    )
+                ) : null}
 
                 {/* Sources Section */}
                 {/* <SidebarItem itemId="header-sources" selectable={false} rowHeight={36}>
@@ -669,62 +679,6 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                             <View className="px-3 pb-2">
                                 <Text className="text-xs text-white/40">{aiStatusLabel}</Text>
                             </View>
-                        ) : null}
-
-                        {showProviderPlaylists ? (
-                            !isLibraryAuthenticated ? (
-                                <View className="px-3 py-1">
-                                    <Text className="text-sm text-white/40">
-                                        Connect {libraryProviderName} to view playlists
-                                    </Text>
-                                </View>
-                            ) : libraryStatus.isLoading ? (
-                                <View className="px-3 py-1">
-                                    <Text className="text-sm text-white/40">
-                                        Loading {libraryProviderName} playlists...
-                                    </Text>
-                                </View>
-                            ) : libraryPlaylists.length === 0 ? (
-                                <View className="px-3 py-1">
-                                    <Text className="text-sm text-white/40">
-                                        No {libraryProviderName} playlists found
-                                    </Text>
-                                </View>
-                            ) : (
-                                libraryPlaylists.map((playlist) => {
-                                    const isSelected =
-                                        selectedView === "playlist" &&
-                                        selectedPlaylistProvider === libraryProviderId &&
-                                        selectedPlaylistId === playlist.id;
-                                    return (
-                                        <Button
-                                            key={playlist.id}
-                                            className={listItemStyles.getRowClassName({
-                                                variant: "compact",
-                                                isSelected,
-                                            })}
-                                            onClick={() => selectLibraryPlaylist(playlist.id, libraryProviderId)}
-                                        >
-                                            <View className="flex-1 flex-row items-center justify-between overflow-hidden">
-                                                <Text
-                                                    className={cn(
-                                                        "text-sm truncate flex-1 pr-2",
-                                                        isSelected
-                                                            ? listItemStyles.text.primary
-                                                            : listItemStyles.text.secondary,
-                                                    )}
-                                                    numberOfLines={1}
-                                                >
-                                                    {playlist.name}
-                                                </Text>
-                                                <Text className={listItemStyles.getMetaClassName()}>
-                                                    {playlist.trackCount ?? 0}
-                                                </Text>
-                                            </View>
-                                        </Button>
-                                    );
-                                })
-                            )
                         ) : null}
 
                         {showLocalPlaylists && localPlaylists.length === 0 ? (
@@ -919,6 +873,70 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                                   );
                               })
                             : null}
+
+                        {showProviderPlaylists ? (
+                            <View className="px-3 pt-3 pb-1">
+                                <Text className="text-xs font-semibold text-white/40 uppercase tracking-wider">
+                                    {providerPlaylistHeaderLabel}
+                                </Text>
+                            </View>
+                        ) : null}
+
+                        {showProviderPlaylists ? (
+                            !isLibraryAuthenticated ? (
+                                <View className="px-3 py-1">
+                                    <Text className="text-sm text-white/40">
+                                        Connect {libraryProviderName} to view playlists
+                                    </Text>
+                                </View>
+                            ) : libraryStatus.isLoading ? (
+                                <View className="px-3 py-1">
+                                    <Text className="text-sm text-white/40">
+                                        Loading {libraryProviderName} playlists...
+                                    </Text>
+                                </View>
+                            ) : libraryPlaylists.length === 0 ? (
+                                <View className="px-3 py-1">
+                                    <Text className="text-sm text-white/40">
+                                        No {libraryProviderName} playlists found
+                                    </Text>
+                                </View>
+                            ) : (
+                                libraryPlaylists.map((playlist) => {
+                                    const isSelected =
+                                        selectedView === "playlist" &&
+                                        selectedPlaylistProvider === libraryProviderId &&
+                                        selectedPlaylistId === playlist.id;
+                                    return (
+                                        <Button
+                                            key={playlist.id}
+                                            className={listItemStyles.getRowClassName({
+                                                variant: "compact",
+                                                isSelected,
+                                            })}
+                                            onClick={() => selectLibraryPlaylist(playlist.id, libraryProviderId)}
+                                        >
+                                            <View className="flex-1 flex-row items-center justify-between overflow-hidden">
+                                                <Text
+                                                    className={cn(
+                                                        "text-sm truncate flex-1 pr-2",
+                                                        isSelected
+                                                            ? listItemStyles.text.primary
+                                                            : listItemStyles.text.secondary,
+                                                    )}
+                                                    numberOfLines={1}
+                                                >
+                                                    {playlist.name}
+                                                </Text>
+                                                <Text className={listItemStyles.getMetaClassName()}>
+                                                    {playlist.trackCount ?? 0}
+                                                </Text>
+                                            </View>
+                                        </Button>
+                                    );
+                                })
+                            )
+                        ) : null}
                     </View>
                 ) : null}
 
