@@ -72,6 +72,16 @@ export const codexSuggestionProvider = createAiSuggestionProvider({
     id: "codex",
     name: "Codex",
     command: "codex",
-    buildInvocation: (prompt) => ({ args: ["exec", "--skip-git-repo-check", prompt] }),
+    buildInvocation: (prompt) => ({
+        args: [
+            "exec",
+            "--skip-git-repo-check",
+            "--model",
+            "gpt-5.2",
+            "--config",
+            "model_reasoning_effort=low",
+            prompt,
+        ],
+    }),
     parseResponse: parseCodexResponse,
 });

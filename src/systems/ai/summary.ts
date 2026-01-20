@@ -30,7 +30,18 @@ const resolveSummaryTool = (): AIToolId => {
 
 const buildInvocation = (tool: AIToolId, prompt: string): { command: string; args: string[] } => {
     if (tool === "codex") {
-        return { command: "codex", args: ["exec", "--skip-git-repo-check", prompt] };
+        return {
+            command: "codex",
+            args: [
+                "exec",
+                "--skip-git-repo-check",
+                "--model",
+                "gpt-5.2",
+                "--config",
+                "model_reasoning_effort=low",
+                prompt,
+            ],
+        };
     }
 
     return { command: "claude", args: ["-p", prompt] };
