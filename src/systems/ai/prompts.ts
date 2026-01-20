@@ -41,3 +41,12 @@ export const buildPlaylistPrompt = (userPrompt: string, count: number): string =
         buildJsonInstructions(count)
     ].join("\n");
 };
+
+export const buildPlaylistSummaryPrompt = (userPrompt: string): string => {
+    return [
+        "You are a music assistant creating a playlist summary.",
+        `User prompt: ${userPrompt.trim()}`,
+        "Return exactly five words describing the playlist.",
+        "No punctuation, no quotes, no extra text."
+    ].join("\n");
+};

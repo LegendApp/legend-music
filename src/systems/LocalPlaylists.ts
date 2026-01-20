@@ -211,7 +211,14 @@ export async function exportPlaylistToFile(playlistId: string): Promise<string |
             title: filePath.split("/").pop() || filePath,
             filePath,
         }));
-    const m3uContent = writeM3U({ songs: m3uTracks, suggestions: [] });
+    const m3uContent = writeM3U({
+        songs: m3uTracks,
+        suggestions: [],
+        metadata: {
+            aiPrompt: playlist.aiPrompt,
+            aiSummary: playlist.aiSummary,
+        },
+    });
 
     file.write(m3uContent);
     return toFilePath(file.uri);

@@ -18,7 +18,7 @@ import {
 import { settings$ } from "@/systems/Settings";
 import { stateSaved$ } from "@/systems/State";
 import { ensureCacheDirectory, getCacheDirectory, getPlaylistsDirectory } from "@/utils/cacheDirectories";
-import { parseM3U, type M3UTrack, writeM3U } from "@/utils/m3u";
+import { parseM3U, type M3UPlaylistMetadata, type M3UTrack, writeM3U } from "@/utils/m3u";
 import { loadQueueFromM3U } from "@/utils/m3uManager";
 import { perfCount, perfLog } from "@/utils/perfLogger";
 import { runAfterInteractions, runAfterInteractionsWithLabel } from "@/utils/runAfterInteractions";
@@ -56,6 +56,8 @@ export interface LocalPlaylist {
     trackCount: number;
     source: "cache" | "library-folder";
     originRoot?: string;
+    aiPrompt?: string;
+    aiSummary?: string;
 }
 
 export interface LocalMusicState {
@@ -1074,10 +1076,10 @@ const resolveTrackPathForPlaylist = (playlistFilePath: string, entryPath: string
     return `${baseDir}/${filePath}`.replace(/\/{2,}/g, "/");
 };
 
-const readPlaylistTracks = (file: File): M3UTrack[] => {
+const readPlaylistTracks = (file: File): { tracks: M3UTrack[]; metadata?: M3UPlaylistMetadata } => {
     const content = file.text();
     const parsed = parseM3U(content);
-    return parsed.songs
+    const tracks = parsed.songs
         .map((track) => {
             const resolvedPath = resolveTrackPathForPlaylist(file.uri, track.filePath);
             if (!resolvedPath) {
@@ -1090,6 +1092,7 @@ const readPlaylistTracks = (file: File): M3UTrack[] => {
             };
         })
         .filter((track): track is M3UTrack => Boolean(track));
+    return { tracks, metadata: parsed.metadata };
 };
 
 export function loadLocalPlaylists(): void {
@@ -1123,7 +1126,7 @@ export function loadLocalPlaylists(): void {
         }
 
         try {
-            const tracks = readPlaylistTracks(entry);
+            const { tracks, metadata } = readPlaylistTracks(entry);
             const trackPaths = tracks.map((track) => track.filePath);
             cachePlaylists.push({
                 id: toFilePath(entry.uri),
@@ -1133,6 +1136,8 @@ export function loadLocalPlaylists(): void {
                 tracks,
                 trackCount: trackPaths.length,
                 source: "cache",
+                aiPrompt: metadata?.aiPrompt,
+                aiSummary: metadata?.aiSummary,
             });
         } catch (error) {
             console.warn(`Failed to read playlist ${entry.uri}:`, error);
@@ -1160,7 +1165,7 @@ export function loadLocalPlaylists(): void {
                 continue;
             }
 
-            const tracks = readPlaylistTracks(file);
+            const { tracks, metadata } = readPlaylistTracks(file);
             const trackPaths = tracks.map((track) => track.filePath);
             const playlistName = fileName.replace(/\.(m3u|m3u8)$/i, "");
             libraryPlaylists.push({
@@ -1172,6 +1177,8 @@ export function loadLocalPlaylists(): void {
                 trackCount: trackPaths.length,
                 source: "library-folder",
                 originRoot: discovered.originRoot,
+                aiPrompt: metadata?.aiPrompt,
+                aiSummary: metadata?.aiSummary,
             });
         } catch (error) {
             console.warn(`Failed to read library playlist ${filePath}:`, error);
@@ -1273,7 +1280,14 @@ export function saveLocalPlaylistTracks(
                 addedAt: now,
             };
         });
-        const m3uContent = writeM3U({ songs: m3uTracks, suggestions: [] });
+        const m3uContent = writeM3U({
+            songs: m3uTracks,
+            suggestions: [],
+            metadata: {
+                aiPrompt: playlist.aiPrompt,
+                aiSummary: playlist.aiSummary,
+            },
+        });
 
         const file = new File(decodeIfUriEncoded(playlist.filePath));
         file.write(m3uContent);

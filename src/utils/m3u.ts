@@ -9,10 +9,31 @@ export interface M3UTrack {
     id: string; // Video ID extracted from URL
 }
 
+export interface M3UPlaylistMetadata {
+    aiPrompt?: string;
+    aiSummary?: string;
+}
+
 export interface M3UPlaylist {
     songs: M3UTrack[];
     suggestions: M3UTrack[];
+    metadata?: M3UPlaylistMetadata;
 }
+
+const AI_PROMPT_TAG = "#EXTAI_PROMPT:";
+const AI_SUMMARY_TAG = "#EXTAI_SUMMARY:";
+
+const encodeMetadataValue = (value: string): string => {
+    return encodeURIComponent(value);
+};
+
+const decodeMetadataValue = (value: string): string => {
+    try {
+        return decodeURIComponent(value);
+    } catch {
+        return value;
+    }
+};
 
 /**
  * Parse M3U playlist content into a typed JavaScript object
@@ -25,11 +46,30 @@ export function parseM3U(content: string): M3UPlaylist {
 
     const songs: M3UTrack[] = [];
     const suggestions: M3UTrack[] = [];
+    const metadata: M3UPlaylistMetadata = {};
     let currentSection: "songs" | "suggestions" = "songs"; // Default to songs section
 
     let i = 0;
     while (i < lines.length) {
         const line = lines[i];
+
+        if (line.startsWith(AI_PROMPT_TAG)) {
+            const value = line.slice(AI_PROMPT_TAG.length).trim();
+            if (value) {
+                metadata.aiPrompt = decodeMetadataValue(value);
+            }
+            i++;
+            continue;
+        }
+
+        if (line.startsWith(AI_SUMMARY_TAG)) {
+            const value = line.slice(AI_SUMMARY_TAG.length).trim();
+            if (value) {
+                metadata.aiSummary = decodeMetadataValue(value);
+            }
+            i++;
+            continue;
+        }
 
         // Check for EXTGRP marker to switch to suggestions section
         if (line.startsWith("#EXTGRP:")) {
@@ -128,7 +168,7 @@ export function parseM3U(content: string): M3UPlaylist {
         }
     }
 
-    return { songs, suggestions };
+    return { songs, suggestions, metadata };
 }
 
 /**
@@ -136,6 +176,15 @@ export function parseM3U(content: string): M3UPlaylist {
  */
 export function writeM3U(playlist: M3UPlaylist): string {
     const lines: string[] = ["#EXTM3U"];
+    const metadata = playlist.metadata;
+
+    if (metadata?.aiPrompt) {
+        lines.push(`${AI_PROMPT_TAG}${encodeMetadataValue(metadata.aiPrompt)}`);
+    }
+
+    if (metadata?.aiSummary) {
+        lines.push(`${AI_SUMMARY_TAG}${encodeMetadataValue(metadata.aiSummary)}`);
+    }
 
     // Write songs section
     for (const track of playlist.songs) {
