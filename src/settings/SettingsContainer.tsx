@@ -12,6 +12,7 @@ import { getProviderPlugin, getProviderPlugins } from "@/providers/pluginRegistr
 import { ensureProvidersRegistered } from "@/providers/setupProviders";
 import type { ProviderId } from "@/providers/types";
 import { AccountSettings } from "@/settings/AccountSettings";
+import { AISettings } from "@/settings/AISettings";
 import { CustomizeUISettings } from "@/settings/CustomizeUISettings";
 import { GeneralSettings } from "@/settings/GeneralSettings";
 import { LibrarySettings } from "@/settings/LibrarySettings";
@@ -70,6 +71,7 @@ const buildSettingPages = (): { id: SettingsPage; name: string }[] => {
     return ax([
         { id: "general", name: "General" },
         { id: "library", name: "Library" },
+        { id: "ai", name: "AI" },
         { id: "overlay", name: "Overlay" },
         ...providerPages,
         { id: "ui-customize", name: "Customize UI" },
@@ -92,6 +94,8 @@ function Content({ selectedItem$ }: { selectedItem$: Observable<SettingsPage> })
             return <GeneralSettings />;
         case "library":
             return <LibrarySettings />;
+        case "ai":
+            return <AISettings />;
         case "overlay":
             return <OverlaySettings />;
         case "ui-customize":
