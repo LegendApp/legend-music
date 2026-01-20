@@ -10,11 +10,11 @@ import { addTracksToPlaylist, updatePlaylistMetadata } from "@/systems/LocalPlay
 import { localMusicState$ } from "@/systems/LocalMusicState";
 import { libraryUI$ } from "@/systems/LibraryState";
 import { finishAiPlaylistFill, startAiPlaylistFill } from "@/systems/ai";
+import { buildPlaylistEntries } from "@/systems/ai/playlistTracks";
 import { generatePlaylistSummary } from "@/systems/ai/summary";
 import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
 import { settings$ } from "@/systems/Settings";
 import type { SFSymbols } from "@/types/SFSymbols";
-import type { M3UTrack } from "@/utils/m3u";
 
 const DEFAULT_SUGGESTION_COUNT = 10;
 
@@ -26,26 +26,6 @@ type AiPlaylistDropdownProps = {
     buttonLabel?: string;
     buttonIcon?: SFSymbols;
 };
-
-const resolveTrackPath = (track: { filePath?: string; uri?: string; id?: string }): string | null => {
-    return track.filePath || track.uri || track.id || null;
-};
-
-const buildM3UEntry = (
-    track: { title?: string; artist?: string; durationMs?: number; thumbnail?: string },
-    filePath: string,
-): M3UTrack => ({
-    id: filePath,
-    filePath,
-    title: track.title?.trim() || "Unknown Track",
-    artist: track.artist?.trim() || undefined,
-    duration:
-        typeof track.durationMs === "number" && Number.isFinite(track.durationMs)
-            ? Math.max(0, Math.round(track.durationMs / 1000))
-            : -1,
-    logo: track.thumbnail,
-    addedAt: Date.now(),
-});
 
 export function AiPlaylistDropdown({
     disabled = false,
@@ -131,20 +111,7 @@ export function AiPlaylistDropdown({
                 return;
             }
 
-            const trackEntries: M3UTrack[] = [];
-            const trackPaths = Array.from(
-                new Set(
-                    tracks
-                        .map((track) => {
-                            const path = resolveTrackPath(track);
-                            if (path) {
-                                trackEntries.push(buildM3UEntry(track, path));
-                            }
-                            return path;
-                        })
-                        .filter((path): path is string => Boolean(path)),
-                ),
-            );
+            const { trackEntries, trackPaths } = buildPlaylistEntries(tracks);
 
             if (trackPaths.length === 0) {
                 reopenWithError("No resolved tracks to add.");

@@ -1,12 +1,14 @@
 import { LegendList } from "@legendapp/list";
 import { observable, type Observable } from "@legendapp/state";
-import { useValue } from "@legendapp/state/react";
-import { useCallback, useMemo } from "react";
-import { Platform, Text, View } from "react-native";
+import { useObservable, useValue } from "@legendapp/state/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Platform, Text, TextInput, View } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 
 import { Button } from "@/components/Button";
+import { DropdownMenu } from "@/components/DropdownMenu";
 import { SkiaSpinner } from "@/components/SkiaSpinner";
+import { showToast } from "@/components/Toast";
 import {
     type DragData,
     DraggableItem,
@@ -28,7 +30,11 @@ import type { ProviderPlaylist } from "@/providers/types";
 import { Icon } from "@/systems/Icon";
 import { libraryUI$ } from "@/systems/LibraryState";
 import { localMusicState$, saveLocalPlaylistTracks } from "@/systems/LocalMusicState";
-import { aiPlaylistFillState$ } from "@/systems/ai";
+import { aiPlaylistFillState$, finishAiPlaylistFill, startAiPlaylistFill } from "@/systems/ai";
+import { buildPlaylistEntries } from "@/systems/ai/playlistTracks";
+import { generatePlaylistSummary } from "@/systems/ai/summary";
+import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
+import { fetchSuggestions } from "@/systems/suggestions";
 import { themeState$ } from "@/theme/ThemeProvider";
 import { cn } from "@/utils/cn";
 import type { QueueAction } from "@/utils/queueActions";
@@ -38,6 +44,7 @@ import { AiPlaylistDropdown } from "./AiPlaylistDropdown";
 type TrackListProps = {};
 
 const emptyProviderPlaylists$ = observable([] as ProviderPlaylist[]);
+const DEFAULT_AI_SUGGESTION_COUNT = 10;
 
 const formatAddedDate = (timestamp?: number): string => {
     if (!timestamp) {
@@ -100,6 +107,17 @@ export function TrackList(_props: TrackListProps) {
         return playlists.find((pl) => pl.id === selectedPlaylistId) ?? null;
     }, [playlists, selectedPlaylistId, selectedPlaylistProvider, selectedView]);
 
+    const aiPromptEditorOpen$ = useObservable(false);
+    const aiPromptEditorOpen = useValue(aiPromptEditorOpen$);
+    const aiPromptInputRef = useRef<TextInput>(null);
+    const [aiPromptDraft, setAiPromptDraft] = useState("");
+    const [aiPromptError, setAiPromptError] = useState<string | null>(null);
+    const [isRegenerating, setIsRegenerating] = useState(false);
+    const aiPrompt = selectedLocalPlaylist?.aiPrompt?.trim() ?? "";
+    const aiSummary = selectedLocalPlaylist?.aiSummary?.trim() ?? "";
+    const showAiSummary = Boolean(aiPrompt && aiSummary);
+    const canEditAiPrompt = Boolean(showAiSummary && selectedLocalPlaylist?.source === "cache");
+
     const selectedProviderPlaylist = useMemo(() => {
         if (
             selectedView !== "playlist" ||
@@ -147,6 +165,121 @@ export function TrackList(_props: TrackListProps) {
         selectedProviderPlaylist,
         selectedView,
     ]);
+
+    const closeAiPromptEditor = useCallback(() => {
+        aiPromptEditorOpen$.set(false);
+    }, [aiPromptEditorOpen$]);
+
+    const canRegenerate =
+        aiPromptDraft.trim().length > 0 && !isRegenerating && Boolean(selectedLocalPlaylist && canEditAiPrompt);
+
+    const handleRegenerate = useCallback(async () => {
+        if (!selectedLocalPlaylist || !canEditAiPrompt) {
+            return;
+        }
+
+        const trimmedPrompt = aiPromptDraft.trim();
+        if (!trimmedPrompt || isRegenerating) {
+            return;
+        }
+
+        setAiPromptError(null);
+        setIsRegenerating(true);
+
+        const summaryPromise = generatePlaylistSummary(trimmedPrompt).catch((error) => {
+            console.warn("AI playlist summary failed", error);
+            return null;
+        });
+
+        try {
+            startAiPlaylistFill(selectedLocalPlaylist.id);
+
+            const count =
+                selectedLocalPlaylist.trackCount > 0 ? selectedLocalPlaylist.trackCount : DEFAULT_AI_SUGGESTION_COUNT;
+            const { tracks, unresolved } = await fetchSuggestions({
+                mode: "playlist",
+                prompt: trimmedPrompt,
+                count,
+            });
+
+            if (tracks.length === 0) {
+                setAiPromptError("No tracks were suggested.");
+                return;
+            }
+
+            const { trackEntries, trackPaths } = buildPlaylistEntries(tracks);
+            if (trackPaths.length === 0) {
+                setAiPromptError("No resolved tracks to add.");
+                return;
+            }
+
+            const summary = await summaryPromise;
+            saveLocalPlaylistTracks(
+                {
+                    ...selectedLocalPlaylist,
+                    aiPrompt: trimmedPrompt,
+                    aiSummary: summary ?? selectedLocalPlaylist.aiSummary,
+                },
+                trackPaths,
+                trackEntries,
+            );
+
+            const addedLabel = trackPaths.length === 1 ? "track" : "tracks";
+            showToast(`Regenerated ${trackPaths.length} ${addedLabel}`, "info");
+            if (unresolved && unresolved.length > 0) {
+                showToast(`Skipped ${unresolved.length} tracks that could not be matched`, "info");
+            }
+
+            closeAiPromptEditor();
+        } catch (error) {
+            console.error("AI playlist regeneration failed", error);
+            const message = error instanceof Error ? error.message : "Failed to regenerate AI playlist";
+            setAiPromptError(message);
+        } finally {
+            finishAiPlaylistFill();
+            setIsRegenerating(false);
+        }
+    }, [
+        aiPromptDraft,
+        canEditAiPrompt,
+        closeAiPromptEditor,
+        isRegenerating,
+        selectedLocalPlaylist,
+    ]);
+
+    useEffect(() => {
+        if (!aiPromptEditorOpen) {
+            return;
+        }
+
+        setAiPromptDraft(aiPrompt);
+        setAiPromptError(null);
+        setTimeout(() => {
+            aiPromptInputRef.current?.focus();
+        }, 0);
+    }, [aiPrompt, aiPromptEditorOpen]);
+
+    useEffect(() => {
+        if (!aiPromptEditorOpen) {
+            return;
+        }
+
+        return KeyboardManager.addKeyDownListener((event) => {
+            if (event.keyCode === KeyCodes.KEY_ESCAPE) {
+                closeAiPromptEditor();
+                return true;
+            }
+
+            if (event.keyCode === KeyCodes.KEY_RETURN) {
+                if (canRegenerate) {
+                    void handleRegenerate();
+                    return true;
+                }
+            }
+
+            return false;
+        });
+    }, [aiPromptEditorOpen, canRegenerate, closeAiPromptEditor, handleRegenerate]);
 
     const isPlaylistEditable =
         selectedView === "playlist" &&
@@ -349,6 +482,75 @@ export function TrackList(_props: TrackListProps) {
                         <Text className="text-xs text-text-secondary" numberOfLines={1}>
                             {headerConfig.count} {headerConfig.count === 1 ? "track" : "tracks"}
                         </Text>
+                        {showAiSummary ? (
+                            <View className="mt-1 flex-row items-center gap-1">
+                                <Text className="text-xs text-text-secondary flex-1 min-w-0" numberOfLines={1}>
+                                    AI: {aiSummary}
+                                </Text>
+                                {canEditAiPrompt ? (
+                                    <DropdownMenu.Root isOpen$={aiPromptEditorOpen$}>
+                                        <DropdownMenu.Trigger asChild>
+                                            <Button
+                                                icon="square.and.pencil"
+                                                variant="icon-hover"
+                                                size="xs"
+                                                iconSize={12}
+                                                tooltip="Edit AI prompt"
+                                            />
+                                        </DropdownMenu.Trigger>
+                                        <DropdownMenu.Content
+                                            directionalHint="bottomLeft"
+                                            minWidth={360}
+                                            maxWidth={360}
+                                            setInitialFocus
+                                            scrolls={false}
+                                        >
+                                            <View className="p-3 bg-background-tertiary border border-border-primary rounded-md gap-2">
+                                                <Text className="text-text-secondary text-xs font-medium">
+                                                    Edit AI prompt
+                                                </Text>
+                                                <View className="bg-background-secondary border border-border-primary rounded-md px-3 py-2">
+                                                    <TextInput
+                                                        ref={aiPromptInputRef}
+                                                        value={aiPromptDraft}
+                                                        onChangeText={(value) => {
+                                                            setAiPromptDraft(value);
+                                                            if (aiPromptError) {
+                                                                setAiPromptError(null);
+                                                            }
+                                                        }}
+                                                        placeholder="Describe the playlist"
+                                                        placeholderTextColor="#6b7280"
+                                                        multiline
+                                                        className="text-sm text-text-primary min-h-16"
+                                                    />
+                                                </View>
+                                                {aiPromptError ? (
+                                                    <View className="rounded-md border border-border-primary/60 bg-red-500/10 px-3 py-2">
+                                                        <Text className="text-sm text-red-200">{aiPromptError}</Text>
+                                                    </View>
+                                                ) : null}
+                                                <View className="flex-row justify-end gap-2">
+                                                    <Button variant="secondary" size="small" onClick={closeAiPromptEditor}>
+                                                        <Text className="text-white text-sm">Cancel</Text>
+                                                    </Button>
+                                                    <Button
+                                                        variant="primary"
+                                                        size="small"
+                                                        onClick={() => void handleRegenerate()}
+                                                        disabled={!canRegenerate}
+                                                    >
+                                                        <Text className="text-white text-sm font-medium">
+                                                            {isRegenerating ? "Regenerating..." : "Regenerate"}
+                                                        </Text>
+                                                    </Button>
+                                                </View>
+                                            </View>
+                                        </DropdownMenu.Content>
+                                    </DropdownMenu.Root>
+                                ) : null}
+                            </View>
+                        ) : null}
                     </View>
                 </View>
             ) : null}
