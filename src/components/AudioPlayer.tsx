@@ -1,4 +1,5 @@
 import { observable } from "@legendapp/state";
+import { undoRedo } from "@legendapp/state/helpers/undoRedo";
 import { showToast } from "@/components/Toast";
 import { localPlaybackProvider, LocalTrackNotFoundError } from "@/providers/local/playbackProvider";
 import { getProviderPlugins } from "@/providers/pluginRegistry";
@@ -55,6 +56,11 @@ export interface PlaybackQueueState {
 export const queue$ = observable<PlaybackQueueState>({
     tracks: [],
 });
+
+const queueHistory$ = observable<string[]>([]);
+const queueEntryMap = new Map<string, QueuedTrack>();
+let queueUndoRedo: ReturnType<typeof undoRedo<string[]>> | null = null;
+let isRestoringQueueHistory = false;
 
 let queueEntryCounter = 0;
 let jsProgressTimer: ReturnType<typeof setTimeout> | null = null;
@@ -386,7 +392,16 @@ function getQueueSnapshot(): QueuedTrack[] {
     return queue$.tracks.peek();
 }
 
+function rememberQueueEntries(tracks: QueuedTrack[]): void {
+    for (const track of tracks) {
+        if (track.queueEntryId) {
+            queueEntryMap.set(track.queueEntryId, track);
+        }
+    }
+}
+
 function setQueueTracks(tracks: QueuedTrack[], options: { skipPersistence?: boolean } = {}): void {
+    rememberQueueEntries(tracks);
     queue$.tracks.set(tracks);
     if (!options.skipPersistence) {
         persistPlaybackIndex(audioPlayerState$.currentIndex.peek());
@@ -395,6 +410,13 @@ function setQueueTracks(tracks: QueuedTrack[], options: { skipPersistence?: bool
     // Save to M3U file when queue changes (but not during initial load)
     if (queueInitialized) {
         saveQueueToM3U(tracks);
+    }
+}
+
+function setQueueTracksWithHistory(tracks: QueuedTrack[], options: { skipPersistence?: boolean } = {}): void {
+    setQueueTracks(tracks, options);
+    if (!isRestoringQueueHistory) {
+        queueHistory$.set(tracks.map((track) => track.queueEntryId));
     }
 }
 
@@ -751,7 +773,7 @@ function queueReplace(tracksInput: LocalTrack[], options: QueueUpdateOptions = {
     perfLog("Queue.replace", { length: tracksInput.length, startIndex: options.startIndex });
     const tracks = tracksInput.map(createQueuedTrack);
     clearHistory();
-    setQueueTracks(tracks);
+    setQueueTracksWithHistory(tracks);
 
     if (tracks.length === 0) {
         resetPlayerForEmptyQueue();
@@ -773,7 +795,7 @@ function queueAppend(input: QueueInput, options: QueueUpdateOptions = {}): void 
     const nextQueue = [...existing, ...queuedAdditions];
 
     perfLog("Queue.append", { additions: additions.length, wasEmpty });
-    setQueueTracks(nextQueue);
+    setQueueTracksWithHistory(nextQueue);
 
     if (wasEmpty) {
         clearHistory();
@@ -805,7 +827,7 @@ function queueInsertNext(input: QueueInput, options: QueueUpdateOptions = {}): v
     const nextQueue = [...existing.slice(0, insertPosition), ...queuedAdditions, ...existing.slice(insertPosition)];
 
     perfLog("Queue.insertNext", { additions: additions.length, insertPosition, currentIndex });
-    setQueueTracks(nextQueue);
+    setQueueTracksWithHistory(nextQueue);
 
     if (currentIndex === -1) {
         playTrackFromQueue(0, {
@@ -831,7 +853,7 @@ function queueInsertAt(position: number, input: QueueInput, options: QueueUpdate
     const nextQueue = [...existing.slice(0, boundedPosition), ...queuedAdditions, ...existing.slice(boundedPosition)];
 
     perfLog("Queue.insertAt", { additions: additions.length, position: boundedPosition });
-    setQueueTracks(nextQueue);
+    setQueueTracksWithHistory(nextQueue);
 
     const currentIndex = audioPlayerState$.currentIndex.peek();
     if (currentIndex === -1) {
@@ -887,7 +909,7 @@ function queueReorder(fromIndex: number, toIndex: number): void {
     perfLog("Queue.reorder", { fromIndex: from, toIndex: boundedTarget, insertIndex });
 
     nextQueue.splice(insertIndex, 0, moved);
-    setQueueTracks(nextQueue);
+    setQueueTracksWithHistory(nextQueue);
 
     const currentIndex = audioPlayerState$.currentIndex.peek();
     if (currentIndex === -1) {
@@ -931,7 +953,7 @@ function queueRemoveIndices(indices: number[]): void {
 
     perfLog("Queue.removeIndices", { count: uniqueSorted.length });
     clearHistory();
-    setQueueTracks(nextQueue);
+    setQueueTracksWithHistory(nextQueue);
 
     if (nextQueue.length === 0) {
         resetPlayerForEmptyQueue();
@@ -964,7 +986,7 @@ function queueRemoveIndices(indices: number[]): void {
 function queueClear(): void {
     perfLog("Queue.clear");
     clearHistory();
-    setQueueTracks([]);
+    setQueueTracksWithHistory([]);
     resetPlayerForEmptyQueue();
 
     // Clear the M3U file as well
@@ -972,6 +994,73 @@ function queueClear(): void {
         void clearQueueM3U();
     }
 }
+
+function ensureQueueUndoRedo(): void {
+    if (queueUndoRedo) {
+        return;
+    }
+
+    queueHistory$.set(queue$.tracks.peek().map((track) => track.queueEntryId));
+    queueUndoRedo = undoRedo(queueHistory$);
+}
+
+function applyQueueHistorySnapshot(): void {
+    const entryIds = queueHistory$.get();
+    const restoredQueue = entryIds
+        .map((queueEntryId) => queueEntryMap.get(queueEntryId))
+        .filter((track): track is QueuedTrack => Boolean(track));
+
+    setQueueTracks(restoredQueue);
+
+    if (restoredQueue.length === 0) {
+        resetPlayerForEmptyQueue();
+        return;
+    }
+
+    const currentTrack = audioPlayerState$.currentTrack.peek() as Partial<QueuedTrack> | null;
+    const currentQueueEntryId = currentTrack?.queueEntryId;
+    if (currentQueueEntryId) {
+        const matchIndex = restoredQueue.findIndex((track) => track.queueEntryId === currentQueueEntryId);
+        if (matchIndex !== -1) {
+            audioPlayerState$.currentIndex.set(matchIndex);
+            audioPlayerState$.currentTrack.set(restoredQueue[matchIndex]);
+            return;
+        }
+    }
+
+    audioPlayerState$.currentIndex.set(-1);
+}
+
+function queueUndo(): void {
+    ensureQueueUndoRedo();
+    if (!queueUndoRedo || queueUndoRedo.undos$.get() <= 0) {
+        return;
+    }
+
+    isRestoringQueueHistory = true;
+    try {
+        queueUndoRedo.undo();
+        applyQueueHistorySnapshot();
+    } finally {
+        isRestoringQueueHistory = false;
+    }
+}
+
+function queueRedo(): void {
+    ensureQueueUndoRedo();
+    if (!queueUndoRedo || queueUndoRedo.redos$.get() <= 0) {
+        return;
+    }
+
+    isRestoringQueueHistory = true;
+    try {
+        queueUndoRedo.redo();
+        applyQueueHistorySnapshot();
+    } finally {
+        isRestoringQueueHistory = false;
+    }
+}
+
 function initializeQueueFromCache(): void {
     if (queueInitialized) {
         return;
@@ -1055,6 +1144,8 @@ export const queueControls = {
     reorder: queueReorder,
     remove: queueRemoveIndices,
     clear: queueClear,
+    undo: queueUndo,
+    redo: queueRedo,
 };
 
 async function loadTrack(track: LocalTrack, options?: QueueUpdateOptions): Promise<void>;
@@ -1366,6 +1457,7 @@ export function initializeAudioPlayer(): void {
 
     audioPlayerInitialized = true;
     ensureProvidersRegistered();
+    ensureQueueUndoRedo();
     perfCount("LocalAudioPlayer.initialize");
     const playbackProviders = getProviderPlugins()
         .map((plugin) => plugin.playback)

@@ -33,6 +33,8 @@ const nativeHotkeyMap = {
     ForwardDelete: [KeyCodes.KEY_FORWARD_DELETE],
     Backspace: [KeyCodes.KEY_DELETE],
     SelectAll: [KeyCodes.MODIFIER_COMMAND, KeyCodes.KEY_A],
+    Undo: [KeyCodes.MODIFIER_COMMAND, KeyCodes.KEY_Z],
+    Redo: [KeyCodes.MODIFIER_COMMAND, KeyCodes.MODIFIER_SHIFT, KeyCodes.KEY_Z],
     CloseWindow: [KeyCodes.MODIFIER_COMMAND, KeyCodes.KEY_W],
 } as const;
 

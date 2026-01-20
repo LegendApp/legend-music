@@ -46,6 +46,8 @@ export function MainContainer() {
         ToggleRepeatMode: audioControls.cycleRepeatMode,
         // Only handle space bar globally when no track is selected in the playlist
         PlayPauseSpace: audioControls.togglePlayPause,
+        Undo: audioControls.queue.undo,
+        Redo: audioControls.queue.redo,
     });
 
     perfLog("MainContainer.hotkeys", {
