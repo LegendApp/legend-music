@@ -130,14 +130,15 @@ export const QueueAiDropdown = forwardRef<DropdownMenuRootRef, QueueAiDropdownPr
         <DropdownMenu.Root ref={ref} isOpen$={isOpen$}>
             <DropdownMenu.Trigger asChild disabled={isDisabled}>
                 <Button
+                    icon="sparkles"
                     variant="icon-hover"
                     size="xs"
+                    iconSize={14}
                     accessibilityLabel={`Queue tracks with ${providerName}`}
                     tooltip="AI queue (a)"
                     disabled={isDisabled}
-                >
-                    <Text className="text-base">✨</Text>
-                </Button>
+                    className="opacity-60 hover:opacity-100"
+                />
             </DropdownMenu.Trigger>
             <DropdownMenu.Content directionalHint="topCenter" minWidth={360} maxWidth={360} setInitialFocus scrolls={false}>
                 <View className="p-3 bg-background-tertiary border border-border-primary rounded-md gap-2">

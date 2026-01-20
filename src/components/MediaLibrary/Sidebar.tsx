@@ -85,6 +85,9 @@ const parsePlaylistItemId = (itemId: string): { providerId: ProviderId; playlist
     return { providerId, playlistId };
 };
 
+const formatPlaylistLabel = (playlist: LocalPlaylist): string =>
+    playlist.aiPrompt ? `✨ ${playlist.name}` : playlist.name;
+
 interface MediaLibrarySidebarProps {
     useNativeLibraryList?: boolean;
 }
@@ -496,6 +499,7 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                     ? localPlaylists.map((playlist) => {
                           const isTemp = playlist.id === tempPlaylistId;
                           const isEditing = playlist.id === editingPlaylistId;
+                          const playlistLabel = formatPlaylistLabel(playlist);
 
                           if (isTemp) {
                               return (
@@ -545,7 +549,7 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                               >
                                   <View className="flex-row items-center justify-between">
                                       <Text className="text-sm text-text-primary flex-1 py-1" numberOfLines={1}>
-                                          {playlist.name}
+                                          {playlistLabel}
                                       </Text>
                                       <Text className="text-xs text-white/40">{playlist.trackCount}</Text>
                                   </View>
@@ -694,12 +698,13 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                                       selectedPlaylistProvider === "local" &&
                                       selectedPlaylistId === playlist.id;
                                   const isTemp = playlist.id === tempPlaylistId;
-                                  const isEditing = playlist.id === editingPlaylistId;
-                                  const isDroppable = playlist.source === "cache" && Boolean(playlist.filePath);
-                                  const isNativeDropActive =
-                                      Platform.OS === "macos" &&
-                                      isDroppable &&
-                                      activeNativeDropPlaylistId === playlist.id;
+                              const isEditing = playlist.id === editingPlaylistId;
+                              const isDroppable = playlist.source === "cache" && Boolean(playlist.filePath);
+                              const isNativeDropActive =
+                                  Platform.OS === "macos" &&
+                                  isDroppable &&
+                                  activeNativeDropPlaylistId === playlist.id;
+                              const playlistLabel = formatPlaylistLabel(playlist);
 
                                   if (isTemp) {
                                       return (
@@ -772,7 +777,7 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                                                   )}
                                                   numberOfLines={1}
                                               >
-                                                  {playlist.name}
+                                                  {playlistLabel}
                                               </Text>
                                               <Text className={listItemStyles.getMetaClassName()}>
                                                   {playlist.trackCount}
