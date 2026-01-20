@@ -30,7 +30,7 @@ import type { ProviderPlaylist } from "@/providers/types";
 import { Icon } from "@/systems/Icon";
 import { libraryUI$ } from "@/systems/LibraryState";
 import { addTracksToPlaylist, updatePlaylistMetadata } from "@/systems/LocalPlaylists";
-import { localMusicState$, saveLocalPlaylistTracks } from "@/systems/LocalMusicState";
+import { type LocalPlaylist, localMusicState$, saveLocalPlaylistTracks } from "@/systems/LocalMusicState";
 import { aiPlaylistFillState$, finishAiPlaylistFill, startAiPlaylistFill } from "@/systems/ai";
 import { buildPlaylistEntries } from "@/systems/ai/playlistTracks";
 import { generatePlaylistSummary } from "@/systems/ai/summary";
@@ -62,6 +62,49 @@ const formatAddedDate = (timestamp?: number): string => {
         day: "numeric",
         year: "numeric",
     });
+};
+
+const buildPlaylistExtendPrompt = (prompt: string, playlist: LocalPlaylist | null): string => {
+    if (!playlist) {
+        return prompt;
+    }
+
+    const lines: string[] = [];
+    const seen = new Set<string>();
+    const addLine = (value: string) => {
+        const trimmed = value.trim();
+        if (!trimmed) {
+            return;
+        }
+        const key = trimmed.toLowerCase();
+        if (seen.has(key)) {
+            return;
+        }
+        seen.add(key);
+        lines.push(trimmed);
+    };
+
+    const trackEntries = playlist.tracks ?? [];
+    if (trackEntries.length > 0) {
+        for (const track of trackEntries) {
+            const title = track.title?.trim() || track.filePath.split("/").pop() || track.filePath;
+            const artist = track.artist?.trim();
+            addLine(artist ? `${artist} - ${title}` : title);
+        }
+    } else if (playlist.trackPaths.length > 0) {
+        for (const path of playlist.trackPaths) {
+            const title = path.split("/").pop() || path;
+            addLine(title);
+        }
+    }
+
+    if (lines.length === 0) {
+        return prompt;
+    }
+
+    const avoidLine = "Avoid suggesting any of these tracks already in the playlist:";
+    const instructionLine = "Only suggest new, non-duplicate tracks.";
+    return `${prompt}\n\n${avoidLine}\n${lines.join("\n")}\n\n${instructionLine}`;
 };
 
 export function TrackList(_props: TrackListProps) {
@@ -285,6 +328,7 @@ export function TrackList(_props: TrackListProps) {
                 return;
             }
 
+            const promptWithContext = buildPlaylistExtendPrompt(trimmedPrompt, selectedLocalPlaylist);
             const summaryPromise = options.updateMetadata
                 ? generatePlaylistSummary(trimmedPrompt).catch((error) => {
                       console.warn("AI playlist summary failed", error);
@@ -296,18 +340,18 @@ export function TrackList(_props: TrackListProps) {
             try {
                 startAiPlaylistFill(selectedLocalPlaylist.id);
 
-                const { tracks, unresolved } = await fetchSuggestions({
+                const { tracks: suggestedTracks, unresolved } = await fetchSuggestions({
                     mode: "playlist",
-                    prompt: trimmedPrompt,
+                    prompt: promptWithContext,
                     count: DEFAULT_AI_SUGGESTION_COUNT,
                 });
 
-                if (tracks.length === 0) {
+                if (suggestedTracks.length === 0) {
                     options.onError?.("No tracks were suggested.");
                     return;
                 }
 
-                const { trackEntries, trackPaths } = buildPlaylistEntries(tracks);
+                const { trackEntries, trackPaths } = buildPlaylistEntries(suggestedTracks);
                 if (trackPaths.length === 0) {
                     options.onError?.("No resolved tracks to add.");
                     return;
@@ -469,6 +513,7 @@ export function TrackList(_props: TrackListProps) {
         nextColumns.push(
             { id: "duration", label: "Duration", width: 64, align: "right" },
             { id: "actions", width: 28, align: "center" },
+            { id: "source", width: 28, align: "center" },
         );
 
         return nextColumns;
@@ -945,9 +990,12 @@ function LibraryTrackRow({
     const artistColumn = columns.find((column) => column.id === "artist") ?? columns[2];
     const albumColumn = columns.find((column) => column.id === "album") ?? columns[3];
     const dateAddedColumn = columns.find((column) => column.id === "date-added");
-    const durationColumn = columns.find((column) => column.id === "duration") ?? columns[columns.length - 2];
-    const actionsColumn = columns.find((column) => column.id === "actions") ?? columns[columns.length - 1];
+    const durationColumn = columns.find((column) => column.id === "duration") ?? columns[columns.length - 3];
+    const actionsColumn = columns.find((column) => column.id === "actions") ?? columns[columns.length - 2];
+    const sourceColumn = columns.find((column) => column.id === "source") ?? columns[columns.length - 1];
     const addedAtLabel = formatAddedDate(track.addedAt);
+    const ProviderBadge = track.provider ? getProviderPlugin(track.provider)?.ui?.badge ?? null : null;
+    const providerBadgeNode = ProviderBadge ? <ProviderBadge size={12} className="opacity-80" /> : null;
 
     const handleMenuClick = useCallback(
         async (event: NativeMouseEvent) => {
@@ -1016,6 +1064,9 @@ function LibraryTrackRow({
                     onClick={handleMenuClick}
                     className="bg-transparent hover:bg-white/10"
                 />
+            </TableCell>
+            <TableCell column={sourceColumn} className="pl-1 pr-1">
+                {providerBadgeNode}
             </TableCell>
         </TableRow>
     );

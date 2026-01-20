@@ -243,6 +243,7 @@ export function buildTrackItems({
         thumbnail: track.thumbnail,
         isMissing: track.isMissing,
         addedAt: track.addedAt,
+        provider: track.provider,
         index: viewIndex,
         trackIndex: track.trackNumber,
         sourceTrack: track,
