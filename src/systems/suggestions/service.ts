@@ -39,6 +39,22 @@ export const isSelectedSuggestionProviderAvailable$ = computed(() => {
     return provider?.isAvailable() ?? false;
 });
 
+export const suggestionProviderAvailability$ = computed(() => {
+    ensureSuggestionProvidersRegistered();
+    const providers = suggestionProviders$.get();
+    const availability: Record<SuggestionProviderId, boolean> = {
+        claude: false,
+        codex: false,
+        spotify: false,
+    };
+
+    for (const provider of providers) {
+        availability[provider.id] = provider.isAvailable();
+    }
+
+    return availability;
+});
+
 export function getSuggestionProviderById(providerId: SuggestionProviderId): SuggestionProvider {
     ensureSuggestionProvidersRegistered();
     const provider = getSuggestionProvider(providerId);

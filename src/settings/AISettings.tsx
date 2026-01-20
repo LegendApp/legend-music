@@ -9,6 +9,7 @@ import {
     ensureSuggestionProvidersRegistered,
     isSelectedSuggestionProviderAvailable$,
     selectedSuggestionProvider$,
+    suggestionProviderAvailability$,
     suggestionProviders$,
 } from "@/systems/suggestions";
 import { useValue } from "@legendapp/state/react";
@@ -19,19 +20,31 @@ export function AISettings() {
     const providers = useValue(suggestionProviders$);
     const selectedProvider = useValue(selectedSuggestionProvider$);
     const isAvailable = useValue(isSelectedSuggestionProviderAvailable$);
+    const providerAvailability = useValue(suggestionProviderAvailability$);
 
     const providerOptions = useMemo(
-        () => providers.map((provider) => ({ value: provider.id, label: provider.name })),
-        [providers],
+        () =>
+            providers.map((provider) => {
+                const available = providerAvailability[provider.id];
+                return {
+                    value: provider.id,
+                    label: available ? provider.name : `${provider.name} (Not Available)`,
+                    disabled: !available,
+                };
+            }),
+        [providers, providerAvailability],
     );
 
-    const availabilityLabel = !selectedProvider
-        ? "No suggestion provider selected"
-        : isAvailable
-            ? `${selectedProvider.name} is available`
-            : selectedProvider.kind === "spotify"
-                ? "Connect Spotify to enable suggestions"
-                : `${selectedProvider.name} is not available`;
+    const hasAvailableProviders = providers.some((provider) => providerAvailability[provider.id]);
+    const availabilityLabel = !hasAvailableProviders
+        ? "No suggestion providers available"
+        : !selectedProvider
+            ? "No suggestion provider selected"
+            : isAvailable
+                ? `${selectedProvider.name} is available`
+                : selectedProvider.kind === "spotify"
+                    ? "Connect Spotify to enable suggestions"
+                    : `${selectedProvider.name} is not available`;
 
     return (
         <SettingsPage>
