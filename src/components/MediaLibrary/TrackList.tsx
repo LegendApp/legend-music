@@ -6,6 +6,7 @@ import { Platform, Text, View } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 
 import { Button } from "@/components/Button";
+import { SkiaSpinner } from "@/components/SkiaSpinner";
 import {
     type DragData,
     DraggableItem,
@@ -27,6 +28,7 @@ import type { ProviderPlaylist } from "@/providers/types";
 import { Icon } from "@/systems/Icon";
 import { libraryUI$ } from "@/systems/LibraryState";
 import { localMusicState$, saveLocalPlaylistTracks } from "@/systems/LocalMusicState";
+import { aiPlaylistFillState$ } from "@/systems/ai";
 import { themeState$ } from "@/theme/ThemeProvider";
 import { cn } from "@/utils/cn";
 import type { QueueAction } from "@/utils/queueActions";
@@ -75,9 +77,15 @@ export function TrackList(_props: TrackListProps) {
     const playlistSort = useValue(libraryUI$.playlistSort);
     const playlistSortDirection = useValue(libraryUI$.playlistSortDirection);
     const playlists = useValue(localMusicState$.playlists);
+    const aiPlaylistFillState = useValue(aiPlaylistFillState$);
     const providerPlugin = selectedPlaylistProvider ? getProviderPlugin(selectedPlaylistProvider) : null;
     const providerPlaylists = useValue(providerPlugin?.library?.playlists$ ?? emptyProviderPlaylists$);
     const showAiCreateButton = selectedView === "playlist" && selectedPlaylistProvider === "local";
+    const showAiFillSpinner =
+        selectedView === "playlist" &&
+        selectedPlaylistProvider === "local" &&
+        aiPlaylistFillState.isGenerating &&
+        aiPlaylistFillState.playlistId === selectedPlaylistId;
 
     const nonSeparatorTrackCount = useMemo(
         () => tracks.reduce((count, track) => (track.isSeparator ? count : count + 1), 0),
@@ -342,6 +350,12 @@ export function TrackList(_props: TrackListProps) {
                             {headerConfig.count} {headerConfig.count === 1 ? "track" : "tracks"}
                         </Text>
                     </View>
+                </View>
+            ) : null}
+            {showAiFillSpinner ? (
+                <View className="flex-row items-center gap-2 px-4 py-2 border-b border-white/10">
+                    <SkiaSpinner size={18} color="#7dd6ff" trailColor="rgba(255,255,255,0.08)" />
+                    <Text className="text-sm text-text-secondary">Generating AI tracks...</Text>
                 </View>
             ) : null}
             <Table

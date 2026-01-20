@@ -14,7 +14,7 @@ Apple Music metadata correctly, logs AI outputs for debugging, and adds a Prefer
 ## Steps
 - [x] Update AI playlist creation to add tracks into the currently selected local playlist instead of creating a new one,
       including UX copy changes to reflect "fill current playlist" behavior.
-- [ ] Add an in-playlist progress indicator while AI suggestions are generating/resolving, shown in the track list view
+- [x] Add an in-playlist progress indicator while AI suggestions are generating/resolving, shown in the track list view
       after closing the popup, and clear it on completion or error.
 - [ ] Fix Apple Music track metadata resolution so titles/artists display correctly instead of the raw track id string,
       ensuring resolved tracks include proper metadata for playlist display.

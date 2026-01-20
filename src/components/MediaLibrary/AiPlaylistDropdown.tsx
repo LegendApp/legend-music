@@ -9,6 +9,7 @@ import { fetchSuggestions, isSelectedSuggestionProviderAvailable$, selectedSugge
 import { addTracksToPlaylist } from "@/systems/LocalPlaylists";
 import { localMusicState$ } from "@/systems/LocalMusicState";
 import { libraryUI$ } from "@/systems/LibraryState";
+import { finishAiPlaylistFill, startAiPlaylistFill } from "@/systems/ai";
 import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
 import { settings$ } from "@/systems/Settings";
 import type { SFSymbols } from "@/types/SFSymbols";
@@ -42,6 +43,7 @@ export function AiPlaylistDropdown({
     const [isCreating, setIsCreating] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const textInputRef = useRef<TextInput>(null);
+    const reopenAfterErrorRef = useRef(false);
     const selectedView = useValue(libraryUI$.selectedView);
     const selectedPlaylistId = useValue(libraryUI$.selectedPlaylistId);
     const selectedPlaylistProvider = useValue(libraryUI$.selectedPlaylistProvider);
@@ -69,6 +71,15 @@ export function AiPlaylistDropdown({
 
     const canCreate = prompt.trim().length > 0 && !isCreating && !isDisabled && Boolean(targetPlaylist);
 
+    const reopenWithError = useCallback(
+        (message: string) => {
+            setErrorMessage(message);
+            reopenAfterErrorRef.current = true;
+            isOpen$.set(true);
+        },
+        [isOpen$],
+    );
+
     const handleCreate = useCallback(async () => {
         if (!canCreate) {
             return;
@@ -79,9 +90,12 @@ export function AiPlaylistDropdown({
         setIsCreating(true);
         try {
             if (!targetPlaylist) {
-                setErrorMessage("Select a local playlist to fill.");
+                reopenWithError("Select a local playlist to fill.");
                 return;
             }
+
+            startAiPlaylistFill(targetPlaylist.id);
+            close();
 
             const { tracks, unresolved } = await fetchSuggestions({
                 mode: "playlist",
@@ -90,7 +104,7 @@ export function AiPlaylistDropdown({
             });
 
             if (tracks.length === 0) {
-                setErrorMessage("No tracks were suggested.");
+                reopenWithError("No tracks were suggested.");
                 return;
             }
 
@@ -99,7 +113,7 @@ export function AiPlaylistDropdown({
             );
 
             if (trackPaths.length === 0) {
-                setErrorMessage("No resolved tracks to add.");
+                reopenWithError("No resolved tracks to add.");
                 return;
             }
 
@@ -111,24 +125,27 @@ export function AiPlaylistDropdown({
             if (unresolved && unresolved.length > 0) {
                 showToast(`Skipped ${unresolved.length} tracks that could not be matched`, "info");
             }
-
-            close();
         } catch (error) {
             console.error("AI playlist creation failed", error);
             const message = error instanceof Error ? error.message : "Failed to create AI playlist";
-            setErrorMessage(message);
+            reopenWithError(message);
         } finally {
+            finishAiPlaylistFill();
             setIsCreating(false);
         }
-    }, [canCreate, close, prompt, targetPlaylist]);
+    }, [canCreate, close, prompt, reopenWithError, targetPlaylist]);
 
     useEffect(() => {
         if (!isOpen) {
             return;
         }
 
-        setPrompt("");
-        setErrorMessage(null);
+        if (reopenAfterErrorRef.current) {
+            reopenAfterErrorRef.current = false;
+        } else {
+            setPrompt("");
+            setErrorMessage(null);
+        }
         setTimeout(() => {
             textInputRef.current?.focus();
         }, 0);
