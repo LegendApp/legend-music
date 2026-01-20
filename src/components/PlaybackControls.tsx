@@ -7,6 +7,7 @@ import { Button } from "@/components/Button";
 import type { DropdownMenuRootRef } from "@/components/DropdownMenu";
 import { audioControls, audioPlayerState$, queue$ } from "@/components/AudioPlayer";
 import { JumpSearchMenuDropdown } from "@/components/JumpSearchMenuDropdown";
+import { QueueAiDropdown } from "@/components/QueueAiDropdown";
 import { SavePlaylistDropdown } from "@/components/SavePlaylistDropdown";
 import { usePlaybackControlLayout } from "@/hooks/useUIControls";
 import { SUPPORT_PLAYLISTS } from "@/systems/constants";
@@ -49,6 +50,7 @@ export function PlaybackControls({ className }: PlaybackControlsProps = {}) {
     const { width: windowWidth } = useWindowDimensions();
     const [layoutWidth, setLayoutWidth] = useState(0);
     const dropdownMenuRef = useRef<DropdownMenuRootRef>(null);
+    const aiDropdownRef = useRef<DropdownMenuRootRef>(null);
 
     const { playlistMap, tracksByPath } = usePlaylistOptions(localMusicState);
     const { isLibraryOpen, toggleLibraryWindow } = useLibraryToggle();
@@ -73,6 +75,7 @@ export function PlaybackControls({ className }: PlaybackControlsProps = {}) {
         hasSearchControl
             ? {
                   Search: () => dropdownMenuRef.current?.open(),
+                  AiQueue: () => aiDropdownRef.current?.open(),
               }
             : {},
     );
@@ -177,16 +180,18 @@ export function PlaybackControls({ className }: PlaybackControlsProps = {}) {
                     }
                     case "search":
                         return (
-                            <JumpSearchMenuDropdown
-                                key="search"
-                                ref={dropdownMenuRef}
-                                tracks={localMusicState.tracks}
-                                playlists={localMusicState.playlists}
-                                onSelectTrack={handleTrackSelect}
-                                onSelectLibraryItem={handleLibraryItemSelect}
-                                onSelectPlaylist={handleSearchPlaylistSelect}
-                                dropdownWidth={dropdownWidth}
-                            />
+                            <View key="search" className="flex-row items-center gap-x-1">
+                                <QueueAiDropdown ref={aiDropdownRef} />
+                                <JumpSearchMenuDropdown
+                                    ref={dropdownMenuRef}
+                                    tracks={localMusicState.tracks}
+                                    playlists={localMusicState.playlists}
+                                    onSelectTrack={handleTrackSelect}
+                                    onSelectLibraryItem={handleLibraryItemSelect}
+                                    onSelectPlaylist={handleSearchPlaylistSelect}
+                                    dropdownWidth={dropdownWidth}
+                                />
+                            </View>
                         );
                     case "savePlaylist":
                         return SUPPORT_PLAYLISTS ? (

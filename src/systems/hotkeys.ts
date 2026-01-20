@@ -5,6 +5,7 @@ import { createJSONManager } from "@/utils/JSONManager";
 
 // Default hotkey settings
 const DEFAULT_HOTKEYS = {
+    AiQueue: KeyCodes.KEY_A,
     Search: KeyCodes.KEY_J,
     ToggleLibrary: KeyCodes.KEY_L,
     ToggleVisualizer: KeyCodes.KEY_V,
@@ -24,6 +25,9 @@ const DEFAULT_HOTKEYS = {
 export type HotkeyName = keyof typeof DEFAULT_HOTKEYS;
 
 export const HotkeyMetadata: Record<HotkeyName, { description: string; repeat?: boolean }> = {
+    AiQueue: {
+        description: "Queue AI tracks",
+    },
     Search: {
         description: "Search files",
     },

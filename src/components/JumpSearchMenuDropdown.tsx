@@ -381,7 +381,7 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
                         size="xs"
                         iconYOffset={1}
                         iconSize={14}
-                        tooltip="Search playlists"
+                        tooltip="Search music (j)"
                     />
                 </DropdownMenu.Trigger>
                 <DropdownMenu.Content

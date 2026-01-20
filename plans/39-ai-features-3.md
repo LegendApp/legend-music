@@ -15,7 +15,7 @@ AI add dropdown, and richer queue track context menus.
 - [x] Update AI playlist creation to generate and persist the 5-word summary and prompt alongside the playlist.
 - [x] Show the AI summary in the playlist header with an edit button that opens the full prompt editor; saving regenerates.
 - [x] Add two playlist footer actions: extend with the existing prompt and extend with a new prompt.
-- [ ] Add a sparkle button left of the main search that opens a prompt + count dropdown (10/20/30/40/50) to fill
+- [x] Add a sparkle button left of the main search that opens a prompt + count dropdown (10/20/30/40/50) to fill
       the queue with AI suggestions, and add an "a" hotkey to trigger it with button tooltips/menus showing hotkeys
       in parentheses (e.g., "Search music (j)").
 - [ ] Add queue track context menu actions: "Add 5 more like this", "Add 10 more like this", divider, and
