@@ -10,7 +10,7 @@ import {
     saveLocalPlaylistTracks,
 } from "@/systems/LocalMusicState";
 import { ensureCacheDirectory, getCacheDirectory, getPlaylistsDirectory } from "@/utils/cacheDirectories";
-import { writeM3U } from "@/utils/m3u";
+import { writeM3U, type M3UTrack } from "@/utils/m3u";
 
 const toFilePath = (value: string): string => {
     if (!value.startsWith("file://")) {
@@ -87,7 +87,7 @@ const getUniquePlaylistFile = (
 export async function addTracksToPlaylist(
     playlistId: string,
     trackPaths: string[],
-    opts: { dedupe?: boolean } = {},
+    opts: { dedupe?: boolean; trackEntries?: M3UTrack[] } = {},
 ): Promise<{ addedPaths: string[]; playlist: LocalPlaylist }> {
     const playlist = getPlaylistOrThrow(playlistId);
     if (!isEditablePlaylist(playlist)) {
@@ -116,7 +116,10 @@ export async function addTracksToPlaylist(
     }
 
     if (addedPaths.length > 0) {
-        await saveLocalPlaylistTracks(playlist, nextTrackPaths);
+        const incomingEntries = (opts.trackEntries ?? []).filter((entry) => entry.filePath);
+        const mergedEntries =
+            incomingEntries.length > 0 ? [...incomingEntries, ...(playlist.tracks ?? [])] : playlist.tracks;
+        await saveLocalPlaylistTracks(playlist, nextTrackPaths, mergedEntries);
     }
 
     return { addedPaths, playlist: getPlaylistOrThrow(playlistId) };
