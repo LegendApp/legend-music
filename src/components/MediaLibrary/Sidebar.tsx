@@ -32,7 +32,7 @@ import { showInFinder } from "@/native-modules/FileDialog";
 import { getProviderIdForUri, getProviderPlugin } from "@/providers/pluginRegistry";
 import { activeProviderId$, getProvider, providerSessions$ } from "@/providers/providerRegistry";
 import type { ProviderId, ProviderPlaylist } from "@/providers/types";
-import { isAiAvailable$ } from "@/systems/ai";
+import { isSelectedSuggestionProviderAvailable$, selectedSuggestionProvider$ } from "@/systems/suggestions";
 import { SUPPORT_PLAYLISTS } from "@/systems/constants";
 import { type LibraryView, libraryUI$, selectLibraryPlaylist, selectLibraryView } from "@/systems/LibraryState";
 import { createLocalPlaylist, type LocalPlaylist, localMusicState$ } from "@/systems/LocalMusicState";
@@ -119,13 +119,19 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
     const showProviderPlaylists = SUPPORT_PLAYLISTS && isRemoteLibraryProvider && Boolean(libraryPlugin?.library);
     const isLibraryAuthenticated = librarySession?.isAuthenticated ?? false;
     const playlistHeaderLabel = isRemoteLibraryProvider ? `${libraryProviderName} Playlists` : "Playlists";
-    const aiAvailable = useValue(isAiAvailable$);
+    const selectedSuggestionProvider = useValue(selectedSuggestionProvider$);
+    const suggestionProviderAvailable = useValue(isSelectedSuggestionProviderAvailable$);
     const aiSettings = useValue(settings$.ai);
     const aiFeatureEnabled = aiSettings.enabled && aiSettings.playlistCreation;
-    const showAiStatus = showLocalPlaylists && (!aiAvailable || !aiFeatureEnabled);
+    const showAiStatus = showLocalPlaylists && (!suggestionProviderAvailable || !aiFeatureEnabled);
+    const selectedProviderName = selectedSuggestionProvider?.name ?? "AI provider";
     const aiStatusLabel = !aiFeatureEnabled
         ? "AI playlists are disabled in settings"
-        : "Install Claude Code or Codex to enable AI playlists";
+        : !selectedSuggestionProvider
+            ? "No suggestion provider selected"
+            : selectedSuggestionProvider.kind === "spotify"
+                ? "Connect Spotify to enable playlist suggestions"
+                : `${selectedProviderName} is not available`;
 
     useEffect(() => {
         if (!showProviderPlaylists || !libraryPlugin?.library?.listPlaylists) {

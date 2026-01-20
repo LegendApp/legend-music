@@ -1,0 +1,75 @@
+import { computed } from "@legendapp/state";
+import { settings$ } from "@/systems/Settings";
+import {
+    ensureSuggestionProvidersRegistered,
+    getSuggestionProvider,
+    suggestionProviders$,
+} from "@/systems/suggestions/registry";
+import type { SuggestionProvider, SuggestionProviderId, SuggestionRequest, SuggestionResult } from "@/systems/suggestions/types";
+
+const DEFAULT_PROVIDER_ID: SuggestionProviderId = "claude";
+
+const coerceProviderId = (value?: string | null): SuggestionProviderId => {
+    if (value === "claude" || value === "codex" || value === "spotify") {
+        return value;
+    }
+    return DEFAULT_PROVIDER_ID;
+};
+
+export const selectedSuggestionProviderId$ = computed(() => {
+    ensureSuggestionProvidersRegistered();
+    return coerceProviderId(settings$.ai.suggestionProviderId.get());
+});
+
+export const selectedSuggestionProvider$ = computed(() => {
+    ensureSuggestionProvidersRegistered();
+    const providerId = selectedSuggestionProviderId$.get();
+    return getSuggestionProvider(providerId) ?? null;
+});
+
+export const isSelectedSuggestionProviderAvailable$ = computed(() => {
+    const provider = selectedSuggestionProvider$.get();
+    if (!provider) {
+        return false;
+    }
+    return provider.isAvailable$.get();
+});
+
+export function getSuggestionProviderById(providerId: SuggestionProviderId): SuggestionProvider {
+    ensureSuggestionProvidersRegistered();
+    const provider = getSuggestionProvider(providerId);
+    if (!provider) {
+        throw new Error(`Suggestion provider not found: ${providerId}`);
+    }
+    return provider;
+}
+
+export async function fetchSuggestions(request: SuggestionRequest): Promise<SuggestionResult> {
+    ensureSuggestionProvidersRegistered();
+
+    const aiSettings = settings$.ai.get();
+    if (!aiSettings.enabled) {
+        throw new Error("Suggestion features are disabled in settings.");
+    }
+    if (request.mode === "queue-extension" && !aiSettings.autoExtendQueue) {
+        throw new Error("Queue extension is disabled in settings.");
+    }
+    if (request.mode === "playlist" && !aiSettings.playlistCreation) {
+        throw new Error("Playlist creation is disabled in settings.");
+    }
+
+    const providerId = selectedSuggestionProviderId$.get();
+    const provider = getSuggestionProviderById(providerId);
+
+    if (!provider.isAvailable$.get()) {
+        throw new Error(`${provider.name} is not available.`);
+    }
+
+    if (!provider.supportsModes.includes(request.mode)) {
+        throw new Error(`${provider.name} does not support ${request.mode}.`);
+    }
+
+    return provider.suggest(request);
+}
+
+export { suggestionProviders$ };

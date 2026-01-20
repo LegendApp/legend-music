@@ -57,6 +57,7 @@ export interface AppSettings {
         enabled: boolean;
         autoExtendQueue: boolean;
         playlistCreation: boolean;
+        suggestionProviderId: "claude" | "codex" | "spotify";
     };
     library: {
         paths: string[];
@@ -94,6 +95,7 @@ export const settings$ = createJSONManager<AppSettings>({
             enabled: true,
             autoExtendQueue: true,
             playlistCreation: true,
+            suggestionProviderId: "claude",
         },
         library: {
             paths: [],

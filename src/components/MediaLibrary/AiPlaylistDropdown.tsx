@@ -5,14 +5,14 @@ import { Text, TextInput, View } from "react-native";
 import { Button } from "@/components/Button";
 import { DropdownMenu } from "@/components/DropdownMenu";
 import { showToast } from "@/components/Toast";
-import { fetchAiSuggestions, isAiAvailable$ } from "@/systems/ai";
+import { fetchSuggestions, isSelectedSuggestionProviderAvailable$, selectedSuggestionProvider$ } from "@/systems/suggestions";
 import { addTracksToPlaylist } from "@/systems/LocalPlaylists";
 import { createLocalPlaylist } from "@/systems/LocalMusicState";
 import { selectLibraryPlaylist } from "@/systems/LibraryState";
 import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
 import { settings$ } from "@/systems/Settings";
 
-const DEFAULT_AI_PLAYLIST_COUNT = 10;
+const DEFAULT_SUGGESTION_COUNT = 10;
 
 type AiPlaylistDropdownProps = {
     disabled?: boolean;
@@ -46,10 +46,13 @@ export function AiPlaylistDropdown({
     const [prompt, setPrompt] = useState("");
     const [isCreating, setIsCreating] = useState(false);
     const textInputRef = useRef<TextInput>(null);
-    const aiAvailable = useValue(isAiAvailable$);
+    const selectedProvider = useValue(selectedSuggestionProvider$);
+    const providerName = selectedProvider?.name ?? "AI";
+    const providerAvailable = useValue(isSelectedSuggestionProviderAvailable$);
     const aiSettings = useValue(settings$.ai);
     const isFeatureEnabled = aiSettings.enabled && aiSettings.playlistCreation;
-    const isDisabled = disabled || !aiAvailable || !isFeatureEnabled;
+    const isDisabled = disabled || !providerAvailable || !isFeatureEnabled;
+    const dialogTitle = `Create playlist with ${providerName}`;
 
     const close = useCallback(() => {
         isOpen$.set(false);
@@ -65,14 +68,14 @@ export function AiPlaylistDropdown({
         const trimmedPrompt = prompt.trim();
         setIsCreating(true);
         try {
-            const { tracks, unresolved } = await fetchAiSuggestions({
+            const { tracks, unresolved } = await fetchSuggestions({
                 mode: "playlist",
                 prompt: trimmedPrompt,
-                count: DEFAULT_AI_PLAYLIST_COUNT,
+                count: DEFAULT_SUGGESTION_COUNT,
             });
 
             if (tracks.length === 0) {
-                showToast("AI did not return any tracks", "error");
+                showToast("No tracks were suggested", "error");
                 return;
             }
 
@@ -94,7 +97,7 @@ export function AiPlaylistDropdown({
             const addedLabel = addedPaths.length === 1 ? "track" : "tracks";
             showToast(`Created ${updatedPlaylist.name} with ${addedPaths.length} ${addedLabel}`, "info");
 
-            if (unresolved.length > 0) {
+            if (unresolved && unresolved.length > 0) {
                 showToast(`Skipped ${unresolved.length} tracks that could not be matched`, "info");
             }
 
@@ -147,7 +150,7 @@ export function AiPlaylistDropdown({
                     icon="sparkles"
                     variant={buttonVariant}
                     size={buttonSize}
-                    accessibilityLabel="Create playlist with AI"
+                    accessibilityLabel={dialogTitle}
                     disabled={isDisabled}
                     className={buttonClassName}
                 />
@@ -160,7 +163,7 @@ export function AiPlaylistDropdown({
                 scrolls={false}
             >
                 <View className="p-3 bg-background-tertiary border border-border-primary rounded-md gap-2">
-                    <Text className="text-text-secondary text-xs font-medium">Create playlist with AI</Text>
+                    <Text className="text-text-secondary text-xs font-medium">{dialogTitle}</Text>
                     <View className="bg-background-secondary border border-border-primary rounded-md px-3 py-2">
                         <TextInput
                             ref={textInputRef}

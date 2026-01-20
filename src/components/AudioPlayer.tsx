@@ -8,7 +8,7 @@ import { getPlaybackProviderForTrack, type PlaybackProvider, type PlaybackStateU
 import appExit from "@/native-modules/AppExit";
 import { appState$ } from "@/observables/appState";
 import { DEBUG_AUDIO_LOGS } from "@/systems/constants";
-import { aiAvailability$, fetchAiSuggestions, isAiAvailable$ } from "@/systems/ai";
+import { fetchSuggestions, isSelectedSuggestionProviderAvailable$ } from "@/systems/suggestions";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import { playbackInteractionState$ } from "@/systems/PlaybackInteractionState";
 import { type RepeatMode, settings$ } from "@/systems/Settings";
@@ -488,8 +488,7 @@ const maybeAutoExtendQueue = async (currentIndex?: number): Promise<void> => {
         return;
     }
 
-    const availabilityCheckedAt = aiAvailability$.lastCheckedAt.get();
-    if (availabilityCheckedAt && !isAiAvailable$.get()) {
+    if (!isSelectedSuggestionProviderAvailable$.get()) {
         return;
     }
 
@@ -513,7 +512,7 @@ const maybeAutoExtendQueue = async (currentIndex?: number): Promise<void> => {
 
     try {
         const seedTracks = queue.slice(Math.max(0, queue.length - AUTO_EXTEND_SEED_COUNT));
-        const { tracks } = await fetchAiSuggestions({
+        const { tracks } = await fetchSuggestions({
             mode: "queue-extension",
             seedTracks,
             count: AUTO_EXTEND_TARGET_COUNT,
@@ -527,9 +526,9 @@ const maybeAutoExtendQueue = async (currentIndex?: number): Promise<void> => {
 
         queueAppend(additions);
         const label = additions.length === 1 ? "track" : "tracks";
-        showToast(`AI added ${additions.length} ${label} to the queue`, "info");
+        showToast(`Added ${additions.length} ${label} to the queue`, "info");
     } catch (error) {
-        const message = error instanceof Error ? error.message : "AI queue extension failed";
+        const message = error instanceof Error ? error.message : "Queue extension failed";
         showToast(message, "error");
     } finally {
         queueAutoExtendInFlight = false;
