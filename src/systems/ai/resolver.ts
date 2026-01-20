@@ -1,5 +1,5 @@
 import type { ProviderSearchProvider } from "@/providers/search/types";
-import { getSearchProviders } from "@/providers/search/registry";
+import { enabledSearchProviderIds$, getSearchProviders } from "@/providers/search/registry";
 import type { ProviderId } from "@/providers/types";
 import { normalizeArtistName } from "@/systems/LibraryState";
 import { localMusicState$, type LocalTrack } from "@/systems/LocalMusicState";
@@ -121,7 +121,14 @@ export const resolveSuggestedTracks = async (
 ): Promise<AIResolveResult> => {
     const localTracks = localMusicState$.tracks.peek();
     const indexes = buildLocalIndexes(localTracks);
-    const providers = sortProviders(getSearchProviders(), options.preferredProviders ?? []);
+    const enabledProviderIds = new Set(enabledSearchProviderIds$.get());
+    const preferredProviders = (options.preferredProviders ?? []).filter((providerId) =>
+        enabledProviderIds.has(providerId),
+    );
+    const providers = sortProviders(
+        getSearchProviders().filter((provider) => enabledProviderIds.has(provider.id)),
+        preferredProviders,
+    );
 
     const resolved: LocalTrack[] = [];
     const unresolved: AISuggestedTrack[] = [];
