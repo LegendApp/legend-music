@@ -1,10 +1,11 @@
 import { computed } from "@legendapp/state";
 import type { ProviderSearchInput, ProviderSearchProvider } from "@/providers/search/types";
-import type { ProviderTrack } from "@/providers/types";
-import { buildSpotifyLocalTrack } from "@/providers/spotify/trackMapping";
 import { spotifyAuthState$ } from "@/providers/spotify/authState";
-import { SPOTIFY_API_BASE } from "./constants";
+import { logSpotifyDebug } from "@/providers/spotify/logging";
+import { buildSpotifyLocalTrack } from "@/providers/spotify/trackMapping";
+import type { ProviderTrack } from "@/providers/types";
 import { ensureSpotifyAccessToken } from "./auth";
+import { SPOTIFY_API_BASE } from "./constants";
 
 type SpotifyTrack = {
     id: string;
@@ -42,6 +43,8 @@ export async function searchSpotifyTracks(query: string, limit = 10): Promise<Pr
 
     const json = (await response.json()) as { tracks?: { items?: SpotifyTrack[] } };
     const items = json.tracks?.items ?? [];
+
+    logSpotifyDebug("spotify search response", { query, items });
 
     return items.map((track) => {
         const artistUrls = (track.artists ?? [])
