@@ -1299,6 +1299,8 @@ export function saveLocalPlaylistTracks(
                       trackPaths: [...trackPaths],
                       tracks: m3uTracks,
                       trackCount: trackPaths.length,
+                      aiPrompt: playlist.aiPrompt,
+                      aiSummary: playlist.aiSummary,
                   }
                 : pl,
         );

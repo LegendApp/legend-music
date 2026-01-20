@@ -125,6 +125,25 @@ export async function addTracksToPlaylist(
     return { addedPaths, playlist: getPlaylistOrThrow(playlistId) };
 }
 
+export function updatePlaylistMetadata(
+    playlistId: string,
+    metadata: { aiPrompt?: string; aiSummary?: string },
+): LocalPlaylist {
+    const playlist = getPlaylistOrThrow(playlistId);
+    if (!isEditablePlaylist(playlist)) {
+        throw new Error("Playlist is read-only");
+    }
+
+    const nextPlaylist = {
+        ...playlist,
+        aiPrompt: metadata.aiPrompt,
+        aiSummary: metadata.aiSummary,
+    };
+
+    saveLocalPlaylistTracks(nextPlaylist, playlist.trackPaths, playlist.tracks);
+    return getPlaylistOrThrow(playlistId);
+}
+
 export async function renamePlaylist(
     playlistId: string,
     nextName: string,

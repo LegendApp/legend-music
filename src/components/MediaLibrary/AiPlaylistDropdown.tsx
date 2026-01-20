@@ -6,10 +6,11 @@ import { Button } from "@/components/Button";
 import { DropdownMenu } from "@/components/DropdownMenu";
 import { showToast } from "@/components/Toast";
 import { fetchSuggestions, isSelectedSuggestionProviderAvailable$, selectedSuggestionProvider$ } from "@/systems/suggestions";
-import { addTracksToPlaylist } from "@/systems/LocalPlaylists";
+import { addTracksToPlaylist, updatePlaylistMetadata } from "@/systems/LocalPlaylists";
 import { localMusicState$ } from "@/systems/LocalMusicState";
 import { libraryUI$ } from "@/systems/LibraryState";
 import { finishAiPlaylistFill, startAiPlaylistFill } from "@/systems/ai";
+import { generatePlaylistSummary } from "@/systems/ai/summary";
 import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
 import { settings$ } from "@/systems/Settings";
 import type { SFSymbols } from "@/types/SFSymbols";
@@ -114,6 +115,11 @@ export function AiPlaylistDropdown({
             startAiPlaylistFill(targetPlaylist.id);
             close();
 
+            const summaryPromise = generatePlaylistSummary(trimmedPrompt).catch((error) => {
+                console.warn("AI playlist summary failed", error);
+                return null;
+            });
+
             const { tracks, unresolved } = await fetchSuggestions({
                 mode: "playlist",
                 prompt: trimmedPrompt,
@@ -148,6 +154,16 @@ export function AiPlaylistDropdown({
             const { addedPaths, playlist: updatedPlaylist } = await addTracksToPlaylist(targetPlaylist.id, trackPaths, {
                 trackEntries,
             });
+
+            const summary = await summaryPromise;
+            try {
+                updatePlaylistMetadata(targetPlaylist.id, {
+                    aiPrompt: trimmedPrompt,
+                    aiSummary: summary ?? undefined,
+                });
+            } catch (error) {
+                console.warn("Failed to save AI playlist metadata", error);
+            }
 
             const addedLabel = addedPaths.length === 1 ? "track" : "tracks";
             showToast(`Added ${addedPaths.length} ${addedLabel} to ${updatedPlaylist.name}`, "info");
