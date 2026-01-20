@@ -1,4 +1,3 @@
-import { computed } from "@legendapp/state";
 import type { ProviderTrack } from "@/providers/types";
 import { ensureSpotifyAccessToken } from "@/providers/spotify/auth";
 import { SPOTIFY_API_BASE } from "@/providers/spotify/constants";
@@ -178,7 +177,7 @@ export const spotifySuggestionProvider: SuggestionProvider = {
     id: "spotify",
     name: "Spotify",
     kind: "spotify",
-    isAvailable$: computed(() => isSpotifySearchEnabled$.get()),
+    isAvailable: () => isSpotifySearchEnabled$.get(),
     supportsModes: ["queue-extension", "playlist"],
     async suggest(request: SuggestionRequest): Promise<SuggestionResult> {
         const count = request.count ?? DEFAULT_TRACK_COUNT;

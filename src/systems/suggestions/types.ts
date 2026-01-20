@@ -1,4 +1,3 @@
-import type { Observable } from "@legendapp/state";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import type { AISuggestedTrack } from "@/systems/ai/types";
 
@@ -26,7 +25,7 @@ export type SuggestionProvider = {
     id: SuggestionProviderId;
     name: string;
     kind: SuggestionProviderKind;
-    isAvailable$: Observable<boolean>;
+    isAvailable: () => boolean;
     supportsModes: SuggestionMode[];
     suggest: (request: SuggestionRequest) => Promise<SuggestionResult>;
 };

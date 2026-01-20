@@ -1,5 +1,3 @@
-import type { Observable } from "@legendapp/state";
-import { computed } from "@legendapp/state";
 import { aiCommandRunner } from "@/native-modules/AICommandRunner";
 import { aiAvailability$ } from "@/systems/ai/availability";
 import { parseSuggestedTracks } from "@/systems/ai/parser";
@@ -52,18 +50,18 @@ const buildPromptForRequest = (request: SuggestionRequest, count: number): strin
     return buildPlaylistPrompt(prompt, count);
 };
 
-const resolveAiAvailability$ = (id: SuggestionProviderId): Observable<boolean> => {
+const resolveAiAvailability = (id: SuggestionProviderId): boolean => {
     if (id === "claude") {
-        return computed(() => aiAvailability$.claude.get());
+        return aiAvailability$.claude.get();
     }
     if (id === "codex") {
-        return computed(() => aiAvailability$.codex.get());
+        return aiAvailability$.codex.get();
     }
-    return computed(() => false);
+    return false;
 };
 
 export const createAiSuggestionProvider = (config: AiProviderConfig): SuggestionProvider => {
-    const isAvailable$ = resolveAiAvailability$(config.id);
+    const isAvailable = () => resolveAiAvailability(config.id);
     const parse = config.parseResponse ?? parseSuggestedTracks;
 
     const suggest = async (request: SuggestionRequest): Promise<SuggestionResult> => {
@@ -106,7 +104,7 @@ export const createAiSuggestionProvider = (config: AiProviderConfig): Suggestion
         id: config.id,
         name: config.name,
         kind: "ai",
-        isAvailable$,
+        isAvailable,
         supportsModes: ["queue-extension", "playlist"],
         suggest,
     };

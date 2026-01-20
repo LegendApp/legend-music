@@ -5,7 +5,12 @@ import {
     getSuggestionProvider,
     suggestionProviders$,
 } from "@/systems/suggestions/registry";
-import type { SuggestionProvider, SuggestionProviderId, SuggestionRequest, SuggestionResult } from "@/systems/suggestions/types";
+import type {
+    SuggestionProvider,
+    SuggestionProviderId,
+    SuggestionRequest,
+    SuggestionResult,
+} from "@/systems/suggestions/types";
 
 const DEFAULT_PROVIDER_ID: SuggestionProviderId = "claude";
 
@@ -28,11 +33,10 @@ export const selectedSuggestionProvider$ = computed(() => {
 });
 
 export const isSelectedSuggestionProviderAvailable$ = computed(() => {
-    const provider = selectedSuggestionProvider$.get();
-    if (!provider) {
-        return false;
-    }
-    return provider.isAvailable$.get();
+    ensureSuggestionProvidersRegistered();
+    const providerId = selectedSuggestionProviderId$.get();
+    const provider = getSuggestionProvider(providerId);
+    return provider?.isAvailable() ?? false;
 });
 
 export function getSuggestionProviderById(providerId: SuggestionProviderId): SuggestionProvider {
@@ -61,7 +65,7 @@ export async function fetchSuggestions(request: SuggestionRequest): Promise<Sugg
     const providerId = selectedSuggestionProviderId$.get();
     const provider = getSuggestionProviderById(providerId);
 
-    if (!provider.isAvailable$.get()) {
+    if (!provider.isAvailable()) {
         throw new Error(`${provider.name} is not available.`);
     }
 
