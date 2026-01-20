@@ -514,6 +514,7 @@ const maybeAutoExtendQueue = async (currentIndex?: number): Promise<void> => {
         const seedTracks = queue.slice(Math.max(0, queue.length - AUTO_EXTEND_SEED_COUNT));
         const { tracks } = await fetchSuggestions({
             mode: "queue-extension",
+            source: "auto",
             seedTracks,
             count: AUTO_EXTEND_TARGET_COUNT,
         });

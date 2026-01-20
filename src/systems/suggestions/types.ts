@@ -5,6 +5,7 @@ export type SuggestionMode = "queue-extension" | "playlist";
 
 export type SuggestionRequest = {
     mode: SuggestionMode;
+    source?: "auto" | "manual";
     count?: number;
     prompt?: string;
     seedTracks?: LocalTrack[];

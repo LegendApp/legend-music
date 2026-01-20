@@ -71,7 +71,7 @@ export async function fetchSuggestions(request: SuggestionRequest): Promise<Sugg
     if (!aiSettings.enabled) {
         throw new Error("Suggestion features are disabled in settings.");
     }
-    if (request.mode === "queue-extension" && !aiSettings.autoExtendQueue) {
+    if (request.mode === "queue-extension" && request.source === "auto" && !aiSettings.autoExtendQueue) {
         throw new Error("Queue extension is disabled in settings.");
     }
     if (request.mode === "playlist" && !aiSettings.playlistCreation) {
