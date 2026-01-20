@@ -31,6 +31,7 @@ import { themeState$ } from "@/theme/ThemeProvider";
 import { cn } from "@/utils/cn";
 import type { QueueAction } from "@/utils/queueActions";
 import { useLibraryTrackList } from "./useLibraryTrackList";
+import { AiPlaylistDropdown } from "./AiPlaylistDropdown";
 
 type TrackListProps = {};
 
@@ -76,6 +77,7 @@ export function TrackList(_props: TrackListProps) {
     const playlists = useValue(localMusicState$.playlists);
     const providerPlugin = selectedPlaylistProvider ? getProviderPlugin(selectedPlaylistProvider) : null;
     const providerPlaylists = useValue(providerPlugin?.library?.playlists$ ?? emptyProviderPlaylists$);
+    const showAiCreateButton = selectedView === "playlist" && selectedPlaylistProvider === "local";
 
     const nonSeparatorTrackCount = useMemo(
         () => tracks.reduce((count, track) => (track.isSeparator ? count : count + 1), 0),
@@ -381,8 +383,15 @@ export function TrackList(_props: TrackListProps) {
                     }
                     recycleItems
                     ListEmptyComponent={
-                        <View className="items-center justify-center py-4 px-2.5 w-full">
+                        <View className="items-center justify-center py-4 px-2.5 w-full gap-2">
                             <Text className="text-sm text-white/60">No tracks found</Text>
+                            {showAiCreateButton ? (
+                                <AiPlaylistDropdown
+                                    buttonLabel="Create with AI"
+                                    buttonVariant="secondary"
+                                    buttonSize="small"
+                                />
+                            ) : null}
                         </View>
                     }
                 />

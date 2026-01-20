@@ -11,14 +11,17 @@ import { createLocalPlaylist } from "@/systems/LocalMusicState";
 import { selectLibraryPlaylist } from "@/systems/LibraryState";
 import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
 import { settings$ } from "@/systems/Settings";
+import type { SFSymbols } from "@/types/SFSymbols";
 
 const DEFAULT_SUGGESTION_COUNT = 10;
 
 type AiPlaylistDropdownProps = {
     disabled?: boolean;
-    buttonVariant?: "icon-hover" | "icon";
+    buttonVariant?: "icon-hover" | "icon" | "secondary" | "primary";
     buttonSize?: "small" | "medium" | "xs";
     buttonClassName?: string;
+    buttonLabel?: string;
+    buttonIcon?: SFSymbols;
 };
 
 const buildPlaylistName = (prompt: string): string => {
@@ -40,6 +43,8 @@ export function AiPlaylistDropdown({
     buttonVariant = "icon-hover",
     buttonSize = "small",
     buttonClassName,
+    buttonLabel,
+    buttonIcon,
 }: AiPlaylistDropdownProps) {
     const isOpen$ = useObservable(false);
     const isOpen = useValue(isOpen$);
@@ -53,6 +58,8 @@ export function AiPlaylistDropdown({
     const isFeatureEnabled = aiSettings.enabled && aiSettings.playlistCreation;
     const isDisabled = disabled || !providerAvailable || !isFeatureEnabled;
     const dialogTitle = `Create playlist with ${providerName}`;
+    const triggerIcon = buttonIcon ?? "sparkles";
+    const triggerLabel = buttonLabel?.trim();
 
     const close = useCallback(() => {
         isOpen$.set(false);
@@ -147,13 +154,15 @@ export function AiPlaylistDropdown({
         <DropdownMenu.Root isOpen$={isOpen$}>
             <DropdownMenu.Trigger asChild disabled={isDisabled}>
                 <Button
-                    icon="sparkles"
+                    icon={triggerIcon}
                     variant={buttonVariant}
                     size={buttonSize}
                     accessibilityLabel={dialogTitle}
                     disabled={isDisabled}
                     className={buttonClassName}
-                />
+                >
+                    {triggerLabel ? <Text className="text-white text-sm font-medium">{triggerLabel}</Text> : null}
+                </Button>
             </DropdownMenu.Trigger>
             <DropdownMenu.Content
                 directionalHint="topCenter"
