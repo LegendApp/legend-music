@@ -4,11 +4,11 @@ import { type ElementRef, useCallback, useMemo, useRef, useState } from "react";
 import { findNodeHandle, type NativeSyntheticEvent, Platform, StyleSheet, Text, UIManager, View } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 import { Button } from "@/components/Button";
-import { audioControls, audioPlayerState$, type QueuedTrack, queue$ } from "@/components/AudioPlayer";
+import { audioControls, audioPlayerState$, queue$, queueControls, type QueuedTrack } from "@/components/AudioPlayer";
 import { showToast } from "@/components/Toast";
 import { type TrackData, TrackItem } from "@/components/TrackItem";
 import { usePlaylistSelection } from "@/hooks/usePlaylistSelection";
-import { showContextMenu } from "@/native-modules/ContextMenu";
+import { type ContextMenuItem, showContextMenu } from "@/native-modules/ContextMenu";
 import {
     DragDropView,
     type NativeDragTrack,
@@ -30,6 +30,7 @@ import {
     setCurrentPlaylist,
 } from "@/systems/LocalMusicState";
 import { settings$ } from "@/systems/Settings";
+import { fetchSuggestions } from "@/systems/suggestions";
 import { state$, stateSaved$ } from "@/systems/State";
 import { cn } from "@/utils/cn";
 import { perfCount, perfLog } from "@/utils/perfLogger";
@@ -53,6 +54,20 @@ type PlaylistTrackWithSuggestions = TrackData & {
     fileName: string;
     isMissing?: boolean;
 };
+
+const QUEUE_MENU_ITEMS = {
+    addFive: { id: "queue-add-5", title: "Add 5 more like this" },
+    addTen: { id: "queue-add-10", title: "Add 10 more like this" },
+    divider: { id: "queue-divider", title: "-", enabled: false },
+    remove: { id: "queue-remove", title: "Remove from playlist" },
+} as const satisfies Record<string, ContextMenuItem>;
+
+const QUEUE_CONTEXT_MENU_ITEMS: ContextMenuItem[] = [
+    QUEUE_MENU_ITEMS.addFive,
+    QUEUE_MENU_ITEMS.addTen,
+    QUEUE_MENU_ITEMS.divider,
+    QUEUE_MENU_ITEMS.remove,
+];
 
 interface DropFeedback {
     type: "success" | "warning";
@@ -160,6 +175,36 @@ export function Playlist() {
         [handleTrackClickBase],
     );
 
+    const handleQueueExtend = useCallback(
+        async (seedTrack: LocalTrack, count: number) => {
+            try {
+                const { tracks, unresolved } = await fetchSuggestions({
+                    mode: "queue-extension",
+                    seedTracks: [seedTrack],
+                    count,
+                });
+
+                if (tracks.length === 0) {
+                    showToast("No tracks were suggested.", "error");
+                    return;
+                }
+
+                queueControls.append(tracks);
+
+                const addedLabel = tracks.length === 1 ? "track" : "tracks";
+                showToast(`Added ${tracks.length} ${addedLabel} to the queue`, "info");
+                if (unresolved && unresolved.length > 0) {
+                    showToast(`Skipped ${unresolved.length} tracks that could not be matched`, "info");
+                }
+            } catch (error) {
+                console.error("AI queue extension failed", error);
+                const message = error instanceof Error ? error.message : "Queue extension failed";
+                showToast(message, "error");
+            }
+        },
+        [],
+    );
+
     const handleTrackContextMenu = useCallback(
         async (index: number, event: NativeMouseEvent) => {
             const x = event.pageX ?? event.x ?? 0;
@@ -169,7 +214,7 @@ export function Playlist() {
                 return;
             }
 
-            const menuItems = buildTrackContextMenuItems({ track });
+            const menuItems = buildTrackContextMenuItems({ track, extraItems: QUEUE_CONTEXT_MENU_ITEMS });
             if (menuItems.length === 0) {
                 return;
             }
@@ -178,9 +223,24 @@ export function Playlist() {
             await handleTrackContextMenuSelection({
                 selection,
                 track,
+                onCustomSelect: async (selected) => {
+                    if (selected === QUEUE_MENU_ITEMS.addFive.id) {
+                        await handleQueueExtend(track, 5);
+                        return;
+                    }
+
+                    if (selected === QUEUE_MENU_ITEMS.addTen.id) {
+                        await handleQueueExtend(track, 10);
+                        return;
+                    }
+
+                    if (selected === QUEUE_MENU_ITEMS.remove.id) {
+                        queueControls.remove([index]);
+                    }
+                },
             });
         },
-        [queueTracks],
+        [handleQueueExtend, queueTracks],
     );
 
     const handleTrackMouseDown = useCallback(
