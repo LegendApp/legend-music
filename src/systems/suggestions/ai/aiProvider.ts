@@ -92,6 +92,7 @@ export const createAiSuggestionProvider = (config: AiProviderConfig): Suggestion
         const stdout = result.stdout.trim();
         const stderr = result.stderr.trim();
         const output = stdout || stderr;
+        console.log("AI prompt output", { providerId: config.id, output });
         if (result.timedOut) {
             throw new Error(`${config.name} timed out after ${Math.round(timeoutMs / 1000)}s.`);
         }

@@ -142,5 +142,12 @@ export const resolveSuggestedTracks = async (
         unresolved.push(suggestion);
     }
 
+    console.log("AI resolve results", {
+        preferredProviders: options.preferredProviders ?? [],
+        suggestions,
+        resolved,
+        unresolved,
+    });
+
     return { tracks: resolved, unresolved };
 };

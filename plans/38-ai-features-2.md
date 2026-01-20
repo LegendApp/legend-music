@@ -18,7 +18,7 @@ Apple Music metadata correctly, logs AI outputs for debugging, and adds a Prefer
       after closing the popup, and clear it on completion or error.
 - [x] Fix Apple Music track metadata resolution so titles/artists display correctly instead of the raw track id string,
       ensuring resolved tracks include proper metadata for playlist display.
-- [ ] Add detailed console logging of the AI prompt output and the subsequent resolve-to-tracks results to aid debugging.
+- [x] Add detailed console logging of the AI prompt output and the subsequent resolve-to-tracks results to aid debugging.
 - [ ] Add a Preferred Service setting in the AI settings page and wire it into the AI track resolver to bias sources.
 
 Validation: Trigger AI playlist creation on an empty local playlist, confirm the popup closes, spinner shows until
