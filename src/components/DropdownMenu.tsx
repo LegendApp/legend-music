@@ -143,7 +143,7 @@ function Trigger({
 }: TriggerProps) {
     const { isOpen$, triggerRef } = useDropdownContext();
 
-    const onMouseDown = useCallback(() => {
+    const openMenu = useCallback(() => {
         if (disabled) {
             return;
         }
@@ -152,15 +152,31 @@ function Trigger({
         }
     }, [disabled, isOpen$]);
 
+    const composeOpenHandler = useCallback(
+        (handler?: (event: NativeMouseEvent) => void) => {
+            return (event: NativeMouseEvent) => {
+                handler?.(event);
+                openMenu();
+            };
+        },
+        [openMenu],
+    );
+
     if (asChild) {
         // Clone the child element and pass our props to it
         if (isValidElement(children)) {
+            const childProps = children.props as {
+                onMouseDown?: (event: NativeMouseEvent) => void;
+                onClick?: (event: NativeMouseEvent) => void;
+                disabled?: boolean;
+            };
             return (
-                <View ref={triggerRef}>
+                <View ref={triggerRef} collapsable={false} pointerEvents="box-none">
                     {cloneElement(children, {
-                        onMouseDown,
-                        ...(disabled ? { disabled: true } : {}),
                         ...(children.props as any),
+                        onMouseDown: composeOpenHandler(childProps.onMouseDown),
+                        onClick: composeOpenHandler(childProps.onClick),
+                        ...(disabled ? { disabled: true } : {}),
                     })}
                 </View>
             );
@@ -168,7 +184,9 @@ function Trigger({
         // Fallback if children is not a valid element
         return (
             <View ref={triggerRef}>
-                <Button onMouseDown={onMouseDown}>{children}</Button>
+                <Button onMouseDown={openMenu} onClick={openMenu}>
+                    {children}
+                </Button>
             </View>
         );
     }
@@ -180,7 +198,8 @@ function Trigger({
             <View ref={triggerRef}>
                 <Button
                     className={cn("flex-row items-center group", className)}
-                    onMouseDown={onMouseDown}
+                    onMouseDown={openMenu}
+                    onClick={openMenu}
                     disabled={disabled}
                 >
                     {caretPosition === "left" && caret}
@@ -193,7 +212,7 @@ function Trigger({
 
     return (
         <View ref={triggerRef}>
-            <Button className={className} onMouseDown={onMouseDown} disabled={disabled}>
+            <Button className={className} onMouseDown={openMenu} onClick={openMenu} disabled={disabled}>
                 {children}
             </Button>
         </View>
