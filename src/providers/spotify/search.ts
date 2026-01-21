@@ -17,18 +17,45 @@ type SpotifyTrack = {
     album: { name: string; images?: { url: string }[]; external_urls?: { spotify?: string } };
 };
 
-export async function searchSpotifyTracks(query: string, limit = 10): Promise<ProviderTrack[]> {
-    if (!query.trim()) {
-        return [];
-    }
+type SpotifySearchResponse = {
+    tracks?: { items?: SpotifyTrack[] };
+};
 
-    const token = await ensureSpotifyAccessToken();
-    if (!token) {
-        throw new Error("Spotify login required before searching");
-    }
+const SPOTIFY_SEARCH_PAGE_SIZE = 50;
+const SPOTIFY_SEARCH_MAX_RESULTS = 200;
 
+const mapSpotifyTrack = (track: SpotifyTrack): ProviderTrack => {
+    const artistUrls = (track.artists ?? [])
+        .map((artist) => artist.external_urls?.spotify)
+        .filter((url): url is string => Boolean(url));
+
+    return {
+        provider: "spotify",
+        id: track.id,
+        uri: track.uri,
+        name: track.name,
+        durationMs: track.duration_ms,
+        artists: track.artists?.map((artist) => artist.name) ?? [],
+        artistUrls: artistUrls.length > 0 ? artistUrls : undefined,
+        album: track.album?.name,
+        albumUrl: track.album?.external_urls?.spotify,
+        thumbnail: track.album?.images?.[0]?.url,
+        isExplicit: track.explicit,
+    };
+};
+
+const escapeSpotifyQuery = (value: string): string => value.replace(/"/g, '\\"');
+
+const fetchSpotifyTracksPage = async (
+    query: string,
+    token: string,
+    limit: number,
+    offset: number,
+): Promise<SpotifyTrack[]> => {
     const response = await fetch(
-        `${SPOTIFY_API_BASE}/search?type=track&limit=${encodeURIComponent(String(limit))}&q=${encodeURIComponent(query)}`,
+        `${SPOTIFY_API_BASE}/search?type=track&limit=${encodeURIComponent(
+            String(limit),
+        )}&offset=${encodeURIComponent(String(offset))}&q=${encodeURIComponent(query)}`,
         {
             headers: {
                 Authorization: `Bearer ${token}`,
@@ -41,30 +68,76 @@ export async function searchSpotifyTracks(query: string, limit = 10): Promise<Pr
         throw new Error(`Spotify search failed: ${response.status} ${text}`);
     }
 
-    const json = (await response.json()) as { tracks?: { items?: SpotifyTrack[] } };
-    const items = json.tracks?.items ?? [];
+    const json = (await response.json()) as SpotifySearchResponse;
+    return json.tracks?.items ?? [];
+};
+
+const searchSpotifyTracksPaged = async (
+    query: string,
+    options?: { limit?: number; maxResults?: number },
+): Promise<ProviderTrack[]> => {
+    if (!query.trim()) {
+        return [];
+    }
+
+    const token = await ensureSpotifyAccessToken();
+    if (!token) {
+        throw new Error("Spotify login required before searching");
+    }
+
+    const pageSize = Math.min(options?.limit ?? SPOTIFY_SEARCH_PAGE_SIZE, SPOTIFY_SEARCH_PAGE_SIZE);
+    const maxResults = options?.maxResults ?? SPOTIFY_SEARCH_MAX_RESULTS;
+    const tracks: ProviderTrack[] = [];
+
+    for (let offset = 0; offset < maxResults; offset += pageSize) {
+        const items = await fetchSpotifyTracksPage(query, token, pageSize, offset);
+        if (items.length === 0) {
+            break;
+        }
+        tracks.push(...items.map(mapSpotifyTrack));
+        if (items.length < pageSize) {
+            break;
+        }
+    }
+
+    return tracks.slice(0, maxResults);
+};
+
+export async function searchSpotifyTracks(query: string, limit = 10): Promise<ProviderTrack[]> {
+    if (!query.trim()) {
+        return [];
+    }
+
+    const token = await ensureSpotifyAccessToken();
+    if (!token) {
+        throw new Error("Spotify login required before searching");
+    }
+
+    const items = await fetchSpotifyTracksPage(query, token, limit, 0);
 
     logSpotifyDebug("spotify search response", { query, items });
 
-    return items.map((track) => {
-        const artistUrls = (track.artists ?? [])
-            .map((artist) => artist.external_urls?.spotify)
-            .filter((url): url is string => Boolean(url));
+    return items.map(mapSpotifyTrack);
+}
 
-        return {
-            provider: "spotify",
-            id: track.id,
-            uri: track.uri,
-            name: track.name,
-            durationMs: track.duration_ms,
-            artists: track.artists?.map((artist) => artist.name) ?? [],
-            artistUrls: artistUrls.length > 0 ? artistUrls : undefined,
-            album: track.album?.name,
-            albumUrl: track.album?.external_urls?.spotify,
-            thumbnail: track.album?.images?.[0]?.url,
-            isExplicit: track.explicit,
-        };
-    });
+export async function fetchSpotifyArtistTracks(
+    artist: string,
+    options?: { maxResults?: number },
+): Promise<ProviderTrack[]> {
+    const query = `artist:"${escapeSpotifyQuery(artist)}"`;
+    return searchSpotifyTracksPaged(query, { maxResults: options?.maxResults });
+}
+
+export async function fetchSpotifyAlbumTracks(
+    album: string,
+    options?: { artist?: string | null; maxResults?: number },
+): Promise<ProviderTrack[]> {
+    const escapedAlbum = escapeSpotifyQuery(album);
+    const artist = options?.artist?.trim();
+    const query = artist
+        ? `album:"${escapedAlbum}" artist:"${escapeSpotifyQuery(artist)}"`
+        : `album:"${escapedAlbum}"`;
+    return searchSpotifyTracksPaged(query, { maxResults: options?.maxResults });
 }
 
 const SPOTIFY_SEARCH_LIMIT = 20;

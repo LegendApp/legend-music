@@ -35,6 +35,7 @@ type AppleMusicSearchResponse = {
 };
 
 const SEARCH_LIMIT = 20;
+const DETAIL_SEARCH_LIMIT = 50;
 
 const resolveArtworkUrl = (artwork?: AppleMusicArtwork): string | undefined => {
     if (!artwork?.url) {
@@ -95,6 +96,32 @@ export async function searchAppleMusicTracks(query: string, limit = 10): Promise
             isExplicit,
         };
     });
+}
+
+export async function fetchAppleMusicArtistTracks(
+    artist: string,
+    options?: { limit?: number },
+): Promise<ProviderTrack[]> {
+    const query = artist.trim();
+    if (!query) {
+        return [];
+    }
+
+    return searchAppleMusicTracks(query, options?.limit ?? DETAIL_SEARCH_LIMIT);
+}
+
+export async function fetchAppleMusicAlbumTracks(
+    album: string,
+    options?: { artist?: string | null; limit?: number },
+): Promise<ProviderTrack[]> {
+    const trimmedAlbum = album.trim();
+    if (!trimmedAlbum) {
+        return [];
+    }
+
+    const artist = options?.artist?.trim();
+    const query = artist ? `${trimmedAlbum} ${artist}` : trimmedAlbum;
+    return searchAppleMusicTracks(query, options?.limit ?? DETAIL_SEARCH_LIMIT);
 }
 
 export const isAppleMusicSearchEnabled$ = computed(() => isAppleMusicAuthorized$.get());
