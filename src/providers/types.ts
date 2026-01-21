@@ -35,6 +35,7 @@ export interface ProviderTrack {
     thumbnail?: string;
     isExplicit?: boolean;
     marketRestrictions?: string[];
+    popularity?: number;
 }
 
 export interface ProviderPlaylist {

@@ -28,5 +28,6 @@ export function buildSpotifyLocalTrack(track: ProviderTrack, options: SpotifyTra
         durationMs: track.durationMs,
         trackNumber,
         addedAt: track.addedAt,
+        popularity: track.popularity,
     };
 }

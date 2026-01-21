@@ -1,6 +1,6 @@
 import { LegendList } from "@legendapp/list";
 import { useValue } from "@legendapp/state/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { Text, View } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 import { audioControls, audioPlayerState$ } from "@/components/AudioPlayer";
@@ -52,6 +52,14 @@ const tableColumns: TableColumnSpec[] = [
     { id: "album", label: "Album", flex: 2, minWidth: 140 },
     { id: "duration", label: "Time", width: 64, align: "right" },
 ];
+
+const spotifyTableColumns: TableColumnSpec[] = [
+    ...tableColumns,
+    { id: "popularity", label: "Popularity", width: 96, align: "right" },
+];
+
+const getColumn = (columns: TableColumnSpec[], id: string, fallbackIndex: number): TableColumnSpec =>
+    columns.find((column) => column.id === id) ?? columns[fallbackIndex];
 
 const getDetailHeading = (detail: LibraryDetail | null): { title: string; subtitle: string } => {
     if (!detail) {
@@ -136,11 +144,13 @@ const SectionHeader = ({ title, count }: { title: string; count: string }) => (
 const DetailTrackRow = ({
     track,
     index,
+    columns,
     onQueueAction,
     onRightClick,
 }: {
     track: LocalTrack;
     index: number;
+    columns: TableColumnSpec[];
     onQueueAction: (track: LocalTrack, event?: NativeMouseEvent) => void;
     onRightClick: (track: LocalTrack, event: NativeMouseEvent) => void;
 }) => {
@@ -151,11 +161,11 @@ const DetailTrackRow = ({
     });
 
     const displayIndex = typeof track.trackNumber === "number" ? track.trackNumber : index + 1;
-    const numberColumn = tableColumns[0];
-    const titleColumn = tableColumns[1];
-    const artistColumn = tableColumns[2];
-    const albumColumn = tableColumns[3];
-    const durationColumn = tableColumns[4];
+    const numberColumn = getColumn(columns, "number", 0);
+    const titleColumn = getColumn(columns, "title", 1);
+    const artistColumn = getColumn(columns, "artist", 2);
+    const albumColumn = getColumn(columns, "album", 3);
+    const durationColumn = getColumn(columns, "duration", 4);
 
     return (
         <TableRow
@@ -191,20 +201,94 @@ const DetailTrackRow = ({
     );
 };
 
+const SpotifyTrackRow = ({
+    track,
+    index,
+    columns,
+    onQueueAction,
+    onRightClick,
+}: {
+    track: LocalTrack;
+    index: number;
+    columns: TableColumnSpec[];
+    onQueueAction: (track: LocalTrack, event?: NativeMouseEvent) => void;
+    onRightClick: (track: LocalTrack, event: NativeMouseEvent) => void;
+}) => {
+    const listItemStyles = useListItemStyles();
+    const isPlaying = useValue(() => {
+        const currentTrack = audioPlayerState$.currentTrack.get();
+        return currentTrack ? currentTrack.id === track.id : false;
+    });
+
+    const displayIndex = typeof track.trackNumber === "number" ? track.trackNumber : index + 1;
+    const numberColumn = getColumn(columns, "number", 0);
+    const titleColumn = getColumn(columns, "title", 1);
+    const artistColumn = getColumn(columns, "artist", 2);
+    const albumColumn = getColumn(columns, "album", 3);
+    const durationColumn = getColumn(columns, "duration", 4);
+    const popularityColumn = columns.find((column) => column.id === "popularity");
+    const popularityLabel = typeof track.popularity === "number" ? `${track.popularity}` : "-";
+
+    return (
+        <TableRow
+            className="w-full"
+            isActive={isPlaying}
+            onDoubleClick={(event) => onQueueAction(track, event)}
+            onRightClick={(event) => onRightClick(track, event)}
+        >
+            <TableCell column={numberColumn}>
+                <Text className={cn("text-xs tabular-nums", listItemStyles.text.muted)}>{displayIndex}</Text>
+            </TableCell>
+            <TableCell column={titleColumn}>
+                <Text className={cn("text-sm font-medium truncate", listItemStyles.text.primary)} numberOfLines={1}>
+                    {track.title}
+                </Text>
+            </TableCell>
+            <TableCell column={artistColumn}>
+                <Text className={cn("text-sm truncate", listItemStyles.text.secondary)} numberOfLines={1}>
+                    {track.artist}
+                </Text>
+            </TableCell>
+            <TableCell column={albumColumn}>
+                <Text className={cn("text-sm truncate", listItemStyles.text.secondary)} numberOfLines={1}>
+                    {track.album ?? ""}
+                </Text>
+            </TableCell>
+            <TableCell column={durationColumn}>
+                <Text className={listItemStyles.getMetaClassName({ className: "text-xs" })}>
+                    {formatDuration(track.duration)}
+                </Text>
+            </TableCell>
+            {popularityColumn ? (
+                <TableCell column={popularityColumn}>
+                    <Text className={listItemStyles.getMetaClassName({ className: "text-xs" })}>
+                        {popularityLabel}
+                    </Text>
+                </TableCell>
+            ) : null}
+        </TableRow>
+    );
+};
+
 const DetailSection = ({
     title,
     state,
     filteredTracks,
     onQueueAction,
     onRightClick,
+    columns,
+    renderRow,
 }: {
     title: string;
     state: SectionState;
     filteredTracks: LocalTrack[];
     onQueueAction: (track: LocalTrack, event?: NativeMouseEvent) => void;
     onRightClick: (track: LocalTrack, event: NativeMouseEvent) => void;
+    columns?: TableColumnSpec[];
+    renderRow?: (track: LocalTrack, index: number) => ReactNode;
 }) => {
     const listItemStyles = useListItemStyles();
+    const resolvedColumns = columns ?? tableColumns;
 
     const statusLabel = useMemo(() => {
         if (state.status === "disabled") {
@@ -236,7 +320,7 @@ const DetailSection = ({
         <View className="gap-2">
             <SectionHeader title={title} count={statusLabel} />
             <Table
-                header={<TableHeader columns={tableColumns} />}
+                header={<TableHeader columns={resolvedColumns} />}
                 bodyClassName={filteredTracks.length ? undefined : "items-center justify-center"}
                 className="min-h-[140px]"
             >
@@ -253,14 +337,19 @@ const DetailSection = ({
                     <LegendList
                         data={filteredTracks}
                         keyExtractor={(item) => item.id}
-                        renderItem={({ item, index }) => (
-                            <DetailTrackRow
-                                track={item}
-                                index={index}
-                                onQueueAction={onQueueAction}
-                                onRightClick={onRightClick}
-                            />
-                        )}
+                        renderItem={({ item, index }) =>
+                            renderRow ? (
+                                renderRow(item, index)
+                            ) : (
+                                <DetailTrackRow
+                                    track={item}
+                                    index={index}
+                                    columns={resolvedColumns}
+                                    onQueueAction={onQueueAction}
+                                    onRightClick={onRightClick}
+                                />
+                            )
+                        }
                         style={{ flex: 1 }}
                         recycleItems
                         showsVerticalScrollIndicator={false}
@@ -460,6 +549,16 @@ export function MediaLibraryDetailView() {
                     filteredTracks={spotifyFiltered}
                     onQueueAction={handleQueueAction}
                     onRightClick={handleRowContextMenu}
+                    columns={spotifyTableColumns}
+                    renderRow={(item, index) => (
+                        <SpotifyTrackRow
+                            track={item}
+                            index={index}
+                            columns={spotifyTableColumns}
+                            onQueueAction={handleQueueAction}
+                            onRightClick={handleRowContextMenu}
+                        />
+                    )}
                 />
                 <DetailSection
                     title="Apple Music"

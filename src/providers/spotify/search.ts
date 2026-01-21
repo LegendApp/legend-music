@@ -13,6 +13,7 @@ type SpotifyTrack = {
     uri: string;
     duration_ms: number;
     explicit: boolean;
+    popularity?: number;
     artists: { name: string; external_urls?: { spotify?: string } }[];
     album: { name: string; images?: { url: string }[]; external_urls?: { spotify?: string } };
 };
@@ -41,6 +42,7 @@ const mapSpotifyTrack = (track: SpotifyTrack): ProviderTrack => {
         albumUrl: track.album?.external_urls?.spotify,
         thumbnail: track.album?.images?.[0]?.url,
         isExplicit: track.explicit,
+        popularity: track.popularity,
     };
 };
 

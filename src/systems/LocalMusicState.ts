@@ -45,6 +45,7 @@ export interface LocalTrack {
     uri?: string;
     durationMs?: number;
     addedAt?: number;
+    popularity?: number;
 }
 
 export interface LocalPlaylist {
