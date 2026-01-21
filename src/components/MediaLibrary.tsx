@@ -2,6 +2,8 @@ import { useValue } from "@legendapp/state/react";
 import { Text, View } from "react-native";
 
 import { Panel, PanelGroup, ResizeHandle } from "@/components/ResizablePanels";
+import { MediaLibraryDetailView } from "@/components/MediaLibrary/DetailView";
+import { libraryUI$ } from "@/systems/LibraryState";
 import { settings$ } from "@/systems/Settings";
 import { perfCount } from "@/utils/perfLogger";
 import { MediaLibrarySidebar } from "./MediaLibrary/Sidebar";
@@ -10,6 +12,8 @@ import { TrackList } from "./MediaLibrary/TrackList";
 export function MediaLibraryView() {
     perfCount("MediaLibraryView.render");
     const showHints = useValue(settings$.general.showHints);
+    const selectedView = useValue(libraryUI$.selectedView);
+    const showDetailView = selectedView === "artist-detail" || selectedView === "album-detail";
 
     return (
         <View className="flex-1 min-w-[360px] min-h-0 bg-black/5 border-l border-white/10">
@@ -29,7 +33,7 @@ export function MediaLibraryView() {
                     <ResizeHandle panelId="sidebar" />
 
                     <Panel id="tracklist" minSize={80} defaultSize={200} order={1} flex>
-                        <TrackList />
+                        {showDetailView ? <MediaLibraryDetailView /> : <TrackList />}
                     </Panel>
                 </PanelGroup>
             </View>

@@ -31,13 +31,14 @@ import { buildPlaylistEntries } from "@/systems/ai/playlistTracks";
 import { generatePlaylistSummary } from "@/systems/ai/summary";
 import { Icon } from "@/systems/Icon";
 import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
-import { libraryUI$ } from "@/systems/LibraryState";
+import { libraryUI$, selectLibraryAlbum, selectLibraryArtist } from "@/systems/LibraryState";
 import { type LocalPlaylist, localMusicState$, saveLocalPlaylistTracks } from "@/systems/LocalMusicState";
 import { addTracksToPlaylist, updatePlaylistMetadata } from "@/systems/LocalPlaylists";
 import { fetchSuggestions } from "@/systems/suggestions";
 import { themeState$ } from "@/theme/ThemeProvider";
 import { cn } from "@/utils/cn";
 import type { QueueAction } from "@/utils/queueActions";
+import { TRACK_CONTEXT_MENU_ITEMS } from "@/utils/trackContextMenu";
 import { AiPlaylistDropdown } from "./AiPlaylistDropdown";
 import { useLibraryTrackList } from "./useLibraryTrackList";
 
@@ -158,12 +159,6 @@ export function TrackList(_props: TrackListProps) {
         return playlists.find((pl) => pl.id === selectedPlaylistId) ?? null;
     }, [playlists, selectedPlaylistId, selectedPlaylistProvider, selectedView]);
 
-    const aiPromptEditorOpen$ = useObservable(false);
-    const aiPromptEditorOpen = useValue(aiPromptEditorOpen$);
-    const aiPromptInputRef = useRef<TextInput>(null);
-    const [aiPromptDraft, setAiPromptDraft] = useState("");
-    const [aiPromptError, setAiPromptError] = useState<string | null>(null);
-    const [isRegenerating, setIsRegenerating] = useState(false);
     const extendPromptOpen$ = useObservable(false);
     const extendPromptOpen = useValue(extendPromptOpen$);
     const extendPromptInputRef = useRef<TextInput>(null);
@@ -174,7 +169,6 @@ export function TrackList(_props: TrackListProps) {
     const aiSummary = selectedLocalPlaylist?.aiSummary?.trim() ?? "";
     const showAiSummary = Boolean(aiPrompt && aiSummary);
     const canModifyPlaylist = Boolean(selectedLocalPlaylist && selectedLocalPlaylist.source === "cache");
-    const canEditAiPrompt = Boolean(showAiSummary && canModifyPlaylist);
 
     const selectedProviderPlaylist = useMemo(() => {
         if (
@@ -224,87 +218,13 @@ export function TrackList(_props: TrackListProps) {
         selectedView,
     ]);
 
-    const closeAiPromptEditor = useCallback(() => {
-        aiPromptEditorOpen$.set(false);
-    }, [aiPromptEditorOpen$]);
-
     const closeExtendPrompt = useCallback(() => {
         extendPromptOpen$.set(false);
     }, [extendPromptOpen$]);
 
-    const isAiBusy = isRegenerating || isExtending;
-    const canRegenerate =
-        aiPromptDraft.trim().length > 0 && !isAiBusy && Boolean(selectedLocalPlaylist && canEditAiPrompt);
+    const isAiBusy = isExtending;
     const canExtendWithExistingPrompt = Boolean(aiPrompt && canModifyPlaylist && !isAiBusy);
     const canExtendWithNewPrompt = Boolean(canModifyPlaylist && !isAiBusy);
-
-    const handleRegenerate = useCallback(async () => {
-        if (!selectedLocalPlaylist || !canEditAiPrompt) {
-            return;
-        }
-
-        const trimmedPrompt = aiPromptDraft.trim();
-        if (!trimmedPrompt || isRegenerating) {
-            return;
-        }
-
-        setAiPromptError(null);
-        setIsRegenerating(true);
-
-        const summaryPromise = generatePlaylistSummary(trimmedPrompt).catch((error) => {
-            console.warn("AI playlist summary failed", error);
-            return null;
-        });
-
-        try {
-            startAiPlaylistFill(selectedLocalPlaylist.id);
-
-            const count =
-                selectedLocalPlaylist.trackCount > 0 ? selectedLocalPlaylist.trackCount : DEFAULT_AI_SUGGESTION_COUNT;
-            const { tracks, unresolved } = await fetchSuggestions({
-                mode: "playlist",
-                prompt: trimmedPrompt,
-                count,
-            });
-
-            if (tracks.length === 0) {
-                setAiPromptError("No tracks were suggested.");
-                return;
-            }
-
-            const { trackEntries, trackPaths } = buildPlaylistEntries(tracks);
-            if (trackPaths.length === 0) {
-                setAiPromptError("No resolved tracks to add.");
-                return;
-            }
-
-            const summary = await summaryPromise;
-            saveLocalPlaylistTracks(
-                {
-                    ...selectedLocalPlaylist,
-                    aiPrompt: trimmedPrompt,
-                    aiSummary: summary ?? selectedLocalPlaylist.aiSummary,
-                },
-                trackPaths,
-                trackEntries,
-            );
-
-            const addedLabel = trackPaths.length === 1 ? "track" : "tracks";
-            showToast(`Regenerated ${trackPaths.length} ${addedLabel}`, "info");
-            if (unresolved && unresolved.length > 0) {
-                showToast(`Skipped ${unresolved.length} tracks that could not be matched`, "info");
-            }
-
-            closeAiPromptEditor();
-        } catch (error) {
-            console.error("AI playlist regeneration failed", error);
-            const message = error instanceof Error ? error.message : "Failed to regenerate AI playlist";
-            setAiPromptError(message);
-        } finally {
-            finishAiPlaylistFill();
-            setIsRegenerating(false);
-        }
-    }, [aiPromptDraft, canEditAiPrompt, closeAiPromptEditor, isRegenerating, selectedLocalPlaylist]);
 
     const extendPlaylist = useCallback(
         async (
@@ -409,40 +329,6 @@ export function TrackList(_props: TrackListProps) {
             onSuccess: closeExtendPrompt,
         });
     }, [closeExtendPrompt, extendPlaylist, extendPromptDraft]);
-
-    useEffect(() => {
-        if (!aiPromptEditorOpen) {
-            return;
-        }
-
-        setAiPromptDraft(aiPrompt);
-        setAiPromptError(null);
-        setTimeout(() => {
-            aiPromptInputRef.current?.focus();
-        }, 0);
-    }, [aiPrompt, aiPromptEditorOpen]);
-
-    useEffect(() => {
-        if (!aiPromptEditorOpen) {
-            return;
-        }
-
-        return KeyboardManager.addKeyDownListener((event) => {
-            if (event.keyCode === KeyCodes.KEY_ESCAPE) {
-                closeAiPromptEditor();
-                return true;
-            }
-
-            if (event.keyCode === KeyCodes.KEY_RETURN) {
-                if (canRegenerate) {
-                    void handleRegenerate();
-                    return true;
-                }
-            }
-
-            return false;
-        });
-    }, [aiPromptEditorOpen, canRegenerate, closeAiPromptEditor, handleRegenerate]);
 
     useEffect(() => {
         if (!extendPromptOpen) {
@@ -674,88 +560,18 @@ export function TrackList(_props: TrackListProps) {
     return (
         <View className="flex-1 pl-2 relative">
             {headerConfig ? (
-                <View className="px-3 py-2 flex-row items-start gap-3">
-                    <View className="flex-1 min-w-0">
-                        <Text className="text-sm font-semibold text-text-primary" numberOfLines={1}>
-                            {headerConfig.title}
-                        </Text>
-                        <Text className="text-xs text-text-secondary" numberOfLines={1}>
-                            {headerConfig.count} {headerConfig.count === 1 ? "track" : "tracks"}
-                        </Text>
-                    </View>
+                <View className="px-3 py-2 flex-row items-center gap-3">
+                    <Text className="text-sm font-semibold text-text-primary" numberOfLines={1}>
+                        {headerConfig.title}
+                    </Text>
+                    <Text className="text-xs text-text-secondary" numberOfLines={1}>
+                        ({headerConfig.count})
+                    </Text>
                     {showAiSummary ? (
                         <View className="max-w-[45%] items-end">
-                            <View className="flex-row items-start gap-1">
-                                <Text className="text-xs text-text-secondary text-right" numberOfLines={1}>
-                                    AI: {aiSummary}
-                                </Text>
-                                {canEditAiPrompt ? (
-                                    <DropdownMenu.Root isOpen$={aiPromptEditorOpen$}>
-                                        <DropdownMenu.Trigger asChild>
-                                            <Button
-                                                icon="pencil"
-                                                variant="icon-hover"
-                                                size="small"
-                                                iconSize={16}
-                                                tooltip="Edit AI prompt"
-                                            />
-                                        </DropdownMenu.Trigger>
-                                        <DropdownMenu.Content
-                                            directionalHint="bottomLeft"
-                                            minWidth={360}
-                                            maxWidth={360}
-                                            setInitialFocus
-                                            scrolls={false}
-                                        >
-                                            <View className="p-3 bg-background-tertiary border border-border-primary rounded-md gap-2">
-                                                <Text className="text-text-secondary text-xs font-medium">
-                                                    Edit AI prompt
-                                                </Text>
-                                                <View className="bg-background-secondary border border-border-primary rounded-md px-3 py-2">
-                                                    <TextInput
-                                                        ref={aiPromptInputRef}
-                                                        value={aiPromptDraft}
-                                                        onChangeText={(value) => {
-                                                            setAiPromptDraft(value);
-                                                            if (aiPromptError) {
-                                                                setAiPromptError(null);
-                                                            }
-                                                        }}
-                                                        placeholder="Describe the playlist"
-                                                        placeholderTextColor="#6b7280"
-                                                        multiline
-                                                        className="text-sm text-text-primary min-h-16"
-                                                    />
-                                                </View>
-                                                {aiPromptError ? (
-                                                    <View className="rounded-md border border-border-primary/60 bg-red-500/10 px-3 py-2">
-                                                        <Text className="text-sm text-red-200">{aiPromptError}</Text>
-                                                    </View>
-                                                ) : null}
-                                                <View className="flex-row justify-end gap-2">
-                                                    <Button
-                                                        variant="secondary"
-                                                        size="small"
-                                                        onClick={closeAiPromptEditor}
-                                                    >
-                                                        <Text className="text-white text-sm">Cancel</Text>
-                                                    </Button>
-                                                    <Button
-                                                        variant="primary"
-                                                        size="small"
-                                                        onClick={() => void handleRegenerate()}
-                                                        disabled={!canRegenerate}
-                                                    >
-                                                        <Text className="text-white text-sm font-medium">
-                                                            {isRegenerating ? "Regenerating..." : "Regenerate"}
-                                                        </Text>
-                                                    </Button>
-                                                </View>
-                                            </View>
-                                        </DropdownMenu.Content>
-                                    </DropdownMenu.Root>
-                                ) : null}
-                            </View>
+                            <Text className="text-xs text-text-secondary text-right" numberOfLines={1}>
+                                ✨ {aiSummary}
+                            </Text>
                         </View>
                     ) : null}
                 </View>
@@ -964,11 +780,23 @@ interface LibraryTrackRowProps {
     trackPath: string | null;
 }
 
-const TRACK_ROW_MENU_ITEMS: ContextMenuItem[] = [
-    { id: "play-now", title: "Play Now" },
-    { id: "play-next", title: "Play Next" },
-    { id: "star", title: "Star", enabled: false },
-];
+const buildTrackRowMenuItems = (track: TrackData): ContextMenuItem[] => {
+    const items: ContextMenuItem[] = [
+        { id: "play-now", title: "Play Now" },
+        { id: "play-next", title: "Play Next" },
+    ];
+
+    if (track.artist?.trim()) {
+        items.push(TRACK_CONTEXT_MENU_ITEMS.goToArtist);
+    }
+
+    if (track.album?.trim()) {
+        items.push(TRACK_CONTEXT_MENU_ITEMS.goToAlbum);
+    }
+
+    items.push({ id: "star", title: "Star", enabled: false });
+    return items;
+};
 
 function LibraryTrackRow({
     track,
@@ -1010,17 +838,27 @@ function LibraryTrackRow({
         async (event: NativeMouseEvent) => {
             const x = event.pageX ?? event.x ?? 0;
             const y = event.pageY ?? event.y ?? 0;
-
-            const selection = await showContextMenu(TRACK_ROW_MENU_ITEMS, { x, y });
+            const menuItems = buildTrackRowMenuItems(track);
+            const selection = await showContextMenu(menuItems, { x, y });
             if (!selection) {
                 return;
             }
 
             if (selection === "play-now" || selection === "play-next") {
                 onMenuAction(index, selection);
+                return;
+            }
+
+            if (selection === TRACK_CONTEXT_MENU_ITEMS.goToArtist.id && track.artist?.trim()) {
+                selectLibraryArtist(track.artist);
+                return;
+            }
+
+            if (selection === TRACK_CONTEXT_MENU_ITEMS.goToAlbum.id && track.album?.trim()) {
+                selectLibraryAlbum(track.album, track.artist);
             }
         },
-        [index, onMenuAction],
+        [index, onMenuAction, track],
     );
 
     const row = (

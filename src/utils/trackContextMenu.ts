@@ -1,10 +1,13 @@
 import type { ContextMenuItem } from "@/native-modules/ContextMenu";
 import { getProviderPlugin } from "@/providers/pluginRegistry";
+import { selectLibraryAlbum, selectLibraryArtist } from "@/systems/LibraryState";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 
 export const TRACK_CONTEXT_MENU_ITEMS = {
     queueAdd: { id: "queue-add", title: "Add to Queue" } as const,
     queuePlayNext: { id: "queue-play-next", title: "Play Next" } as const,
+    goToArtist: { id: "go-to-artist", title: "Go to Artist" } as const,
+    goToAlbum: { id: "go-to-album", title: "Go to Album" } as const,
 };
 
 type BuildTrackContextMenuOptions = {
@@ -21,6 +24,16 @@ export function buildTrackContextMenuItems(options: BuildTrackContextMenuOptions
     }
 
     if (options.track) {
+        const artist = options.track.artist?.trim();
+        if (artist) {
+            items.push(TRACK_CONTEXT_MENU_ITEMS.goToArtist);
+        }
+
+        const album = options.track.album?.trim();
+        if (album) {
+            items.push(TRACK_CONTEXT_MENU_ITEMS.goToAlbum);
+        }
+
         const providerId = options.track.provider ?? "local";
         const providerItems = getProviderPlugin(providerId)?.trackContextMenu?.getItems(options.track) ?? [];
         if (providerItems.length > 0) {
@@ -61,6 +74,16 @@ export async function handleTrackContextMenuSelection({
 
     if (selection === TRACK_CONTEXT_MENU_ITEMS.queueAdd.id) {
         onQueueAction?.("enqueue");
+        return;
+    }
+
+    if (selection === TRACK_CONTEXT_MENU_ITEMS.goToArtist.id && track?.artist?.trim()) {
+        selectLibraryArtist(track.artist);
+        return;
+    }
+
+    if (selection === TRACK_CONTEXT_MENU_ITEMS.goToAlbum.id && track?.album?.trim()) {
+        selectLibraryAlbum(track.album, track.artist);
         return;
     }
 

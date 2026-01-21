@@ -20,7 +20,14 @@ export interface LibraryItem {
 
 export interface LibraryTrack extends LocalTrack {}
 
-export type LibraryView = "songs" | "artists" | "albums" | "starred" | "playlist";
+export type LibraryView =
+    | "songs"
+    | "artists"
+    | "albums"
+    | "starred"
+    | "playlist"
+    | "artist-detail"
+    | "album-detail";
 export type PlaylistSortMode = "playlist-order" | "date-added" | "title" | "artist" | "album";
 export type PlaylistSortDirection = "asc" | "desc";
 
@@ -31,7 +38,19 @@ export interface LibraryUIState {
     searchQuery: string;
     playlistSort: PlaylistSortMode;
     playlistSortDirection: PlaylistSortDirection;
+    selectedDetail: LibraryDetail | null;
 }
+
+export type LibraryDetail =
+    | {
+          type: "artist";
+          name: string;
+      }
+    | {
+          type: "album";
+          name: string;
+          artist?: string | null;
+      };
 
 // Library UI state (persistent)
 export const libraryUI$ = observable<LibraryUIState>({
@@ -41,10 +60,14 @@ export const libraryUI$ = observable<LibraryUIState>({
     searchQuery: "",
     playlistSort: "playlist-order",
     playlistSortDirection: "asc",
+    selectedDetail: null,
 });
 
 export function selectLibraryView(view: LibraryView): void {
     libraryUI$.selectedView.set(view);
+    if (view !== "artist-detail" && view !== "album-detail") {
+        libraryUI$.selectedDetail.set(null);
+    }
 
     if (view !== "playlist") {
         libraryUI$.selectedPlaylistId.set(null);
@@ -56,6 +79,17 @@ export function selectLibraryPlaylist(playlistId: string | null, providerId: Pro
     libraryUI$.selectedView.set("playlist");
     libraryUI$.selectedPlaylistId.set(playlistId);
     libraryUI$.selectedPlaylistProvider.set(playlistId ? providerId : null);
+    libraryUI$.selectedDetail.set(null);
+}
+
+export function selectLibraryArtist(artist: string): void {
+    libraryUI$.selectedView.set("artist-detail");
+    libraryUI$.selectedDetail.set({ type: "artist", name: artist });
+}
+
+export function selectLibraryAlbum(album: string, artist?: string | null): void {
+    libraryUI$.selectedView.set("album-detail");
+    libraryUI$.selectedDetail.set({ type: "album", name: album, artist });
 }
 
 // Library data derived from local music state
