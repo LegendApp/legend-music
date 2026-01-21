@@ -1,5 +1,5 @@
 import { observable } from "@legendapp/state";
-import { useValue } from "@legendapp/state/react";
+import { useObservable, useValue } from "@legendapp/state/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     Alert,
@@ -15,6 +15,7 @@ import type { NativeMouseEvent } from "react-native-macos";
 
 import { Button } from "@/components/Button";
 import { AiPlaylistDropdown } from "@/components/MediaLibrary/AiPlaylistDropdown";
+import { DropdownMenu } from "@/components/DropdownMenu";
 import {
     type DraggedItem,
     DroppableZone,
@@ -32,10 +33,23 @@ import { showInFinder } from "@/native-modules/FileDialog";
 import { getProviderIdForUri, getProviderPlugin } from "@/providers/pluginRegistry";
 import { activeProviderId$, getProvider, providerSessions$ } from "@/providers/providerRegistry";
 import type { ProviderId, ProviderPlaylist } from "@/providers/types";
-import { isSelectedSuggestionProviderAvailable$, selectedSuggestionProvider$ } from "@/systems/suggestions";
+import { finishAiPlaylistFill, startAiPlaylistFill } from "@/systems/ai";
+import { buildPlaylistEntries } from "@/systems/ai/playlistTracks";
+import { generatePlaylistSummary } from "@/systems/ai/summary";
+import {
+    fetchSuggestions,
+    isSelectedSuggestionProviderAvailable$,
+    selectedSuggestionProvider$,
+} from "@/systems/suggestions";
 import { SUPPORT_PLAYLISTS } from "@/systems/constants";
+import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
 import { type LibraryView, libraryUI$, selectLibraryPlaylist, selectLibraryView } from "@/systems/LibraryState";
-import { createLocalPlaylist, type LocalPlaylist, localMusicState$ } from "@/systems/LocalMusicState";
+import {
+    createLocalPlaylist,
+    type LocalPlaylist,
+    localMusicState$,
+    saveLocalPlaylistTracks,
+} from "@/systems/LocalMusicState";
 import {
     addTracksToPlaylist,
     deletePlaylist,
@@ -61,6 +75,7 @@ const PLAYLIST_ITEM_PREFIX = "playlist-";
 const EMPTY_LIBRARY_STATUS = { isLoading: false, error: null as string | null };
 const emptyProviderPlaylists$ = observable([] as ProviderPlaylist[]);
 const emptyLibraryStatus$ = observable(EMPTY_LIBRARY_STATUS);
+const DEFAULT_AI_SUGGESTION_COUNT = 10;
 
 const buildPlaylistItemId = (providerId: ProviderId, playlistId: string): string =>
     `${PLAYLIST_ITEM_PREFIX}${providerId}:${playlistId}`;
@@ -87,6 +102,185 @@ const parsePlaylistItemId = (itemId: string): { providerId: ProviderId; playlist
 
 const formatPlaylistLabel = (playlist: LocalPlaylist): string =>
     playlist.aiPrompt ? `✨ ${playlist.name}` : playlist.name;
+
+function AiPromptEditorButton({ playlist, isSelected }: { playlist: LocalPlaylist; isSelected: boolean }) {
+    const aiPrompt = playlist.aiPrompt?.trim() ?? "";
+    const aiSummary = playlist.aiSummary?.trim() ?? "";
+    const canModifyPlaylist = playlist.source === "cache" && Boolean(playlist.filePath);
+    const canEditAiPrompt = Boolean(isSelected && canModifyPlaylist && aiPrompt && aiSummary);
+    const aiPromptEditorOpen$ = useObservable(false);
+    const aiPromptEditorOpen = useValue(aiPromptEditorOpen$);
+    const aiPromptInputRef = useRef<TextInput>(null);
+    const [aiPromptDraft, setAiPromptDraft] = useState("");
+    const [aiPromptError, setAiPromptError] = useState<string | null>(null);
+    const [isRegenerating, setIsRegenerating] = useState(false);
+
+    const closeAiPromptEditor = useCallback(() => {
+        aiPromptEditorOpen$.set(false);
+    }, [aiPromptEditorOpen$]);
+
+    const canRegenerate = aiPromptDraft.trim().length > 0 && !isRegenerating && canEditAiPrompt;
+
+    const handleRegenerate = useCallback(async () => {
+        if (!canEditAiPrompt) {
+            return;
+        }
+
+        const trimmedPrompt = aiPromptDraft.trim();
+        if (!trimmedPrompt || isRegenerating) {
+            return;
+        }
+
+        setAiPromptError(null);
+        setIsRegenerating(true);
+
+        const summaryPromise = generatePlaylistSummary(trimmedPrompt).catch((error) => {
+            console.warn("AI playlist summary failed", error);
+            return null;
+        });
+
+        try {
+            startAiPlaylistFill(playlist.id);
+
+            const count = playlist.trackCount > 0 ? playlist.trackCount : DEFAULT_AI_SUGGESTION_COUNT;
+            const { tracks, unresolved } = await fetchSuggestions({
+                mode: "playlist",
+                prompt: trimmedPrompt,
+                count,
+            });
+
+            if (tracks.length === 0) {
+                setAiPromptError("No tracks were suggested.");
+                return;
+            }
+
+            const { trackEntries, trackPaths } = buildPlaylistEntries(tracks);
+            if (trackPaths.length === 0) {
+                setAiPromptError("No resolved tracks to add.");
+                return;
+            }
+
+            const summary = await summaryPromise;
+            saveLocalPlaylistTracks(
+                {
+                    ...playlist,
+                    aiPrompt: trimmedPrompt,
+                    aiSummary: summary ?? playlist.aiSummary,
+                },
+                trackPaths,
+                trackEntries,
+            );
+
+            const addedLabel = trackPaths.length === 1 ? "track" : "tracks";
+            showToast(`Regenerated ${trackPaths.length} ${addedLabel}`, "info");
+            if (unresolved && unresolved.length > 0) {
+                showToast(`Skipped ${unresolved.length} tracks that could not be matched`, "info");
+            }
+
+            closeAiPromptEditor();
+        } catch (error) {
+            console.error("AI playlist regeneration failed", error);
+            const message = error instanceof Error ? error.message : "Failed to regenerate AI playlist";
+            setAiPromptError(message);
+        } finally {
+            finishAiPlaylistFill();
+            setIsRegenerating(false);
+        }
+    }, [aiPromptDraft, canEditAiPrompt, closeAiPromptEditor, isRegenerating, playlist]);
+
+    useEffect(() => {
+        if (!aiPromptEditorOpen) {
+            return;
+        }
+
+        setAiPromptDraft(aiPrompt);
+        setAiPromptError(null);
+        setTimeout(() => {
+            aiPromptInputRef.current?.focus();
+        }, 0);
+    }, [aiPrompt, aiPromptEditorOpen]);
+
+    useEffect(() => {
+        if (!aiPromptEditorOpen) {
+            return;
+        }
+
+        return KeyboardManager.addKeyDownListener((event) => {
+            if (event.keyCode === KeyCodes.KEY_ESCAPE) {
+                closeAiPromptEditor();
+                return true;
+            }
+
+            if (event.keyCode === KeyCodes.KEY_RETURN) {
+                if (canRegenerate) {
+                    void handleRegenerate();
+                    return true;
+                }
+            }
+
+            return false;
+        });
+    }, [aiPromptEditorOpen, canRegenerate, closeAiPromptEditor, handleRegenerate]);
+
+    if (!canEditAiPrompt) {
+        return null;
+    }
+
+    return (
+        <DropdownMenu.Root isOpen$={aiPromptEditorOpen$}>
+            <DropdownMenu.Trigger asChild>
+                <Button icon="pencil" variant="icon-hover" size="xs" iconSize={14} tooltip="Edit AI prompt" />
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Content
+                directionalHint="bottomRightEdge"
+                minWidth={360}
+                maxWidth={360}
+                setInitialFocus
+                scrolls={false}
+            >
+                <View className="p-3 bg-background-tertiary border border-border-primary rounded-md gap-2">
+                    <Text className="text-text-secondary text-xs font-medium">Edit AI prompt</Text>
+                    <View className="bg-background-secondary border border-border-primary rounded-md px-3 py-2">
+                        <TextInput
+                            ref={aiPromptInputRef}
+                            value={aiPromptDraft}
+                            onChangeText={(value) => {
+                                setAiPromptDraft(value);
+                                if (aiPromptError) {
+                                    setAiPromptError(null);
+                                }
+                            }}
+                            placeholder="Describe the playlist"
+                            placeholderTextColor="#6b7280"
+                            multiline
+                            className="text-sm text-text-primary min-h-16"
+                        />
+                    </View>
+                    {aiPromptError ? (
+                        <View className="rounded-md border border-border-primary/60 bg-red-500/10 px-3 py-2">
+                            <Text className="text-sm text-red-200">{aiPromptError}</Text>
+                        </View>
+                    ) : null}
+                    <View className="flex-row justify-end gap-2">
+                        <Button variant="secondary" size="small" onClick={closeAiPromptEditor}>
+                            <Text className="text-white text-sm">Cancel</Text>
+                        </Button>
+                        <Button
+                            variant="primary"
+                            size="small"
+                            onClick={() => void handleRegenerate()}
+                            disabled={!canRegenerate}
+                        >
+                            <Text className="text-white text-sm font-medium">
+                                {isRegenerating ? "Regenerating..." : "Regenerate"}
+                            </Text>
+                        </Button>
+                    </View>
+                </View>
+            </DropdownMenu.Content>
+        </DropdownMenu.Root>
+    );
+}
 
 interface MediaLibrarySidebarProps {
     useNativeLibraryList?: boolean;
@@ -499,6 +693,10 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                     ? localPlaylists.map((playlist) => {
                           const isTemp = playlist.id === tempPlaylistId;
                           const isEditing = playlist.id === editingPlaylistId;
+                          const isSelected =
+                              selectedView === "playlist" &&
+                              selectedPlaylistProvider === "local" &&
+                              selectedPlaylistId === playlist.id;
                           const playlistLabel = formatPlaylistLabel(playlist);
 
                           if (isTemp) {
@@ -551,7 +749,10 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                                       <Text className="text-sm text-text-primary flex-1 py-1" numberOfLines={1}>
                                           {playlistLabel}
                                       </Text>
-                                      <Text className="text-xs text-white/40">{playlist.trackCount}</Text>
+                                      <View className="flex-row items-center gap-2">
+                                          <Text className="text-xs text-white/40">{playlist.trackCount}</Text>
+                                          <AiPromptEditorButton playlist={playlist} isSelected={isSelected} />
+                                      </View>
                                   </View>
                               </SidebarItem>
                           );
@@ -754,34 +955,37 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                                       );
                                   }
 
-                                  const renderRow = (className?: string) => (
-                                      <Button
-                                          className={cn(
-                                              listItemStyles.getRowClassName({
-                                                  variant: "compact",
-                                                  isSelected,
-                                              }),
-                                              className,
-                                          )}
-                                          onClick={() => selectLibraryPlaylist(playlist.id, "local")}
-                                          onDoubleClick={(event) => handlePlaylistDoubleClick(playlist, event)}
-                                          onRightClick={(event) => handlePlaylistContextMenu(playlist, event)}
-                                      >
-                                          <View className="flex-1 flex-row items-center justify-between overflow-hidden">
-                                              <Text
-                                                  className={cn(
-                                                      "text-sm truncate flex-1 pr-2",
-                                                      isSelected
-                                                          ? listItemStyles.text.primary
-                                                          : listItemStyles.text.secondary,
-                                                  )}
-                                                  numberOfLines={1}
-                                              >
-                                                  {playlistLabel}
-                                              </Text>
-                                              <Text className={listItemStyles.getMetaClassName()}>
-                                                  {playlist.trackCount}
-                                              </Text>
+                                      const renderRow = (className?: string) => (
+                                          <Button
+                                              className={cn(
+                                                  listItemStyles.getRowClassName({
+                                                      variant: "compact",
+                                                      isSelected,
+                                                  }),
+                                                  className,
+                                              )}
+                                              onClick={() => selectLibraryPlaylist(playlist.id, "local")}
+                                              onDoubleClick={(event) => handlePlaylistDoubleClick(playlist, event)}
+                                              onRightClick={(event) => handlePlaylistContextMenu(playlist, event)}
+                                          >
+                                              <View className="flex-1 flex-row items-center justify-between overflow-hidden">
+                                                  <Text
+                                                      className={cn(
+                                                          "text-sm truncate flex-1 pr-2",
+                                                          isSelected
+                                                              ? listItemStyles.text.primary
+                                                              : listItemStyles.text.secondary,
+                                                      )}
+                                                      numberOfLines={1}
+                                                  >
+                                                      {playlistLabel}
+                                                  </Text>
+                                              <View className="flex-row items-center gap-2">
+                                                  <Text className={listItemStyles.getMetaClassName()}>
+                                                      {playlist.trackCount}
+                                                  </Text>
+                                                  <AiPromptEditorButton playlist={playlist} isSelected={isSelected} />
+                                              </View>
                                           </View>
                                       </Button>
                                   );
