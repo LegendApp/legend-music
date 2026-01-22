@@ -23,7 +23,7 @@ from the library cache and adding a "Local Library" AI search provider that uses
       response into `SearchResult` entries for local tracks.
 - [x] Register the new search provider and wire it into AI resolution so it is selectable as the preferred
       service; ensure AI queue extension uses the same preferred-service logic.
-- [ ] Add coverage for CSV generation and AI resolution with the local provider, plus any prompt/telemetry
+- [x] Add coverage for CSV generation and AI resolution with the local provider, plus any prompt/telemetry
       updates needed for the new flow.
 
 Validation: Trigger a library cache update and confirm `medialibrary.csv` regenerates only when AI playlist

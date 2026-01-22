@@ -19,7 +19,26 @@ const formatSeedTracks = (tracks: LocalTrack[]): string => {
         .join("\n");
 };
 
-export const buildQueueExtensionPrompt = (seedTracks: LocalTrack[], count: number): string => {
+const buildLibraryCsvConstraint = (libraryCsv?: string): string[] => {
+    const trimmed = libraryCsv?.trim();
+    if (!trimmed) {
+        return [];
+    }
+
+    return [
+        "",
+        "Only suggest tracks that appear in the local library CSV below.",
+        "",
+        "Local library CSV (artist,title,album,year,genre):",
+        trimmed,
+    ];
+};
+
+export const buildQueueExtensionPrompt = (
+    seedTracks: LocalTrack[],
+    count: number,
+    options: { libraryCsv?: string } = {},
+): string => {
     return [
         "You are a music assistant helping extend a playback queue.",
         "Based on the recent tracks below, suggest new tracks that fit the flow.",
@@ -27,19 +46,25 @@ export const buildQueueExtensionPrompt = (seedTracks: LocalTrack[], count: numbe
         "",
         "Recent tracks:",
         formatSeedTracks(seedTracks),
+        ...buildLibraryCsvConstraint(options.libraryCsv),
         "",
-        buildJsonInstructions(count)
+        buildJsonInstructions(count),
     ].join("\n");
 };
 
-export const buildPlaylistPrompt = (userPrompt: string, count: number): string => {
+export const buildPlaylistPrompt = (
+    userPrompt: string,
+    count: number,
+    options: { libraryCsv?: string } = {},
+): string => {
     return [
         "You are a music assistant creating a playlist.",
         `User prompt: ${userPrompt.trim()}`,
         "Suggest cohesive tracks that match the prompt.",
         "Avoid repeating the same artist too often.",
+        ...buildLibraryCsvConstraint(options.libraryCsv),
         "",
-        buildJsonInstructions(count)
+        buildJsonInstructions(count),
     ].join("\n");
 };
 

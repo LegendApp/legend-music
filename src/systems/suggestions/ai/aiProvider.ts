@@ -2,6 +2,7 @@ import { aiCommandRunner } from "@/native-modules/AICommandRunner";
 import type { ProviderId } from "@/providers/types";
 import { LOCAL_LIBRARY_PROVIDER_ID } from "@/providers/localLibrary/constants";
 import { aiAvailability$ } from "@/systems/ai/availability";
+import { readMediaLibraryCsv } from "@/systems/ai/libraryCsv";
 import { parseSuggestedTracks } from "@/systems/ai/parser";
 import { buildPlaylistPrompt, buildQueueExtensionPrompt } from "@/systems/ai/prompts";
 import { resolveSuggestedTracks } from "@/systems/ai/resolver";
@@ -56,10 +57,14 @@ const buildProviderPreference = (
     return preferences;
 };
 
-const buildPromptForRequest = (request: SuggestionRequest, count: number): string => {
+const buildPromptForRequest = (
+    request: SuggestionRequest,
+    count: number,
+    options: { libraryCsv?: string } = {},
+): string => {
     if (request.mode === "queue-extension") {
         const seedTracks = request.seedTracks ?? [];
-        return buildQueueExtensionPrompt(seedTracks, count);
+        return buildQueueExtensionPrompt(seedTracks, count, { libraryCsv: options.libraryCsv });
     }
 
     const prompt = request.prompt?.trim();
@@ -67,7 +72,7 @@ const buildPromptForRequest = (request: SuggestionRequest, count: number): strin
         throw new Error("Missing playlist prompt.");
     }
 
-    return buildPlaylistPrompt(prompt, count);
+    return buildPlaylistPrompt(prompt, count, { libraryCsv: options.libraryCsv });
 };
 
 const resolveAiAvailability = (id: SuggestionProviderId): boolean => {
@@ -97,7 +102,10 @@ export const createAiSuggestionProvider = (config: AiProviderConfig): Suggestion
 
     const suggest = async (request: SuggestionRequest): Promise<SuggestionResult> => {
         const count = request.count ?? DEFAULT_TRACK_COUNT;
-        const prompt = buildPromptForRequest(request, count);
+        const preferredProviderId = settings$.ai.preferredTrackProviderId.get();
+        const libraryCsv =
+            preferredProviderId === LOCAL_LIBRARY_PROVIDER_ID ? readMediaLibraryCsv() : "";
+        const prompt = buildPromptForRequest(request, count, { libraryCsv });
         const timeoutMs = DEFAULT_TIMEOUT_MS;
 
         const invocation = config.buildInvocation(prompt);
@@ -128,7 +136,6 @@ export const createAiSuggestionProvider = (config: AiProviderConfig): Suggestion
             throw new Error(`${config.name} response did not include any tracks.${detailSuffix}`);
         }
 
-        const preferredProviderId = settings$.ai.preferredTrackProviderId.get();
         const preferredProviders = buildProviderPreference(request.seedTracks, preferredProviderId);
         const restrictToProviders =
             preferredProviderId === LOCAL_LIBRARY_PROVIDER_ID ? [preferredProviderId] : undefined;
