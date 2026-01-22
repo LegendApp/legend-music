@@ -3,13 +3,11 @@ import { resolveSuggestedTracks } from "@/systems/ai/resolver";
 import { localMusicState$, type LocalTrack } from "@/systems/LocalMusicState";
 import type { ProviderSearchProvider } from "@/providers/search/types";
 import { LOCAL_LIBRARY_PROVIDER_ID } from "@/providers/localLibrary/constants";
-import { getSearchProviders } from "@/providers/search/registry";
-
-const enabledSearchProviderIds$ = observable<string[]>([]);
+import { enabledSearchProviderIds$, getSearchProviders } from "@/providers/search/registry";
 
 jest.mock("@/providers/search/registry", () => ({
     getSearchProviders: jest.fn(),
-    enabledSearchProviderIds$,
+    enabledSearchProviderIds$: jest.requireActual("@legendapp/state").observable<string[]>([]),
 }));
 
 const mockGetSearchProviders = getSearchProviders as jest.Mock;
@@ -31,7 +29,7 @@ const makeProvider = (
 ): ProviderSearchProvider => ({
     id,
     searchMode: "submit",
-    search: searchImpl,
+    search: jest.fn(searchImpl),
     isEnabled$: observable(true),
 });
 
