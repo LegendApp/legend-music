@@ -1,5 +1,6 @@
 import { createJSONManager } from "@/utils/JSONManager";
 import { deriveThumbnailKey } from "@/utils/thumbnails";
+import { initializeMediaLibraryCsvSync, scheduleMediaLibraryCsvUpdate } from "@/systems/ai/libraryCsv";
 
 export interface PersistedLibraryTrack {
     root: number;
@@ -134,6 +135,7 @@ export const getLibrarySnapshot = (): LibrarySnapshot => {
     } catch (error) {
         console.error("Failed to read library cache; resetting to defaults", error);
         libraryCache$.set(defaultSnapshot);
+        scheduleMediaLibraryCsvUpdate(defaultSnapshot);
         return defaultSnapshot;
     }
 };
@@ -147,13 +149,18 @@ export const persistLibrarySnapshot = (
     });
 
     libraryCache$.set(sanitized);
+    scheduleMediaLibraryCsvUpdate(sanitized);
 };
 
 export const hasCachedLibraryData = (): boolean => getLibrarySnapshot().tracks.length > 0;
 
 export const clearLibraryCache = (): void => {
-    libraryCache$.set({
+    const snapshot = {
         ...defaultSnapshot,
         updatedAt: Date.now(),
-    });
+    };
+    libraryCache$.set(snapshot);
+    scheduleMediaLibraryCsvUpdate(snapshot);
 };
+
+initializeMediaLibraryCsvSync(getLibrarySnapshot);

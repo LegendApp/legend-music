@@ -1,9 +1,16 @@
 import * as FileSystemNext from "expo-file-system/next";
 import { ensureCacheDirectory, getCacheDirectory } from "@/utils/cacheDirectories";
+import { settings$ } from "@/systems/Settings";
+import { timeoutOnce } from "@/utils/timeoutOnce";
 import type { LibrarySnapshot } from "@/systems/LibraryCache";
 
 const MEDIA_LIBRARY_CSV_FILENAME = "medialibrary.csv";
 const MEDIA_LIBRARY_HEADERS = ["artist", "title", "album", "year", "genre"] as const;
+const MEDIA_LIBRARY_CSV_DEBOUNCE_MS = 500;
+const MEDIA_LIBRARY_CSV_TIMEOUT = "mediaLibraryCsvWrite";
+
+let pendingSnapshot: LibrarySnapshot | null = null;
+let csvSyncInitialized = false;
 
 const sanitizeCsvValue = (value: string): string => value.replace(/\r?\n/g, " ").trim();
 
@@ -55,4 +62,54 @@ export const readMediaLibraryCsv = (): string => {
     }
 
     return file.text();
+};
+
+const isAiPlaylistGenerationEnabled = (): boolean => {
+    const aiSettings = settings$.ai.get();
+    return aiSettings.enabled && aiSettings.playlistCreation;
+};
+
+export const scheduleMediaLibraryCsvUpdate = (snapshot: LibrarySnapshot): void => {
+    pendingSnapshot = snapshot;
+    if (!isAiPlaylistGenerationEnabled()) {
+        return;
+    }
+
+    timeoutOnce(
+        MEDIA_LIBRARY_CSV_TIMEOUT,
+        async () => {
+            if (!pendingSnapshot || !isAiPlaylistGenerationEnabled()) {
+                return;
+            }
+
+            try {
+                await writeMediaLibraryCsv(pendingSnapshot);
+            } catch (error) {
+                console.warn("Failed to update media library CSV", error);
+            }
+        },
+        MEDIA_LIBRARY_CSV_DEBOUNCE_MS,
+    );
+};
+
+export const initializeMediaLibraryCsvSync = (getSnapshot: () => LibrarySnapshot): void => {
+    if (csvSyncInitialized) {
+        return;
+    }
+
+    csvSyncInitialized = true;
+
+    const handleSettingsChange = () => {
+        if (!isAiPlaylistGenerationEnabled()) {
+            return;
+        }
+        scheduleMediaLibraryCsvUpdate(getSnapshot());
+    };
+
+    settings$.ai.enabled.onChange(handleSettingsChange);
+    settings$.ai.playlistCreation.onChange(handleSettingsChange);
+
+    if (isAiPlaylistGenerationEnabled()) {
+        scheduleMediaLibraryCsvUpdate(getSnapshot());
+    }
 };

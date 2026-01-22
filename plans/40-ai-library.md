@@ -17,7 +17,7 @@ from the library cache and adding a "Local Library" AI search provider that uses
 - [x] Add a CSV writer that exports the local library snapshot to `medialibrary.csv` (same directory as
       `mediaLibrary.json`) with `artist,title,album,year,genre` columns; fill missing fields consistently and
       escape commas/quotes.
-- [ ] Subscribe to `libraryCache$` updates to regenerate `medialibrary.csv` only when
+- [x] Subscribe to `libraryCache$` updates to regenerate `medialibrary.csv` only when
       `settings$.ai.enabled` and `settings$.ai.playlistCreation` are true; debounce updates as needed.
 - [ ] Create a "Local Library" AI search provider that prompts the AI with `medialibrary.csv` and converts its
       response into `SearchResult` entries for local tracks.
