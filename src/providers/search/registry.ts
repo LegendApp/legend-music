@@ -1,5 +1,6 @@
 import { computed, observable } from "@legendapp/state";
 import { isProviderEnabled } from "@/providers/providerRegistry";
+import { LOCAL_LIBRARY_PROVIDER_ID } from "@/providers/localLibrary/constants";
 import type { ProviderId } from "@/providers/types";
 import type { ProviderSearchProvider } from "./types";
 
@@ -23,7 +24,7 @@ export const enabledSearchProviderIds$ = computed(() => {
     registryVersion$.get();
     return Object.values(registry)
         .filter((provider) => {
-            if (provider.id !== "local" && !isProviderEnabled(provider.id)) {
+            if (provider.id !== "local" && provider.id !== LOCAL_LIBRARY_PROVIDER_ID && !isProviderEnabled(provider.id)) {
                 return false;
             }
             return provider.isEnabled$ ? provider.isEnabled$.get() : true;

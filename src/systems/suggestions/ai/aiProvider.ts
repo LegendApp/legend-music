@@ -1,5 +1,6 @@
 import { aiCommandRunner } from "@/native-modules/AICommandRunner";
 import type { ProviderId } from "@/providers/types";
+import { LOCAL_LIBRARY_PROVIDER_ID } from "@/providers/localLibrary/constants";
 import { aiAvailability$ } from "@/systems/ai/availability";
 import { parseSuggestedTracks } from "@/systems/ai/parser";
 import { buildPlaylistPrompt, buildQueueExtensionPrompt } from "@/systems/ai/prompts";
@@ -129,7 +130,9 @@ export const createAiSuggestionProvider = (config: AiProviderConfig): Suggestion
 
         const preferredProviderId = settings$.ai.preferredTrackProviderId.get();
         const preferredProviders = buildProviderPreference(request.seedTracks, preferredProviderId);
-        const resolved = await resolveSuggestedTracks(suggestions, { preferredProviders });
+        const restrictToProviders =
+            preferredProviderId === LOCAL_LIBRARY_PROVIDER_ID ? [preferredProviderId] : undefined;
+        const resolved = await resolveSuggestedTracks(suggestions, { preferredProviders, restrictToProviders });
 
         return {
             providerId: config.id,

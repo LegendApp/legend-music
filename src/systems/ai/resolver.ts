@@ -357,7 +357,7 @@ const resolveViaProviders = async (
 
 export const resolveSuggestedTracks = async (
     suggestions: AISuggestedTrack[],
-    options: { preferredProviders?: ProviderId[] } = {},
+    options: { preferredProviders?: ProviderId[]; restrictToProviders?: ProviderId[] } = {},
 ): Promise<AIResolveResult> => {
     const localTracks = localMusicState$.tracks.peek();
     const indexes = buildLocalIndexes(localTracks);
@@ -365,8 +365,20 @@ export const resolveSuggestedTracks = async (
     const preferredProviders = (options.preferredProviders ?? []).filter((providerId) =>
         enabledProviderIds.has(providerId),
     );
+    const restrictToProviders = options.restrictToProviders ?? null;
+    const allowedProviderIds = restrictToProviders
+        ? restrictToProviders.filter((providerId) => enabledProviderIds.has(providerId))
+        : null;
     const providers = sortProviders(
-        getSearchProviders().filter((provider) => enabledProviderIds.has(provider.id)),
+        getSearchProviders().filter((provider) => {
+            if (!enabledProviderIds.has(provider.id)) {
+                return false;
+            }
+            if (restrictToProviders && !allowedProviderIds?.includes(provider.id)) {
+                return false;
+            }
+            return true;
+        }),
         preferredProviders,
     );
 
@@ -391,6 +403,7 @@ export const resolveSuggestedTracks = async (
 
     logAiDebug("[AI resolve] summary", {
         preferredProviders: options.preferredProviders ?? [],
+        restrictedProviders: restrictToProviders ?? [],
         suggestions,
         resolvedCount: resolved.length,
         unresolvedCount: unresolved.length,

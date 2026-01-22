@@ -3,6 +3,7 @@ import { Text } from "react-native";
 
 import { Checkbox } from "@/components/Checkbox";
 import { Select } from "@/components/Select";
+import { LOCAL_LIBRARY_PROVIDER_ID } from "@/providers/localLibrary/constants";
 import { getProvider } from "@/providers/providerRegistry";
 import { searchProviders$ } from "@/providers/search/registry";
 import { SettingsPage, SettingsRow, SettingsSection } from "@/settings/components";
@@ -41,7 +42,8 @@ export function AISettings() {
     const preferredServiceOptions = useMemo(() => {
         const options = [{ value: "auto", label: "Auto" }];
         for (const provider of searchProviders) {
-            const providerName = getProvider(provider.id)?.name ?? provider.id;
+            const providerName =
+                provider.id === LOCAL_LIBRARY_PROVIDER_ID ? "Local Library" : getProvider(provider.id)?.name ?? provider.id;
             options.push({ value: provider.id, label: providerName });
         }
         return options;
