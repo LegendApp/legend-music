@@ -14,7 +14,7 @@ from the library cache and adding a "Local Library" AI search provider that uses
   a selectable preferred service (not a hard restriction).
 
 ## Steps
-- [ ] Add a CSV writer that exports the local library snapshot to `medialibrary.csv` (same directory as
+- [x] Add a CSV writer that exports the local library snapshot to `medialibrary.csv` (same directory as
       `mediaLibrary.json`) with `artist,title,album,year,genre` columns; fill missing fields consistently and
       escape commas/quotes.
 - [ ] Subscribe to `libraryCache$` updates to regenerate `medialibrary.csv` only when
