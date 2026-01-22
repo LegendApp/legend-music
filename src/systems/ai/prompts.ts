@@ -1,10 +1,11 @@
 import type { LocalTrack } from "@/systems/LocalMusicState";
 
-const buildJsonInstructions = (count: number): string => {
+const buildJsonInstructions = (count: number, options: { exact?: boolean } = {}): string => {
+    const exact = options.exact ?? true;
     return [
         "Return only JSON with this shape:",
         `{"tracks":[{"title":"...","artist":"...","album":"..."}]}`,
-        `Include exactly ${count} tracks.`,
+        exact ? `Include exactly ${count} tracks.` : `Include up to ${count} tracks.`,
         "No markdown, no extra text."
     ].join("\n");
 };
@@ -48,5 +49,19 @@ export const buildPlaylistSummaryPrompt = (userPrompt: string): string => {
         `User prompt: ${userPrompt.trim()}`,
         "Return exactly five words describing the playlist.",
         "No punctuation, no quotes, no extra text."
+    ].join("\n");
+};
+
+export const buildLocalLibrarySearchPrompt = (query: string, libraryCsv: string, count: number): string => {
+    return [
+        "You are a music assistant searching a local music library.",
+        `Search query: ${query.trim()}`,
+        "Return only tracks that appear in the CSV below.",
+        "If nothing matches, return {\"tracks\":[]}.",
+        "",
+        buildJsonInstructions(count, { exact: false }),
+        "",
+        "Local library CSV (artist,title,album,year,genre):",
+        libraryCsv.trim(),
     ].join("\n");
 };

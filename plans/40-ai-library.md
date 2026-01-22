@@ -19,7 +19,7 @@ from the library cache and adding a "Local Library" AI search provider that uses
       escape commas/quotes.
 - [x] Subscribe to `libraryCache$` updates to regenerate `medialibrary.csv` only when
       `settings$.ai.enabled` and `settings$.ai.playlistCreation` are true; debounce updates as needed.
-- [ ] Create a "Local Library" AI search provider that prompts the AI with `medialibrary.csv` and converts its
+- [x] Create a "Local Library" AI search provider that prompts the AI with `medialibrary.csv` and converts its
       response into `SearchResult` entries for local tracks.
 - [ ] Register the new search provider and wire it into AI resolution so it is selectable as the preferred
       service; ensure AI queue extension uses the same preferred-service logic.
