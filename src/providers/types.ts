@@ -1,6 +1,6 @@
 import type { LocalTrack } from "@/systems/LocalMusicState";
 
-export type ProviderId = "local" | "spotify" | (string & {});
+export type ProviderId = "local" | "spotify" | "appleMusic" | "youtubeMusic" | (string & {});
 
 export interface ProviderCapabilities {
     supportsSearch: boolean;
