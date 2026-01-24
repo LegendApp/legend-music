@@ -18,7 +18,7 @@ playlists.
 ## Steps
 - [x] Remove the Playlist Creation toggle and delete the `settings$.ai.playlistCreation` flag; update settings
       schema usage and any gating that still checks `settings$.ai.playlistCreation`.
-- [ ] Remove the Provider Status row from AI settings along with any unused availability label state derived only
+- [x] Remove the Provider Status row from AI settings along with any unused availability label state derived only
       for that row.
 - [ ] Refactor the sidebar to iterate over streaming provider plugins and render a playlist section for each
       connected provider; skip providers without an authenticated session.

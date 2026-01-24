@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { Text } from "react-native";
 
 import { Checkbox } from "@/components/Checkbox";
 import { Select } from "@/components/Select";
@@ -10,8 +9,6 @@ import { SettingsPage, SettingsRow, SettingsSection } from "@/settings/component
 import { settings$ } from "@/systems/Settings";
 import {
     ensureSuggestionProvidersRegistered,
-    isSelectedSuggestionProviderAvailable$,
-    selectedSuggestionProvider$,
     suggestionProviderAvailability$,
     suggestionProviders$,
 } from "@/systems/suggestions";
@@ -22,8 +19,6 @@ ensureSuggestionProvidersRegistered();
 export function AISettings() {
     const providers = useValue(suggestionProviders$);
     const searchProviders = useValue(searchProviders$);
-    const selectedProvider = useValue(selectedSuggestionProvider$);
-    const isAvailable = useValue(isSelectedSuggestionProviderAvailable$);
     const providerAvailability = useValue(suggestionProviderAvailability$);
 
     const providerOptions = useMemo(
@@ -51,17 +46,6 @@ export function AISettings() {
         return options;
     }, [searchProviders]);
 
-    const hasAvailableProviders = providers.some((provider) => providerAvailability[provider.id]);
-    const availabilityLabel = !hasAvailableProviders
-        ? "No suggestion providers available"
-        : !selectedProvider
-            ? "No suggestion provider selected"
-            : isAvailable
-                ? `${selectedProvider.name} is available`
-                : selectedProvider.kind === "spotify"
-                    ? "Connect Spotify to enable suggestions"
-                    : `${selectedProvider.name} is not available`;
-
     return (
         <SettingsPage>
             <SettingsSection title="AI" first>
@@ -88,11 +72,6 @@ export function AISettings() {
                         <Select value$={settings$.ai.preferredTrackProviderId} options={preferredServiceOptions} />
                     }
                     controlWrapperClassName="w-48"
-                />
-                <SettingsRow
-                    title="Provider Status"
-                    description="Current availability for the selected provider"
-                    control={<Text className="text-sm text-text-primary">{availabilityLabel}</Text>}
                 />
             </SettingsSection>
         </SettingsPage>
