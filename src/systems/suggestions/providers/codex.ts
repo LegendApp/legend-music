@@ -79,7 +79,7 @@ export const codexSuggestionProvider = createAiSuggestionProvider({
             "--model",
             "gpt-5.2",
             "--config",
-            "model_reasoning_effort=low",
+            "model_reasoning_effort=medium",
             prompt,
         ],
     }),
