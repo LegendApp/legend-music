@@ -34,7 +34,7 @@ export const QueueAiDropdown = forwardRef<DropdownMenuRootRef, QueueAiDropdownPr
     const providerName = selectedProvider?.name ?? "AI";
     const providerAvailable = useValue(isSelectedSuggestionProviderAvailable$);
     const aiSettings = useValue(settings$.ai);
-    const isFeatureEnabled = aiSettings.enabled && aiSettings.playlistCreation;
+    const isFeatureEnabled = aiSettings.enabled;
     const isDisabled = disabled || !providerAvailable || !isFeatureEnabled;
 
     const close = useCallback(() => {

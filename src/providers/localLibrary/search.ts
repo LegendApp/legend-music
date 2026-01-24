@@ -144,7 +144,7 @@ const formatErrorOutput = (output: string): string => {
 
 const isEnabled$ = computed(() => {
     const aiSettings = settings$.ai.get();
-    return aiSettings.enabled && aiSettings.playlistCreation && Boolean(resolveAiTool());
+    return aiSettings.enabled && Boolean(resolveAiTool());
 });
 
 export const localLibrarySearchProvider: StreamingProviderSearchProvider = {

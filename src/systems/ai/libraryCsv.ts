@@ -66,7 +66,7 @@ export const readMediaLibraryCsv = (): string => {
 
 const isAiPlaylistGenerationEnabled = (): boolean => {
     const aiSettings = settings$.ai.get();
-    return aiSettings.enabled && aiSettings.playlistCreation;
+    return aiSettings.enabled;
 };
 
 export const scheduleMediaLibraryCsvUpdate = (snapshot: LibrarySnapshot): void => {
@@ -107,7 +107,6 @@ export const initializeMediaLibraryCsvSync = (getSnapshot: () => LibrarySnapshot
     };
 
     settings$.ai.enabled.onChange(handleSettingsChange);
-    settings$.ai.playlistCreation.onChange(handleSettingsChange);
 
     if (isAiPlaylistGenerationEnabled()) {
         scheduleMediaLibraryCsvUpdate(getSnapshot());

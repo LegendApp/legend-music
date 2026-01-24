@@ -16,7 +16,7 @@ playlists.
   (`src/systems/suggestions/providers/*.ts`).
 
 ## Steps
-- [ ] Remove the Playlist Creation toggle and delete the `settings$.ai.playlistCreation` flag; update settings
+- [x] Remove the Playlist Creation toggle and delete the `settings$.ai.playlistCreation` flag; update settings
       schema usage and any gating that still checks `settings$.ai.playlistCreation`.
 - [ ] Remove the Provider Status row from AI settings along with any unused availability label state derived only
       for that row.

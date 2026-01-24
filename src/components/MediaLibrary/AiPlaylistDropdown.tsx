@@ -50,7 +50,7 @@ export function AiPlaylistDropdown({
     const providerName = selectedProvider?.name ?? "AI";
     const providerAvailable = useValue(isSelectedSuggestionProviderAvailable$);
     const aiSettings = useValue(settings$.ai);
-    const isFeatureEnabled = aiSettings.enabled && aiSettings.playlistCreation;
+    const isFeatureEnabled = aiSettings.enabled;
     const targetPlaylist =
         selectedView === "playlist" && selectedPlaylistProvider === "local"
             ? localPlaylists.find((playlist) => playlist.id === selectedPlaylistId) ?? null

@@ -57,7 +57,6 @@ export interface AppSettings {
     ai: {
         enabled: boolean;
         autoExtendQueue: boolean;
-        playlistCreation: boolean;
         suggestionProviderId: "claude" | "codex" | "spotify";
         preferredTrackProviderId: StreamingProviderId | "auto";
     };
@@ -96,7 +95,6 @@ export const settings$ = createJSONManager<AppSettings>({
         ai: {
             enabled: true,
             autoExtendQueue: true,
-            playlistCreation: true,
             suggestionProviderId: "claude",
             preferredTrackProviderId: "auto",
         },

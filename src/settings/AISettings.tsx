@@ -76,11 +76,6 @@ export function AISettings() {
                     control={<Checkbox $checked={settings$.ai.autoExtendQueue} />}
                 />
                 <SettingsRow
-                    title="Playlist Creation"
-                    description="Allow AI-generated playlists in the media library"
-                    control={<Checkbox $checked={settings$.ai.playlistCreation} />}
-                />
-                <SettingsRow
                     title="Suggestion Provider"
                     description="Choose which provider to use for suggestions"
                     control={<Select value$={settings$.ai.suggestionProviderId} options={providerOptions} />}
