@@ -22,7 +22,7 @@ playlists.
       for that row.
 - [x] Refactor the sidebar to iterate over streaming provider plugins and render a playlist section for each
       connected provider; skip providers without an authenticated session.
-- [ ] Centralize AI invocation building (reuse suggestion provider invocation) and update `summary.ts` to use it,
+- [x] Centralize AI invocation building (reuse suggestion provider invocation) and update `summary.ts` to use it,
       trimming duplicated command/args logic.
 Validation: Verify AI settings no longer show Playlist Creation or Provider Status; AI playlist creation still
 works when AI is enabled; sidebar shows playlists for each connected provider and omits disconnected providers;

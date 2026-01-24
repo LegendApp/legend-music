@@ -1,6 +1,7 @@
 import { parseSuggestedTracks } from "@/systems/ai/parser";
 import type { AISuggestedTrack } from "@/systems/ai/types";
 import { createAiSuggestionProvider } from "@/systems/suggestions/ai/aiProvider";
+import { buildAiInvocation } from "@/systems/suggestions/ai/invocation";
 
 const parseCodexLines = (raw: string, maxCount: number): AISuggestedTrack[] => {
     const lines = raw
@@ -71,17 +72,6 @@ const parseCodexResponse = (raw: string, count: number): AISuggestedTrack[] => {
 export const codexSuggestionProvider = createAiSuggestionProvider({
     id: "codex",
     name: "Codex",
-    command: "codex",
-    buildInvocation: (prompt) => ({
-        args: [
-            "exec",
-            "--skip-git-repo-check",
-            "--model",
-            "gpt-5.2",
-            "--config",
-            "model_reasoning_effort=medium",
-            prompt,
-        ],
-    }),
+    buildInvocation: (prompt) => buildAiInvocation("codex", prompt),
     parseResponse: parseCodexResponse,
 });

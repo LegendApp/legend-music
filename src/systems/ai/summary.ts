@@ -1,6 +1,7 @@
 import { type AIToolId, aiCommandRunner } from "@/native-modules/AICommandRunner";
 import { aiAvailability$ } from "@/systems/ai/availability";
 import { buildPlaylistSummaryPrompt } from "@/systems/ai/prompts";
+import { buildAiInvocation } from "@/systems/suggestions/ai/invocation";
 import { selectedSuggestionProvider$ } from "@/systems/suggestions/service";
 
 const DEFAULT_TIMEOUT_MS = 20000;
@@ -28,25 +29,6 @@ const resolveSummaryTool = (): AIToolId => {
     throw new Error("No AI tool available for playlist summary.");
 };
 
-const buildInvocation = (tool: AIToolId, prompt: string): { command: string; args: string[] } => {
-    if (tool === "codex") {
-        return {
-            command: "codex",
-            args: [
-                "exec",
-                "--skip-git-repo-check",
-                "--model",
-                "gpt-5.2",
-                "--config",
-                "model_reasoning_effort=low",
-                prompt,
-            ],
-        };
-    }
-
-    return { command: "claude", args: ["-p", prompt] };
-};
-
 const normalizeSummary = (raw: string): string => {
     const firstLine = raw.split("\n")[0]?.trim() ?? "";
     const stripped = firstLine.replace(/^["'`]+|["'`]+$/g, "").replace(/[.,!?;:]+/g, "");
@@ -60,11 +42,12 @@ const normalizeSummary = (raw: string): string => {
 export async function generatePlaylistSummary(userPrompt: string): Promise<string> {
     const prompt = buildPlaylistSummaryPrompt(userPrompt);
     const tool = resolveSummaryTool();
-    const invocation = buildInvocation(tool, prompt);
+    const invocation = buildAiInvocation(tool, prompt);
 
     const result = await aiCommandRunner.runCommand({
         command: invocation.command,
         args: invocation.args,
+        input: invocation.input,
         timeoutMs: DEFAULT_TIMEOUT_MS,
     });
 

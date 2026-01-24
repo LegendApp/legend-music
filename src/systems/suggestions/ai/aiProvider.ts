@@ -8,6 +8,7 @@ import { buildPlaylistPrompt, buildQueueExtensionPrompt } from "@/systems/ai/pro
 import { resolveSuggestedTracks } from "@/systems/ai/resolver";
 import type { AISuggestedTrack } from "@/systems/ai/types";
 import { settings$ } from "@/systems/Settings";
+import type { AiInvocation } from "@/systems/suggestions/ai/invocation";
 import type {
     SuggestionProvider,
     SuggestionProviderId,
@@ -23,8 +24,7 @@ const MAX_ERROR_OUTPUT_LENGTH = 300;
 export type AiProviderConfig = {
     id: SuggestionProviderId;
     name: string;
-    command: string;
-    buildInvocation: (prompt: string) => { args: string[]; input?: string };
+    buildInvocation: (prompt: string) => AiInvocation;
     parseResponse?: (raw: string, count: number) => AISuggestedTrack[];
 };
 
@@ -115,7 +115,7 @@ export const createAiSuggestionProvider = (config: AiProviderConfig): Suggestion
 
         const invocation = config.buildInvocation(prompt);
         const result = await aiCommandRunner.runCommand({
-            command: config.command,
+            command: invocation.command,
             args: invocation.args,
             input: invocation.input,
             timeoutMs,
