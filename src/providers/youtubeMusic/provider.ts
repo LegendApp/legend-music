@@ -1,5 +1,10 @@
 import { computed } from "@legendapp/state";
-import type { Provider, ProviderCapabilities, ProviderInitOptions, ProviderSession } from "@/providers/types";
+import type {
+    StreamingProvider,
+    StreamingProviderCapabilities,
+    StreamingProviderInitOptions,
+    StreamingProviderSession,
+} from "@/providers/types";
 import {
     clearYoutubeMusicAuth,
     isYoutubeMusicAuthenticated$,
@@ -12,7 +17,7 @@ import {
     startYoutubeMusicLogin,
 } from "./auth";
 
-const capabilities: ProviderCapabilities = {
+const capabilities: StreamingProviderCapabilities = {
     supportsSearch: true,
     supportsLibrary: false,
     supportsPlayback: true,
@@ -20,7 +25,7 @@ const capabilities: ProviderCapabilities = {
     requiresWebView: true,
 };
 
-const session$ = computed<ProviderSession>(() => {
+const session$ = computed<StreamingProviderSession>(() => {
     const auth = youtubeAuthState$.get();
     const isAuthenticated = isYoutubeMusicAuthenticated$.get();
     return {
@@ -33,14 +38,14 @@ const session$ = computed<ProviderSession>(() => {
     };
 });
 
-let stateListener: ProviderInitOptions["onStateChange"] | undefined;
+let stateListener: StreamingProviderInitOptions["onStateChange"] | undefined;
 let authSubscription: (() => void) | null = null;
 
-export const youtubeMusicProvider: Provider = {
+export const youtubeMusicProvider: StreamingProvider = {
     id: "youtubeMusic",
     name: "YouTube Music",
     capabilities,
-    async initialize(options?: ProviderInitOptions) {
+    async initialize(options?: StreamingProviderInitOptions) {
         stateListener = options?.onStateChange;
         authSubscription?.();
         authSubscription = youtubeAuthState$.onChange(() => {

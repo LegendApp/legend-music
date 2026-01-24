@@ -29,9 +29,13 @@ import { useListItemStyles } from "@/hooks/useListItemStyles";
 import { type ContextMenuItem, showContextMenu } from "@/native-modules/ContextMenu";
 import { DragDropView } from "@/native-modules/DragDropView";
 import { showInFinder } from "@/native-modules/FileDialog";
-import { getProviderIdForUri, getProviderPlugin } from "@/providers/pluginRegistry";
-import { activeProviderId$, getProvider, providerSessions$ } from "@/providers/providerRegistry";
-import type { ProviderId, ProviderPlaylist } from "@/providers/types";
+import { getStreamingProviderIdForUri, getStreamingProviderPlugin } from "@/providers/pluginRegistry";
+import {
+    activeStreamingProviderId$,
+    getStreamingProvider,
+    streamingProviderSessions$,
+} from "@/providers/streamingProviderRegistry";
+import type { StreamingProviderId, StreamingProviderPlaylist } from "@/providers/types";
 import { finishAiPlaylistFill, startAiPlaylistFill } from "@/systems/ai";
 import { buildPlaylistEntries } from "@/systems/ai/playlistTracks";
 import { generatePlaylistSummary } from "@/systems/ai/summary";
@@ -72,14 +76,14 @@ const LIBRARY_VIEWS: { id: LibraryView; label: string; disabled?: boolean }[] = 
 
 const PLAYLIST_ITEM_PREFIX = "playlist-";
 const EMPTY_LIBRARY_STATUS = { isLoading: false, error: null as string | null };
-const emptyProviderPlaylists$ = observable([] as ProviderPlaylist[]);
+const emptyProviderPlaylists$ = observable([] as StreamingProviderPlaylist[]);
 const emptyLibraryStatus$ = observable(EMPTY_LIBRARY_STATUS);
 const DEFAULT_AI_SUGGESTION_COUNT = 10;
 
-const buildPlaylistItemId = (providerId: ProviderId, playlistId: string): string =>
+const buildPlaylistItemId = (providerId: StreamingProviderId, playlistId: string): string =>
     `${PLAYLIST_ITEM_PREFIX}${providerId}:${playlistId}`;
 
-const parsePlaylistItemId = (itemId: string): { providerId: ProviderId; playlistId: string } | null => {
+const parsePlaylistItemId = (itemId: string): { providerId: StreamingProviderId; playlistId: string } | null => {
     if (!itemId.startsWith(PLAYLIST_ITEM_PREFIX)) {
         return null;
     }
@@ -90,7 +94,7 @@ const parsePlaylistItemId = (itemId: string): { providerId: ProviderId; playlist
         return null;
     }
 
-    const providerId = raw.slice(0, separatorIndex) as ProviderId;
+    const providerId = raw.slice(0, separatorIndex) as StreamingProviderId;
     const playlistId = raw.slice(separatorIndex + 1);
     if (!playlistId) {
         return null;
@@ -292,11 +296,11 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
     const selectedPlaylistProvider = useValue(libraryUI$.selectedPlaylistProvider);
     const searchQuery = useValue(libraryUI$.searchQuery);
     const localPlaylists = useValue(localMusicState$.playlists);
-    const activeProviderId = useValue(activeProviderId$);
-    const activeProvider = getProvider(activeProviderId);
+    const activeProviderId = useValue(activeStreamingProviderId$);
+    const activeProvider = getStreamingProvider(activeProviderId);
     const libraryProviderId = activeProvider?.capabilities.supportsLibrary ? activeProviderId : "local";
-    const libraryPlugin = getProviderPlugin(libraryProviderId);
-    const librarySession = useValue(providerSessions$[libraryProviderId]);
+    const libraryPlugin = getStreamingProviderPlugin(libraryProviderId);
+    const librarySession = useValue(streamingProviderSessions$[libraryProviderId]);
     const libraryPlaylists = useValue(libraryPlugin?.library?.playlists$ ?? emptyProviderPlaylists$);
     const libraryStatus = useValue(libraryPlugin?.library?.status$ ?? emptyLibraryStatus$);
     const libraryProviderName = libraryPlugin?.provider.name ?? activeProvider?.name ?? "Provider";
@@ -1003,7 +1007,7 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                                                       .map((track) => track.filePath ?? track.id)
                                                       .filter(
                                                           (path): path is string =>
-                                                              Boolean(path) && !getProviderIdForUri(path),
+                                                              Boolean(path) && !getStreamingProviderIdForUri(path),
                                                       );
                                                   if (isDroppable && trackPaths.length > 0) {
                                                       void handleAddTracks(playlist.id, trackPaths);

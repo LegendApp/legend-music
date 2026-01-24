@@ -5,7 +5,7 @@ import Config from "react-native-config";
 import { Button } from "@/components/Button";
 import { Checkbox } from "@/components/Checkbox";
 import { showToast } from "@/components/Toast";
-import { providerSettings$, setActiveProvider } from "@/providers/providerRegistry";
+import { streamingProviderSettings$, setActiveStreamingProvider } from "@/providers/streamingProviderRegistry";
 import {
     completeYoutubeMusicLogin,
     isYoutubeMusicAuthenticated$,
@@ -28,7 +28,7 @@ const parseAuthParams = (url: string): { code?: string; state?: string } => {
 };
 
 export function YoutubeMusicSettings() {
-    const providerSettings = useValue(providerSettings$);
+    const providerSettings = useValue(streamingProviderSettings$);
     const auth = useValue(youtubeAuthState$);
     const activeProvider = providerSettings.activeProviderId;
     const isYoutubeMusicEnabled = activeProvider === "youtubeMusic";
@@ -38,7 +38,7 @@ export function YoutubeMusicSettings() {
     const displayName = auth.user?.displayName ?? auth.user?.email ?? auth.user?.id ?? "Unknown";
 
     const handleYoutubeMusicToggle = useCallback((enabled: boolean) => {
-        setActiveProvider(enabled ? "youtubeMusic" : "local");
+        setActiveStreamingProvider(enabled ? "youtubeMusic" : "local");
     }, []);
 
     const handleAuthUrl = useCallback(async (url: string) => {

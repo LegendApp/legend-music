@@ -1,14 +1,14 @@
 import * as pluginRegistry from "@/providers/pluginRegistry";
 import * as setupProviders from "@/providers/setupProviders";
-import type { Provider, ProviderCapabilities, ProviderSession } from "@/providers/types";
+import type { StreamingProvider, StreamingProviderCapabilities, StreamingProviderSession } from "@/providers/types";
 
-const createProvider = (id: string): Provider => {
-    const capabilities: ProviderCapabilities = {
+const createProvider = (id: string): StreamingProvider => {
+    const capabilities: StreamingProviderCapabilities = {
         supportsSearch: false,
         supportsLibrary: false,
         supportsPlayback: false,
     };
-    const session: ProviderSession = { isAuthenticated: false };
+    const session: StreamingProviderSession = { isAuthenticated: false };
 
     return {
         id,
@@ -38,7 +38,7 @@ const createProvider = (id: string): Provider => {
     };
 };
 
-describe("initializeProviderPlugins", () => {
+describe("initializeStreamingProviderPlugins", () => {
     afterEach(() => {
         jest.restoreAllMocks();
     });
@@ -47,7 +47,7 @@ describe("initializeProviderPlugins", () => {
         const syncA = jest.fn().mockResolvedValue(undefined);
         const syncB = jest.fn().mockResolvedValue(undefined);
 
-        jest.spyOn(pluginRegistry, "getProviderPlugins").mockReturnValue([
+        jest.spyOn(pluginRegistry, "getStreamingProviderPlugins").mockReturnValue([
             {
                 provider: createProvider("test-a"),
                 library: { sync: syncA },
@@ -58,9 +58,9 @@ describe("initializeProviderPlugins", () => {
             },
         ]);
 
-        jest.spyOn(setupProviders, "ensureProvidersRegistered").mockImplementation(() => {});
+        jest.spyOn(setupProviders, "ensureStreamingProvidersRegistered").mockImplementation(() => {});
 
-        await setupProviders.initializeProviderPlugins({ reason: "manual" });
+        await setupProviders.initializeStreamingProviderPlugins({ reason: "manual" });
 
         expect(syncA).toHaveBeenCalledWith({ reason: "manual" });
         expect(syncB).toHaveBeenCalledWith({ reason: "manual" });

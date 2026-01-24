@@ -1,6 +1,11 @@
-import type { Provider, ProviderCapabilities, ProviderInitOptions, ProviderSession } from "./types";
+import type {
+    StreamingProvider,
+    StreamingProviderCapabilities,
+    StreamingProviderInitOptions,
+    StreamingProviderSession,
+} from "./types";
 
-const capabilities: ProviderCapabilities = {
+const capabilities: StreamingProviderCapabilities = {
     supportsSearch: true,
     supportsLibrary: true,
     supportsPlayback: true,
@@ -8,16 +13,16 @@ const capabilities: ProviderCapabilities = {
     requiresWebView: false,
 };
 
-const localSession: ProviderSession = {
+const localSession: StreamingProviderSession = {
     isAuthenticated: true,
     userDisplayName: "Local files",
 };
 
-export const localProvider: Provider = {
+export const localProvider: StreamingProvider = {
     id: "local",
     name: "Local Files",
     capabilities,
-    async initialize(_: ProviderInitOptions = {}) {
+    async initialize(_: StreamingProviderInitOptions = {}) {
         return;
     },
     teardown() {

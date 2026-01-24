@@ -1,4 +1,4 @@
-import type { ProviderPlaylist, ProviderTrack } from "@/providers/types";
+import type { StreamingProviderPlaylist, StreamingProviderTrack } from "@/providers/types";
 import { ensureSpotifyAccessToken } from "@/providers/spotify/auth";
 import { SPOTIFY_API_BASE } from "@/providers/spotify/constants";
 import { spotifyPlaylists$, spotifyPlaylistsStatus$ } from "@/providers/spotify/playlistsState";
@@ -51,7 +51,7 @@ type SpotifyPlaylistTracksResponse = {
 const PLAYLIST_PAGE_LIMIT = 50;
 const TRACK_PAGE_LIMIT = 100;
 
-const mapSpotifyPlaylist = (playlist: SpotifyPlaylist): ProviderPlaylist => ({
+const mapSpotifyPlaylist = (playlist: SpotifyPlaylist): StreamingProviderPlaylist => ({
     provider: "spotify",
     id: playlist.id,
     uri: playlist.uri,
@@ -62,7 +62,7 @@ const mapSpotifyPlaylist = (playlist: SpotifyPlaylist): ProviderPlaylist => ({
     isEditable: false,
 });
 
-const mapSpotifyTrack = (track: SpotifyTrack | null | undefined): ProviderTrack | null => {
+const mapSpotifyTrack = (track: SpotifyTrack | null | undefined): StreamingProviderTrack | null => {
     if (!track) {
         return null;
     }
@@ -112,7 +112,7 @@ const fetchSpotifyJson = async <T>(url: string, token: string): Promise<T> => {
     return response.json() as Promise<T>;
 };
 
-const refreshSpotifyPlaylists = async (options: { showLoading: boolean }): Promise<ProviderPlaylist[]> => {
+const refreshSpotifyPlaylists = async (options: { showLoading: boolean }): Promise<StreamingProviderPlaylist[]> => {
     if (options.showLoading) {
         spotifyPlaylistsStatus$.isLoading.set(true);
     }
@@ -123,7 +123,7 @@ const refreshSpotifyPlaylists = async (options: { showLoading: boolean }): Promi
         if (!token) {
             throw new Error("Spotify login required to load playlists");
         }
-        const playlists: ProviderPlaylist[] = [];
+        const playlists: StreamingProviderPlaylist[] = [];
         let nextUrl: string | null = `${SPOTIFY_API_BASE}/me/playlists?limit=${PLAYLIST_PAGE_LIMIT}`;
 
         while (nextUrl) {
@@ -150,7 +150,7 @@ const refreshSpotifyPlaylists = async (options: { showLoading: boolean }): Promi
     }
 };
 
-export async function fetchSpotifyPlaylists(options: { force?: boolean } = {}): Promise<ProviderPlaylist[]> {
+export async function fetchSpotifyPlaylists(options: { force?: boolean } = {}): Promise<StreamingProviderPlaylist[]> {
     const cachedAt = spotifyPlaylists$.playlistsFetchedAt.peek();
     const cachedPlaylists = spotifyPlaylists$.playlists.peek();
     const hasCached = Boolean(cachedAt) || cachedPlaylists.length > 0;
@@ -166,7 +166,7 @@ export async function fetchSpotifyPlaylists(options: { force?: boolean } = {}): 
 export async function fetchSpotifyPlaylistTracks(
     playlistId: string,
     options: { force?: boolean } = {},
-): Promise<ProviderTrack[]> {
+): Promise<StreamingProviderTrack[]> {
     const cachedAt = spotifyPlaylists$.tracksFetchedAtByPlaylistId[playlistId].peek();
     if (!options.force && cachedAt) {
         return spotifyPlaylists$.tracksByPlaylistId[playlistId].peek() ?? [];
@@ -181,7 +181,7 @@ export async function fetchSpotifyPlaylistTracks(
     spotifyPlaylistsStatus$.tracksError[playlistId].set(null);
 
     try {
-        const tracks: ProviderTrack[] = [];
+        const tracks: StreamingProviderTrack[] = [];
         let nextUrl: string | null = `${SPOTIFY_API_BASE}/playlists/${encodeURIComponent(
             playlistId,
         )}/tracks?limit=${TRACK_PAGE_LIMIT}`;

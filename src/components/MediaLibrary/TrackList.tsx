@@ -24,8 +24,8 @@ import type { TrackData } from "@/components/TrackItem";
 import { useListItemStyles } from "@/hooks/useListItemStyles";
 import { type ContextMenuItem, showContextMenu } from "@/native-modules/ContextMenu";
 import { type NativeDragTrack, TrackDragSource } from "@/native-modules/TrackDragSource";
-import { getProviderPlugin } from "@/providers/pluginRegistry";
-import type { ProviderPlaylist } from "@/providers/types";
+import { getStreamingProviderPlugin } from "@/providers/pluginRegistry";
+import type { StreamingProviderPlaylist } from "@/providers/types";
 import { aiPlaylistFillState$, finishAiPlaylistFill, startAiPlaylistFill } from "@/systems/ai";
 import { buildPlaylistEntries } from "@/systems/ai/playlistTracks";
 import { generatePlaylistSummary } from "@/systems/ai/summary";
@@ -44,7 +44,7 @@ import { useLibraryTrackList } from "./useLibraryTrackList";
 
 type TrackListProps = {};
 
-const emptyProviderPlaylists$ = observable([] as ProviderPlaylist[]);
+const emptyProviderPlaylists$ = observable([] as StreamingProviderPlaylist[]);
 const DEFAULT_AI_SUGGESTION_COUNT = 10;
 
 const formatAddedDate = (timestamp?: number): string => {
@@ -137,7 +137,7 @@ export function TrackList(_props: TrackListProps) {
     const playlistSortDirection = useValue(libraryUI$.playlistSortDirection);
     const playlists = useValue(localMusicState$.playlists);
     const aiPlaylistFillState = useValue(aiPlaylistFillState$);
-    const providerPlugin = selectedPlaylistProvider ? getProviderPlugin(selectedPlaylistProvider) : null;
+    const providerPlugin = selectedPlaylistProvider ? getStreamingProviderPlugin(selectedPlaylistProvider) : null;
     const providerPlaylists = useValue(providerPlugin?.library?.playlists$ ?? emptyProviderPlaylists$);
     const showAiCreateButton = selectedView === "playlist" && selectedPlaylistProvider === "local";
     const showAiFillSpinner =
@@ -831,7 +831,7 @@ function LibraryTrackRow({
     const actionsColumn = columns.find((column) => column.id === "actions") ?? columns[columns.length - 2];
     const sourceColumn = columns.find((column) => column.id === "source") ?? columns[columns.length - 1];
     const addedAtLabel = formatAddedDate(track.addedAt);
-    const ProviderBadge = track.provider ? (getProviderPlugin(track.provider)?.ui?.badge ?? null) : null;
+    const ProviderBadge = track.provider ? (getStreamingProviderPlugin(track.provider)?.ui?.badge ?? null) : null;
     const providerBadgeNode = ProviderBadge ? <ProviderBadge size={12} className="opacity-80" /> : null;
 
     const handleMenuClick = useCallback(

@@ -1,7 +1,7 @@
 import { observable } from "@legendapp/state";
 import { resolveSuggestedTracks } from "@/systems/ai/resolver";
 import { localMusicState$, type LocalTrack } from "@/systems/LocalMusicState";
-import type { ProviderSearchProvider } from "@/providers/search/types";
+import type { StreamingProviderSearchProvider } from "@/providers/search/types";
 import { LOCAL_LIBRARY_PROVIDER_ID } from "@/providers/localLibrary/constants";
 import { enabledSearchProviderIds$, getSearchProviders } from "@/providers/search/registry";
 
@@ -24,9 +24,9 @@ const buildTrack = (overrides: Partial<LocalTrack> = {}): LocalTrack => ({
 });
 
 const makeProvider = (
-    searchImpl: ProviderSearchProvider["search"],
-    id: ProviderSearchProvider["id"] = "spotify",
-): ProviderSearchProvider => ({
+    searchImpl: StreamingProviderSearchProvider["search"],
+    id: StreamingProviderSearchProvider["id"] = "spotify",
+): StreamingProviderSearchProvider => ({
     id,
     searchMode: "submit",
     search: jest.fn(searchImpl),

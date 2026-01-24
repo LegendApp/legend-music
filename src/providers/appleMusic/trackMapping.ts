@@ -1,4 +1,4 @@
-import type { ProviderTrack } from "@/providers/types";
+import type { StreamingProviderTrack } from "@/providers/types";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import { formatSecondsToMmSs } from "@/utils/m3u";
 
@@ -24,7 +24,7 @@ export const getAppleMusicTrackId = (value: string | null | undefined): string |
 };
 
 export function buildAppleMusicLocalTrack(
-    track: ProviderTrack,
+    track: StreamingProviderTrack,
     options: AppleMusicTrackMappingOptions = {},
 ): LocalTrack {
     const durationSeconds = typeof track.durationMs === "number" ? track.durationMs / 1000 : 0;

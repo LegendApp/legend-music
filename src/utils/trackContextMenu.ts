@@ -1,5 +1,5 @@
 import type { ContextMenuItem } from "@/native-modules/ContextMenu";
-import { getProviderPlugin } from "@/providers/pluginRegistry";
+import { getStreamingProviderPlugin } from "@/providers/pluginRegistry";
 import { selectLibraryAlbum, selectLibraryArtist } from "@/systems/LibraryState";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 
@@ -35,7 +35,7 @@ export function buildTrackContextMenuItems(options: BuildTrackContextMenuOptions
         }
 
         const providerId = options.track.provider ?? "local";
-        const providerItems = getProviderPlugin(providerId)?.trackContextMenu?.getItems(options.track) ?? [];
+        const providerItems = getStreamingProviderPlugin(providerId)?.trackContextMenu?.getItems(options.track) ?? [];
         if (providerItems.length > 0) {
             items.push(...providerItems);
         }
@@ -89,7 +89,7 @@ export async function handleTrackContextMenuSelection({
 
     if (track) {
         const providerId = track.provider ?? "local";
-        const providerHandler = getProviderPlugin(providerId)?.trackContextMenu?.onSelect;
+        const providerHandler = getStreamingProviderPlugin(providerId)?.trackContextMenu?.onSelect;
         if (providerHandler) {
             const handled = await providerHandler(selection, track);
             if (handled) {

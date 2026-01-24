@@ -13,8 +13,8 @@ import { TooltipProvider } from "@/components/TooltipProvider";
 import { MediaLibraryWindowManager } from "@/media-library/MediaLibraryWindowManager";
 import { CurrentSongOverlayController } from "@/overlay/CurrentSongOverlayController";
 import { CurrentSongOverlayWindowManager } from "@/overlay/CurrentSongOverlayWindowManager";
-import { getProviderPlugins } from "@/providers/pluginRegistry";
-import { ensureProvidersRegistered, initializeProviderPlugins } from "@/providers/setupProviders";
+import { getStreamingProviderPlugins } from "@/providers/pluginRegistry";
+import { ensureStreamingProvidersRegistered, initializeStreamingProviderPlugins } from "@/providers/setupProviders";
 import { SettingsWindowManager } from "@/settings/SettingsWindowManager";
 import { initializeAiAvailability } from "@/systems/ai";
 import { IS_TAHOE } from "@/systems/constants";
@@ -34,11 +34,11 @@ LogBox.ignoreLogs(["Open debugger", "unknown error"]);
 
 perfMark("App.moduleLoad");
 initializeUpdater();
-ensureProvidersRegistered();
+ensureStreamingProvidersRegistered();
 
 function App(): React.JSX.Element | null {
     const hasLoggedFirstLayout = useRef(false);
-    const providerBridges = getProviderPlugins()
+    const providerBridges = getStreamingProviderPlugins()
         .map((plugin) => {
             const Bridge = plugin.ui?.bridge;
             return Bridge ? <Bridge key={`provider-bridge-${plugin.provider.id}`} /> : null;
@@ -48,14 +48,14 @@ function App(): React.JSX.Element | null {
     perfMark("App.render");
     useMount(() => {
         perfMark("App.useEffect");
-        ensureProvidersRegistered();
+        ensureStreamingProvidersRegistered();
         const initializeHandle = runAfterInteractionsWithLabel(() => {
             perfMark("App.initializeMenuManager");
             initializeMenuManager();
             void (async () => {
                 perfMark("App.initializeProviders.start");
                 try {
-                    await initializeProviderPlugins({ reason: "app-start" });
+                    await initializeStreamingProviderPlugins({ reason: "app-start" });
                 } catch (error) {
                     console.error("Failed to initialize provider plugins:", error);
                 } finally {

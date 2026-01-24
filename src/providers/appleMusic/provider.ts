@@ -1,5 +1,10 @@
 import { computed } from "@legendapp/state";
-import type { Provider, ProviderCapabilities, ProviderInitOptions, ProviderSession } from "@/providers/types";
+import type {
+    StreamingProvider,
+    StreamingProviderCapabilities,
+    StreamingProviderInitOptions,
+    StreamingProviderSession,
+} from "@/providers/types";
 import {
     appleMusicAuthState$,
     isAppleMusicAuthorized$,
@@ -7,7 +12,7 @@ import {
 } from "./authState";
 import { authorizeAppleMusic, ensureAppleMusicDeveloperToken, logoutAppleMusic } from "./auth";
 
-const capabilities: ProviderCapabilities = {
+const capabilities: StreamingProviderCapabilities = {
     supportsSearch: true,
     supportsLibrary: true,
     supportsPlayback: true,
@@ -15,7 +20,7 @@ const capabilities: ProviderCapabilities = {
     requiresWebView: false,
 };
 
-const session$ = computed<ProviderSession>(() => {
+const session$ = computed<StreamingProviderSession>(() => {
     const auth = appleMusicAuthState$.get();
     const isAuthenticated = isAppleMusicAuthorized$.get();
     return {
@@ -28,14 +33,14 @@ const session$ = computed<ProviderSession>(() => {
     };
 });
 
-let stateListener: ProviderInitOptions["onStateChange"] | undefined;
+let stateListener: StreamingProviderInitOptions["onStateChange"] | undefined;
 let authSubscription: (() => void) | null = null;
 
-export const appleMusicProvider: Provider = {
+export const appleMusicProvider: StreamingProvider = {
     id: "appleMusic",
     name: "Apple Music",
     capabilities,
-    async initialize(options?: ProviderInitOptions) {
+    async initialize(options?: StreamingProviderInitOptions) {
         stateListener = options?.onStateChange;
         authSubscription?.();
         authSubscription = appleMusicAuthState$.onChange(() => {

@@ -1,13 +1,13 @@
-import { registerProviderPlugin, getProviderIdForUri } from "@/providers/pluginRegistry";
-import type { Provider, ProviderCapabilities, ProviderSession } from "@/providers/types";
+import { registerStreamingProviderPlugin, getStreamingProviderIdForUri } from "@/providers/pluginRegistry";
+import type { StreamingProvider, StreamingProviderCapabilities, StreamingProviderSession } from "@/providers/types";
 
-const createTestProvider = (id: string): Provider => {
-    const capabilities: ProviderCapabilities = {
+const createTestProvider = (id: string): StreamingProvider => {
+    const capabilities: StreamingProviderCapabilities = {
         supportsSearch: false,
         supportsLibrary: false,
         supportsPlayback: false,
     };
-    const session: ProviderSession = {
+    const session: StreamingProviderSession = {
         isAuthenticated: false,
     };
 
@@ -44,14 +44,14 @@ describe("pluginRegistry", () => {
         const providerId = "test-plugin-registry";
         const provider = createTestProvider(providerId);
 
-        registerProviderPlugin({
+        registerStreamingProviderPlugin({
             provider,
             tracks: {
                 isUri: (value) => value.startsWith("test://"),
             },
         });
 
-        expect(getProviderIdForUri("test://track/1")).toBe(providerId);
-        expect(getProviderIdForUri("file:///music/track.mp3")).toBeNull();
+        expect(getStreamingProviderIdForUri("test://track/1")).toBe(providerId);
+        expect(getStreamingProviderIdForUri("file:///music/track.mp3")).toBeNull();
     });
 });

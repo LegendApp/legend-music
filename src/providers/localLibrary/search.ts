@@ -8,7 +8,11 @@ import { aiAvailability$ } from "@/systems/ai/availability";
 import { normalizeArtistName } from "@/systems/LibraryState";
 import { localMusicState$, type LocalTrack } from "@/systems/LocalMusicState";
 import { settings$ } from "@/systems/Settings";
-import type { ProviderSearchInput, ProviderSearchProvider, SearchResult } from "@/providers/search/types";
+import type {
+    StreamingProviderSearchInput,
+    StreamingProviderSearchProvider,
+    SearchResult,
+} from "@/providers/search/types";
 import { LOCAL_LIBRARY_PROVIDER_ID } from "@/providers/localLibrary/constants";
 
 const MAX_RESULTS = 10;
@@ -143,11 +147,11 @@ const isEnabled$ = computed(() => {
     return aiSettings.enabled && aiSettings.playlistCreation && Boolean(resolveAiTool());
 });
 
-export const localLibrarySearchProvider: ProviderSearchProvider = {
+export const localLibrarySearchProvider: StreamingProviderSearchProvider = {
     id: LOCAL_LIBRARY_PROVIDER_ID,
     searchMode: "submit",
     isEnabled$,
-    search: async ({ query }: ProviderSearchInput) => {
+    search: async ({ query }: StreamingProviderSearchInput) => {
         const trimmedQuery = query.trim();
         if (!trimmedQuery) {
             return [];

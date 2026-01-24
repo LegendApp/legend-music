@@ -1,4 +1,4 @@
-import type { ProviderId } from "@/providers/types";
+import type { StreamingProviderId } from "@/providers/types";
 import type { KeyboardEventCodeHotkey } from "@/systems/keyboard/Keyboard";
 import { KeyCodes } from "@/systems/keyboard/KeyboardManager";
 import { createJSONManager } from "@/utils/JSONManager";
@@ -59,7 +59,7 @@ export interface AppSettings {
         autoExtendQueue: boolean;
         playlistCreation: boolean;
         suggestionProviderId: "claude" | "codex" | "spotify";
-        preferredTrackProviderId: ProviderId | "auto";
+        preferredTrackProviderId: StreamingProviderId | "auto";
     };
     library: {
         paths: string[];

@@ -1,4 +1,4 @@
-import type { ProviderTrack } from "@/providers/types";
+import type { StreamingProviderTrack } from "@/providers/types";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import { formatSecondsToMmSs } from "@/utils/m3u";
 
@@ -35,7 +35,7 @@ export const getYoutubeMusicVideoId = (value?: string | null): string | null => 
     return YOUTUBE_VIDEO_ID_PATTERN.test(value) ? value : null;
 };
 
-export function buildYoutubeMusicLocalTrack(track: ProviderTrack): LocalTrack {
+export function buildYoutubeMusicLocalTrack(track: StreamingProviderTrack): LocalTrack {
     const durationSeconds = typeof track.durationMs === "number" ? track.durationMs / 1000 : 0;
     const duration = durationSeconds ? formatSecondsToMmSs(durationSeconds) : " ";
     const uri = track.uri ?? buildYoutubeMusicUri(track.id);

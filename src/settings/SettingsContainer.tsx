@@ -8,9 +8,9 @@ import { Sidebar } from "@/components/Sidebar";
 import { TooltipProvider } from "@/components/TooltipProvider";
 import { SidebarSplitView } from "@/native-modules/SidebarSplitView";
 import { setWindowTitle } from "@/native-modules/WindowManager";
-import { getProviderPlugin, getProviderPlugins } from "@/providers/pluginRegistry";
-import { ensureProvidersRegistered } from "@/providers/setupProviders";
-import type { ProviderId } from "@/providers/types";
+import { getStreamingProviderPlugin, getStreamingProviderPlugins } from "@/providers/pluginRegistry";
+import { ensureStreamingProvidersRegistered } from "@/providers/setupProviders";
+import type { StreamingProviderId } from "@/providers/types";
 import { AccountSettings } from "@/settings/AccountSettings";
 import { AISettings } from "@/settings/AISettings";
 import { CustomizeUISettings } from "@/settings/CustomizeUISettings";
@@ -26,10 +26,11 @@ import { ax } from "@/utils/ax";
 export type SettingsPage = string;
 
 const PROVIDER_SETTINGS_PREFIX = "provider:";
-const buildProviderSettingsId = (providerId: ProviderId): SettingsPage => `${PROVIDER_SETTINGS_PREFIX}${providerId}`;
-const parseProviderSettingsId = (value: string): ProviderId | null =>
+const buildProviderSettingsId = (providerId: StreamingProviderId): SettingsPage =>
+    `${PROVIDER_SETTINGS_PREFIX}${providerId}`;
+const parseProviderSettingsId = (value: string): StreamingProviderId | null =>
     value.startsWith(PROVIDER_SETTINGS_PREFIX)
-        ? (value.slice(PROVIDER_SETTINGS_PREFIX.length) as ProviderId)
+        ? (value.slice(PROVIDER_SETTINGS_PREFIX.length) as StreamingProviderId)
         : null;
 const normalizeSettingsKey = (value: string): string =>
     value
@@ -44,7 +45,7 @@ const coerceSettingsPage = (value: string): SettingsPage => {
     }
 
     const normalizedValue = normalizeSettingsKey(value);
-    const providerMatch = getProviderPlugins().find((plugin) => {
+    const providerMatch = getStreamingProviderPlugins().find((plugin) => {
         const idKey = normalizeSettingsKey(plugin.provider.id);
         const nameKey = normalizeSettingsKey(plugin.provider.name);
         return normalizedValue === idKey || normalizedValue === nameKey;
@@ -58,10 +59,10 @@ const coerceSettingsPage = (value: string): SettingsPage => {
 };
 
 // Define the categories for settings
-ensureProvidersRegistered();
+ensureStreamingProvidersRegistered();
 
 const buildSettingPages = (): { id: SettingsPage; name: string }[] => {
-    const providerPages = getProviderPlugins()
+    const providerPages = getStreamingProviderPlugins()
         .filter((plugin) => plugin.ui?.settings)
         .map((plugin) => ({
             id: buildProviderSettingsId(plugin.provider.id),
@@ -85,8 +86,8 @@ function Content({ selectedItem$ }: { selectedItem$: Observable<SettingsPage> })
     const providerId = parseProviderSettingsId(selectedItem);
 
     if (providerId) {
-        const ProviderSettings = getProviderPlugin(providerId)?.ui?.settings ?? null;
-        return ProviderSettings ? <ProviderSettings /> : null;
+        const StreamingProviderSettings = getStreamingProviderPlugin(providerId)?.ui?.settings ?? null;
+        return StreamingProviderSettings ? <StreamingProviderSettings /> : null;
     }
 
     switch (selectedItem) {

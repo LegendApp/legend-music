@@ -1,14 +1,14 @@
 import { createJSONManager } from "@/utils/JSONManager";
-import type { ProviderPlaylist, ProviderTrack } from "@/providers/types";
+import type { StreamingProviderPlaylist, StreamingProviderTrack } from "@/providers/types";
 
 export interface SpotifyCachedSearch {
     query: string;
-    tracks: ProviderTrack[];
+    tracks: StreamingProviderTrack[];
     fetchedAt: number;
 }
 
 export interface SpotifyCachedPlaylist {
-    playlist: ProviderPlaylist;
+    playlist: StreamingProviderPlaylist;
     fetchedAt: number;
 }
 
@@ -25,7 +25,7 @@ export const spotifyCache$ = createJSONManager<SpotifyCacheState>({
     },
 });
 
-export function cacheSearchResult(query: string, tracks: ProviderTrack[]): void {
+export function cacheSearchResult(query: string, tracks: StreamingProviderTrack[]): void {
     spotifyCache$.searches[query].set({
         query,
         tracks,
@@ -41,7 +41,7 @@ export function getCachedSearch(query: string): SpotifyCachedSearch | null {
     return entry as SpotifyCachedSearch;
 }
 
-export function cachePlaylist(playlist: ProviderPlaylist): void {
+export function cachePlaylist(playlist: StreamingProviderPlaylist): void {
     spotifyCache$.playlists[playlist.id].set({
         playlist,
         fetchedAt: Date.now(),

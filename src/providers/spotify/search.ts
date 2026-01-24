@@ -1,9 +1,9 @@
 import { computed } from "@legendapp/state";
-import type { ProviderSearchInput, ProviderSearchProvider } from "@/providers/search/types";
+import type { StreamingProviderSearchInput, StreamingProviderSearchProvider } from "@/providers/search/types";
 import { spotifyAuthState$ } from "@/providers/spotify/authState";
 import { logSpotifyDebug } from "@/providers/spotify/logging";
 import { buildSpotifyLocalTrack } from "@/providers/spotify/trackMapping";
-import type { ProviderTrack } from "@/providers/types";
+import type { StreamingProviderTrack } from "@/providers/types";
 import { ensureSpotifyAccessToken } from "./auth";
 import { SPOTIFY_API_BASE } from "./constants";
 
@@ -25,7 +25,7 @@ type SpotifySearchResponse = {
 const SPOTIFY_SEARCH_PAGE_SIZE = 50;
 const SPOTIFY_SEARCH_MAX_RESULTS = 200;
 
-const mapSpotifyTrack = (track: SpotifyTrack): ProviderTrack => {
+const mapSpotifyTrack = (track: SpotifyTrack): StreamingProviderTrack => {
     const artistUrls = (track.artists ?? [])
         .map((artist) => artist.external_urls?.spotify)
         .filter((url): url is string => Boolean(url));
@@ -77,7 +77,7 @@ const fetchSpotifyTracksPage = async (
 const searchSpotifyTracksPaged = async (
     query: string,
     options?: { limit?: number; maxResults?: number },
-): Promise<ProviderTrack[]> => {
+): Promise<StreamingProviderTrack[]> => {
     if (!query.trim()) {
         return [];
     }
@@ -89,7 +89,7 @@ const searchSpotifyTracksPaged = async (
 
     const pageSize = Math.min(options?.limit ?? SPOTIFY_SEARCH_PAGE_SIZE, SPOTIFY_SEARCH_PAGE_SIZE);
     const maxResults = options?.maxResults ?? SPOTIFY_SEARCH_MAX_RESULTS;
-    const tracks: ProviderTrack[] = [];
+    const tracks: StreamingProviderTrack[] = [];
 
     for (let offset = 0; offset < maxResults; offset += pageSize) {
         const items = await fetchSpotifyTracksPage(query, token, pageSize, offset);
@@ -105,7 +105,7 @@ const searchSpotifyTracksPaged = async (
     return tracks.slice(0, maxResults);
 };
 
-export async function searchSpotifyTracks(query: string, limit = 10): Promise<ProviderTrack[]> {
+export async function searchSpotifyTracks(query: string, limit = 10): Promise<StreamingProviderTrack[]> {
     if (!query.trim()) {
         return [];
     }
@@ -125,7 +125,7 @@ export async function searchSpotifyTracks(query: string, limit = 10): Promise<Pr
 export async function fetchSpotifyArtistTracks(
     artist: string,
     options?: { maxResults?: number },
-): Promise<ProviderTrack[]> {
+): Promise<StreamingProviderTrack[]> {
     const query = `artist:"${escapeSpotifyQuery(artist)}"`;
     return searchSpotifyTracksPaged(query, { maxResults: options?.maxResults });
 }
@@ -133,7 +133,7 @@ export async function fetchSpotifyArtistTracks(
 export async function fetchSpotifyAlbumTracks(
     album: string,
     options?: { artist?: string | null; maxResults?: number },
-): Promise<ProviderTrack[]> {
+): Promise<StreamingProviderTrack[]> {
     const escapedAlbum = escapeSpotifyQuery(album);
     const artist = options?.artist?.trim();
     const query = artist
@@ -150,11 +150,11 @@ export const isSpotifySearchEnabled$ = computed(() => {
     return Boolean(auth.refreshToken || hasValidAccessToken);
 });
 
-export const spotifySearchProvider: ProviderSearchProvider = {
+export const spotifySearchProvider: StreamingProviderSearchProvider = {
     id: "spotify",
     searchMode: "submit",
     isEnabled$: isSpotifySearchEnabled$,
-    async search({ query }: ProviderSearchInput) {
+    async search({ query }: StreamingProviderSearchInput) {
         const trimmed = query.trim();
         if (!trimmed) {
             return [];

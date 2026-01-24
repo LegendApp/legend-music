@@ -1,7 +1,7 @@
 import { Linking } from "react-native";
 import { SpotifySourceBadge } from "@/components/SpotifySourceBadge";
 import type { ContextMenuItem } from "@/native-modules/ContextMenu";
-import type { ProviderPlugin } from "@/providers/pluginRegistry";
+import type { StreamingProviderPlugin } from "@/providers/pluginRegistry";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import { isSpotifyAuthenticated$ } from "@/providers/spotify/authState";
 import { spotifyPlaybackProvider } from "@/providers/spotify/playbackProvider";
@@ -38,7 +38,7 @@ const openExternalUrl = async (url: string): Promise<boolean> => {
     }
 };
 
-export const spotifyPlugin: ProviderPlugin = {
+export const spotifyPlugin: StreamingProviderPlugin = {
     provider: spotifyProvider,
     search: spotifySearchProvider,
     playback: spotifyPlaybackProvider,

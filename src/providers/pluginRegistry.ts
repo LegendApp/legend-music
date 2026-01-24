@@ -1,59 +1,59 @@
 import type { Observable } from "@legendapp/state";
 import type { ComponentType } from "react";
-import { registerProvider } from "@/providers/providerRegistry";
+import { registerStreamingProvider } from "@/providers/streamingProviderRegistry";
 import { registerSearchProvider } from "@/providers/search/registry";
-import type { ProviderSearchProvider } from "@/providers/search/types";
+import type { StreamingProviderSearchProvider } from "@/providers/search/types";
 import {
     registerPlaybackProvider,
     type PlaybackProvider,
-    type Provider,
-    type ProviderId,
-    type ProviderInitOptions,
-    type ProviderPlaylist,
-    type ProviderTrack,
+    type StreamingProvider,
+    type StreamingProviderId,
+    type StreamingProviderInitOptions,
+    type StreamingProviderPlaylist,
+    type StreamingProviderTrack,
 } from "@/providers/types";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import type { ContextMenuItem } from "@/native-modules/ContextMenu";
 
-export type ProviderPluginInitContext = {
+export type StreamingProviderPluginInitContext = {
     reason: "app-start" | "manual" | "background";
-    providerOptions?: ProviderInitOptions;
+    providerOptions?: StreamingProviderInitOptions;
 };
 
-export type ProviderLibraryPlugin = {
-    sync?: (options?: { reason?: ProviderPluginInitContext["reason"] }) => Promise<void>;
-    listPlaylists?: (options?: { force?: boolean }) => Promise<ProviderPlaylist[]>;
-    listPlaylistTracks?: (playlistId: string, options?: { force?: boolean }) => Promise<ProviderTrack[]>;
-    playlists$?: Observable<ProviderPlaylist[]>;
-    status$?: Observable<ProviderLibraryStatus>;
+export type StreamingProviderLibraryPlugin = {
+    sync?: (options?: { reason?: StreamingProviderPluginInitContext["reason"] }) => Promise<void>;
+    listPlaylists?: (options?: { force?: boolean }) => Promise<StreamingProviderPlaylist[]>;
+    listPlaylistTracks?: (playlistId: string, options?: { force?: boolean }) => Promise<StreamingProviderTrack[]>;
+    playlists$?: Observable<StreamingProviderPlaylist[]>;
+    status$?: Observable<StreamingProviderLibraryStatus>;
 };
 
-export type ProviderLibraryStatus = {
+export type StreamingProviderLibraryStatus = {
     isLoading: boolean;
     error: string | null;
     tracksLoading?: Record<string, boolean>;
     tracksError?: Record<string, string | null>;
 };
 
-export type ProviderTrackMapper = {
+export type StreamingProviderTrackMapper = {
     isUri?: (value: string) => boolean;
-    toLocalTrack?: (track: ProviderTrack, options?: { index?: number }) => LocalTrack;
+    toLocalTrack?: (track: StreamingProviderTrack, options?: { index?: number }) => LocalTrack;
 };
 
-export type ProviderTrackContextMenu = {
+export type StreamingProviderTrackContextMenu = {
     getItems: (track: LocalTrack) => ContextMenuItem[];
     onSelect?: (selection: string, track: LocalTrack) => Promise<boolean> | boolean;
 };
 
-export type ProviderPlugin = {
-    provider: Provider;
-    initialize?: (context?: ProviderPluginInitContext) => Promise<void> | void;
+export type StreamingProviderPlugin = {
+    provider: StreamingProvider;
+    initialize?: (context?: StreamingProviderPluginInitContext) => Promise<void> | void;
     teardown?: () => void;
-    search?: ProviderSearchProvider;
+    search?: StreamingProviderSearchProvider;
     playback?: PlaybackProvider;
-    library?: ProviderLibraryPlugin;
-    tracks?: ProviderTrackMapper;
-    trackContextMenu?: ProviderTrackContextMenu;
+    library?: StreamingProviderLibraryPlugin;
+    tracks?: StreamingProviderTrackMapper;
+    trackContextMenu?: StreamingProviderTrackContextMenu;
     ui?: {
         bridge?: ComponentType | null;
         settings?: ComponentType | null;
@@ -61,10 +61,10 @@ export type ProviderPlugin = {
     };
 };
 
-const registry: Record<ProviderId, ProviderPlugin> = {};
+const registry: Record<StreamingProviderId, StreamingProviderPlugin> = {};
 
-export function registerProviderPlugin(plugin: ProviderPlugin): void {
-    registerProvider(plugin.provider);
+export function registerStreamingProviderPlugin(plugin: StreamingProviderPlugin): void {
+    registerStreamingProvider(plugin.provider);
     if (plugin.search) {
         registerSearchProvider(plugin.search);
     }
@@ -74,22 +74,22 @@ export function registerProviderPlugin(plugin: ProviderPlugin): void {
     registry[plugin.provider.id] = plugin;
 }
 
-export function getProviderPlugin(providerId: ProviderId): ProviderPlugin | undefined {
+export function getStreamingProviderPlugin(providerId: StreamingProviderId): StreamingProviderPlugin | undefined {
     return registry[providerId];
 }
 
-export function getProviderPlugins(): ProviderPlugin[] {
+export function getStreamingProviderPlugins(): StreamingProviderPlugin[] {
     return Object.values(registry);
 }
 
-export function getProviderPluginForUri(value: string): ProviderPlugin | undefined {
+export function getStreamingProviderPluginForUri(value: string): StreamingProviderPlugin | undefined {
     if (!value) {
         return undefined;
     }
 
-    return getProviderPlugins().find((plugin) => plugin.tracks?.isUri?.(value));
+    return getStreamingProviderPlugins().find((plugin) => plugin.tracks?.isUri?.(value));
 }
 
-export function getProviderIdForUri(value: string): ProviderId | null {
-    return getProviderPluginForUri(value)?.provider.id ?? null;
+export function getStreamingProviderIdForUri(value: string): StreamingProviderId | null {
+    return getStreamingProviderPluginForUri(value)?.provider.id ?? null;
 }

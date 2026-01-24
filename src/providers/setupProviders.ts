@@ -1,6 +1,10 @@
 import { localPlugin } from "@/providers/local/plugin";
-import { getProviderPlugins, registerProviderPlugin, type ProviderPluginInitContext } from "@/providers/pluginRegistry";
-import { setProviderSession } from "@/providers/providerRegistry";
+import {
+    getStreamingProviderPlugins,
+    registerStreamingProviderPlugin,
+    type StreamingProviderPluginInitContext,
+} from "@/providers/pluginRegistry";
+import { setStreamingProviderSession } from "@/providers/streamingProviderRegistry";
 import { localLibrarySearchProvider } from "@/providers/localLibrary/search";
 import { registerSearchProvider } from "@/providers/search/registry";
 import { appleMusicPlugin } from "@/providers/appleMusic/plugin";
@@ -9,36 +13,36 @@ import { youtubeMusicPlugin } from "@/providers/youtubeMusic/plugin";
 
 let initialized = false;
 
-export function ensureProvidersRegistered(): void {
+export function ensureStreamingProvidersRegistered(): void {
     if (initialized) {
         return;
     }
-    registerProviderPlugin(localPlugin);
-    registerProviderPlugin(appleMusicPlugin);
-    registerProviderPlugin(spotifyPlugin);
-    registerProviderPlugin(youtubeMusicPlugin);
+    registerStreamingProviderPlugin(localPlugin);
+    registerStreamingProviderPlugin(appleMusicPlugin);
+    registerStreamingProviderPlugin(spotifyPlugin);
+    registerStreamingProviderPlugin(youtubeMusicPlugin);
     registerSearchProvider(localLibrarySearchProvider);
     initialized = true;
 }
 
-export async function initializeProviderPlugins(
-    context: ProviderPluginInitContext = { reason: "app-start" },
+export async function initializeStreamingProviderPlugins(
+    context: StreamingProviderPluginInitContext = { reason: "app-start" },
 ): Promise<void> {
-    ensureProvidersRegistered();
-    const plugins = getProviderPlugins();
+    ensureStreamingProvidersRegistered();
+    const plugins = getStreamingProviderPlugins();
 
     for (const plugin of plugins) {
         const providerOptions = {
             ...context.providerOptions,
             onStateChange: (session) => {
-                setProviderSession(plugin.provider.id, session);
+                setStreamingProviderSession(plugin.provider.id, session);
                 context.providerOptions?.onStateChange?.(session);
             },
         };
 
         try {
             await plugin.provider.initialize(providerOptions);
-            setProviderSession(plugin.provider.id, plugin.provider.getSession());
+            setStreamingProviderSession(plugin.provider.id, plugin.provider.getSession());
         } catch (error) {
             console.error(`Failed to initialize provider ${plugin.provider.id}`, error);
         }

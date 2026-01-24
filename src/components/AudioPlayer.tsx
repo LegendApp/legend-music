@@ -2,9 +2,9 @@ import { observable } from "@legendapp/state";
 import { undoRedo } from "@legendapp/state/helpers/undoRedo";
 import { showToast } from "@/components/Toast";
 import { localPlaybackProvider, LocalTrackNotFoundError } from "@/providers/local/playbackProvider";
-import { getProviderPlugins } from "@/providers/pluginRegistry";
-import { getProvider } from "@/providers/providerRegistry";
-import { ensureProvidersRegistered } from "@/providers/setupProviders";
+import { getStreamingProviderPlugins } from "@/providers/pluginRegistry";
+import { getStreamingProvider } from "@/providers/streamingProviderRegistry";
+import { ensureStreamingProvidersRegistered } from "@/providers/setupProviders";
 import { getPlaybackProviderForTrack, type PlaybackProvider, type PlaybackStateUpdate } from "@/providers/types";
 import appExit from "@/native-modules/AppExit";
 import { appState$ } from "@/observables/appState";
@@ -650,7 +650,7 @@ async function play(): Promise<void> {
         await provider.play();
     } catch (error) {
         console.error("Error playing:", error);
-        const providerName = getProvider(provider.id)?.name ?? "Playback";
+        const providerName = getStreamingProvider(provider.id)?.name ?? "Playback";
         showToast(error instanceof Error ? error.message : `${providerName} playback failed`, "error");
         audioPlayerState$.error.set(error instanceof Error ? error.message : "Play failed");
     }
@@ -1456,10 +1456,10 @@ export function initializeAudioPlayer(): void {
     }
 
     audioPlayerInitialized = true;
-    ensureProvidersRegistered();
+    ensureStreamingProvidersRegistered();
     ensureQueueUndoRedo();
     perfCount("LocalAudioPlayer.initialize");
-    const playbackProviders = getProviderPlugins()
+    const playbackProviders = getStreamingProviderPlugins()
         .map((plugin) => plugin.playback)
         .filter((provider): provider is PlaybackProvider => Boolean(provider));
 

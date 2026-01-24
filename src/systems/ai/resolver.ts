@@ -1,6 +1,6 @@
-import type { ProviderSearchProvider } from "@/providers/search/types";
+import type { StreamingProviderSearchProvider } from "@/providers/search/types";
 import { enabledSearchProviderIds$, getSearchProviders } from "@/providers/search/registry";
-import type { ProviderId } from "@/providers/types";
+import type { StreamingProviderId } from "@/providers/types";
 import { normalizeArtistName } from "@/systems/LibraryState";
 import { logAiDebug, warnAiDebug } from "@/systems/ai/logging";
 import { localMusicState$, type LocalTrack } from "@/systems/LocalMusicState";
@@ -89,7 +89,7 @@ const formatSearchPhrase = (value?: string): string | null => {
     return sanitized.includes(" ") ? `"${sanitized}"` : sanitized;
 };
 
-const buildProviderSearchQuery = (suggestion: AISuggestedTrack, providerId: ProviderId): string => {
+const buildProviderSearchQuery = (suggestion: AISuggestedTrack, providerId: StreamingProviderId): string => {
     if (providerId === "spotify") {
         const parts = [
             formatSpotifyField("track", suggestion.title),
@@ -254,9 +254,9 @@ const selectBestCandidate = (suggestion: NormalizedSuggestion, candidates: Candi
     return pickBestCandidate(candidates);
 };
 
-const sortProviders = (providers: ProviderSearchProvider[], preferred: ProviderId[] = []) => {
+const sortProviders = (providers: StreamingProviderSearchProvider[], preferred: StreamingProviderId[] = []) => {
     const providerMap = new Map(providers.map((provider) => [provider.id, provider]));
-    const ordered: ProviderSearchProvider[] = [];
+    const ordered: StreamingProviderSearchProvider[] = [];
 
     for (const id of preferred) {
         const provider = providerMap.get(id);
@@ -275,7 +275,7 @@ const sortProviders = (providers: ProviderSearchProvider[], preferred: ProviderI
 
 const resolveViaProviders = async (
     suggestion: AISuggestedTrack,
-    providers: ProviderSearchProvider[],
+    providers: StreamingProviderSearchProvider[],
 ): Promise<LocalTrack | null> => {
     const normalizedSuggestion = normalizeSuggestion(suggestion);
 
@@ -357,7 +357,7 @@ const resolveViaProviders = async (
 
 export const resolveSuggestedTracks = async (
     suggestions: AISuggestedTrack[],
-    options: { preferredProviders?: ProviderId[]; restrictToProviders?: ProviderId[] } = {},
+    options: { preferredProviders?: StreamingProviderId[]; restrictToProviders?: StreamingProviderId[] } = {},
 ): Promise<AIResolveResult> => {
     const localTracks = localMusicState$.tracks.peek();
     const indexes = buildLocalIndexes(localTracks);

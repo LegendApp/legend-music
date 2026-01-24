@@ -1,10 +1,10 @@
 import { createJSONManager } from "@/utils/JSONManager";
-import type { ProviderPlaylist, ProviderTrack } from "@/providers/types";
+import type { StreamingProviderPlaylist, StreamingProviderTrack } from "@/providers/types";
 
 export interface SpotifyState {
-    playlists: ProviderPlaylist[];
+    playlists: StreamingProviderPlaylist[];
     playlistsFetchedAt: number | null;
-    tracksByPlaylistId: Record<string, ProviderTrack[]>;
+    tracksByPlaylistId: Record<string, StreamingProviderTrack[]>;
     tracksFetchedAtByPlaylistId: Record<string, number>;
 }
 

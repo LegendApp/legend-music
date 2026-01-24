@@ -7,8 +7,11 @@ import { Button } from "@/components/Button";
 import { DropdownMenu, type DropdownMenuRootRef } from "@/components/DropdownMenu";
 import { TextInputSearch, type TextInputSearchRef } from "@/components/TextInputSearch";
 import { TrackItem } from "@/components/TrackItem";
-import { getProvider } from "@/providers/providerRegistry";
-import { enabledSearchProviderIds$, getSearchProvider } from "@/providers/search/registry";
+import { getStreamingProvider } from "@/providers/streamingProviderRegistry";
+import {
+    enabledSearchProviderIds$,
+    getSearchProvider,
+} from "@/providers/search/registry";
 import type { SearchResult } from "@/providers/search/types";
 import type { LibraryItem } from "@/systems/LibraryState";
 import { library$ } from "@/systems/LibraryState";
@@ -54,7 +57,7 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
             return enabledSearchProviderIds
                 .filter((providerId) => providerId !== "local")
                 .map((providerId) => {
-                    const provider = getProvider(providerId);
+                    const provider = getStreamingProvider(providerId);
                     const searchProvider = getSearchProvider(providerId);
                     if (!provider || !searchProvider) {
                         return null;

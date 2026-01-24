@@ -8,8 +8,8 @@ import { showToast } from "@/components/Toast";
 import type { TrackData } from "@/components/TrackItem";
 import { usePlaylistSelection } from "@/hooks/usePlaylistSelection";
 import { type ContextMenuItem, showContextMenu } from "@/native-modules/ContextMenu";
-import { getProviderIdForUri, getProviderPlugin } from "@/providers/pluginRegistry";
-import type { ProviderId } from "@/providers/types";
+import { getStreamingProviderIdForUri, getStreamingProviderPlugin } from "@/providers/pluginRegistry";
+import type { StreamingProviderId } from "@/providers/types";
 import {
     getArtistKey,
     type LibraryTrack,
@@ -30,7 +30,7 @@ type TrackListItem = TrackData;
 type LibraryTrackListItem = TrackData & { sourceTrack?: LibraryTrack };
 
 const ADD_TO_PLAYLIST_MENU_ITEM: ContextMenuItem = { id: "add-to-playlist", title: "Add to Playlist…" };
-const isLocalProviderTrack = (track?: { provider?: ProviderId | null }): boolean =>
+const isLocalProviderTrack = (track?: { provider?: StreamingProviderId | null }): boolean =>
     !track?.provider || track.provider === "local";
 
 const getSortableTrackNumber = (track: LibraryTrack): number | null => {
@@ -204,7 +204,7 @@ interface BuildTrackItemsInput {
     playlists: LocalPlaylist[];
     selectedView: LibraryView;
     selectedPlaylistId: string | null;
-    selectedPlaylistProvider: ProviderId | null;
+    selectedPlaylistProvider: StreamingProviderId | null;
     selectedPlaylistTracks?: LibraryTrack[];
     searchQuery: string;
     playlistSort: PlaylistSortMode;
@@ -426,7 +426,7 @@ export function buildTrackItems({
                 return resolved;
             }
 
-            const remoteProviderId = getProviderIdForUri(entry.filePath);
+            const remoteProviderId = getStreamingProviderIdForUri(entry.filePath);
             if (remoteProviderId) {
                 return buildTrackFromPlaylistEntry(entry, remoteProviderId) as LibraryTrack;
             }
@@ -453,7 +453,7 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
     const playlistSortDirection = useValue(libraryUI$.playlistSortDirection);
     const allTracks = useValue(library$.tracks);
     const playlists = useValue(localMusicState$.playlists);
-    const providerPlugin = selectedPlaylistProvider ? getProviderPlugin(selectedPlaylistProvider) : null;
+    const providerPlugin = selectedPlaylistProvider ? getStreamingProviderPlugin(selectedPlaylistProvider) : null;
     const [providerPlaylistTracks, setProviderPlaylistTracks] = useState<LibraryTrack[]>([]);
     const skipClickRef = useRef(false);
 

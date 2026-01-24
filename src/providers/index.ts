@@ -1,6 +1,6 @@
 export * from "./types";
 export * from "./pluginRegistry";
-export * from "./providerRegistry";
+export * from "./streamingProviderRegistry";
 export * from "./setupProviders";
 export * from "./localProvider";
 export * from "./appleMusic";

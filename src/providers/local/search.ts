@@ -1,4 +1,8 @@
-import type { ProviderSearchInput, ProviderSearchProvider, SearchResult } from "@/providers/search/types";
+import type {
+    StreamingProviderSearchInput,
+    StreamingProviderSearchProvider,
+    SearchResult,
+} from "@/providers/search/types";
 
 const MAX_RESULTS = 20;
 
@@ -7,7 +11,7 @@ export function buildLocalSearchResults({
     tracks = [],
     playlists = [],
     albums = [],
-}: ProviderSearchInput): SearchResult[] {
+}: StreamingProviderSearchInput): SearchResult[] {
     const trimmed = query.trim();
     if (!trimmed) {
         return [];
@@ -52,7 +56,7 @@ export function buildLocalSearchResults({
     return results;
 }
 
-export const localSearchProvider: ProviderSearchProvider = {
+export const localSearchProvider: StreamingProviderSearchProvider = {
     id: "local",
     searchMode: "immediate",
     search: (input) => buildLocalSearchResults(input),

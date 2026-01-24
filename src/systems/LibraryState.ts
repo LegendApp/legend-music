@@ -5,7 +5,7 @@ import { type LocalTrack, librarySettings$, localMusicState$ } from "@/systems/L
 import { perfCount, perfLog, perfTime } from "@/utils/perfLogger";
 import { runAfterInteractions } from "@/utils/runAfterInteractions";
 import { resolveThumbnailFromFields } from "@/utils/thumbnails";
-import type { ProviderId } from "@/providers/types";
+import type { StreamingProviderId } from "@/providers/types";
 
 export interface LibraryItem {
     id: string;
@@ -34,7 +34,7 @@ export type PlaylistSortDirection = "asc" | "desc";
 export interface LibraryUIState {
     selectedView: LibraryView;
     selectedPlaylistId: string | null;
-    selectedPlaylistProvider: ProviderId | null;
+    selectedPlaylistProvider: StreamingProviderId | null;
     searchQuery: string;
     playlistSort: PlaylistSortMode;
     playlistSortDirection: PlaylistSortDirection;
@@ -75,7 +75,7 @@ export function selectLibraryView(view: LibraryView): void {
     }
 }
 
-export function selectLibraryPlaylist(playlistId: string | null, providerId: ProviderId = "local"): void {
+export function selectLibraryPlaylist(playlistId: string | null, providerId: StreamingProviderId = "local"): void {
     libraryUI$.selectedView.set("playlist");
     libraryUI$.selectedPlaylistId.set(playlistId);
     libraryUI$.selectedPlaylistProvider.set(playlistId ? providerId : null);

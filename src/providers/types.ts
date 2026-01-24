@@ -1,8 +1,8 @@
 import type { LocalTrack } from "@/systems/LocalMusicState";
 
-export type ProviderId = "local" | "spotify" | "appleMusic" | "youtubeMusic" | (string & {});
+export type StreamingProviderId = "local" | "spotify" | "appleMusic" | "youtubeMusic" | (string & {});
 
-export interface ProviderCapabilities {
+export interface StreamingProviderCapabilities {
     supportsSearch: boolean;
     supportsLibrary: boolean;
     supportsPlayback: boolean;
@@ -10,7 +10,7 @@ export interface ProviderCapabilities {
     requiresWebView?: boolean;
 }
 
-export interface ProviderSession {
+export interface StreamingProviderSession {
     isAuthenticated: boolean;
     userDisplayName?: string;
     userId?: string;
@@ -21,8 +21,8 @@ export interface ProviderSession {
     deviceId?: string | null;
 }
 
-export interface ProviderTrack {
-    provider: ProviderId;
+export interface StreamingProviderTrack {
+    provider: StreamingProviderId;
     id: string;
     uri: string;
     name: string;
@@ -38,8 +38,8 @@ export interface ProviderTrack {
     popularity?: number;
 }
 
-export interface ProviderPlaylist {
-    provider: ProviderId;
+export interface StreamingProviderPlaylist {
+    provider: StreamingProviderId;
     id: string;
     uri: string;
     name: string;
@@ -49,17 +49,17 @@ export interface ProviderPlaylist {
     isEditable?: boolean;
 }
 
-export interface ProviderInitOptions {
-    onStateChange?: (session: ProviderSession) => void;
+export interface StreamingProviderInitOptions {
+    onStateChange?: (session: StreamingProviderSession) => void;
 }
 
-export interface Provider {
-    id: ProviderId;
+export interface StreamingProvider {
+    id: StreamingProviderId;
     name: string;
-    capabilities: ProviderCapabilities;
-    initialize(options?: ProviderInitOptions): Promise<void>;
+    capabilities: StreamingProviderCapabilities;
+    initialize(options?: StreamingProviderInitOptions): Promise<void>;
     teardown(): void;
-    getSession(): ProviderSession;
+    getSession(): StreamingProviderSession;
     login(): Promise<{ authorizeUrl: string; state: string }>;
     completeLogin(params: { code: string; state: string }): Promise<void>;
     logout(): Promise<void>;
@@ -79,7 +79,7 @@ export type PlaybackStateUpdate = {
 };
 
 export interface PlaybackProvider {
-    id: ProviderId;
+    id: StreamingProviderId;
     canHandle: (track: LocalTrack) => boolean;
     startsPlaybackOnLoad?: boolean;
     isAvailable?: () => boolean;
@@ -95,13 +95,13 @@ export interface PlaybackProvider {
     onStateChange?: (handler: (update: PlaybackStateUpdate) => void) => () => void;
 }
 
-const playbackRegistry: Record<ProviderId, PlaybackProvider> = {};
+const playbackRegistry: Record<StreamingProviderId, PlaybackProvider> = {};
 
 export function registerPlaybackProvider(provider: PlaybackProvider): void {
     playbackRegistry[provider.id] = provider;
 }
 
-export function getPlaybackProvider(providerId: ProviderId): PlaybackProvider | undefined {
+export function getPlaybackProvider(providerId: StreamingProviderId): PlaybackProvider | undefined {
     return playbackRegistry[providerId];
 }
 

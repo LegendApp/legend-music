@@ -1,4 +1,4 @@
-import type { ProviderTrack } from "@/providers/types";
+import type { StreamingProviderTrack } from "@/providers/types";
 import { ensureSpotifyAccessToken } from "@/providers/spotify/auth";
 import { SPOTIFY_API_BASE } from "@/providers/spotify/constants";
 import { isSpotifySearchEnabled$, searchSpotifyTracks } from "@/providers/spotify/search";
@@ -24,7 +24,7 @@ type SpotifyRecommendationsResponse = {
     tracks?: SpotifyTrack[];
 };
 
-const mapSpotifyTrack = (track: SpotifyTrack): ProviderTrack => {
+const mapSpotifyTrack = (track: SpotifyTrack): StreamingProviderTrack => {
     const artistUrls = (track.artists ?? [])
         .map((artist) => artist.external_urls?.spotify)
         .filter((url): url is string => Boolean(url));
@@ -92,7 +92,10 @@ const resolveSeedTrackIds = async (seedTracks: LocalTrack[]): Promise<string[]> 
     return ids;
 };
 
-const fetchSpotifyRecommendations = async (seedTrackIds: string[], limit: number): Promise<ProviderTrack[]> => {
+const fetchSpotifyRecommendations = async (
+    seedTrackIds: string[],
+    limit: number,
+): Promise<StreamingProviderTrack[]> => {
     if (seedTrackIds.length === 0) {
         return [];
     }
@@ -102,16 +105,14 @@ const fetchSpotifyRecommendations = async (seedTrackIds: string[], limit: number
         throw new Error("Spotify login required before fetching recommendations");
     }
 
-    const response = await fetch(
-        `${SPOTIFY_API_BASE}/recommendations?limit=${encodeURIComponent(String(limit))}&seed_tracks=${encodeURIComponent(
-            seedTrackIds.join(","),
-        )}`,
-        {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
+    const recommendationsUrl =
+        `${SPOTIFY_API_BASE}/recommendations?limit=${encodeURIComponent(String(limit))}&seed_tracks=` +
+        encodeURIComponent(seedTrackIds.join(","));
+    const response = await fetch(recommendationsUrl, {
+        headers: {
+            Authorization: `Bearer ${token}`,
         },
-    );
+    });
 
     if (!response.ok) {
         const text = await response.text();
@@ -141,7 +142,7 @@ const dedupeTracks = (tracks: LocalTrack[]): LocalTrack[] => {
 
 const suggestQueueExtension = async (seedTracks: LocalTrack[], count: number): Promise<LocalTrack[]> => {
     const seedIds = await resolveSeedTrackIds(seedTracks);
-    let recommendations: ProviderTrack[] = [];
+    let recommendations: StreamingProviderTrack[] = [];
 
     if (seedIds.length > 0) {
         recommendations = await fetchSpotifyRecommendations(seedIds, count);
@@ -161,7 +162,7 @@ const suggestPlaylist = async (prompt: string, count: number): Promise<LocalTrac
     const searchResults = await searchSpotifyTracks(prompt, Math.min(count, 5));
     const seedId = searchResults[0]?.id ?? null;
 
-    let recommendations: ProviderTrack[] = [];
+    let recommendations: StreamingProviderTrack[] = [];
     if (seedId) {
         recommendations = await fetchSpotifyRecommendations([seedId], count);
     }

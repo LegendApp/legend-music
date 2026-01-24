@@ -1,5 +1,5 @@
 import { aiCommandRunner } from "@/native-modules/AICommandRunner";
-import type { ProviderId } from "@/providers/types";
+import type { StreamingProviderId } from "@/providers/types";
 import { LOCAL_LIBRARY_PROVIDER_ID } from "@/providers/localLibrary/constants";
 import { aiAvailability$ } from "@/systems/ai/availability";
 import { readMediaLibraryCsv } from "@/systems/ai/libraryCsv";
@@ -8,7 +8,12 @@ import { buildPlaylistPrompt, buildQueueExtensionPrompt } from "@/systems/ai/pro
 import { resolveSuggestedTracks } from "@/systems/ai/resolver";
 import type { AISuggestedTrack } from "@/systems/ai/types";
 import { settings$ } from "@/systems/Settings";
-import type { SuggestionProvider, SuggestionProviderId, SuggestionRequest, SuggestionResult } from "@/systems/suggestions/types";
+import type {
+    SuggestionProvider,
+    SuggestionProviderId,
+    SuggestionRequest,
+    SuggestionResult,
+} from "@/systems/suggestions/types";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 
 const DEFAULT_TRACK_COUNT = 10;
@@ -25,9 +30,9 @@ export type AiProviderConfig = {
 
 const buildProviderPreference = (
     seedTracks: LocalTrack[] | undefined,
-    preferredProviderId: ProviderId | "auto" | null | undefined,
-): ProviderId[] => {
-    const preferences: ProviderId[] = [];
+    preferredProviderId: StreamingProviderId | "auto" | null | undefined,
+): StreamingProviderId[] => {
+    const preferences: StreamingProviderId[] = [];
     if (preferredProviderId && preferredProviderId !== "auto") {
         preferences.push(preferredProviderId);
     }
@@ -36,7 +41,7 @@ const buildProviderPreference = (
         return preferences;
     }
 
-    const counts = new Map<ProviderId, number>();
+    const counts = new Map<StreamingProviderId, number>();
     for (const track of seedTracks) {
         if (!track.provider) {
             continue;

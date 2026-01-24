@@ -1,7 +1,7 @@
 import { Linking } from "react-native";
 import { YoutubeMusicSourceBadge } from "@/components/YoutubeMusicSourceBadge";
 import type { ContextMenuItem } from "@/native-modules/ContextMenu";
-import type { ProviderPlugin } from "@/providers/pluginRegistry";
+import type { StreamingProviderPlugin } from "@/providers/pluginRegistry";
 import { youtubeMusicProvider } from "@/providers/youtubeMusic/provider";
 import { youtubeMusicSearchProvider } from "@/providers/youtubeMusic/search";
 import { youtubeMusicPlaybackProvider } from "@/providers/youtubeMusic/playbackProvider";
@@ -36,7 +36,7 @@ const openExternalUrl = async (url: string): Promise<boolean> => {
     }
 };
 
-export const youtubeMusicPlugin: ProviderPlugin = {
+export const youtubeMusicPlugin: StreamingProviderPlugin = {
     provider: youtubeMusicProvider,
     search: youtubeMusicSearchProvider,
     playback: youtubeMusicPlaybackProvider,

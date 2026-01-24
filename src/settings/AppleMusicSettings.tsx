@@ -10,11 +10,11 @@ import {
     hasAppleMusicDeveloperToken$,
     isAppleMusicAuthorized$,
 } from "@/providers/appleMusic/authState";
-import { providerSettings$, setActiveProvider } from "@/providers/providerRegistry";
+import { streamingProviderSettings$, setActiveStreamingProvider } from "@/providers/streamingProviderRegistry";
 import { SettingsPage, SettingsRow, SettingsSection } from "@/settings/components";
 
 export function AppleMusicSettings() {
-    const providerSettings = useValue(providerSettings$);
+    const providerSettings = useValue(streamingProviderSettings$);
     const auth = useValue(appleMusicAuthState$);
     const hasDeveloperToken = useValue(hasAppleMusicDeveloperToken$);
     const isAuthorized = useValue(isAppleMusicAuthorized$);
@@ -23,7 +23,7 @@ export function AppleMusicSettings() {
     const [isLoggingIn, setIsLoggingIn] = useState(false);
 
     const handleAppleMusicToggle = useCallback((enabled: boolean) => {
-        setActiveProvider(enabled ? "appleMusic" : "local");
+        setActiveStreamingProvider(enabled ? "appleMusic" : "local");
     }, []);
 
     const handleLogin = useCallback(async () => {

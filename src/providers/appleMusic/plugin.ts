@@ -1,4 +1,4 @@
-import type { ProviderPlugin } from "@/providers/pluginRegistry";
+import type { StreamingProviderPlugin } from "@/providers/pluginRegistry";
 import { AppleMusicSourceBadge } from "@/components/AppleMusicSourceBadge";
 import { isAppleMusicAuthorized$ } from "@/providers/appleMusic/authState";
 import { appleMusicPlaybackProvider } from "@/providers/appleMusic/playbackProvider";
@@ -9,7 +9,7 @@ import { appleMusicSearchProvider } from "@/providers/appleMusic/search";
 import { buildAppleMusicLocalTrack, isAppleMusicUri } from "@/providers/appleMusic/trackMapping";
 import { AppleMusicSettings } from "@/settings/AppleMusicSettings";
 
-export const appleMusicPlugin: ProviderPlugin = {
+export const appleMusicPlugin: StreamingProviderPlugin = {
     provider: appleMusicProvider,
     search: appleMusicSearchProvider,
     playback: appleMusicPlaybackProvider,

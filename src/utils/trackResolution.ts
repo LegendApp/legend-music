@@ -2,8 +2,8 @@ import { getArtistKey, type LibraryItem, type LibraryTrack } from "@/systems/Lib
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import { DEFAULT_LOCAL_PLAYLIST_ID } from "@/systems/localMusicConstants";
 import { formatSecondsToMmSs, type M3UTrack } from "@/utils/m3u";
-import { getProviderIdForUri } from "@/providers/pluginRegistry";
-import type { ProviderId } from "@/providers/types";
+import { getStreamingProviderIdForUri } from "@/providers/pluginRegistry";
+import type { StreamingProviderId } from "@/providers/types";
 
 export interface PlaylistResolutionSource {
     id: string;
@@ -18,12 +18,12 @@ export interface PlaylistResolutionResult {
     missingPaths: string[];
 }
 
-export function buildTrackFromPlaylistEntry(entry: M3UTrack, providerId?: ProviderId | null): LocalTrack {
+export function buildTrackFromPlaylistEntry(entry: M3UTrack, providerId?: StreamingProviderId | null): LocalTrack {
     const durationSeconds = Number.isFinite(entry.duration) && entry.duration > 0 ? entry.duration : 0;
     const duration = durationSeconds > 0 ? formatSecondsToMmSs(durationSeconds) : " ";
     const title = entry.title || entry.filePath.split("/").pop() || entry.filePath;
     const artist = entry.artist ?? "Unknown Artist";
-    const resolvedProviderId = providerId ?? getProviderIdForUri(entry.filePath);
+    const resolvedProviderId = providerId ?? getStreamingProviderIdForUri(entry.filePath);
     const hasProvider = Boolean(resolvedProviderId);
 
     return {
@@ -78,7 +78,7 @@ export function resolvePlaylistTracks(
             continue;
         }
 
-        const providerId = getProviderIdForUri(entry.filePath);
+        const providerId = getStreamingProviderIdForUri(entry.filePath);
         if (providerId) {
             resolvedTracks.push(buildTrackFromPlaylistEntry(entry, providerId));
             continue;

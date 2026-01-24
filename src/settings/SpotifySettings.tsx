@@ -5,7 +5,7 @@ import { Linking, Text, View } from "react-native";
 import { Button } from "@/components/Button";
 import { Checkbox } from "@/components/Checkbox";
 import { showToast } from "@/components/Toast";
-import { providerSettings$, setActiveProvider } from "@/providers/providerRegistry";
+import { streamingProviderSettings$, setActiveStreamingProvider } from "@/providers/streamingProviderRegistry";
 import { completeSpotifyLogin, logoutSpotify, spotifyAuthState$, startSpotifyLogin } from "@/providers/spotify";
 import { SettingsPage, SettingsRow, SettingsSection } from "@/settings/components";
 import { stateSaved$ } from "@/systems/State";
@@ -24,7 +24,7 @@ const parseAuthParams = (url: string): { code?: string; state?: string } => {
 
 export function SpotifySettings() {
     const auth = useValue(spotifyAuthState$);
-    const providerSettings = useValue(providerSettings$);
+    const providerSettings = useValue(streamingProviderSettings$);
     const spotifyClientId = useValue(stateSaved$.spotifyClientId);
     const [isLoggingIn, setIsLoggingIn] = useState(false);
 
@@ -83,7 +83,7 @@ export function SpotifySettings() {
     const isSpotifyEnabled = activeProvider === "spotify";
     const isAuthenticated = Boolean(auth.accessToken && auth.refreshToken);
     const handleSpotifyToggle = useCallback((enabled: boolean) => {
-        setActiveProvider(enabled ? "spotify" : "local");
+        setActiveStreamingProvider(enabled ? "spotify" : "local");
     }, []);
 
     return (

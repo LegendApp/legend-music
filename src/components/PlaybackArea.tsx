@@ -6,7 +6,7 @@ import { audioControls, audioPlayerState$ } from "@/components/AudioPlayer";
 import { PlaybackControls } from "@/components/PlaybackControls";
 import { PlaybackTimeline } from "@/components/PlaybackTimeline";
 import { OVERLAY_WINDOW_WIDTH_COMPACT } from "@/overlay/OverlayConstants";
-import { getProviderPlugin } from "@/providers/pluginRegistry";
+import { getStreamingProviderPlugin } from "@/providers/pluginRegistry";
 import { getPlaybackProviderForTrack } from "@/providers/types";
 import { Icon } from "@/systems/Icon";
 import { localMusicState$ } from "@/systems/LocalMusicState";
@@ -43,7 +43,7 @@ export function PlaybackArea({ showBorder = true, overlayMode }: PlaybackAreaPro
     const isRemoteTrack = playbackProvider ? playbackProvider.id !== "local" : false;
     const providerBadgeSize = overlayModeEnabled ? 14 : 20;
     const ProviderBadge = currentTrack?.provider
-        ? getProviderPlugin(currentTrack.provider)?.ui?.badge ?? null
+        ? getStreamingProviderPlugin(currentTrack.provider)?.ui?.badge ?? null
         : null;
     const handleSeekDrag = useCallback(
         (value: number) => {

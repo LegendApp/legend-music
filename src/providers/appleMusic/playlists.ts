@@ -1,4 +1,4 @@
-import type { ProviderPlaylist, ProviderTrack } from "@/providers/types";
+import type { StreamingProviderPlaylist, StreamingProviderTrack } from "@/providers/types";
 import { ensureAppleMusicDeveloperToken } from "@/providers/appleMusic/auth";
 import { appleMusicAuthState$ } from "@/providers/appleMusic/authState";
 import { APPLE_MUSIC_API_BASE } from "@/providers/appleMusic/constants";
@@ -84,7 +84,7 @@ const resolveNextUrl = (next?: string | null): string | null => {
 const toAppleMusicPlaylistUri = (playlistId: string): string => `apple-music:playlist:${playlistId}`;
 const toAppleMusicTrackUri = (trackId: string): string => `apple-music:track:${trackId}`;
 
-const mapAppleMusicPlaylist = (playlist: AppleMusicPlaylist): ProviderPlaylist => {
+const mapAppleMusicPlaylist = (playlist: AppleMusicPlaylist): StreamingProviderPlaylist => {
     const artworkUrl = resolveArtworkUrl(playlist.attributes?.artwork);
     return {
         provider: "appleMusic",
@@ -98,7 +98,7 @@ const mapAppleMusicPlaylist = (playlist: AppleMusicPlaylist): ProviderPlaylist =
     };
 };
 
-const mapAppleMusicTrack = (track: AppleMusicTrack): ProviderTrack | null => {
+const mapAppleMusicTrack = (track: AppleMusicTrack): StreamingProviderTrack | null => {
     if (!track) {
         return null;
     }
@@ -149,7 +149,7 @@ const fetchAppleMusicJson = async <T>(url: string, developerToken: string, userT
     return response.json() as Promise<T>;
 };
 
-const refreshAppleMusicPlaylists = async (options: { showLoading: boolean }): Promise<ProviderPlaylist[]> => {
+const refreshAppleMusicPlaylists = async (options: { showLoading: boolean }): Promise<StreamingProviderPlaylist[]> => {
     if (options.showLoading) {
         appleMusicPlaylistsStatus$.isLoading.set(true);
     }
@@ -162,7 +162,7 @@ const refreshAppleMusicPlaylists = async (options: { showLoading: boolean }): Pr
             throw new Error("Apple Music login required to load playlists");
         }
 
-        const playlists: ProviderPlaylist[] = [];
+        const playlists: StreamingProviderPlaylist[] = [];
         let nextUrl: string | null = `${APPLE_MUSIC_API_BASE}/me/library/playlists?limit=${PLAYLIST_PAGE_LIMIT}`;
 
         while (nextUrl) {
@@ -189,7 +189,9 @@ const refreshAppleMusicPlaylists = async (options: { showLoading: boolean }): Pr
     }
 };
 
-export async function fetchAppleMusicPlaylists(options: { force?: boolean } = {}): Promise<ProviderPlaylist[]> {
+export async function fetchAppleMusicPlaylists(
+    options: { force?: boolean } = {},
+): Promise<StreamingProviderPlaylist[]> {
     const cachedAt = appleMusicPlaylists$.playlistsFetchedAt.peek();
     const cachedPlaylists = appleMusicPlaylists$.playlists.peek();
     const hasCached = Boolean(cachedAt) || cachedPlaylists.length > 0;
@@ -205,7 +207,7 @@ export async function fetchAppleMusicPlaylists(options: { force?: boolean } = {}
 export async function fetchAppleMusicPlaylistTracks(
     playlistId: string,
     options: { force?: boolean } = {},
-): Promise<ProviderTrack[]> {
+): Promise<StreamingProviderTrack[]> {
     const cachedAt = appleMusicPlaylists$.tracksFetchedAtByPlaylistId[playlistId].peek();
     if (!options.force && cachedAt) {
         return appleMusicPlaylists$.tracksByPlaylistId[playlistId].peek() ?? [];
@@ -221,7 +223,7 @@ export async function fetchAppleMusicPlaylistTracks(
     appleMusicPlaylistsStatus$.tracksError[playlistId].set(null);
 
     try {
-        const tracks: ProviderTrack[] = [];
+        const tracks: StreamingProviderTrack[] = [];
         let nextUrl: string | null = `${APPLE_MUSIC_API_BASE}/me/library/playlists/${encodeURIComponent(
             playlistId,
         )}/tracks?limit=${TRACK_PAGE_LIMIT}`;

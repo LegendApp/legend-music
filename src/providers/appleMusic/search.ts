@@ -1,6 +1,6 @@
 import { computed } from "@legendapp/state";
-import type { ProviderSearchInput, ProviderSearchProvider } from "@/providers/search/types";
-import type { ProviderTrack } from "@/providers/types";
+import type { StreamingProviderSearchInput, StreamingProviderSearchProvider } from "@/providers/search/types";
+import type { StreamingProviderTrack } from "@/providers/types";
 import { ensureAppleMusicDeveloperToken } from "@/providers/appleMusic/auth";
 import { appleMusicAuthState$, isAppleMusicAuthorized$ } from "@/providers/appleMusic/authState";
 import { APPLE_MUSIC_API_BASE } from "@/providers/appleMusic/constants";
@@ -50,7 +50,7 @@ const resolveArtworkUrl = (artwork?: AppleMusicArtwork): string | undefined => {
 
 const toAppleMusicTrackUri = (trackId: string): string => `apple-music:track:${trackId}`;
 
-export async function searchAppleMusicTracks(query: string, limit = 10): Promise<ProviderTrack[]> {
+export async function searchAppleMusicTracks(query: string, limit = 10): Promise<StreamingProviderTrack[]> {
     if (!query.trim()) {
         return [];
     }
@@ -101,7 +101,7 @@ export async function searchAppleMusicTracks(query: string, limit = 10): Promise
 export async function fetchAppleMusicArtistTracks(
     artist: string,
     options?: { limit?: number },
-): Promise<ProviderTrack[]> {
+): Promise<StreamingProviderTrack[]> {
     const query = artist.trim();
     if (!query) {
         return [];
@@ -113,7 +113,7 @@ export async function fetchAppleMusicArtistTracks(
 export async function fetchAppleMusicAlbumTracks(
     album: string,
     options?: { artist?: string | null; limit?: number },
-): Promise<ProviderTrack[]> {
+): Promise<StreamingProviderTrack[]> {
     const trimmedAlbum = album.trim();
     if (!trimmedAlbum) {
         return [];
@@ -126,11 +126,11 @@ export async function fetchAppleMusicAlbumTracks(
 
 export const isAppleMusicSearchEnabled$ = computed(() => isAppleMusicAuthorized$.get());
 
-export const appleMusicSearchProvider: ProviderSearchProvider = {
+export const appleMusicSearchProvider: StreamingProviderSearchProvider = {
     id: "appleMusic",
     searchMode: "submit",
     isEnabled$: isAppleMusicSearchEnabled$,
-    async search({ query }: ProviderSearchInput) {
+    async search({ query }: StreamingProviderSearchInput) {
         const trimmed = query.trim();
         if (!trimmed) {
             return [];

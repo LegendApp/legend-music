@@ -1,5 +1,5 @@
 import type { LocalTrack } from "@/systems/LocalMusicState";
-import type { ProviderId } from "@/providers/types";
+import type { StreamingProviderId } from "@/providers/types";
 
 export type AISuggestedTrack = {
     title: string;
@@ -19,7 +19,7 @@ export type AISuggestionRequest = {
     count?: number;
     prompt?: string;
     seedTracks?: LocalTrack[];
-    preferredProviders?: ProviderId[];
+    preferredProviders?: StreamingProviderId[];
     timeoutMs?: number;
 };
 

@@ -23,9 +23,9 @@ import { loadQueueFromM3U } from "@/utils/m3uManager";
 import { perfCount, perfLog } from "@/utils/perfLogger";
 import { runAfterInteractions, runAfterInteractionsWithLabel } from "@/utils/runAfterInteractions";
 import { buildThumbnailUri } from "@/utils/thumbnails";
-import { getProviderIdForUri } from "@/providers/pluginRegistry";
+import { getStreamingProviderIdForUri } from "@/providers/pluginRegistry";
 import { DEFAULT_LOCAL_PLAYLIST_ID } from "./localMusicConstants";
-import type { ProviderId } from "@/providers/types";
+import type { StreamingProviderId } from "@/providers/types";
 
 export interface LocalTrack {
     id: string;
@@ -41,7 +41,7 @@ export interface LocalTrack {
     thumbnailKey?: string;
     artistUrls?: string[];
     isMissing?: boolean;
-    provider?: ProviderId;
+    provider?: StreamingProviderId;
     uri?: string;
     durationMs?: number;
     addedAt?: number;
@@ -1065,7 +1065,7 @@ const resolveTrackPathForPlaylist = (playlistFilePath: string, entryPath: string
         return filePath;
     }
 
-    if (getProviderIdForUri(filePath)) {
+    if (getStreamingProviderIdForUri(filePath)) {
         return filePath;
     }
 

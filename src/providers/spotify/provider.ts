@@ -1,5 +1,10 @@
 import { computed } from "@legendapp/state";
-import type { Provider, ProviderCapabilities, ProviderInitOptions, ProviderSession } from "@/providers/types";
+import type {
+    StreamingProvider,
+    StreamingProviderCapabilities,
+    StreamingProviderInitOptions,
+    StreamingProviderSession,
+} from "@/providers/types";
 import {
     clearSpotifyAuth,
     isSpotifyAuthenticated$,
@@ -16,7 +21,7 @@ import {
 } from "./auth";
 import { SPOTIFY_DEVICE_NAME } from "./constants";
 
-const capabilities: ProviderCapabilities = {
+const capabilities: StreamingProviderCapabilities = {
     supportsSearch: true,
     supportsLibrary: true,
     supportsPlayback: true,
@@ -24,7 +29,7 @@ const capabilities: ProviderCapabilities = {
     requiresWebView: true,
 };
 
-const session$ = computed<ProviderSession>(() => {
+const session$ = computed<StreamingProviderSession>(() => {
     const auth = spotifyAuthState$.get();
     const isAuthenticated = isSpotifyAuthenticated$.get();
     return {
@@ -39,14 +44,14 @@ const session$ = computed<ProviderSession>(() => {
     };
 });
 
-let stateListener: ProviderInitOptions["onStateChange"] | undefined;
+let stateListener: StreamingProviderInitOptions["onStateChange"] | undefined;
 let authSubscription: (() => void) | null = null;
 
-export const spotifyProvider: Provider = {
+export const spotifyProvider: StreamingProvider = {
     id: "spotify",
     name: "Spotify",
     capabilities,
-    async initialize(options?: ProviderInitOptions) {
+    async initialize(options?: StreamingProviderInitOptions) {
         stateListener = options?.onStateChange;
         authSubscription?.();
         authSubscription = spotifyAuthState$.onChange(() => {

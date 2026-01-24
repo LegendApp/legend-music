@@ -1,4 +1,4 @@
-import type { ProviderTrack } from "@/providers/types";
+import type { StreamingProviderTrack } from "@/providers/types";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import { formatSecondsToMmSs } from "@/utils/m3u";
 
@@ -6,7 +6,10 @@ type SpotifyTrackMappingOptions = {
     index?: number;
 };
 
-export function buildSpotifyLocalTrack(track: ProviderTrack, options: SpotifyTrackMappingOptions = {}): LocalTrack {
+export function buildSpotifyLocalTrack(
+    track: StreamingProviderTrack,
+    options: SpotifyTrackMappingOptions = {},
+): LocalTrack {
     const durationSeconds = typeof track.durationMs === "number" ? track.durationMs / 1000 : 0;
     const duration = durationSeconds ? formatSecondsToMmSs(durationSeconds) : " ";
     const uri = track.uri ?? track.id;

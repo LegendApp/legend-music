@@ -4,7 +4,7 @@ import { Text } from "react-native";
 import { Checkbox } from "@/components/Checkbox";
 import { Select } from "@/components/Select";
 import { LOCAL_LIBRARY_PROVIDER_ID } from "@/providers/localLibrary/constants";
-import { getProvider } from "@/providers/providerRegistry";
+import { getStreamingProvider } from "@/providers/streamingProviderRegistry";
 import { searchProviders$ } from "@/providers/search/registry";
 import { SettingsPage, SettingsRow, SettingsSection } from "@/settings/components";
 import { settings$ } from "@/systems/Settings";
@@ -43,7 +43,9 @@ export function AISettings() {
         const options = [{ value: "auto", label: "Auto" }];
         for (const provider of searchProviders) {
             const providerName =
-                provider.id === LOCAL_LIBRARY_PROVIDER_ID ? "Local Library" : getProvider(provider.id)?.name ?? provider.id;
+                provider.id === LOCAL_LIBRARY_PROVIDER_ID
+                    ? "Local Library"
+                    : getStreamingProvider(provider.id)?.name ?? provider.id;
             options.push({ value: provider.id, label: providerName });
         }
         return options;
@@ -87,7 +89,9 @@ export function AISettings() {
                 <SettingsRow
                     title="Preferred Service"
                     description="Prefer this service when resolving AI-suggested tracks"
-                    control={<Select value$={settings$.ai.preferredTrackProviderId} options={preferredServiceOptions} />}
+                    control={
+                        <Select value$={settings$.ai.preferredTrackProviderId} options={preferredServiceOptions} />
+                    }
                     controlWrapperClassName="w-48"
                 />
                 <SettingsRow
