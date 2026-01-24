@@ -12,9 +12,8 @@ import {
     View,
 } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
-
+import { audioControls } from "@/components/AudioPlayer";
 import { Button } from "@/components/Button";
-import { AiPlaylistDropdown } from "@/components/MediaLibrary/AiPlaylistDropdown";
 import { DropdownMenu } from "@/components/DropdownMenu";
 import {
     type DraggedItem,
@@ -22,7 +21,7 @@ import {
     MEDIA_LIBRARY_DRAG_ZONE_ID,
     type MediaLibraryDragData,
 } from "@/components/dnd";
-import { audioControls } from "@/components/AudioPlayer";
+import { AiPlaylistDropdown } from "@/components/MediaLibrary/AiPlaylistDropdown";
 import { NativeSidebar, SidebarItem } from "@/components/NativeSidebar";
 import type { TextInputSearchRef } from "@/components/TextInputSearch";
 import { showToast } from "@/components/Toast";
@@ -36,11 +35,6 @@ import type { ProviderId, ProviderPlaylist } from "@/providers/types";
 import { finishAiPlaylistFill, startAiPlaylistFill } from "@/systems/ai";
 import { buildPlaylistEntries } from "@/systems/ai/playlistTracks";
 import { generatePlaylistSummary } from "@/systems/ai/summary";
-import {
-    fetchSuggestions,
-    isSelectedSuggestionProviderAvailable$,
-    selectedSuggestionProvider$,
-} from "@/systems/suggestions";
 import { SUPPORT_PLAYLISTS } from "@/systems/constants";
 import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
 import { type LibraryView, libraryUI$, selectLibraryPlaylist, selectLibraryView } from "@/systems/LibraryState";
@@ -58,6 +52,11 @@ import {
     renamePlaylist,
 } from "@/systems/LocalPlaylists";
 import { settings$ } from "@/systems/Settings";
+import {
+    fetchSuggestions,
+    isSelectedSuggestionProviderAvailable$,
+    selectedSuggestionProvider$,
+} from "@/systems/suggestions";
 import { cn } from "@/utils/cn";
 import { perfCount } from "@/utils/perfLogger";
 import { getQueueAction } from "@/utils/queueActions";
@@ -326,10 +325,10 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
     const aiStatusLabel = !aiFeatureEnabled
         ? "AI playlists are disabled in settings"
         : !selectedSuggestionProvider
-            ? "No suggestion provider selected"
-            : selectedSuggestionProvider.kind === "spotify"
-                ? "Connect Spotify to enable playlist suggestions"
-                : `${selectedProviderName} is not available`;
+          ? "No suggestion provider selected"
+          : selectedSuggestionProvider.kind === "spotify"
+            ? "Connect Spotify to enable playlist suggestions"
+            : `${selectedProviderName} is not available`;
 
     useEffect(() => {
         if (!showProviderPlaylists || !libraryPlugin?.library?.listPlaylists) {
@@ -452,17 +451,17 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
             return;
         }
 
-            const { tracks: resolvedTracks, missingPaths } = resolvePlaylistTracks(
-                {
-                    id: playlist.id,
-                    name: playlist.name,
-                    type: playlist.source,
-                    trackPaths: playlist.trackPaths,
-                    trackEntries: playlist.tracks,
-                },
-                allTracks,
-                buildTrackLookup(allTracks),
-            );
+        const { tracks: resolvedTracks, missingPaths } = resolvePlaylistTracks(
+            {
+                id: playlist.id,
+                name: playlist.name,
+                type: playlist.source,
+                trackPaths: playlist.trackPaths,
+                trackEntries: playlist.tracks,
+            },
+            allTracks,
+            buildTrackLookup(allTracks),
+        );
 
         if (missingPaths.length > 0) {
             console.warn(`Playlist ${playlist.name} is missing ${missingPaths.length} tracks from the library`);
@@ -701,10 +700,7 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
 
                           if (isTemp) {
                               return (
-                                  <SidebarItem
-                                      key={playlist.id}
-                                      itemId={buildPlaylistItemId("local", playlist.id)}
-                                  >
+                                  <SidebarItem key={playlist.id} itemId={buildPlaylistItemId("local", playlist.id)}>
                                       <TextInput
                                           value={tempPlaylistName}
                                           onChangeText={setTempPlaylistName}
@@ -721,10 +717,7 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
 
                           if (isEditing) {
                               return (
-                                  <SidebarItem
-                                      key={playlist.id}
-                                      itemId={buildPlaylistItemId("local", playlist.id)}
-                                  >
+                                  <SidebarItem key={playlist.id} itemId={buildPlaylistItemId("local", playlist.id)}>
                                       <TextInput
                                           value={editingPlaylistName}
                                           onChangeText={setEditingPlaylistName}
@@ -778,22 +771,15 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                         </SidebarItem>
                     ) : libraryStatus.isLoading ? (
                         <SidebarItem itemId="provider-playlists-loading" selectable={false}>
-                            <Text className="text-sm text-white/40">
-                                Loading {libraryProviderName} playlists...
-                            </Text>
+                            <Text className="text-sm text-white/40">Loading {libraryProviderName} playlists...</Text>
                         </SidebarItem>
                     ) : libraryPlaylists.length === 0 ? (
                         <SidebarItem itemId="provider-playlists-empty" selectable={false}>
-                            <Text className="text-sm text-white/40">
-                                No {libraryProviderName} playlists found
-                            </Text>
+                            <Text className="text-sm text-white/40">No {libraryProviderName} playlists found</Text>
                         </SidebarItem>
                     ) : (
                         libraryPlaylists.map((playlist) => (
-                            <SidebarItem
-                                key={playlist.id}
-                                itemId={buildPlaylistItemId(libraryProviderId, playlist.id)}
-                            >
+                            <SidebarItem key={playlist.id} itemId={buildPlaylistItemId(libraryProviderId, playlist.id)}>
                                 <View className="flex-row items-center justify-between">
                                     <Text className="text-sm text-text-primary flex-1 py-1" numberOfLines={1}>
                                         {playlist.name}
@@ -899,13 +885,13 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                                       selectedPlaylistProvider === "local" &&
                                       selectedPlaylistId === playlist.id;
                                   const isTemp = playlist.id === tempPlaylistId;
-                              const isEditing = playlist.id === editingPlaylistId;
-                              const isDroppable = playlist.source === "cache" && Boolean(playlist.filePath);
-                              const isNativeDropActive =
-                                  Platform.OS === "macos" &&
-                                  isDroppable &&
-                                  activeNativeDropPlaylistId === playlist.id;
-                              const playlistLabel = formatPlaylistLabel(playlist);
+                                  const isEditing = playlist.id === editingPlaylistId;
+                                  const isDroppable = playlist.source === "cache" && Boolean(playlist.filePath);
+                                  const isNativeDropActive =
+                                      Platform.OS === "macos" &&
+                                      isDroppable &&
+                                      activeNativeDropPlaylistId === playlist.id;
+                                  const playlistLabel = formatPlaylistLabel(playlist);
 
                                   if (isTemp) {
                                       return (
@@ -955,31 +941,31 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                                       );
                                   }
 
-                                      const renderRow = (className?: string) => (
-                                          <Button
-                                              className={cn(
-                                                  listItemStyles.getRowClassName({
-                                                      variant: "compact",
-                                                      isSelected,
-                                                  }),
-                                                  className,
-                                              )}
-                                              onClick={() => selectLibraryPlaylist(playlist.id, "local")}
-                                              onDoubleClick={(event) => handlePlaylistDoubleClick(playlist, event)}
-                                              onRightClick={(event) => handlePlaylistContextMenu(playlist, event)}
-                                          >
-                                              <View className="flex-1 flex-row items-center justify-between overflow-hidden">
-                                                  <Text
-                                                      className={cn(
-                                                          "text-sm truncate flex-1 pr-2",
-                                                          isSelected
-                                                              ? listItemStyles.text.primary
-                                                              : listItemStyles.text.secondary,
-                                                      )}
-                                                      numberOfLines={1}
-                                                  >
-                                                      {playlistLabel}
-                                                  </Text>
+                                  const renderRow = (className?: string) => (
+                                      <Button
+                                          className={cn(
+                                              listItemStyles.getRowClassName({
+                                                  variant: "compact",
+                                                  isSelected,
+                                              }),
+                                              className,
+                                          )}
+                                          onClick={() => selectLibraryPlaylist(playlist.id, "local")}
+                                          onDoubleClick={(event) => handlePlaylistDoubleClick(playlist, event)}
+                                          onRightClick={(event) => handlePlaylistContextMenu(playlist, event)}
+                                      >
+                                          <View className="flex-1 flex-row items-center justify-between overflow-hidden">
+                                              <Text
+                                                  className={cn(
+                                                      "text-sm truncate flex-1 pr-2",
+                                                      isSelected
+                                                          ? listItemStyles.text.primary
+                                                          : listItemStyles.text.secondary,
+                                                  )}
+                                                  numberOfLines={1}
+                                              >
+                                                  {playlistLabel}
+                                              </Text>
                                               <View className="flex-row items-center gap-2">
                                                   <Text className={listItemStyles.getMetaClassName()}>
                                                       {playlist.trackCount}
@@ -996,9 +982,7 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                                               key={playlist.id}
                                               className={cn(
                                                   "relative",
-                                                  isNativeDropActive
-                                                      ? "bg-blue-500/15 border border-blue-400/50"
-                                                      : "",
+                                                  isNativeDropActive ? "bg-blue-500/15 border border-blue-400/50" : "",
                                               )}
                                               onTrackDragEnter={() => {
                                                   if (isDroppable) {
