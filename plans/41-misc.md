@@ -20,7 +20,7 @@ playlists.
       schema usage and any gating that still checks `settings$.ai.playlistCreation`.
 - [x] Remove the Provider Status row from AI settings along with any unused availability label state derived only
       for that row.
-- [ ] Refactor the sidebar to iterate over streaming provider plugins and render a playlist section for each
+- [x] Refactor the sidebar to iterate over streaming provider plugins and render a playlist section for each
       connected provider; skip providers without an authenticated session.
 - [ ] Centralize AI invocation building (reuse suggestion provider invocation) and update `summary.ts` to use it,
       trimming duplicated command/args logic.

@@ -29,12 +29,12 @@ import { useListItemStyles } from "@/hooks/useListItemStyles";
 import { type ContextMenuItem, showContextMenu } from "@/native-modules/ContextMenu";
 import { DragDropView } from "@/native-modules/DragDropView";
 import { showInFinder } from "@/native-modules/FileDialog";
-import { getStreamingProviderIdForUri, getStreamingProviderPlugin } from "@/providers/pluginRegistry";
 import {
-    activeStreamingProviderId$,
-    getStreamingProvider,
-    streamingProviderSessions$,
-} from "@/providers/streamingProviderRegistry";
+    getStreamingProviderIdForUri,
+    getStreamingProviderPlugins,
+    type StreamingProviderPlugin,
+} from "@/providers/pluginRegistry";
+import { streamingProviderSessions$ } from "@/providers/streamingProviderRegistry";
 import type { StreamingProviderId, StreamingProviderPlaylist } from "@/providers/types";
 import { finishAiPlaylistFill, startAiPlaylistFill } from "@/systems/ai";
 import { buildPlaylistEntries } from "@/systems/ai/playlistTracks";
@@ -285,6 +285,129 @@ function AiPromptEditorButton({ playlist, isSelected }: { playlist: LocalPlaylis
     );
 }
 
+type ProviderPlaylistSectionProps = {
+    plugin: StreamingProviderPlugin;
+    variant: "native" | "fallback";
+    width?: number;
+    selectedView: LibraryView;
+    selectedPlaylistId: string | null;
+    selectedPlaylistProvider: StreamingProviderId | null;
+    listItemStyles?: ReturnType<typeof useListItemStyles>;
+};
+
+function ProviderPlaylistSection({
+    plugin,
+    variant,
+    width = 0,
+    selectedView,
+    selectedPlaylistId,
+    selectedPlaylistProvider,
+    listItemStyles,
+}: ProviderPlaylistSectionProps) {
+    const providerId = plugin.provider.id;
+    const providerName = plugin.provider.name ?? "Provider";
+    const playlists = useValue(plugin.library?.playlists$ ?? emptyProviderPlaylists$);
+    const status = useValue(plugin.library?.status$ ?? emptyLibraryStatus$);
+    const listPlaylists = plugin.library?.listPlaylists;
+    const headerLabel = `${providerName} Playlists`;
+
+    useEffect(() => {
+        if (!listPlaylists) {
+            return;
+        }
+
+        void listPlaylists().catch((error) => {
+            console.error(`Failed to load ${providerName} playlists`, error);
+            showToast(error instanceof Error ? error.message : `Failed to load ${providerName} playlists`, "error");
+        });
+    }, [listPlaylists, providerName]);
+
+    if (variant === "native") {
+        return (
+            <>
+                <SidebarItem itemId={`header-provider-playlists-${providerId}`} selectable={false} rowHeight={36}>
+                    <View className="flex-row items-center justify-between pt-3" style={{ width }}>
+                        <Text className="text-xs font-semibold text-white/40 uppercase tracking-wider">
+                            {headerLabel}
+                        </Text>
+                    </View>
+                </SidebarItem>
+                {status.isLoading ? (
+                    <SidebarItem itemId={`provider-playlists-loading-${providerId}`} selectable={false}>
+                        <Text className="text-sm text-white/40">Loading {providerName} playlists...</Text>
+                    </SidebarItem>
+                ) : playlists.length === 0 ? (
+                    <SidebarItem itemId={`provider-playlists-empty-${providerId}`} selectable={false}>
+                        <Text className="text-sm text-white/40">No {providerName} playlists found</Text>
+                    </SidebarItem>
+                ) : (
+                    playlists.map((playlist) => (
+                        <SidebarItem key={playlist.id} itemId={buildPlaylistItemId(providerId, playlist.id)}>
+                            <View className="flex-row items-center justify-between">
+                                <Text className="text-sm text-text-primary flex-1 py-1" numberOfLines={1}>
+                                    {playlist.name}
+                                </Text>
+                                <Text className="text-xs text-white/40">{playlist.trackCount ?? 0}</Text>
+                            </View>
+                        </SidebarItem>
+                    ))
+                )}
+            </>
+        );
+    }
+
+    if (!listItemStyles) {
+        return null;
+    }
+
+    return (
+        <View>
+            <View className="px-3 pt-3 pb-1">
+                <Text className="text-xs font-semibold text-white/40 uppercase tracking-wider">{headerLabel}</Text>
+            </View>
+            {status.isLoading ? (
+                <View className="px-3 py-1">
+                    <Text className="text-sm text-white/40">Loading {providerName} playlists...</Text>
+                </View>
+            ) : playlists.length === 0 ? (
+                <View className="px-3 py-1">
+                    <Text className="text-sm text-white/40">No {providerName} playlists found</Text>
+                </View>
+            ) : (
+                playlists.map((playlist) => {
+                    const isSelected =
+                        selectedView === "playlist" &&
+                        selectedPlaylistProvider === providerId &&
+                        selectedPlaylistId === playlist.id;
+                    return (
+                        <Button
+                            key={playlist.id}
+                            className={listItemStyles.getRowClassName({
+                                variant: "compact",
+                                isSelected,
+                            })}
+                            onClick={() => selectLibraryPlaylist(playlist.id, providerId)}
+                        >
+                            <View className="flex-1 flex-row items-center justify-between overflow-hidden">
+                                <Text
+                                    className={cn(
+                                        "text-sm truncate flex-1 pr-2",
+                                        isSelected ? listItemStyles.text.primary : listItemStyles.text.secondary,
+                                    )}
+                                    numberOfLines={1}
+                                >
+                                    {playlist.name}
+                                </Text>
+                                <Text className={listItemStyles.getMetaClassName()}>{playlist.trackCount ?? 0}</Text>
+                            </View>
+                        </Button>
+                    );
+                })
+            )}
+        </View>
+    );
+}
+
 interface MediaLibrarySidebarProps {
     useNativeLibraryList?: boolean;
 }
@@ -296,14 +419,23 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
     const selectedPlaylistProvider = useValue(libraryUI$.selectedPlaylistProvider);
     const searchQuery = useValue(libraryUI$.searchQuery);
     const localPlaylists = useValue(localMusicState$.playlists);
-    const activeProviderId = useValue(activeStreamingProviderId$);
-    const activeProvider = getStreamingProvider(activeProviderId);
-    const libraryProviderId = activeProvider?.capabilities.supportsLibrary ? activeProviderId : "local";
-    const libraryPlugin = getStreamingProviderPlugin(libraryProviderId);
-    const librarySession = useValue(streamingProviderSessions$[libraryProviderId]);
-    const libraryPlaylists = useValue(libraryPlugin?.library?.playlists$ ?? emptyProviderPlaylists$);
-    const libraryStatus = useValue(libraryPlugin?.library?.status$ ?? emptyLibraryStatus$);
-    const libraryProviderName = libraryPlugin?.provider.name ?? activeProvider?.name ?? "Provider";
+    const providerSessions = useValue(streamingProviderSessions$);
+    const providerPlugins = useMemo(() => getStreamingProviderPlugins(), []);
+    const connectedProviderPlugins = useMemo(
+        () =>
+            providerPlugins.filter((plugin) => {
+                if (!plugin.library) {
+                    return false;
+                }
+                const session = providerSessions[plugin.provider.id];
+                return session?.isAuthenticated ?? false;
+            }),
+        [providerPlugins, providerSessions],
+    );
+    const connectedProviderIds = useMemo(
+        () => new Set(connectedProviderPlugins.map((plugin) => plugin.provider.id)),
+        [connectedProviderPlugins],
+    );
     const listItemStyles = useListItemStyles();
     const searchInputRef = useRef<TextInputSearchRef | null>(null);
     const [tempPlaylistId, setTempPlaylistId] = useState<string | null>(null);
@@ -312,14 +444,10 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
     const [editingPlaylistId, setEditingPlaylistId] = useState<string | null>(null);
     const [editingPlaylistName, setEditingPlaylistName] = useState("");
     const shouldUseNativeLibraryList = useNativeLibraryList && Platform.OS === "macos";
-    const isRemoteLibraryProvider = libraryProviderId !== "local";
     const [outerWidth, setWidth] = useState(0);
     const width = Math.max(outerWidth - 28, 0);
     const showLocalPlaylists = SUPPORT_PLAYLISTS;
-    const showProviderPlaylists = SUPPORT_PLAYLISTS && isRemoteLibraryProvider && Boolean(libraryPlugin?.library);
-    const isLibraryAuthenticated = librarySession?.isAuthenticated ?? false;
     const playlistHeaderLabel = "Playlists";
-    const providerPlaylistHeaderLabel = `${libraryProviderName} Playlists`;
     const selectedSuggestionProvider = useValue(selectedSuggestionProvider$);
     const suggestionProviderAvailable = useValue(isSelectedSuggestionProviderAvailable$);
     const aiSettings = useValue(settings$.ai);
@@ -335,32 +463,14 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
             : `${selectedProviderName} is not available`;
 
     useEffect(() => {
-        if (!showProviderPlaylists || !libraryPlugin?.library?.listPlaylists) {
-            return;
-        }
-
-        if (!isLibraryAuthenticated) {
-            return;
-        }
-
-        void libraryPlugin.library.listPlaylists().catch((error) => {
-            console.error(`Failed to load ${libraryProviderName} playlists`, error);
-            showToast(
-                error instanceof Error ? error.message : `Failed to load ${libraryProviderName} playlists`,
-                "error",
-            );
-        });
-    }, [isLibraryAuthenticated, libraryPlugin, libraryProviderName, showProviderPlaylists]);
-
-    useEffect(() => {
         if (!selectedPlaylistProvider || selectedPlaylistProvider === "local") {
             return;
         }
 
-        if (selectedPlaylistProvider !== libraryProviderId) {
+        if (!connectedProviderIds.has(selectedPlaylistProvider)) {
             selectLibraryView("songs");
         }
-    }, [libraryProviderId, selectedPlaylistProvider]);
+    }, [connectedProviderIds, selectedPlaylistProvider]);
 
     const onNativeSidebarLayout = useCallback(
         (layout: { width: number; height: number }) => {
@@ -756,44 +866,19 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                       })
                     : null}
 
-                {showProviderPlaylists ? (
-                    <SidebarItem itemId="header-provider-playlists" selectable={false} rowHeight={36}>
-                        <View className="flex-row items-center justify-between pt-3" style={{ width }}>
-                            <Text className="text-xs font-semibold text-white/40 uppercase tracking-wider">
-                                {providerPlaylistHeaderLabel}
-                            </Text>
-                        </View>
-                    </SidebarItem>
-                ) : null}
-
-                {showProviderPlaylists ? (
-                    !isLibraryAuthenticated ? (
-                        <SidebarItem itemId="provider-playlists-disabled" selectable={false}>
-                            <Text className="text-sm text-white/40">
-                                Connect {libraryProviderName} to view playlists
-                            </Text>
-                        </SidebarItem>
-                    ) : libraryStatus.isLoading ? (
-                        <SidebarItem itemId="provider-playlists-loading" selectable={false}>
-                            <Text className="text-sm text-white/40">Loading {libraryProviderName} playlists...</Text>
-                        </SidebarItem>
-                    ) : libraryPlaylists.length === 0 ? (
-                        <SidebarItem itemId="provider-playlists-empty" selectable={false}>
-                            <Text className="text-sm text-white/40">No {libraryProviderName} playlists found</Text>
-                        </SidebarItem>
-                    ) : (
-                        libraryPlaylists.map((playlist) => (
-                            <SidebarItem key={playlist.id} itemId={buildPlaylistItemId(libraryProviderId, playlist.id)}>
-                                <View className="flex-row items-center justify-between">
-                                    <Text className="text-sm text-text-primary flex-1 py-1" numberOfLines={1}>
-                                        {playlist.name}
-                                    </Text>
-                                    <Text className="text-xs text-white/40">{playlist.trackCount ?? 0}</Text>
-                                </View>
-                            </SidebarItem>
-                        ))
-                    )
-                ) : null}
+                {showLocalPlaylists
+                    ? connectedProviderPlugins.map((plugin) => (
+                          <ProviderPlaylistSection
+                              key={plugin.provider.id}
+                              plugin={plugin}
+                              variant="native"
+                              width={width}
+                              selectedView={selectedView}
+                              selectedPlaylistId={selectedPlaylistId}
+                              selectedPlaylistProvider={selectedPlaylistProvider}
+                          />
+                      ))
+                    : null}
 
                 {/* Sources Section */}
                 {/* <SidebarItem itemId="header-sources" selectable={false} rowHeight={36}>
@@ -1071,69 +1156,19 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                               })
                             : null}
 
-                        {showProviderPlaylists ? (
-                            <View className="px-3 pt-3 pb-1">
-                                <Text className="text-xs font-semibold text-white/40 uppercase tracking-wider">
-                                    {providerPlaylistHeaderLabel}
-                                </Text>
-                            </View>
-                        ) : null}
-
-                        {showProviderPlaylists ? (
-                            !isLibraryAuthenticated ? (
-                                <View className="px-3 py-1">
-                                    <Text className="text-sm text-white/40">
-                                        Connect {libraryProviderName} to view playlists
-                                    </Text>
-                                </View>
-                            ) : libraryStatus.isLoading ? (
-                                <View className="px-3 py-1">
-                                    <Text className="text-sm text-white/40">
-                                        Loading {libraryProviderName} playlists...
-                                    </Text>
-                                </View>
-                            ) : libraryPlaylists.length === 0 ? (
-                                <View className="px-3 py-1">
-                                    <Text className="text-sm text-white/40">
-                                        No {libraryProviderName} playlists found
-                                    </Text>
-                                </View>
-                            ) : (
-                                libraryPlaylists.map((playlist) => {
-                                    const isSelected =
-                                        selectedView === "playlist" &&
-                                        selectedPlaylistProvider === libraryProviderId &&
-                                        selectedPlaylistId === playlist.id;
-                                    return (
-                                        <Button
-                                            key={playlist.id}
-                                            className={listItemStyles.getRowClassName({
-                                                variant: "compact",
-                                                isSelected,
-                                            })}
-                                            onClick={() => selectLibraryPlaylist(playlist.id, libraryProviderId)}
-                                        >
-                                            <View className="flex-1 flex-row items-center justify-between overflow-hidden">
-                                                <Text
-                                                    className={cn(
-                                                        "text-sm truncate flex-1 pr-2",
-                                                        isSelected
-                                                            ? listItemStyles.text.primary
-                                                            : listItemStyles.text.secondary,
-                                                    )}
-                                                    numberOfLines={1}
-                                                >
-                                                    {playlist.name}
-                                                </Text>
-                                                <Text className={listItemStyles.getMetaClassName()}>
-                                                    {playlist.trackCount ?? 0}
-                                                </Text>
-                                            </View>
-                                        </Button>
-                                    );
-                                })
-                            )
-                        ) : null}
+                        {showLocalPlaylists
+                            ? connectedProviderPlugins.map((plugin) => (
+                                  <ProviderPlaylistSection
+                                      key={plugin.provider.id}
+                                      plugin={plugin}
+                                      variant="fallback"
+                                      selectedView={selectedView}
+                                      selectedPlaylistId={selectedPlaylistId}
+                                      selectedPlaylistProvider={selectedPlaylistProvider}
+                                      listItemStyles={listItemStyles}
+                                  />
+                              ))
+                            : null}
                     </View>
                 ) : null}
 
