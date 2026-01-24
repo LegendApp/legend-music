@@ -1,4 +1,4 @@
-import { aiCommandRunner, type AIToolId } from "@/native-modules/AICommandRunner";
+import { type AIToolId, aiCommandRunner } from "@/native-modules/AICommandRunner";
 import { aiAvailability$ } from "@/systems/ai/availability";
 import { buildPlaylistSummaryPrompt } from "@/systems/ai/prompts";
 import { selectedSuggestionProvider$ } from "@/systems/suggestions/service";
