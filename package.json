@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "bootstrap": "bun i && cd macos && pod install",
-    "mac": "react-native run-macos",
-    "start": "react-native start --client-logs",
+    "mac": "bun scripts/mac.ts",
+    "start": "bun scripts/start.ts",
     "test": "jest",
     "lint": "bunx biome check ./src && bunx biome format ./src",
     "lint:compiler": "bunx eslint src --max-warnings=0",
