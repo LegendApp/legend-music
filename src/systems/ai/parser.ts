@@ -22,7 +22,7 @@ const extractJsonCandidate = (text: string): string | null => {
         return trimmed;
     }
 
-    const firstBrace = trimmed.search(/[\[{]/);
+    const firstBrace = trimmed.search(/[[{]/);
     if (firstBrace === -1) {
         return null;
     }

@@ -1,6 +1,6 @@
 import { File } from "expo-file-system/next";
 import audioPlayerApi, { type NowPlayingInfoPayload } from "@/native-modules/AudioPlayer";
-import { type PlaybackProvider, type PlaybackStateUpdate } from "@/providers/types";
+import type { PlaybackProvider, PlaybackStateUpdate } from "@/providers/types";
 import { DEBUG_AUDIO_LOGS } from "@/systems/constants";
 import { ensureLocalTrackThumbnail, type LocalTrack } from "@/systems/LocalMusicState";
 import { parseDurationToSeconds } from "@/utils/m3u";

@@ -30,7 +30,7 @@ const encodeString = (value: string): Uint8Array => {
     // Simple polyfill
     const utf8: number[] = [];
     for (let i = 0; i < value.length; i++) {
-        let charCode = value.charCodeAt(i);
+        const charCode = value.charCodeAt(i);
         if (charCode < 0x80) {
             utf8.push(charCode);
         } else if (charCode < 0x800) {

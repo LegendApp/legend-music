@@ -1,4 +1,4 @@
-import { type PlaybackProvider, type PlaybackStateUpdate } from "@/providers/types";
+import type { PlaybackProvider, PlaybackStateUpdate } from "@/providers/types";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import { parseDurationToSeconds } from "@/utils/m3u";
 import {

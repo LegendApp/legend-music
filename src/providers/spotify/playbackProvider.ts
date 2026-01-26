@@ -1,4 +1,4 @@
-import { type PlaybackProvider, type PlaybackStateUpdate } from "@/providers/types";
+import type { PlaybackProvider, PlaybackStateUpdate } from "@/providers/types";
 import { parseDurationToSeconds } from "@/utils/m3u";
 import { activateSpotifyWebPlayer } from "./SpotifyWebPlayerBridge";
 import { logSpotifyDebug, shouldLogSpotify } from "./logging";

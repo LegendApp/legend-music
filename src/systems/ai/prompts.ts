@@ -6,7 +6,7 @@ const buildJsonInstructions = (count: number, options: { exact?: boolean } = {})
         "Return only JSON with this shape:",
         `{"tracks":[{"title":"...","artist":"...","album":"..."}]}`,
         exact ? `Include exactly ${count} tracks.` : `Include up to ${count} tracks.`,
-        "No markdown, no extra text."
+        "No markdown, no extra text.",
     ].join("\n");
 };
 
@@ -73,7 +73,7 @@ export const buildPlaylistSummaryPrompt = (userPrompt: string): string => {
         "You are a music assistant creating a playlist summary.",
         `User prompt: ${userPrompt.trim()}`,
         "Return exactly five words describing the playlist.",
-        "No punctuation, no quotes, no extra text."
+        "No punctuation, no quotes, no extra text.",
     ].join("\n");
 };
 
@@ -82,7 +82,7 @@ export const buildLocalLibrarySearchPrompt = (query: string, libraryCsv: string,
         "You are a music assistant searching a local music library.",
         `Search query: ${query.trim()}`,
         "Return only tracks that appear in the CSV below.",
-        "If nothing matches, return {\"tracks\":[]}.",
+        'If nothing matches, return {"tracks":[]}.',
         "",
         buildJsonInstructions(count, { exact: false }),
         "",
