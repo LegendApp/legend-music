@@ -258,6 +258,7 @@ function AiPromptEditorButton({ playlist, isSelected }: { playlist: LocalPlaylis
                             options={AI_PROMPT_SOURCE_OPTIONS}
                             onValueChange={(value) => setPromptSource(value as AiPromptSource)}
                             className="w-44"
+                            triggerClassName="w-44"
                         />
                     </View>
                     <View className="bg-background-secondary border border-border-primary rounded-md px-3 py-2">

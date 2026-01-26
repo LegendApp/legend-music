@@ -663,6 +663,7 @@ export function TrackList(_props: TrackListProps) {
                                                             setExtendPromptSource(value as AiPromptSource)
                                                         }
                                                         className="w-44"
+                                                        triggerClassName="w-44"
                                                     />
                                                 </View>
                                                 <View className="bg-background-secondary border border-border-primary rounded-md px-3 py-2">
