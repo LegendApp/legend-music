@@ -30,7 +30,7 @@ import { WindowsNavigator } from "@/windows";
 import { WindowProvider } from "@/windows/WindowProvider";
 import { ThemeProvider } from "./theme/ThemeProvider";
 
-LogBox.ignoreLogs(["Open debugger", "unknown error"]);
+LogBox.ignoreLogs(["Open debugger", "unknown error", "re-registered bubbling event"]);
 
 perfMark("App.moduleLoad");
 initializeUpdater();

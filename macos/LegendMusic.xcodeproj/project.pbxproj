@@ -42,6 +42,10 @@
 		7A1B2C3D4E5F607801234569 /* AppleMusicBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 7A1B2C3D4E5F60780123456B /* AppleMusicBridge.m */; };
 		7A1B2C3D4E5F607801234570 /* AICommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1B2C3D4E5F607801234572 /* AICommandRunner.swift */; };
 		7A1B2C3D4E5F607801234571 /* AICommandRunnerBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 7A1B2C3D4E5F607801234573 /* AICommandRunnerBridge.m */; };
+		8A1B2C3D4E5F607801234583 /* NativeButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D4E5F607801234580 /* NativeButton.swift */; };
+		8A1B2C3D4E5F607801234584 /* NativeButtonBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D4E5F607801234581 /* NativeButtonBridge.m */; };
+		8A1B2C3D4E5F607801234588 /* NativeButtonGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D4E5F607801234585 /* NativeButtonGroup.swift */; };
+		8A1B2C3D4E5F607801234589 /* NativeButtonGroupBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D4E5F607801234586 /* NativeButtonGroupBridge.m */; };
 		A0B1C2D3E4F5678901234567 /* SidebarSplitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0B1C2D3E4F5678901234571 /* SidebarSplitView.swift */; };
 		A0B1C2D3E4F5678901234568 /* SidebarSplitViewBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = A0B1C2D3E4F5678901234572 /* SidebarSplitViewBridge.m */; };
 		A0B1C2D3E4F5678901234569 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0B1C2D3E4F5678901234573 /* SidebarView.swift */; };
@@ -104,6 +108,10 @@
 		7A1B2C3D4E5F60780123456B /* AppleMusicBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppleMusicBridge.m; sourceTree = "<group>"; };
 		7A1B2C3D4E5F607801234572 /* AICommandRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AICommandRunner.swift; sourceTree = "<group>"; };
 		7A1B2C3D4E5F607801234573 /* AICommandRunnerBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AICommandRunnerBridge.m; sourceTree = "<group>"; };
+		8A1B2C3D4E5F607801234580 /* NativeButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeButton.swift; sourceTree = "<group>"; };
+		8A1B2C3D4E5F607801234581 /* NativeButtonBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NativeButtonBridge.m; sourceTree = "<group>"; };
+		8A1B2C3D4E5F607801234585 /* NativeButtonGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeButtonGroup.swift; sourceTree = "<group>"; };
+		8A1B2C3D4E5F607801234586 /* NativeButtonGroupBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NativeButtonGroupBridge.m; sourceTree = "<group>"; };
 		A04F7F73C53E4245B9503D95 /* GlassEffectBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = GlassEffectBridge.m; sourceTree = "<group>"; };
 		A0B1C2D3E4F5678901234571 /* SidebarSplitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarSplitView.swift; sourceTree = "<group>"; };
 		A0B1C2D3E4F5678901234572 /* SidebarSplitViewBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SidebarSplitViewBridge.m; sourceTree = "<group>"; };
@@ -195,6 +203,8 @@
 				696BC82B2E0EFA2500FFFA66 /* WindowControls */,
 				69EDA80C2DC90E2E00CCB7F7 /* WindowManager */,
 				69F8D1A02F12345600ABCDEF /* AppExit */,
+				8A1B2C3D4E5F607801234582 /* NativeButton */,
+				8A1B2C3D4E5F607801234587 /* NativeButtonGroup */,
 			);
 			path = "LegendMusic-macOS";
 			sourceTree = "<group>";
@@ -264,6 +274,24 @@
 				70A8C0032F12340000ABC001 /* GlobalHotkey.swift */,
 			);
 			path = GlobalHotkey;
+			sourceTree = "<group>";
+		};
+		8A1B2C3D4E5F607801234582 /* NativeButton */ = {
+			isa = PBXGroup;
+			children = (
+				8A1B2C3D4E5F607801234580 /* NativeButton.swift */,
+				8A1B2C3D4E5F607801234581 /* NativeButtonBridge.m */,
+			);
+			path = NativeButton;
+			sourceTree = "<group>";
+		};
+		8A1B2C3D4E5F607801234587 /* NativeButtonGroup */ = {
+			isa = PBXGroup;
+			children = (
+				8A1B2C3D4E5F607801234585 /* NativeButtonGroup.swift */,
+				8A1B2C3D4E5F607801234586 /* NativeButtonGroupBridge.m */,
+			);
+			path = NativeButtonGroup;
 			sourceTree = "<group>";
 		};
 		699DCD292EB69511003BDB37 /* FileSystemWatcher */ = {
@@ -703,6 +731,10 @@
 				69A6F0223E5AAB9D00ABCDE1 /* AutoUpdater.m in Sources */,
 				69F4D1012F0A123400CCB7F7 /* FileDialog.m in Sources */,
 				69F8D1A32F12345600ABCDEF /* AppExit.m in Sources */,
+				8A1B2C3D4E5F607801234583 /* NativeButton.swift in Sources */,
+				8A1B2C3D4E5F607801234584 /* NativeButtonBridge.m in Sources */,
+				8A1B2C3D4E5F607801234588 /* NativeButtonGroup.swift in Sources */,
+				8A1B2C3D4E5F607801234589 /* NativeButtonGroupBridge.m in Sources */,
 				1F88FA766E6115322310F4C0 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

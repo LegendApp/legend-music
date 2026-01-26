@@ -14,7 +14,8 @@
       "Bash(bun remove:*)",
       "Bash(pod install:*)",
       "Bash(find:*)",
-      "Bash(bunx tsc:*)"
+      "Bash(bunx tsc:*)",
+      "Bash(bun run lint:fix:*)"
     ],
     "deny": []
   }
