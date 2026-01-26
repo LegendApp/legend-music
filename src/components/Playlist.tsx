@@ -183,6 +183,7 @@ export function Playlist() {
                 const { tracks, unresolved } = await fetchSuggestions({
                     mode: "queue-extension",
                     source: "manual",
+                    promptSource: settings$.ai.promptSource.get(),
                     seedTracks: [seedTrack],
                     count,
                 });

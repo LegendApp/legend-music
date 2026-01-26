@@ -537,6 +537,7 @@ const maybeAutoExtendQueue = async (currentIndex?: number): Promise<void> => {
         const { tracks } = await fetchSuggestions({
             mode: "queue-extension",
             source: "auto",
+            promptSource: settings$.ai.promptSource.get(),
             seedTracks,
             count: AUTO_EXTEND_TARGET_COUNT,
         });
