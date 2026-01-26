@@ -2,12 +2,11 @@ import { LegendList } from "@legendapp/list";
 import { type Observable, observable } from "@legendapp/state";
 import { useObservable, useValue } from "@legendapp/state/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Platform, Text, TextInput, View } from "react-native";
+import { Platform, Pressable, Text, TextInput, View } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 import { audioPlayerState$ } from "@/components/AudioPlayer";
 import { Button } from "@/components/Button";
 import { DropdownMenu } from "@/components/DropdownMenu";
-import { Select } from "@/components/Select";
 import {
     type DragData,
     DraggableItem,
@@ -18,6 +17,7 @@ import {
     MEDIA_LIBRARY_DRAG_ZONE_ID,
     type MediaLibraryDragData,
 } from "@/components/dnd";
+import { Select } from "@/components/Select";
 import { SkiaSpinner } from "@/components/SkiaSpinner";
 import { Table, TableCell, type TableColumnSpec, TableHeader, TableRow } from "@/components/Table";
 import { showToast } from "@/components/Toast";
@@ -30,8 +30,8 @@ import { type NativeDragTrack, TrackDragSource } from "@/native-modules/TrackDra
 import { getStreamingProviderPlugin } from "@/providers/pluginRegistry";
 import type { StreamingProviderPlaylist } from "@/providers/types";
 import { aiPlaylistFillState$, finishAiPlaylistFill, startAiPlaylistFill } from "@/systems/ai";
-import { AI_PROMPT_SOURCE_OPTIONS, getAiPromptPlaceholder, type AiPromptSource } from "@/systems/ai/promptSource";
 import { buildPlaylistEntries } from "@/systems/ai/playlistTracks";
+import { AI_PROMPT_SOURCE_OPTIONS, type AiPromptSource, getAiPromptPlaceholder } from "@/systems/ai/promptSource";
 import { generatePlaylistSummary } from "@/systems/ai/summary";
 import { Icon } from "@/systems/Icon";
 import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
@@ -575,7 +575,7 @@ export function TrackList(_props: TrackListProps) {
     return (
         <View className="flex-1 pl-2 relative">
             {headerConfig ? (
-                <View className="px-3 py-2 flex-row items-center gap-3">
+                <View className="px-3 py-2 flex-row items-center gap-3" mouseDownCanMoveWindow>
                     <Text className="text-sm font-semibold text-text-primary" numberOfLines={1}>
                         {headerConfig.title}
                     </Text>
