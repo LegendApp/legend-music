@@ -183,6 +183,12 @@ export const spotifySuggestionProvider: SuggestionProvider = {
     async suggest(request: SuggestionRequest): Promise<SuggestionResult> {
         const count = request.count ?? DEFAULT_TRACK_COUNT;
 
+        if (request.promptSource === "local-library") {
+            throw new Error(
+                "Spotify suggestions do not support Local Library prompts. Choose an AI provider or switch the source.",
+            );
+        }
+
         if (request.mode === "queue-extension") {
             const seedTracks = request.seedTracks ?? [];
             const tracks = await suggestQueueExtension(seedTracks, count);

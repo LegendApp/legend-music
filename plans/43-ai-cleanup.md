@@ -17,7 +17,7 @@ even when unavailable, and align AI features with the prompt source choice acros
       and label unavailable providers as "Not Available".
 - [x] Ensure the Local Library option is always visible and selectable in AI source-related settings regardless of
       streaming provider availability.
-- [ ] Respect `promptSource` in the Spotify suggestion provider by rejecting or warning on local-library requests, or
+- [x] Respect `promptSource` in the Spotify suggestion provider by rejecting or warning on local-library requests, or
       by rerouting to the AI provider pipeline when local-only prompts are requested.
 - [ ] Pass prompt source settings into auto-extend queue and context-menu queue extension flows so they respect the
       selected default (or future per-playlist sources where applicable).
