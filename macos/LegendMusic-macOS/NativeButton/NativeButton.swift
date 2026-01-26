@@ -71,7 +71,7 @@ class NativeButtonView: NSView {
 
         // Create the button
         button = NSButton(frame: bounds)
-        button.translatesAutoresizingMaskIntoConstraints = false
+        button.autoresizingMask = [.width, .height]
         button.bezelStyle = .accessoryBarAction
         button.isBordered = false
         button.imagePosition = .imageLeading
@@ -83,14 +83,6 @@ class NativeButtonView: NSView {
         updateGlassContainer()
 
         addSubview(button)
-
-        NSLayoutConstraint.activate([
-            button.centerXAnchor.constraint(equalTo: centerXAnchor),
-            button.centerYAnchor.constraint(equalTo: centerYAnchor),
-            button.widthAnchor.constraint(lessThanOrEqualTo: widthAnchor),
-            button.heightAnchor.constraint(lessThanOrEqualTo: heightAnchor),
-        ])
-
         updateTrackingArea()
     }
 
@@ -188,7 +180,9 @@ class NativeButtonView: NSView {
     }
 
     @objc private func buttonPressed() {
+        print("[NativeButton] buttonPressed called, disabled: \(disabled)")
         guard !disabled else { return }
+        print("[NativeButton] calling onPress")
         onPress?([:])
     }
 
@@ -213,6 +207,11 @@ class NativeButtonView: NSView {
         updateTrackingArea()
     }
 
+    override func mouseDown(with event: NSEvent) {
+        print("[NativeButton] mouseDown received")
+        super.mouseDown(with: event)
+    }
+
     override func mouseEntered(with event: NSEvent) {
         isHovered = true
         updateAppearance()
@@ -226,5 +225,7 @@ class NativeButtonView: NSView {
     override func layout() {
         super.layout()
         glassContainer?.frame = bounds
+        button.frame = bounds
+        print("[NativeButton] layout - view bounds: \(bounds), button frame: \(button.frame)")
     }
 }

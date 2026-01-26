@@ -326,6 +326,7 @@ export function TrackList(_props: TrackListProps) {
     );
 
     const handleExtendExistingPrompt = useCallback(() => {
+        console.log("[TrackList] handleExtendExistingPrompt called");
         if (!aiPrompt) {
             showToast("No AI prompt found for this playlist.", "info");
             return;
@@ -602,7 +603,10 @@ export function TrackList(_props: TrackListProps) {
                                         />
                                         <NativeButton
                                             sfSymbol="wand.and.sparkles"
-                                            onPress={() => extendPromptOpen$.set(true)}
+                                            onPress={() => {
+                                                console.log("[TrackList] wand button onPress called");
+                                                extendPromptOpen$.set(true);
+                                            }}
                                             disabled={!canExtendWithNewPrompt}
                                             style={{ width: 28, height: 28 }}
                                         />

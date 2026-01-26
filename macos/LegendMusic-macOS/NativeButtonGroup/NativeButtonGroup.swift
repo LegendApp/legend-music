@@ -49,7 +49,9 @@ class NativeButtonGroupView: NSView {
             glass.style = .regular
             glass.wantsLayer = true
             glass.layer?.backgroundColor = NSColor.clear.cgColor
-            glass.contentView = contentContainer
+            // Add contentContainer as subview instead of using contentView
+            // to ensure proper hit testing
+            glass.addSubview(contentContainer)
             glassContainer = glass
             addSubview(glass)
 
@@ -108,12 +110,11 @@ class NativeButtonGroupView: NSView {
     override func layout() {
         super.layout()
         glassContainer?.frame = bounds
+        // Use bounds (0,0 origin) not frame for the content container within the glass
+        let containerBounds = NSRect(origin: .zero, size: bounds.size)
+        contentContainer.frame = containerBounds
 
-        if #available(macOS 26.0, *) {
-            // Glass container manages content view layout
-        } else {
-            contentContainer.frame = glassContainer?.bounds ?? bounds
-        }
+        print("[NativeButtonGroup] layout - bounds: \(bounds), glassContainer: \(glassContainer?.frame ?? .zero), contentContainer: \(contentContainer.frame)")
 
         // Layout child buttons horizontally
         layoutChildButtons()
@@ -127,7 +128,7 @@ class NativeButtonGroupView: NSView {
         let spacing: CGFloat = 2
         var xOffset = padding
 
-        for subview in subviews {
+        for (index, subview) in subviews.enumerated() {
             let buttonWidth = subview.frame.width > 0 ? subview.frame.width : 28
             let buttonHeight = bounds.height - (padding * 2)
 
@@ -137,6 +138,8 @@ class NativeButtonGroupView: NSView {
                 width: buttonWidth,
                 height: buttonHeight
             )
+
+            print("[NativeButtonGroup] button \(index) frame: \(subview.frame)")
 
             xOffset += buttonWidth + spacing
         }
