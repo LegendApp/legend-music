@@ -47,7 +47,8 @@ export function AISettings() {
                 providerId === LOCAL_LIBRARY_PROVIDER_ID
                     ? "Local Library"
                     : getStreamingProvider(providerId)?.name ?? providerId;
-            const isAvailable = enabledProviderIds.has(providerId);
+            const isLocalLibrary = providerId === LOCAL_LIBRARY_PROVIDER_ID;
+            const isAvailable = isLocalLibrary || enabledProviderIds.has(providerId);
             return {
                 value: providerId,
                 label: isAvailable ? providerName : `${providerName} (Not Available)`,

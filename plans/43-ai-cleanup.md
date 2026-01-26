@@ -15,7 +15,7 @@ even when unavailable, and align AI features with the prompt source choice acros
 ## Steps
 - [x] Update the Preferred Service dropdown to always include the currently selected provider, even when unavailable,
       and label unavailable providers as "Not Available".
-- [ ] Ensure the Local Library option is always visible and selectable in AI source-related settings regardless of
+- [x] Ensure the Local Library option is always visible and selectable in AI source-related settings regardless of
       streaming provider availability.
 - [ ] Respect `promptSource` in the Spotify suggestion provider by rejecting or warning on local-library requests, or
       by rerouting to the AI provider pipeline when local-only prompts are requested.
