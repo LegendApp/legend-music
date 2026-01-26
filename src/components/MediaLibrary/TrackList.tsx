@@ -172,6 +172,7 @@ export function TrackList(_props: TrackListProps) {
     const [isExtending, setIsExtending] = useState(false);
     const aiPrompt = selectedLocalPlaylist?.aiPrompt?.trim() ?? "";
     const aiSummary = selectedLocalPlaylist?.aiSummary?.trim() ?? "";
+    const playlistPromptSource = selectedLocalPlaylist?.aiSource ?? defaultPromptSource;
     const showAiSummary = Boolean(aiPrompt && aiSummary);
     const canModifyPlaylist = Boolean(selectedLocalPlaylist && selectedLocalPlaylist.source === "cache");
 
@@ -256,7 +257,7 @@ export function TrackList(_props: TrackListProps) {
             }
 
             const promptWithContext = buildPlaylistExtendPrompt(trimmedPrompt, selectedLocalPlaylist);
-            const resolvedPromptSource = options.promptSource ?? defaultPromptSource;
+            const resolvedPromptSource = options.promptSource ?? playlistPromptSource;
             const summaryPromise = options.updateMetadata
                 ? generatePlaylistSummary(trimmedPrompt).catch((error) => {
                       console.warn("AI playlist summary failed", error);
@@ -296,6 +297,7 @@ export function TrackList(_props: TrackListProps) {
                         updatePlaylistMetadata(selectedLocalPlaylist.id, {
                             aiPrompt: trimmedPrompt,
                             aiSummary: summary ?? selectedLocalPlaylist.aiSummary,
+                            aiSource: resolvedPromptSource,
                         });
                     } catch (error) {
                         console.warn("Failed to update AI playlist metadata", error);
@@ -318,7 +320,7 @@ export function TrackList(_props: TrackListProps) {
                 setIsExtending(false);
             }
         },
-        [canModifyPlaylist, defaultPromptSource, isAiBusy, selectedLocalPlaylist],
+        [canModifyPlaylist, isAiBusy, playlistPromptSource, selectedLocalPlaylist],
     );
 
     const handleExtendExistingPrompt = useCallback(() => {
@@ -327,8 +329,8 @@ export function TrackList(_props: TrackListProps) {
             return;
         }
 
-        void extendPlaylist(aiPrompt, { promptSource: defaultPromptSource });
-    }, [aiPrompt, defaultPromptSource, extendPlaylist]);
+        void extendPlaylist(aiPrompt, { promptSource: playlistPromptSource });
+    }, [aiPrompt, extendPlaylist, playlistPromptSource]);
 
     const handleExtendWithNewPrompt = useCallback(() => {
         void extendPlaylist(extendPromptDraft, {
@@ -346,11 +348,11 @@ export function TrackList(_props: TrackListProps) {
 
         setExtendPromptDraft("");
         setExtendPromptError(null);
-        setExtendPromptSource(defaultPromptSource);
+        setExtendPromptSource(playlistPromptSource);
         setTimeout(() => {
             extendPromptInputRef.current?.focus();
         }, 0);
-    }, [defaultPromptSource, extendPromptOpen]);
+    }, [extendPromptOpen, playlistPromptSource]);
 
     useEffect(() => {
         if (!extendPromptOpen) {

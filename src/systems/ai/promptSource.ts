@@ -10,6 +10,9 @@ export const AI_PROMPT_SOURCE_OPTIONS = [
 export const coerceAiPromptSource = (value?: string | null): AiPromptSource =>
     value === "local-library" ? "local-library" : "streaming";
 
+export const isAiPromptSource = (value?: string | null): value is AiPromptSource =>
+    value === "streaming" || value === "local-library";
+
 export type AiPromptContext = "queue" | "playlist" | "editor";
 
 export const getAiPromptPlaceholder = (source: AiPromptSource, context: AiPromptContext): string => {

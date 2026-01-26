@@ -118,9 +118,10 @@ function AiPromptEditorButton({ playlist, isSelected }: { playlist: LocalPlaylis
     const aiPromptInputRef = useRef<TextInput>(null);
     const [aiPromptDraft, setAiPromptDraft] = useState("");
     const defaultPromptSource = useValue(settings$.ai.promptSource);
-    const [promptSource, setPromptSource] = useState<AiPromptSource>(defaultPromptSource);
+    const [promptSource, setPromptSource] = useState<AiPromptSource>(playlist.aiSource ?? defaultPromptSource);
     const [aiPromptError, setAiPromptError] = useState<string | null>(null);
     const [isRegenerating, setIsRegenerating] = useState(false);
+    const playlistPromptSource = playlist.aiSource ?? defaultPromptSource;
 
     const closeAiPromptEditor = useCallback(() => {
         aiPromptEditorOpen$.set(false);
@@ -174,6 +175,7 @@ function AiPromptEditorButton({ playlist, isSelected }: { playlist: LocalPlaylis
                     ...playlist,
                     aiPrompt: trimmedPrompt,
                     aiSummary: summary ?? playlist.aiSummary,
+                    aiSource: promptSource,
                 },
                 trackPaths,
                 trackEntries,
@@ -203,11 +205,11 @@ function AiPromptEditorButton({ playlist, isSelected }: { playlist: LocalPlaylis
 
         setAiPromptDraft(aiPrompt);
         setAiPromptError(null);
-        setPromptSource(defaultPromptSource);
+        setPromptSource(playlistPromptSource);
         setTimeout(() => {
             aiPromptInputRef.current?.focus();
         }, 0);
-    }, [aiPrompt, aiPromptEditorOpen, defaultPromptSource]);
+    }, [aiPrompt, aiPromptEditorOpen, playlistPromptSource]);
 
     useEffect(() => {
         if (!aiPromptEditorOpen) {

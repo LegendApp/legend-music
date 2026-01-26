@@ -1,3 +1,5 @@
+import { isAiPromptSource, type AiPromptSource } from "@/systems/ai/promptSource";
+
 export interface M3UTrack {
     duration: number; // Duration in seconds, -1 for unknown
     title: string;
@@ -12,6 +14,7 @@ export interface M3UTrack {
 export interface M3UPlaylistMetadata {
     aiPrompt?: string;
     aiSummary?: string;
+    aiSource?: AiPromptSource;
 }
 
 export interface M3UPlaylist {
@@ -22,6 +25,7 @@ export interface M3UPlaylist {
 
 const AI_PROMPT_TAG = "#EXTAI_PROMPT:";
 const AI_SUMMARY_TAG = "#EXTAI_SUMMARY:";
+const AI_SOURCE_TAG = "#EXTAI_SOURCE:";
 
 const encodeMetadataValue = (value: string): string => {
     return encodeURIComponent(value);
@@ -66,6 +70,18 @@ export function parseM3U(content: string): M3UPlaylist {
             const value = line.slice(AI_SUMMARY_TAG.length).trim();
             if (value) {
                 metadata.aiSummary = decodeMetadataValue(value);
+            }
+            i++;
+            continue;
+        }
+
+        if (line.startsWith(AI_SOURCE_TAG)) {
+            const value = line.slice(AI_SOURCE_TAG.length).trim();
+            if (value) {
+                const decoded = decodeMetadataValue(value);
+                if (isAiPromptSource(decoded)) {
+                    metadata.aiSource = decoded;
+                }
             }
             i++;
             continue;
@@ -184,6 +200,10 @@ export function writeM3U(playlist: M3UPlaylist): string {
 
     if (metadata?.aiSummary) {
         lines.push(`${AI_SUMMARY_TAG}${encodeMetadataValue(metadata.aiSummary)}`);
+    }
+
+    if (metadata?.aiSource) {
+        lines.push(`${AI_SOURCE_TAG}${encodeMetadataValue(metadata.aiSource)}`);
     }
 
     // Write songs section

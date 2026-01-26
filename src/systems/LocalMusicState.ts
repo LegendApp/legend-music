@@ -15,6 +15,7 @@ import {
     hasCachedLibraryData,
     type PersistedLibraryTrack,
 } from "@/systems/LibraryCache";
+import type { AiPromptSource } from "@/systems/ai/promptSource";
 import { settings$ } from "@/systems/Settings";
 import { stateSaved$ } from "@/systems/State";
 import { ensureCacheDirectory, getCacheDirectory, getPlaylistsDirectory } from "@/utils/cacheDirectories";
@@ -59,6 +60,7 @@ export interface LocalPlaylist {
     originRoot?: string;
     aiPrompt?: string;
     aiSummary?: string;
+    aiSource?: AiPromptSource;
 }
 
 export interface LocalMusicState {
@@ -1139,6 +1141,7 @@ export function loadLocalPlaylists(): void {
                 source: "cache",
                 aiPrompt: metadata?.aiPrompt,
                 aiSummary: metadata?.aiSummary,
+                aiSource: metadata?.aiSource,
             });
         } catch (error) {
             console.warn(`Failed to read playlist ${entry.uri}:`, error);
@@ -1180,6 +1183,7 @@ export function loadLocalPlaylists(): void {
                 originRoot: discovered.originRoot,
                 aiPrompt: metadata?.aiPrompt,
                 aiSummary: metadata?.aiSummary,
+                aiSource: metadata?.aiSource,
             });
         } catch (error) {
             console.warn(`Failed to read library playlist ${filePath}:`, error);
@@ -1287,6 +1291,7 @@ export function saveLocalPlaylistTracks(
             metadata: {
                 aiPrompt: playlist.aiPrompt,
                 aiSummary: playlist.aiSummary,
+                aiSource: playlist.aiSource,
             },
         });
 
@@ -1302,6 +1307,7 @@ export function saveLocalPlaylistTracks(
                       trackCount: trackPaths.length,
                       aiPrompt: playlist.aiPrompt,
                       aiSummary: playlist.aiSummary,
+                      aiSource: playlist.aiSource,
                   }
                 : pl,
         );

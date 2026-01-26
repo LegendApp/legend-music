@@ -132,6 +132,7 @@ export function AiPlaylistDropdown({
                 updatePlaylistMetadata(targetPlaylist.id, {
                     aiPrompt: trimmedPrompt,
                     aiSummary: summary ?? undefined,
+                    aiSource: promptSource,
                 });
             } catch (error) {
                 console.warn("Failed to save AI playlist metadata", error);
@@ -163,12 +164,12 @@ export function AiPlaylistDropdown({
         } else {
             setPrompt("");
             setErrorMessage(null);
-            setPromptSource(defaultPromptSource);
+            setPromptSource(targetPlaylist?.aiSource ?? defaultPromptSource);
         }
         setTimeout(() => {
             textInputRef.current?.focus();
         }, 0);
-    }, [defaultPromptSource, isOpen]);
+    }, [defaultPromptSource, isOpen, targetPlaylist?.aiSource]);
 
     useEffect(() => {
         if (!isOpen) {

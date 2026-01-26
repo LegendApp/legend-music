@@ -9,6 +9,7 @@ import {
     sanitizePlaylistFileName,
     saveLocalPlaylistTracks,
 } from "@/systems/LocalMusicState";
+import type { AiPromptSource } from "@/systems/ai/promptSource";
 import { ensureCacheDirectory, getCacheDirectory, getPlaylistsDirectory } from "@/utils/cacheDirectories";
 import { writeM3U, type M3UTrack } from "@/utils/m3u";
 
@@ -127,7 +128,7 @@ export async function addTracksToPlaylist(
 
 export function updatePlaylistMetadata(
     playlistId: string,
-    metadata: { aiPrompt?: string; aiSummary?: string },
+    metadata: { aiPrompt?: string; aiSummary?: string; aiSource?: AiPromptSource },
 ): LocalPlaylist {
     const playlist = getPlaylistOrThrow(playlistId);
     if (!isEditablePlaylist(playlist)) {
@@ -138,6 +139,7 @@ export function updatePlaylistMetadata(
         ...playlist,
         aiPrompt: metadata.aiPrompt,
         aiSummary: metadata.aiSummary,
+        aiSource: metadata.aiSource,
     };
 
     saveLocalPlaylistTracks(nextPlaylist, playlist.trackPaths, playlist.tracks);
@@ -233,11 +235,12 @@ export async function exportPlaylistToFile(playlistId: string): Promise<string |
     const m3uContent = writeM3U({
         songs: m3uTracks,
         suggestions: [],
-        metadata: {
-            aiPrompt: playlist.aiPrompt,
-            aiSummary: playlist.aiSummary,
-        },
-    });
+            metadata: {
+                aiPrompt: playlist.aiPrompt,
+                aiSummary: playlist.aiSummary,
+                aiSource: playlist.aiSource,
+            },
+        });
 
     file.write(m3uContent);
     return toFilePath(file.uri);
