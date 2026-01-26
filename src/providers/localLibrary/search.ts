@@ -1,19 +1,19 @@
 import { computed } from "@legendapp/state";
 import { aiCommandRunner } from "@/native-modules/AICommandRunner";
-import { readMediaLibraryCsv } from "@/systems/ai/libraryCsv";
-import { buildLocalLibrarySearchPrompt } from "@/systems/ai/prompts";
-import { parseSuggestedTracks } from "@/systems/ai/parser";
-import type { AISuggestedTrack } from "@/systems/ai/types";
-import { aiAvailability$ } from "@/systems/ai/availability";
-import { normalizeArtistName } from "@/systems/LibraryState";
-import { localMusicState$, type LocalTrack } from "@/systems/LocalMusicState";
-import { settings$ } from "@/systems/Settings";
+import { LOCAL_LIBRARY_PROVIDER_ID } from "@/providers/localLibrary/constants";
 import type {
+    SearchResult,
     StreamingProviderSearchInput,
     StreamingProviderSearchProvider,
-    SearchResult,
 } from "@/providers/search/types";
-import { LOCAL_LIBRARY_PROVIDER_ID } from "@/providers/localLibrary/constants";
+import { aiAvailability$ } from "@/systems/ai/availability";
+import { readMediaLibraryCsv } from "@/systems/ai/libraryCsv";
+import { parseSuggestedTracks } from "@/systems/ai/parser";
+import { buildLocalLibrarySearchPrompt } from "@/systems/ai/prompts";
+import type { AISuggestedTrack } from "@/systems/ai/types";
+import { normalizeArtistName } from "@/systems/LibraryState";
+import { type LocalTrack, localMusicState$ } from "@/systems/LocalMusicState";
+import { settings$ } from "@/systems/Settings";
 
 const MAX_RESULTS = 10;
 const DEFAULT_TIMEOUT_MS = 60000;
@@ -49,7 +49,15 @@ const buildAiInvocation = (tool: AiTool, prompt: string): { command: string; arg
 
     return {
         command: "codex",
-        args: ["exec", "--skip-git-repo-check", "--model", "gpt-5.2", "--config", "model_reasoning_effort=low", prompt],
+        args: [
+            "exec",
+            "--skip-git-repo-check",
+            "--model",
+            "gpt-5.2",
+            "--config",
+            "model_reasoning_effort=medium",
+            prompt,
+        ],
     };
 };
 
