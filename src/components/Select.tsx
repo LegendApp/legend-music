@@ -21,6 +21,8 @@ export interface SelectProps {
     triggerClassName?: string;
     textClassName?: string;
     disabled?: boolean;
+    minWidth?: number;
+    maxWidth?: number;
 }
 
 export function Select({
@@ -33,6 +35,8 @@ export function Select({
     triggerClassName,
     textClassName,
     disabled = false,
+    minWidth,
+    maxWidth,
 }: SelectProps) {
     const value = value$ ? useValue(value$) : valueProp;
 
@@ -60,7 +64,7 @@ export function Select({
                     {displayText}
                 </Text>
             </DropdownMenu.Trigger>
-            <DropdownMenu.Content className={className}>
+            <DropdownMenu.Content className={className} minWidth={minWidth} maxWidth={maxWidth}>
                 {options.map((option) => (
                     <DropdownMenu.Item
                         key={option.value}

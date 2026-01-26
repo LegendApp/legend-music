@@ -224,6 +224,8 @@ export function AiPlaylistDropdown({
                             onValueChange={(value) => setPromptSource(value as AiPromptSource)}
                             className="w-44"
                             triggerClassName="w-44"
+                            minWidth={176}
+                            maxWidth={176}
                         />
                     </View>
                     <View className="bg-background-secondary border border-border-primary rounded-md px-3 py-2">
