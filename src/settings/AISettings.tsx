@@ -4,7 +4,7 @@ import { Checkbox } from "@/components/Checkbox";
 import { Select } from "@/components/Select";
 import { LOCAL_LIBRARY_PROVIDER_ID } from "@/providers/localLibrary/constants";
 import { getStreamingProvider } from "@/providers/streamingProviderRegistry";
-import { searchProviders$ } from "@/providers/search/registry";
+import { enabledSearchProviderIds$, searchProviders$ } from "@/providers/search/registry";
 import { SettingsPage, SettingsRow, SettingsSection } from "@/settings/components";
 import { settings$ } from "@/systems/Settings";
 import {
@@ -20,6 +20,7 @@ ensureSuggestionProvidersRegistered();
 export function AISettings() {
     const providers = useValue(suggestionProviders$);
     const searchProviders = useValue(searchProviders$);
+    const enabledSearchProviderIds = useValue(enabledSearchProviderIds$);
     const providerAvailability = useValue(suggestionProviderAvailability$);
 
     const providerOptions = useMemo(
@@ -36,16 +37,23 @@ export function AISettings() {
     );
 
     const preferredServiceOptions = useMemo(() => {
+        const enabledProviderIds = new Set(enabledSearchProviderIds);
         const options = [{ value: "auto", label: "Auto" }];
         for (const provider of searchProviders) {
+            if (!enabledProviderIds.has(provider.id) && provider.id !== LOCAL_LIBRARY_PROVIDER_ID) {
+                continue;
+            }
             const providerName =
                 provider.id === LOCAL_LIBRARY_PROVIDER_ID
                     ? "Local Library"
                     : getStreamingProvider(provider.id)?.name ?? provider.id;
             options.push({ value: provider.id, label: providerName });
         }
+        if (!options.some((option) => option.value === LOCAL_LIBRARY_PROVIDER_ID)) {
+            options.push({ value: LOCAL_LIBRARY_PROVIDER_ID, label: "Local Library" });
+        }
         return options;
-    }, [searchProviders]);
+    }, [enabledSearchProviderIds, searchProviders]);
 
     return (
         <SettingsPage>

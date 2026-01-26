@@ -29,7 +29,7 @@ through the suggestion pipeline so prompts, resolution, and playlist metadata re
       source to `fetchSuggestions`, and align prompt placeholders/labels with the selection.
 - [x] Persist the selected source on AI playlists (add `aiSource` to `LocalPlaylist` metadata and M3U tags), and reuse it
       when extending/regenerating from existing prompts; fallback to settings default for legacy playlists.
-- [ ] Update the source-related settings dropdown to list only enabled services plus "Local Library", reusing
+- [x] Update the source-related settings dropdown to list only enabled services plus "Local Library", reusing
       `enabledSearchProviderIds$` (or equivalent) to filter unavailable services while always keeping Local Library visible.
 
 ## Validation
