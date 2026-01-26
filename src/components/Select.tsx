@@ -1,6 +1,7 @@
+import { useCallback, useState } from "react";
+import { Text, type LayoutChangeEvent } from "react-native";
 import type { ObservableParam } from "@legendapp/state";
 import { useValue } from "@legendapp/state/react";
-import { Text } from "react-native";
 
 import { DropdownMenu } from "@/components/DropdownMenu";
 import { cn } from "@/utils/cn";
@@ -21,7 +22,7 @@ export interface SelectProps {
     triggerClassName?: string;
     textClassName?: string;
     disabled?: boolean;
-    minWidth?: number;
+    minWidth?: number | "auto";
     maxWidth?: number;
 }
 
@@ -39,6 +40,18 @@ export function Select({
     maxWidth,
 }: SelectProps) {
     const value = value$ ? useValue(value$) : valueProp;
+    const [triggerWidth, setTriggerWidth] = useState<number | null>(null);
+
+    const handleTriggerLayout = useCallback((event: LayoutChangeEvent) => {
+        const nextWidth = Math.round(event.nativeEvent.layout.width);
+        if (Number.isFinite(nextWidth) && nextWidth > 0 && nextWidth !== triggerWidth) {
+            setTriggerWidth(nextWidth);
+        }
+    }, [triggerWidth]);
+
+    const isAutoWidth = minWidth === "auto";
+    const resolvedMinWidth = isAutoWidth ? triggerWidth ?? 0 : minWidth;
+    const resolvedMaxWidth = isAutoWidth ? (triggerWidth ?? undefined) : maxWidth;
 
     const selectedOption = options.find((option) => option.value === value);
     const displayText = selectedOption ? selectedOption.label : placeholder;
@@ -59,12 +72,13 @@ export function Select({
                 disabled={disabled}
                 showCaret={true}
                 caretPosition="right"
+                onLayout={isAutoWidth ? handleTriggerLayout : undefined}
             >
                 <Text className={cn("text-text-primary text-sm", textClassName)} numberOfLines={1}>
                     {displayText}
                 </Text>
             </DropdownMenu.Trigger>
-            <DropdownMenu.Content className={className} minWidth={minWidth} maxWidth={maxWidth}>
+            <DropdownMenu.Content className={className} minWidth={resolvedMinWidth} maxWidth={resolvedMaxWidth}>
                 {options.map((option) => (
                     <DropdownMenu.Item
                         key={option.value}

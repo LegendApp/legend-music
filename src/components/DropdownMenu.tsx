@@ -14,7 +14,7 @@ import {
     useRef,
     useState,
 } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { ScrollView, Text, View, type LayoutChangeEvent } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 import { Icon } from "@/systems/Icon";
 import { state$ } from "@/systems/State";
@@ -129,6 +129,7 @@ interface TriggerProps {
     caretPosition?: "right" | "left";
     textClassName?: string;
     disabled?: boolean;
+    onLayout?: (event: LayoutChangeEvent) => void;
 }
 
 function Trigger({
@@ -140,6 +141,7 @@ function Trigger({
     caretPosition = "right",
     textClassName,
     disabled = false,
+    onLayout,
 }: TriggerProps) {
     const { isOpen$, triggerRef } = useDropdownContext();
 
@@ -171,7 +173,7 @@ function Trigger({
                 disabled?: boolean;
             };
             return (
-                <View ref={triggerRef} collapsable={false} pointerEvents="box-none">
+                <View ref={triggerRef} collapsable={false} pointerEvents="box-none" onLayout={onLayout}>
                     {cloneElement(children, {
                         ...(children.props as any),
                         onMouseDown: composeOpenHandler(childProps.onMouseDown),
@@ -183,7 +185,7 @@ function Trigger({
         }
         // Fallback if children is not a valid element
         return (
-            <View ref={triggerRef}>
+            <View ref={triggerRef} onLayout={onLayout}>
                 <Button onMouseDown={openMenu} onClick={openMenu}>
                     {children}
                 </Button>
@@ -195,7 +197,7 @@ function Trigger({
         // Custom styled trigger with optional caret
         const caret = showCaret ? <Icon name="chevron.up.chevron.down" size={14} marginTop={-6} /> : null;
         return (
-            <View ref={triggerRef}>
+            <View ref={triggerRef} onLayout={onLayout}>
                 <Button
                     className={cn("flex-row items-center group", className)}
                     onMouseDown={openMenu}
@@ -211,7 +213,7 @@ function Trigger({
     }
 
     return (
-        <View ref={triggerRef}>
+        <View ref={triggerRef} onLayout={onLayout}>
             <Button className={className} onMouseDown={openMenu} onClick={openMenu} disabled={disabled}>
                 {children}
             </Button>

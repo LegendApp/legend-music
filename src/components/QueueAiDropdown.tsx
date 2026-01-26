@@ -170,10 +170,8 @@ export const QueueAiDropdown = forwardRef<DropdownMenuRootRef, QueueAiDropdownPr
                             value={promptSource}
                             options={AI_PROMPT_SOURCE_OPTIONS}
                             onValueChange={(value) => setPromptSource(value as AiPromptSource)}
-                            className="w-44"
                             triggerClassName="w-44"
-                            minWidth={176}
-                            maxWidth={176}
+                            minWidth="auto"
                         />
                     </View>
                     <View className="bg-background-secondary border border-border-primary rounded-md px-3 py-2">
