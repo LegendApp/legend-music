@@ -20,7 +20,7 @@ through the suggestion pipeline so prompts, resolution, and playlist metadata re
   `src/providers/streamingProviderRegistry.ts`; the source dropdown should filter to enabled services plus Local Library.
 
 ## Steps
-- [ ] Add a new AI source setting (e.g., `settings$.ai.promptSource`) with a default, and surface it in AI settings with
+- [x] Add a new AI source setting (e.g., `settings$.ai.promptSource`) with a default, and surface it in AI settings with
       copy that makes the distinction between streaming service AI prompts and local library prompts explicit.
 - [ ] Extend `SuggestionRequest` with a dedicated source field (not the existing `source: "auto" | "manual"`) and update
       the AI provider pipeline to choose the library CSV and resolution restriction based on the request override or

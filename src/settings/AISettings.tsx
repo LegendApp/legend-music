@@ -12,6 +12,7 @@ import {
     suggestionProviderAvailability$,
     suggestionProviders$,
 } from "@/systems/suggestions";
+import { AI_PROMPT_SOURCE_OPTIONS } from "@/systems/ai/promptSource";
 import { useValue } from "@legendapp/state/react";
 
 ensureSuggestionProvidersRegistered();
@@ -63,6 +64,12 @@ export function AISettings() {
                     title="Suggestion Provider"
                     description="Choose which provider to use for suggestions"
                     control={<Select value$={settings$.ai.suggestionProviderId} options={providerOptions} />}
+                    controlWrapperClassName="w-48"
+                />
+                <SettingsRow
+                    title="AI Prompt Source"
+                    description="Use streaming services for AI prompts or limit suggestions to your Local Library"
+                    control={<Select value$={settings$.ai.promptSource} options={AI_PROMPT_SOURCE_OPTIONS} />}
                     controlWrapperClassName="w-48"
                 />
                 <SettingsRow

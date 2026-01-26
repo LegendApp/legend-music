@@ -1,6 +1,7 @@
 import type { StreamingProviderId } from "@/providers/types";
 import type { KeyboardEventCodeHotkey } from "@/systems/keyboard/Keyboard";
 import { KeyCodes } from "@/systems/keyboard/KeyboardManager";
+import { DEFAULT_AI_PROMPT_SOURCE, type AiPromptSource } from "@/systems/ai/promptSource";
 import { createJSONManager } from "@/utils/JSONManager";
 
 export type PlaylistStyle = "compact";
@@ -57,6 +58,7 @@ export interface AppSettings {
     ai: {
         enabled: boolean;
         autoExtendQueue: boolean;
+        promptSource: AiPromptSource;
         suggestionProviderId: "claude" | "codex" | "spotify";
         preferredTrackProviderId: StreamingProviderId | "auto";
     };
@@ -95,6 +97,7 @@ export const settings$ = createJSONManager<AppSettings>({
         ai: {
             enabled: true,
             autoExtendQueue: true,
+            promptSource: DEFAULT_AI_PROMPT_SOURCE,
             suggestionProviderId: "claude",
             preferredTrackProviderId: "auto",
         },
