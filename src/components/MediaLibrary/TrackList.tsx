@@ -26,6 +26,7 @@ import { useListItemStyles } from "@/hooks/useListItemStyles";
 import { type ContextMenuItem, showContextMenu } from "@/native-modules/ContextMenu";
 import { NativeButton } from "@/native-modules/NativeButton";
 import { NativeButtonGroup } from "@/native-modules/NativeButtonGroup";
+import { TitlebarAccessoryView } from "@/native-modules/TitlebarAccessoryView";
 import { type NativeDragTrack, TrackDragSource } from "@/native-modules/TrackDragSource";
 import { getStreamingProviderPlugin } from "@/providers/pluginRegistry";
 import type { StreamingProviderPlaylist } from "@/providers/types";
@@ -575,7 +576,8 @@ export function TrackList(_props: TrackListProps) {
     return (
         <View className="flex-1 pl-2 relative">
             {headerConfig ? (
-                <View className="px-3 py-2 flex-row items-center gap-3" mouseDownCanMoveWindow>
+                <TitlebarAccessoryView>
+                    <View className="px-3 py-2 flex-row items-center gap-3">
                     <Text className="text-sm font-semibold text-text-primary" numberOfLines={1}>
                         {headerConfig.title}
                     </Text>
@@ -674,7 +676,8 @@ export function TrackList(_props: TrackListProps) {
                             </DropdownMenu.Content>
                         </DropdownMenu.Root>
                     ) : null}
-                </View>
+                    </View>
+                </TitlebarAccessoryView>
             ) : null}
             <Table
                 header={

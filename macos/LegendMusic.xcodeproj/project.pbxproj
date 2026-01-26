@@ -23,8 +23,6 @@
 		698A69F42E1838D0001B4A90 /* RNKeyboardManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 698A69F22E1838D0001B4A90 /* RNKeyboardManager.swift */; };
 		698A69F52E1838D0001B4A90 /* KeyboardManagerBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 698A69F12E1838D0001B4A90 /* KeyboardManagerBridge.m */; };
 		698A69F62E1838D0001B4A90 /* KeyboardManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 698A69F02E1838D0001B4A90 /* KeyboardManager.swift */; };
-		70A8C0012F12340000ABC001 /* GlobalHotkey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70A8C0032F12340000ABC001 /* GlobalHotkey.swift */; };
-		70A8C0022F12340000ABC001 /* GlobalHotkeyBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 70A8C0042F12340000ABC001 /* GlobalHotkeyBridge.m */; };
 		699DCD2A2EB69511003BDB37 /* FileSystemWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 699DCD272EB69511003BDB37 /* FileSystemWatcher.swift */; };
 		699DCD2B2EB69511003BDB37 /* FileSystemWatcherBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 699DCD282EB69511003BDB37 /* FileSystemWatcherBridge.m */; };
 		69A6F0223E5AAB9D00ABCDE1 /* AutoUpdater.m in Sources */ = {isa = PBXBuildFile; fileRef = 69A6F01F3E5AAB9D00ABCDE1 /* AutoUpdater.m */; };
@@ -38,6 +36,8 @@
 		69EDB1012DCA10FA00CCB7F7 /* ContextMenuManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 69EDB0FF2DCA10FA00CCB7F7 /* ContextMenuManager.m */; };
 		69F4D1012F0A123400CCB7F7 /* FileDialog.m in Sources */ = {isa = PBXBuildFile; fileRef = 69F4D0FF2F0A123400CCB7F7 /* FileDialog.m */; };
 		69F8D1A32F12345600ABCDEF /* AppExit.m in Sources */ = {isa = PBXBuildFile; fileRef = 69F8D1A22F12345600ABCDEF /* AppExit.m */; };
+		70A8C0012F12340000ABC001 /* GlobalHotkey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70A8C0032F12340000ABC001 /* GlobalHotkey.swift */; };
+		70A8C0022F12340000ABC001 /* GlobalHotkeyBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 70A8C0042F12340000ABC001 /* GlobalHotkeyBridge.m */; };
 		7A1B2C3D4E5F607801234568 /* AppleMusic.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1B2C3D4E5F60780123456A /* AppleMusic.swift */; };
 		7A1B2C3D4E5F607801234569 /* AppleMusicBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 7A1B2C3D4E5F60780123456B /* AppleMusicBridge.m */; };
 		7A1B2C3D4E5F607801234570 /* AICommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1B2C3D4E5F607801234572 /* AICommandRunner.swift */; };
@@ -46,6 +46,8 @@
 		8A1B2C3D4E5F607801234584 /* NativeButtonBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D4E5F607801234581 /* NativeButtonBridge.m */; };
 		8A1B2C3D4E5F607801234588 /* NativeButtonGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D4E5F607801234585 /* NativeButtonGroup.swift */; };
 		8A1B2C3D4E5F607801234589 /* NativeButtonGroupBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D4E5F607801234586 /* NativeButtonGroupBridge.m */; };
+		8A1B2C3D4E5F607801234593 /* TitlebarAccessoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D4E5F607801234591 /* TitlebarAccessoryView.swift */; };
+		8A1B2C3D4E5F607801234594 /* TitlebarAccessoryViewBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 8A1B2C3D4E5F607801234592 /* TitlebarAccessoryViewBridge.m */; };
 		A0B1C2D3E4F5678901234567 /* SidebarSplitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0B1C2D3E4F5678901234571 /* SidebarSplitView.swift */; };
 		A0B1C2D3E4F5678901234568 /* SidebarSplitViewBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = A0B1C2D3E4F5678901234572 /* SidebarSplitViewBridge.m */; };
 		A0B1C2D3E4F5678901234569 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0B1C2D3E4F5678901234573 /* SidebarView.swift */; };
@@ -82,8 +84,6 @@
 		698A69F02E1838D0001B4A90 /* KeyboardManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardManager.swift; sourceTree = "<group>"; };
 		698A69F12E1838D0001B4A90 /* KeyboardManagerBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KeyboardManagerBridge.m; sourceTree = "<group>"; };
 		698A69F22E1838D0001B4A90 /* RNKeyboardManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RNKeyboardManager.swift; sourceTree = "<group>"; };
-		70A8C0032F12340000ABC001 /* GlobalHotkey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalHotkey.swift; sourceTree = "<group>"; };
-		70A8C0042F12340000ABC001 /* GlobalHotkeyBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = GlobalHotkeyBridge.m; sourceTree = "<group>"; };
 		699DCD272EB69511003BDB37 /* FileSystemWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSystemWatcher.swift; sourceTree = "<group>"; };
 		699DCD282EB69511003BDB37 /* FileSystemWatcherBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FileSystemWatcherBridge.m; sourceTree = "<group>"; };
 		69A6F01E3E5AAB9D00ABCDE1 /* AutoUpdater.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AutoUpdater.h; sourceTree = "<group>"; };
@@ -104,6 +104,8 @@
 		69F4D0FF2F0A123400CCB7F7 /* FileDialog.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FileDialog.m; sourceTree = "<group>"; };
 		69F8D1A12F12345600ABCDEF /* AppExit.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppExit.h; sourceTree = "<group>"; };
 		69F8D1A22F12345600ABCDEF /* AppExit.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppExit.m; sourceTree = "<group>"; };
+		70A8C0032F12340000ABC001 /* GlobalHotkey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalHotkey.swift; sourceTree = "<group>"; };
+		70A8C0042F12340000ABC001 /* GlobalHotkeyBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = GlobalHotkeyBridge.m; sourceTree = "<group>"; };
 		7A1B2C3D4E5F60780123456A /* AppleMusic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleMusic.swift; sourceTree = "<group>"; };
 		7A1B2C3D4E5F60780123456B /* AppleMusicBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppleMusicBridge.m; sourceTree = "<group>"; };
 		7A1B2C3D4E5F607801234572 /* AICommandRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AICommandRunner.swift; sourceTree = "<group>"; };
@@ -112,6 +114,8 @@
 		8A1B2C3D4E5F607801234581 /* NativeButtonBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NativeButtonBridge.m; sourceTree = "<group>"; };
 		8A1B2C3D4E5F607801234585 /* NativeButtonGroup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeButtonGroup.swift; sourceTree = "<group>"; };
 		8A1B2C3D4E5F607801234586 /* NativeButtonGroupBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NativeButtonGroupBridge.m; sourceTree = "<group>"; };
+		8A1B2C3D4E5F607801234591 /* TitlebarAccessoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TitlebarAccessoryView.swift; sourceTree = "<group>"; };
+		8A1B2C3D4E5F607801234592 /* TitlebarAccessoryViewBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TitlebarAccessoryViewBridge.m; sourceTree = "<group>"; };
 		A04F7F73C53E4245B9503D95 /* GlassEffectBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = GlassEffectBridge.m; sourceTree = "<group>"; };
 		A0B1C2D3E4F5678901234571 /* SidebarSplitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarSplitView.swift; sourceTree = "<group>"; };
 		A0B1C2D3E4F5678901234572 /* SidebarSplitViewBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SidebarSplitViewBridge.m; sourceTree = "<group>"; };
@@ -205,6 +209,7 @@
 				69F8D1A02F12345600ABCDEF /* AppExit */,
 				8A1B2C3D4E5F607801234582 /* NativeButton */,
 				8A1B2C3D4E5F607801234587 /* NativeButtonGroup */,
+				8A1B2C3D4E5F607801234590 /* TitlebarAccessoryView */,
 			);
 			path = "LegendMusic-macOS";
 			sourceTree = "<group>";
@@ -265,33 +270,6 @@
 				698A69F22E1838D0001B4A90 /* RNKeyboardManager.swift */,
 			);
 			path = KeyboardManager;
-			sourceTree = "<group>";
-		};
-		70A8C0052F12340000ABC001 /* GlobalHotkey */ = {
-			isa = PBXGroup;
-			children = (
-				70A8C0042F12340000ABC001 /* GlobalHotkeyBridge.m */,
-				70A8C0032F12340000ABC001 /* GlobalHotkey.swift */,
-			);
-			path = GlobalHotkey;
-			sourceTree = "<group>";
-		};
-		8A1B2C3D4E5F607801234582 /* NativeButton */ = {
-			isa = PBXGroup;
-			children = (
-				8A1B2C3D4E5F607801234580 /* NativeButton.swift */,
-				8A1B2C3D4E5F607801234581 /* NativeButtonBridge.m */,
-			);
-			path = NativeButton;
-			sourceTree = "<group>";
-		};
-		8A1B2C3D4E5F607801234587 /* NativeButtonGroup */ = {
-			isa = PBXGroup;
-			children = (
-				8A1B2C3D4E5F607801234585 /* NativeButtonGroup.swift */,
-				8A1B2C3D4E5F607801234586 /* NativeButtonGroupBridge.m */,
-			);
-			path = NativeButtonGroup;
 			sourceTree = "<group>";
 		};
 		699DCD292EB69511003BDB37 /* FileSystemWatcher */ = {
@@ -366,6 +344,15 @@
 			path = AppExit;
 			sourceTree = "<group>";
 		};
+		70A8C0052F12340000ABC001 /* GlobalHotkey */ = {
+			isa = PBXGroup;
+			children = (
+				70A8C0042F12340000ABC001 /* GlobalHotkeyBridge.m */,
+				70A8C0032F12340000ABC001 /* GlobalHotkey.swift */,
+			);
+			path = GlobalHotkey;
+			sourceTree = "<group>";
+		};
 		7A1B2C3D4E5F60780123456C /* AppleMusic */ = {
 			isa = PBXGroup;
 			children = (
@@ -414,6 +401,33 @@
 				514201492437B4B30078DB4F /* Legend Music.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		8A1B2C3D4E5F607801234582 /* NativeButton */ = {
+			isa = PBXGroup;
+			children = (
+				8A1B2C3D4E5F607801234580 /* NativeButton.swift */,
+				8A1B2C3D4E5F607801234581 /* NativeButtonBridge.m */,
+			);
+			path = NativeButton;
+			sourceTree = "<group>";
+		};
+		8A1B2C3D4E5F607801234587 /* NativeButtonGroup */ = {
+			isa = PBXGroup;
+			children = (
+				8A1B2C3D4E5F607801234585 /* NativeButtonGroup.swift */,
+				8A1B2C3D4E5F607801234586 /* NativeButtonGroupBridge.m */,
+			);
+			path = NativeButtonGroup;
+			sourceTree = "<group>";
+		};
+		8A1B2C3D4E5F607801234590 /* TitlebarAccessoryView */ = {
+			isa = PBXGroup;
+			children = (
+				8A1B2C3D4E5F607801234591 /* TitlebarAccessoryView.swift */,
+				8A1B2C3D4E5F607801234592 /* TitlebarAccessoryViewBridge.m */,
+			);
+			path = TitlebarAccessoryView;
 			sourceTree = "<group>";
 		};
 		A0B1C2D3E4F5678901234575 /* SidebarSplitView */ = {
@@ -735,6 +749,8 @@
 				8A1B2C3D4E5F607801234584 /* NativeButtonBridge.m in Sources */,
 				8A1B2C3D4E5F607801234588 /* NativeButtonGroup.swift in Sources */,
 				8A1B2C3D4E5F607801234589 /* NativeButtonGroupBridge.m in Sources */,
+				8A1B2C3D4E5F607801234593 /* TitlebarAccessoryView.swift in Sources */,
+				8A1B2C3D4E5F607801234594 /* TitlebarAccessoryViewBridge.m in Sources */,
 				1F88FA766E6115322310F4C0 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
