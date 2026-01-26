@@ -24,6 +24,8 @@ import { showToast } from "@/components/Toast";
 import type { TrackData } from "@/components/TrackItem";
 import { useListItemStyles } from "@/hooks/useListItemStyles";
 import { type ContextMenuItem, showContextMenu } from "@/native-modules/ContextMenu";
+import { NativeButton } from "@/native-modules/NativeButton";
+import { NativeButtonGroup } from "@/native-modules/NativeButtonGroup";
 import { type NativeDragTrack, TrackDragSource } from "@/native-modules/TrackDragSource";
 import { getStreamingProviderPlugin } from "@/providers/pluginRegistry";
 import type { StreamingProviderPlaylist } from "@/providers/types";
@@ -389,7 +391,7 @@ export function TrackList(_props: TrackListProps) {
         playlistSortDirection === "asc" &&
         searchQuery.trim().length === 0;
 
-    const showExtendFooter =
+    const showExtendButtons =
         selectedView === "playlist" &&
         selectedPlaylistProvider === "local" &&
         Boolean(selectedLocalPlaylist) &&
@@ -586,6 +588,88 @@ export function TrackList(_props: TrackListProps) {
                             </Text>
                         </View>
                     ) : null}
+                    <View className="flex-1" />
+                    {showExtendButtons ? (
+                        <DropdownMenu.Root isOpen$={extendPromptOpen$}>
+                            <DropdownMenu.Trigger asChild disabled={!canExtendWithNewPrompt}>
+                                <View collapsable={false}>
+                                    <NativeButtonGroup style={{ width: 66, height: 28 }}>
+                                        <NativeButton
+                                            sfSymbol="sparkles"
+                                            onPress={handleExtendExistingPrompt}
+                                            disabled={!canExtendWithExistingPrompt}
+                                            style={{ width: 28, height: 28 }}
+                                        />
+                                        <NativeButton
+                                            sfSymbol="wand.and.sparkles"
+                                            onPress={() => extendPromptOpen$.set(true)}
+                                            disabled={!canExtendWithNewPrompt}
+                                            style={{ width: 28, height: 28 }}
+                                        />
+                                    </NativeButtonGroup>
+                                </View>
+                            </DropdownMenu.Trigger>
+                            <DropdownMenu.Content
+                                directionalHint="bottomRightEdge"
+                                minWidth={360}
+                                maxWidth={360}
+                                setInitialFocus
+                                scrolls={false}
+                            >
+                                <View className="p-3 bg-background-tertiary border border-border-primary rounded-md gap-2">
+                                    <Text className="text-text-secondary text-xs font-medium">
+                                        Extend with new prompt
+                                    </Text>
+                                    <View className="flex-row items-center justify-between gap-2">
+                                        <Text className="text-text-secondary text-xs font-medium">Source</Text>
+                                        <Select
+                                            value={extendPromptSource}
+                                            options={AI_PROMPT_SOURCE_OPTIONS}
+                                            onValueChange={(value) => setExtendPromptSource(value as AiPromptSource)}
+                                            triggerClassName="w-44"
+                                            minWidth="auto"
+                                        />
+                                    </View>
+                                    <View className="bg-background-secondary border border-border-primary rounded-md px-3 py-2">
+                                        <TextInput
+                                            ref={extendPromptInputRef}
+                                            value={extendPromptDraft}
+                                            onChangeText={(value) => {
+                                                setExtendPromptDraft(value);
+                                                if (extendPromptError) {
+                                                    setExtendPromptError(null);
+                                                }
+                                            }}
+                                            placeholder={getAiPromptPlaceholder(extendPromptSource, "playlist")}
+                                            placeholderTextColor="#6b7280"
+                                            multiline
+                                            className="text-sm text-text-primary min-h-16"
+                                        />
+                                    </View>
+                                    {extendPromptError ? (
+                                        <View className="rounded-md border border-border-primary/60 bg-red-500/10 px-3 py-2">
+                                            <Text className="text-sm text-red-200">{extendPromptError}</Text>
+                                        </View>
+                                    ) : null}
+                                    <View className="flex-row justify-end gap-2">
+                                        <Button variant="secondary" size="small" onClick={closeExtendPrompt}>
+                                            <Text className="text-white text-sm">Cancel</Text>
+                                        </Button>
+                                        <Button
+                                            variant="primary"
+                                            size="small"
+                                            onClick={handleExtendWithNewPrompt}
+                                            disabled={isAiBusy || extendPromptDraft.trim().length === 0}
+                                        >
+                                            <Text className="text-white text-sm font-medium">
+                                                {isExtending ? "Adding..." : "Add tracks"}
+                                            </Text>
+                                        </Button>
+                                    </View>
+                                </View>
+                            </DropdownMenu.Content>
+                        </DropdownMenu.Root>
+                    ) : null}
                 </View>
             ) : null}
             <Table
@@ -612,107 +696,6 @@ export function TrackList(_props: TrackListProps) {
                                 allowDrop={allowPlaylistDrop}
                                 onDrop={handleDropAtPosition}
                             />
-                        ) : undefined
-                    }
-                    ListFooterComponent={
-                        showExtendFooter ? (
-                            <View className="px-3 py-3">
-                                <View className="flex-row items-center gap-2 rounded-md bg-background-tertiary px-2 py-2">
-                                    <Button
-                                        variant="primary"
-                                        size="small"
-                                        className="px-3"
-                                        onClick={handleExtendExistingPrompt}
-                                        disabled={!canExtendWithExistingPrompt}
-                                        tooltip="Extend with existing prompt"
-                                    >
-                                        <Text className="text-white text-sm font-medium">Extend with prompt</Text>
-                                    </Button>
-                                    <DropdownMenu.Root isOpen$={extendPromptOpen$}>
-                                        <DropdownMenu.Trigger asChild disabled={!canExtendWithNewPrompt}>
-                                            <Button
-                                                variant="secondary"
-                                                size="small"
-                                                className="px-3"
-                                                disabled={!canExtendWithNewPrompt}
-                                            >
-                                                <Text className="text-white text-sm font-medium">
-                                                    Extend with new prompt
-                                                </Text>
-                                            </Button>
-                                        </DropdownMenu.Trigger>
-                                        <DropdownMenu.Content
-                                            directionalHint="topLeft"
-                                            minWidth={360}
-                                            maxWidth={360}
-                                            setInitialFocus
-                                            scrolls={false}
-                                        >
-                                            <View className="p-3 bg-background-tertiary border border-border-primary rounded-md gap-2">
-                                                <Text className="text-text-secondary text-xs font-medium">
-                                                    Extend with new prompt
-                                                </Text>
-                                                <View className="flex-row items-center justify-between gap-2">
-                                                    <Text className="text-text-secondary text-xs font-medium">
-                                                        Source
-                                                    </Text>
-                                                    <Select
-                                                        value={extendPromptSource}
-                                                        options={AI_PROMPT_SOURCE_OPTIONS}
-                                                        onValueChange={(value) =>
-                                                            setExtendPromptSource(value as AiPromptSource)
-                                                        }
-                                                        triggerClassName="w-44"
-                                                        minWidth="auto"
-                                                    />
-                                                </View>
-                                                <View className="bg-background-secondary border border-border-primary rounded-md px-3 py-2">
-                                                    <TextInput
-                                                        ref={extendPromptInputRef}
-                                                        value={extendPromptDraft}
-                                                        onChangeText={(value) => {
-                                                            setExtendPromptDraft(value);
-                                                            if (extendPromptError) {
-                                                                setExtendPromptError(null);
-                                                            }
-                                                        }}
-                                                        placeholder={getAiPromptPlaceholder(extendPromptSource, "playlist")}
-                                                        placeholderTextColor="#6b7280"
-                                                        multiline
-                                                        className="text-sm text-text-primary min-h-16"
-                                                    />
-                                                </View>
-                                                {extendPromptError ? (
-                                                    <View className="rounded-md border border-border-primary/60 bg-red-500/10 px-3 py-2">
-                                                        <Text className="text-sm text-red-200">
-                                                            {extendPromptError}
-                                                        </Text>
-                                                    </View>
-                                                ) : null}
-                                                <View className="flex-row justify-end gap-2">
-                                                    <Button
-                                                        variant="secondary"
-                                                        size="small"
-                                                        onClick={closeExtendPrompt}
-                                                    >
-                                                        <Text className="text-white text-sm">Cancel</Text>
-                                                    </Button>
-                                                    <Button
-                                                        variant="primary"
-                                                        size="small"
-                                                        onClick={handleExtendWithNewPrompt}
-                                                        disabled={isAiBusy || extendPromptDraft.trim().length === 0}
-                                                    >
-                                                        <Text className="text-white text-sm font-medium">
-                                                            {isExtending ? "Adding..." : "Add tracks"}
-                                                        </Text>
-                                                    </Button>
-                                                </View>
-                                            </View>
-                                        </DropdownMenu.Content>
-                                    </DropdownMenu.Root>
-                                </View>
-                            </View>
                         ) : undefined
                     }
                     style={{ flex: 1 }}
