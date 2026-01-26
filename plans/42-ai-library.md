@@ -22,7 +22,7 @@ through the suggestion pipeline so prompts, resolution, and playlist metadata re
 ## Steps
 - [x] Add a new AI source setting (e.g., `settings$.ai.promptSource`) with a default, and surface it in AI settings with
       copy that makes the distinction between streaming service AI prompts and local library prompts explicit.
-- [ ] Extend `SuggestionRequest` with a dedicated source field (not the existing `source: "auto" | "manual"`) and update
+- [x] Extend `SuggestionRequest` with a dedicated source field (not the existing `source: "auto" | "manual"`) and update
       the AI provider pipeline to choose the library CSV and resolution restriction based on the request override or
       settings default.
 - [ ] Update AI prompt UI entry points (queue, playlist, extend/regenerate) to include a source selector, pass the chosen

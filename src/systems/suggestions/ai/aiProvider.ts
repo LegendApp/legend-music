@@ -6,6 +6,7 @@ import { readMediaLibraryCsv } from "@/systems/ai/libraryCsv";
 import { parseSuggestedTracks } from "@/systems/ai/parser";
 import { buildPlaylistPrompt, buildQueueExtensionPrompt } from "@/systems/ai/prompts";
 import { resolveSuggestedTracks } from "@/systems/ai/resolver";
+import { coerceAiPromptSource, type AiPromptSource } from "@/systems/ai/promptSource";
 import type { AISuggestedTrack } from "@/systems/ai/types";
 import { settings$ } from "@/systems/Settings";
 import type { AiInvocation } from "@/systems/suggestions/ai/invocation";
@@ -80,6 +81,9 @@ const buildPromptForRequest = (
     return buildPlaylistPrompt(prompt, count, { libraryCsv: options.libraryCsv });
 };
 
+const resolvePromptSource = (request: SuggestionRequest): AiPromptSource =>
+    coerceAiPromptSource(request.promptSource ?? settings$.ai.promptSource.get());
+
 const resolveAiAvailability = (id: SuggestionProviderId): boolean => {
     if (id === "claude") {
         return aiAvailability$.claude.get();
@@ -107,9 +111,9 @@ export const createAiSuggestionProvider = (config: AiProviderConfig): Suggestion
 
     const suggest = async (request: SuggestionRequest): Promise<SuggestionResult> => {
         const count = request.count ?? DEFAULT_TRACK_COUNT;
+        const promptSource = resolvePromptSource(request);
         const preferredProviderId = settings$.ai.preferredTrackProviderId.get();
-        const libraryCsv =
-            preferredProviderId === LOCAL_LIBRARY_PROVIDER_ID ? readMediaLibraryCsv() : "";
+        const libraryCsv = promptSource === "local-library" ? readMediaLibraryCsv() : "";
         const prompt = buildPromptForRequest(request, count, { libraryCsv });
         const timeoutMs = DEFAULT_TIMEOUT_MS;
 
@@ -141,9 +145,17 @@ export const createAiSuggestionProvider = (config: AiProviderConfig): Suggestion
             throw new Error(`${config.name} response did not include any tracks.${detailSuffix}`);
         }
 
-        const preferredProviders = buildProviderPreference(request.seedTracks, preferredProviderId);
-        const restrictToProviders =
-            preferredProviderId === LOCAL_LIBRARY_PROVIDER_ID ? [preferredProviderId] : undefined;
+        const effectivePreferredProviderId =
+            promptSource === "local-library"
+                ? LOCAL_LIBRARY_PROVIDER_ID
+                : preferredProviderId === LOCAL_LIBRARY_PROVIDER_ID
+                  ? null
+                  : preferredProviderId;
+        const preferredProviders =
+            promptSource === "local-library"
+                ? [LOCAL_LIBRARY_PROVIDER_ID]
+                : buildProviderPreference(request.seedTracks, effectivePreferredProviderId);
+        const restrictToProviders = promptSource === "local-library" ? [LOCAL_LIBRARY_PROVIDER_ID] : undefined;
         const resolved = await resolveSuggestedTracks(suggestions, { preferredProviders, restrictToProviders });
 
         return {
