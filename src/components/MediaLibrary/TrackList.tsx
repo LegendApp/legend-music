@@ -7,6 +7,7 @@ import type { NativeMouseEvent } from "react-native-macos";
 import { audioPlayerState$ } from "@/components/AudioPlayer";
 import { Button } from "@/components/Button";
 import { DropdownMenu } from "@/components/DropdownMenu";
+import { Select } from "@/components/Select";
 import {
     type DragData,
     DraggableItem,
@@ -27,6 +28,7 @@ import { type NativeDragTrack, TrackDragSource } from "@/native-modules/TrackDra
 import { getStreamingProviderPlugin } from "@/providers/pluginRegistry";
 import type { StreamingProviderPlaylist } from "@/providers/types";
 import { aiPlaylistFillState$, finishAiPlaylistFill, startAiPlaylistFill } from "@/systems/ai";
+import { AI_PROMPT_SOURCE_OPTIONS, getAiPromptPlaceholder, type AiPromptSource } from "@/systems/ai/promptSource";
 import { buildPlaylistEntries } from "@/systems/ai/playlistTracks";
 import { generatePlaylistSummary } from "@/systems/ai/summary";
 import { Icon } from "@/systems/Icon";
@@ -34,6 +36,7 @@ import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
 import { libraryUI$, selectLibraryAlbum, selectLibraryArtist } from "@/systems/LibraryState";
 import { type LocalPlaylist, localMusicState$, saveLocalPlaylistTracks } from "@/systems/LocalMusicState";
 import { addTracksToPlaylist, updatePlaylistMetadata } from "@/systems/LocalPlaylists";
+import { settings$ } from "@/systems/Settings";
 import { fetchSuggestions } from "@/systems/suggestions";
 import { themeState$ } from "@/theme/ThemeProvider";
 import { cn } from "@/utils/cn";
@@ -163,6 +166,8 @@ export function TrackList(_props: TrackListProps) {
     const extendPromptOpen = useValue(extendPromptOpen$);
     const extendPromptInputRef = useRef<TextInput>(null);
     const [extendPromptDraft, setExtendPromptDraft] = useState("");
+    const defaultPromptSource = useValue(settings$.ai.promptSource);
+    const [extendPromptSource, setExtendPromptSource] = useState<AiPromptSource>(defaultPromptSource);
     const [extendPromptError, setExtendPromptError] = useState<string | null>(null);
     const [isExtending, setIsExtending] = useState(false);
     const aiPrompt = selectedLocalPlaylist?.aiPrompt?.trim() ?? "";
@@ -231,6 +236,7 @@ export function TrackList(_props: TrackListProps) {
             promptValue: string,
             options: {
                 updateMetadata?: boolean;
+                promptSource?: AiPromptSource;
                 onError?: (message: string) => void;
                 onSuccess?: () => void;
             } = {},
@@ -250,6 +256,7 @@ export function TrackList(_props: TrackListProps) {
             }
 
             const promptWithContext = buildPlaylistExtendPrompt(trimmedPrompt, selectedLocalPlaylist);
+            const resolvedPromptSource = options.promptSource ?? defaultPromptSource;
             const summaryPromise = options.updateMetadata
                 ? generatePlaylistSummary(trimmedPrompt).catch((error) => {
                       console.warn("AI playlist summary failed", error);
@@ -265,6 +272,7 @@ export function TrackList(_props: TrackListProps) {
                     mode: "playlist",
                     prompt: promptWithContext,
                     count: DEFAULT_AI_SUGGESTION_COUNT,
+                    promptSource: resolvedPromptSource,
                 });
 
                 if (suggestedTracks.length === 0) {
@@ -310,7 +318,7 @@ export function TrackList(_props: TrackListProps) {
                 setIsExtending(false);
             }
         },
-        [canModifyPlaylist, isAiBusy, selectedLocalPlaylist],
+        [canModifyPlaylist, defaultPromptSource, isAiBusy, selectedLocalPlaylist],
     );
 
     const handleExtendExistingPrompt = useCallback(() => {
@@ -319,16 +327,17 @@ export function TrackList(_props: TrackListProps) {
             return;
         }
 
-        void extendPlaylist(aiPrompt);
-    }, [aiPrompt, extendPlaylist]);
+        void extendPlaylist(aiPrompt, { promptSource: defaultPromptSource });
+    }, [aiPrompt, defaultPromptSource, extendPlaylist]);
 
     const handleExtendWithNewPrompt = useCallback(() => {
         void extendPlaylist(extendPromptDraft, {
             updateMetadata: true,
+            promptSource: extendPromptSource,
             onError: (message) => setExtendPromptError(message),
             onSuccess: closeExtendPrompt,
         });
-    }, [closeExtendPrompt, extendPlaylist, extendPromptDraft]);
+    }, [closeExtendPrompt, extendPlaylist, extendPromptDraft, extendPromptSource]);
 
     useEffect(() => {
         if (!extendPromptOpen) {
@@ -337,10 +346,11 @@ export function TrackList(_props: TrackListProps) {
 
         setExtendPromptDraft("");
         setExtendPromptError(null);
+        setExtendPromptSource(defaultPromptSource);
         setTimeout(() => {
             extendPromptInputRef.current?.focus();
         }, 0);
-    }, [extendPromptOpen]);
+    }, [defaultPromptSource, extendPromptOpen]);
 
     useEffect(() => {
         if (!extendPromptOpen) {
@@ -640,6 +650,19 @@ export function TrackList(_props: TrackListProps) {
                                                 <Text className="text-text-secondary text-xs font-medium">
                                                     Extend with new prompt
                                                 </Text>
+                                                <View className="flex-row items-center justify-between gap-2">
+                                                    <Text className="text-text-secondary text-xs font-medium">
+                                                        Source
+                                                    </Text>
+                                                    <Select
+                                                        value={extendPromptSource}
+                                                        options={AI_PROMPT_SOURCE_OPTIONS}
+                                                        onValueChange={(value) =>
+                                                            setExtendPromptSource(value as AiPromptSource)
+                                                        }
+                                                        className="w-44"
+                                                    />
+                                                </View>
                                                 <View className="bg-background-secondary border border-border-primary rounded-md px-3 py-2">
                                                     <TextInput
                                                         ref={extendPromptInputRef}
@@ -650,7 +673,7 @@ export function TrackList(_props: TrackListProps) {
                                                                 setExtendPromptError(null);
                                                             }
                                                         }}
-                                                        placeholder="Describe the tracks to add"
+                                                        placeholder={getAiPromptPlaceholder(extendPromptSource, "playlist")}
                                                         placeholderTextColor="#6b7280"
                                                         multiline
                                                         className="text-sm text-text-primary min-h-16"

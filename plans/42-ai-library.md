@@ -25,7 +25,7 @@ through the suggestion pipeline so prompts, resolution, and playlist metadata re
 - [x] Extend `SuggestionRequest` with a dedicated source field (not the existing `source: "auto" | "manual"`) and update
       the AI provider pipeline to choose the library CSV and resolution restriction based on the request override or
       settings default.
-- [ ] Update AI prompt UI entry points (queue, playlist, extend/regenerate) to include a source selector, pass the chosen
+- [x] Update AI prompt UI entry points (queue, playlist, extend/regenerate) to include a source selector, pass the chosen
       source to `fetchSuggestions`, and align prompt placeholders/labels with the selection.
 - [ ] Persist the selected source on AI playlists (add `aiSource` to `LocalPlaylist` metadata and M3U tags), and reuse it
       when extending/regenerating from existing prompts; fallback to settings default for legacy playlists.

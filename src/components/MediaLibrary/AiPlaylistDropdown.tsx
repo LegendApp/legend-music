@@ -4,7 +4,9 @@ import { Text, TextInput, View } from "react-native";
 
 import { Button } from "@/components/Button";
 import { DropdownMenu } from "@/components/DropdownMenu";
+import { Select } from "@/components/Select";
 import { showToast } from "@/components/Toast";
+import { AI_PROMPT_SOURCE_OPTIONS, getAiPromptPlaceholder, type AiPromptSource } from "@/systems/ai/promptSource";
 import { fetchSuggestions, isSelectedSuggestionProviderAvailable$, selectedSuggestionProvider$ } from "@/systems/suggestions";
 import { addTracksToPlaylist, updatePlaylistMetadata } from "@/systems/LocalPlaylists";
 import { localMusicState$ } from "@/systems/LocalMusicState";
@@ -38,6 +40,8 @@ export function AiPlaylistDropdown({
     const isOpen$ = useObservable(false);
     const isOpen = useValue(isOpen$);
     const [prompt, setPrompt] = useState("");
+    const defaultPromptSource = useValue(settings$.ai.promptSource);
+    const [promptSource, setPromptSource] = useState<AiPromptSource>(defaultPromptSource);
     const [isCreating, setIsCreating] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const textInputRef = useRef<TextInput>(null);
@@ -104,6 +108,7 @@ export function AiPlaylistDropdown({
                 mode: "playlist",
                 prompt: trimmedPrompt,
                 count: DEFAULT_SUGGESTION_COUNT,
+                promptSource,
             });
 
             if (tracks.length === 0) {
@@ -146,7 +151,7 @@ export function AiPlaylistDropdown({
             finishAiPlaylistFill();
             setIsCreating(false);
         }
-    }, [canCreate, close, prompt, reopenWithError, targetPlaylist]);
+    }, [canCreate, close, prompt, promptSource, reopenWithError, targetPlaylist]);
 
     useEffect(() => {
         if (!isOpen) {
@@ -158,11 +163,12 @@ export function AiPlaylistDropdown({
         } else {
             setPrompt("");
             setErrorMessage(null);
+            setPromptSource(defaultPromptSource);
         }
         setTimeout(() => {
             textInputRef.current?.focus();
         }, 0);
-    }, [isOpen]);
+    }, [defaultPromptSource, isOpen]);
 
     useEffect(() => {
         if (!isOpen) {
@@ -209,6 +215,15 @@ export function AiPlaylistDropdown({
             >
                 <View className="p-3 bg-background-tertiary border border-border-primary rounded-md gap-2">
                     <Text className="text-text-secondary text-xs font-medium">{dialogTitle}</Text>
+                    <View className="flex-row items-center justify-between gap-2">
+                        <Text className="text-text-secondary text-xs font-medium">Source</Text>
+                        <Select
+                            value={promptSource}
+                            options={AI_PROMPT_SOURCE_OPTIONS}
+                            onValueChange={(value) => setPromptSource(value as AiPromptSource)}
+                            className="w-44"
+                        />
+                    </View>
                     <View className="bg-background-secondary border border-border-primary rounded-md px-3 py-2">
                         <TextInput
                             ref={textInputRef}
@@ -219,7 +234,7 @@ export function AiPlaylistDropdown({
                                     setErrorMessage(null);
                                 }
                             }}
-                            placeholder="Describe the tracks to add"
+                            placeholder={getAiPromptPlaceholder(promptSource, "playlist")}
                             placeholderTextColor="#6b7280"
                             multiline
                             className="text-sm text-text-primary min-h-16"

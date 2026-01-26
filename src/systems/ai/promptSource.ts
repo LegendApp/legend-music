@@ -9,3 +9,19 @@ export const AI_PROMPT_SOURCE_OPTIONS = [
 
 export const coerceAiPromptSource = (value?: string | null): AiPromptSource =>
     value === "local-library" ? "local-library" : "streaming";
+
+export type AiPromptContext = "queue" | "playlist" | "editor";
+
+export const getAiPromptPlaceholder = (source: AiPromptSource, context: AiPromptContext): string => {
+    const isLocal = source === "local-library";
+
+    if (context === "queue") {
+        return isLocal ? "Describe the queue from your library" : "Describe the queue";
+    }
+
+    if (context === "editor") {
+        return isLocal ? "Describe the playlist from your library" : "Describe the playlist";
+    }
+
+    return isLocal ? "Describe the tracks to add from your library" : "Describe the tracks to add";
+};

@@ -15,6 +15,7 @@ import type { NativeMouseEvent } from "react-native-macos";
 import { audioControls } from "@/components/AudioPlayer";
 import { Button } from "@/components/Button";
 import { DropdownMenu } from "@/components/DropdownMenu";
+import { Select } from "@/components/Select";
 import {
     type DraggedItem,
     DroppableZone,
@@ -37,6 +38,7 @@ import {
 import { streamingProviderSessions$ } from "@/providers/streamingProviderRegistry";
 import type { StreamingProviderId, StreamingProviderPlaylist } from "@/providers/types";
 import { finishAiPlaylistFill, startAiPlaylistFill } from "@/systems/ai";
+import { AI_PROMPT_SOURCE_OPTIONS, getAiPromptPlaceholder, type AiPromptSource } from "@/systems/ai/promptSource";
 import { buildPlaylistEntries } from "@/systems/ai/playlistTracks";
 import { generatePlaylistSummary } from "@/systems/ai/summary";
 import { SUPPORT_PLAYLISTS } from "@/systems/constants";
@@ -115,6 +117,8 @@ function AiPromptEditorButton({ playlist, isSelected }: { playlist: LocalPlaylis
     const aiPromptEditorOpen = useValue(aiPromptEditorOpen$);
     const aiPromptInputRef = useRef<TextInput>(null);
     const [aiPromptDraft, setAiPromptDraft] = useState("");
+    const defaultPromptSource = useValue(settings$.ai.promptSource);
+    const [promptSource, setPromptSource] = useState<AiPromptSource>(defaultPromptSource);
     const [aiPromptError, setAiPromptError] = useState<string | null>(null);
     const [isRegenerating, setIsRegenerating] = useState(false);
 
@@ -150,6 +154,7 @@ function AiPromptEditorButton({ playlist, isSelected }: { playlist: LocalPlaylis
                 mode: "playlist",
                 prompt: trimmedPrompt,
                 count,
+                promptSource,
             });
 
             if (tracks.length === 0) {
@@ -189,7 +194,7 @@ function AiPromptEditorButton({ playlist, isSelected }: { playlist: LocalPlaylis
             finishAiPlaylistFill();
             setIsRegenerating(false);
         }
-    }, [aiPromptDraft, canEditAiPrompt, closeAiPromptEditor, isRegenerating, playlist]);
+    }, [aiPromptDraft, canEditAiPrompt, closeAiPromptEditor, isRegenerating, playlist, promptSource]);
 
     useEffect(() => {
         if (!aiPromptEditorOpen) {
@@ -198,10 +203,11 @@ function AiPromptEditorButton({ playlist, isSelected }: { playlist: LocalPlaylis
 
         setAiPromptDraft(aiPrompt);
         setAiPromptError(null);
+        setPromptSource(defaultPromptSource);
         setTimeout(() => {
             aiPromptInputRef.current?.focus();
         }, 0);
-    }, [aiPrompt, aiPromptEditorOpen]);
+    }, [aiPrompt, aiPromptEditorOpen, defaultPromptSource]);
 
     useEffect(() => {
         if (!aiPromptEditorOpen) {
@@ -243,6 +249,15 @@ function AiPromptEditorButton({ playlist, isSelected }: { playlist: LocalPlaylis
             >
                 <View className="p-3 bg-background-tertiary border border-border-primary rounded-md gap-2">
                     <Text className="text-text-secondary text-xs font-medium">Edit AI prompt</Text>
+                    <View className="flex-row items-center justify-between gap-2">
+                        <Text className="text-text-secondary text-xs font-medium">Source</Text>
+                        <Select
+                            value={promptSource}
+                            options={AI_PROMPT_SOURCE_OPTIONS}
+                            onValueChange={(value) => setPromptSource(value as AiPromptSource)}
+                            className="w-44"
+                        />
+                    </View>
                     <View className="bg-background-secondary border border-border-primary rounded-md px-3 py-2">
                         <TextInput
                             ref={aiPromptInputRef}
@@ -253,7 +268,7 @@ function AiPromptEditorButton({ playlist, isSelected }: { playlist: LocalPlaylis
                                     setAiPromptError(null);
                                 }
                             }}
-                            placeholder="Describe the playlist"
+                            placeholder={getAiPromptPlaceholder(promptSource, "editor")}
                             placeholderTextColor="#6b7280"
                             multiline
                             className="text-sm text-text-primary min-h-16"

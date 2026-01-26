@@ -4,9 +4,11 @@ import { Text, TextInput, View } from "react-native";
 
 import { Button } from "@/components/Button";
 import { DropdownMenu, type DropdownMenuRootRef } from "@/components/DropdownMenu";
+import { Select } from "@/components/Select";
 import { showToast } from "@/components/Toast";
 import { queueControls } from "@/components/AudioPlayer";
 import { finishAiQueueFill, startAiQueueFill } from "@/systems/ai";
+import { AI_PROMPT_SOURCE_OPTIONS, getAiPromptPlaceholder, type AiPromptSource } from "@/systems/ai/promptSource";
 import { fetchSuggestions, isSelectedSuggestionProviderAvailable$, selectedSuggestionProvider$ } from "@/systems/suggestions";
 import { useOnHotkeys } from "@/systems/keyboard/Keyboard";
 import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
@@ -26,6 +28,8 @@ export const QueueAiDropdown = forwardRef<DropdownMenuRootRef, QueueAiDropdownPr
     const isOpen = useValue(isOpen$);
     const [prompt, setPrompt] = useState("");
     const [count, setCount] = useState(COUNT_OPTIONS[1]);
+    const defaultPromptSource = useValue(settings$.ai.promptSource);
+    const [promptSource, setPromptSource] = useState<AiPromptSource>(defaultPromptSource);
     const [isCreating, setIsCreating] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const textInputRef = useRef<TextInput>(null);
@@ -67,6 +71,7 @@ export const QueueAiDropdown = forwardRef<DropdownMenuRootRef, QueueAiDropdownPr
                 mode: "playlist",
                 prompt: trimmedPrompt,
                 count,
+                promptSource,
             });
 
             if (tracks.length === 0) {
@@ -89,7 +94,7 @@ export const QueueAiDropdown = forwardRef<DropdownMenuRootRef, QueueAiDropdownPr
             setIsCreating(false);
             finishAiQueueFill();
         }
-    }, [canCreate, close, count, prompt, reopenWithError]);
+    }, [canCreate, close, count, prompt, promptSource, reopenWithError]);
 
     const openAiQueue = useCallback(() => {
         if (isDisabled) {
@@ -112,12 +117,13 @@ export const QueueAiDropdown = forwardRef<DropdownMenuRootRef, QueueAiDropdownPr
         } else {
             setPrompt("");
             setErrorMessage(null);
+            setPromptSource(defaultPromptSource);
         }
 
         setTimeout(() => {
             textInputRef.current?.focus();
         }, 0);
-    }, [isOpen]);
+    }, [defaultPromptSource, isOpen]);
 
     useEffect(() => {
         if (!isOpen) {
@@ -158,6 +164,15 @@ export const QueueAiDropdown = forwardRef<DropdownMenuRootRef, QueueAiDropdownPr
             <DropdownMenu.Content directionalHint="topCenter" minWidth={360} maxWidth={360} setInitialFocus scrolls={false}>
                 <View className="p-3 bg-background-tertiary border border-border-primary rounded-md gap-2">
                     <Text className="text-text-secondary text-xs font-medium">Queue tracks with {providerName}</Text>
+                    <View className="flex-row items-center justify-between gap-2">
+                        <Text className="text-text-secondary text-xs font-medium">Source</Text>
+                        <Select
+                            value={promptSource}
+                            options={AI_PROMPT_SOURCE_OPTIONS}
+                            onValueChange={(value) => setPromptSource(value as AiPromptSource)}
+                            className="w-44"
+                        />
+                    </View>
                     <View className="bg-background-secondary border border-border-primary rounded-md px-3 py-2">
                         <TextInput
                             ref={textInputRef}
@@ -168,7 +183,7 @@ export const QueueAiDropdown = forwardRef<DropdownMenuRootRef, QueueAiDropdownPr
                                     setErrorMessage(null);
                                 }
                             }}
-                            placeholder="Describe the queue"
+                            placeholder={getAiPromptPlaceholder(promptSource, "queue")}
                             placeholderTextColor="#6b7280"
                             multiline
                             className="text-sm text-text-primary min-h-16"
