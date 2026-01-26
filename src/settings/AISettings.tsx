@@ -22,6 +22,7 @@ export function AISettings() {
     const searchProviders = useValue(searchProviders$);
     const enabledSearchProviderIds = useValue(enabledSearchProviderIds$);
     const providerAvailability = useValue(suggestionProviderAvailability$);
+    const selectedPreferredProviderId = useValue(settings$.ai.preferredTrackProviderId);
 
     const providerOptions = useMemo(
         () =>
@@ -39,21 +40,41 @@ export function AISettings() {
     const preferredServiceOptions = useMemo(() => {
         const enabledProviderIds = new Set(enabledSearchProviderIds);
         const options = [{ value: "auto", label: "Auto" }];
+        const selectedProviderId = selectedPreferredProviderId ?? "auto";
+
+        const toOption = (providerId: string) => {
+            const providerName =
+                providerId === LOCAL_LIBRARY_PROVIDER_ID
+                    ? "Local Library"
+                    : getStreamingProvider(providerId)?.name ?? providerId;
+            const isAvailable = enabledProviderIds.has(providerId);
+            return {
+                value: providerId,
+                label: isAvailable ? providerName : `${providerName} (Not Available)`,
+            };
+        };
+
         for (const provider of searchProviders) {
-            if (!enabledProviderIds.has(provider.id) && provider.id !== LOCAL_LIBRARY_PROVIDER_ID) {
+            if (
+                !enabledProviderIds.has(provider.id) &&
+                provider.id !== LOCAL_LIBRARY_PROVIDER_ID &&
+                provider.id !== selectedProviderId
+            ) {
                 continue;
             }
-            const providerName =
-                provider.id === LOCAL_LIBRARY_PROVIDER_ID
-                    ? "Local Library"
-                    : getStreamingProvider(provider.id)?.name ?? provider.id;
-            options.push({ value: provider.id, label: providerName });
+            options.push(toOption(provider.id));
         }
+
+        if (selectedProviderId !== "auto" && !options.some((option) => option.value === selectedProviderId)) {
+            options.push(toOption(selectedProviderId));
+        }
+
         if (!options.some((option) => option.value === LOCAL_LIBRARY_PROVIDER_ID)) {
-            options.push({ value: LOCAL_LIBRARY_PROVIDER_ID, label: "Local Library" });
+            options.push(toOption(LOCAL_LIBRARY_PROVIDER_ID));
         }
+
         return options;
-    }, [enabledSearchProviderIds, searchProviders]);
+    }, [enabledSearchProviderIds, searchProviders, selectedPreferredProviderId]);
 
     return (
         <SettingsPage>
