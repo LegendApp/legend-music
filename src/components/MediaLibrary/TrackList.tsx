@@ -36,7 +36,7 @@ import { AI_PROMPT_SOURCE_OPTIONS, type AiPromptSource, getAiPromptPlaceholder }
 import { generatePlaylistSummary } from "@/systems/ai/summary";
 import { Icon } from "@/systems/Icon";
 import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
-import { libraryUI$, selectLibraryAlbum, selectLibraryArtist } from "@/systems/LibraryState";
+import { libraryUI$, resolveLibraryView, selectLibraryAlbum, selectLibraryArtist } from "@/systems/LibraryState";
 import { type LocalPlaylist, localMusicState$, saveLocalPlaylistTracks } from "@/systems/LocalMusicState";
 import { addTracksToPlaylist, updatePlaylistMetadata } from "@/systems/LocalPlaylists";
 import { settings$ } from "@/systems/Settings";
@@ -138,6 +138,7 @@ export function TrackList(_props: TrackListProps) {
     } = useLibraryTrackList();
 
     const selectedView = useValue(libraryUI$.selectedView);
+    const resolvedView = resolveLibraryView(selectedView);
     const selectedPlaylistId = useValue(libraryUI$.selectedPlaylistId);
     const selectedPlaylistProvider = useValue(libraryUI$.selectedPlaylistProvider);
     const searchQuery = useValue(libraryUI$.searchQuery);
@@ -147,9 +148,9 @@ export function TrackList(_props: TrackListProps) {
     const aiPlaylistFillState = useValue(aiPlaylistFillState$);
     const providerPlugin = selectedPlaylistProvider ? getStreamingProviderPlugin(selectedPlaylistProvider) : null;
     const providerPlaylists = useValue(providerPlugin?.library?.playlists$ ?? emptyProviderPlaylists$);
-    const showAiCreateButton = selectedView === "playlist" && selectedPlaylistProvider === "local";
+    const showAiCreateButton = resolvedView === "playlist" && selectedPlaylistProvider === "local";
     const showAiFillSpinner =
-        selectedView === "playlist" &&
+        resolvedView === "playlist" &&
         selectedPlaylistProvider === "local" &&
         aiPlaylistFillState.isGenerating &&
         aiPlaylistFillState.playlistId === selectedPlaylistId;
@@ -160,12 +161,12 @@ export function TrackList(_props: TrackListProps) {
     );
 
     const selectedLocalPlaylist = useMemo(() => {
-        if (selectedView !== "playlist" || selectedPlaylistProvider !== "local" || !selectedPlaylistId) {
+        if (resolvedView !== "playlist" || selectedPlaylistProvider !== "local" || !selectedPlaylistId) {
             return null;
         }
 
         return playlists.find((pl) => pl.id === selectedPlaylistId) ?? null;
-    }, [playlists, selectedPlaylistId, selectedPlaylistProvider, selectedView]);
+    }, [playlists, resolvedView, selectedPlaylistId, selectedPlaylistProvider]);
 
     const extendPromptOpen$ = useObservable(false);
     const extendPromptOpen = useValue(extendPromptOpen$);
@@ -183,7 +184,7 @@ export function TrackList(_props: TrackListProps) {
 
     const selectedProviderPlaylist = useMemo(() => {
         if (
-            selectedView !== "playlist" ||
+            resolvedView !== "playlist" ||
             !selectedPlaylistProvider ||
             selectedPlaylistProvider === "local" ||
             !selectedPlaylistId
@@ -192,10 +193,10 @@ export function TrackList(_props: TrackListProps) {
         }
 
         return providerPlaylists.find((pl) => pl.id === selectedPlaylistId) ?? null;
-    }, [providerPlaylists, selectedPlaylistId, selectedPlaylistProvider, selectedView]);
+    }, [providerPlaylists, resolvedView, selectedPlaylistId, selectedPlaylistProvider]);
 
     const headerConfig = useMemo(() => {
-        if (selectedView === "playlist") {
+        if (resolvedView === "playlist") {
             if (selectedPlaylistProvider === "local" && selectedLocalPlaylist) {
                 return { title: selectedLocalPlaylist.name, count: selectedLocalPlaylist.trackCount };
             }
@@ -208,25 +209,19 @@ export function TrackList(_props: TrackListProps) {
             }
         }
 
-        if (selectedView === "artists") {
-            return { title: "Artists", count: nonSeparatorTrackCount };
-        }
-
-        if (selectedView === "albums") {
-            return { title: "Albums", count: nonSeparatorTrackCount };
-        }
-
-        if (selectedView === "songs") {
-            return { title: "Songs", count: nonSeparatorTrackCount };
+        if (resolvedView === "library") {
+            const title = playlistSort === "artist" ? "Artists" : playlistSort === "album" ? "Albums" : "Songs";
+            return { title, count: nonSeparatorTrackCount };
         }
 
         return null;
     }, [
         nonSeparatorTrackCount,
+        playlistSort,
         selectedLocalPlaylist,
         selectedPlaylistProvider,
         selectedProviderPlaylist,
-        selectedView,
+        resolvedView,
     ]);
 
     const closeExtendPrompt = useCallback(() => {
@@ -389,7 +384,7 @@ export function TrackList(_props: TrackListProps) {
     }, [closeExtendPrompt, extendPlaylist, extendPromptDraft, extendPromptOpen, isAiBusy]);
 
     const isPlaylistEditable =
-        selectedView === "playlist" &&
+        resolvedView === "playlist" &&
         selectedPlaylistProvider === "local" &&
         selectedLocalPlaylist !== null &&
         selectedLocalPlaylist.source === "cache" &&
@@ -398,12 +393,12 @@ export function TrackList(_props: TrackListProps) {
         searchQuery.trim().length === 0;
 
     const showExtendButtons =
-        selectedView === "playlist" &&
+        resolvedView === "playlist" &&
         selectedPlaylistProvider === "local" &&
         Boolean(selectedLocalPlaylist) &&
         canModifyPlaylist;
 
-    const showDateAddedColumn = selectedView === "playlist";
+    const showDateAddedColumn = resolvedView === "playlist";
 
     const columns = useMemo<TableColumnSpec[]>(() => {
         const nextColumns: TableColumnSpec[] = [
@@ -706,7 +701,7 @@ export function TrackList(_props: TrackListProps) {
                 }
             >
                 <LegendList
-                    key={selectedView}
+                    key={resolvedView}
                     data={tracks}
                     keyExtractor={keyExtractor}
                     renderItem={renderTrack}
