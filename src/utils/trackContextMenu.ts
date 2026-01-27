@@ -12,6 +12,8 @@ const MIX_TARGET_COUNT = 20;
 export const TRACK_CONTEXT_MENU_ITEMS = {
     queueAdd: { id: "queue-add", title: "Add to Queue" } as const,
     queuePlayNext: { id: "queue-play-next", title: "Play Next" } as const,
+    startMixStreaming: { id: "mix-start-streaming", title: "Start Mix from Streaming" } as const,
+    startMixLibrary: { id: "mix-start-library", title: "Start Mix from Library" } as const,
     goToArtist: { id: "go-to-artist", title: "Go to Artist" } as const,
     goToAlbum: { id: "go-to-album", title: "Go to Album" } as const,
 };
@@ -59,6 +61,8 @@ export function buildTrackContextMenuItems(options: BuildTrackContextMenuOptions
     }
 
     if (options.track) {
+        items.push(TRACK_CONTEXT_MENU_ITEMS.startMixStreaming, TRACK_CONTEXT_MENU_ITEMS.startMixLibrary);
+
         const artist = options.track.artist?.trim();
         if (artist) {
             items.push(TRACK_CONTEXT_MENU_ITEMS.goToArtist);
@@ -119,6 +123,16 @@ export async function handleTrackContextMenuSelection({
 
     if (selection === TRACK_CONTEXT_MENU_ITEMS.goToAlbum.id && track?.album?.trim()) {
         selectLibraryAlbum(track.album, track.artist);
+        return;
+    }
+
+    if (selection === TRACK_CONTEXT_MENU_ITEMS.startMixStreaming.id && track) {
+        await startTrackMix(track, "streaming");
+        return;
+    }
+
+    if (selection === TRACK_CONTEXT_MENU_ITEMS.startMixLibrary.id && track) {
+        await startTrackMix(track, "local-library");
         return;
     }
 
