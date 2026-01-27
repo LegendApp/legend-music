@@ -195,6 +195,8 @@ const sortAlbumGroupTracks = (
 interface UseLibraryTrackListResult {
     tracks: TrackData[];
     sectionLookup: Map<string, LibrarySection>;
+    handleSectionPlay: (sectionId: string) => void;
+    handleSectionEnqueue: (sectionId: string) => void;
     selectedIndices$: Observable<Set<number>>;
     handleTrackClick: (index: number, event?: NativeMouseEvent) => void;
     handleTrackDoubleClick: (index: number, event?: NativeMouseEvent) => void;
@@ -304,6 +306,16 @@ export function buildTrackItems({
         for (const [artistKey, group] of sortedGroups) {
             const groupTracks = sortArtistGroupTracks(group.tracks, playlistSort, playlistSortDirection);
             const sectionId = `artist:${artistKey}`;
+            trackItems.push({
+                id: `section-${sectionId}`,
+                title: `— ${group.displayName} —`,
+                artist: "",
+                duration: "",
+                isSeparator: true,
+                sectionId,
+                sectionTitle: group.displayName,
+                sectionCount: groupTracks.length,
+            });
             let sectionIndex = 0;
             for (const track of groupTracks) {
                 trackItems.push(
@@ -353,6 +365,16 @@ export function buildTrackItems({
         for (const group of sortedGroups) {
             const groupTracks = sortAlbumGroupTracks(group.tracks, playlistSort, playlistSortDirection);
             const sectionId = `album:${group.info.key}`;
+            trackItems.push({
+                id: `section-${sectionId}`,
+                title: `— ${group.info.displayName} —`,
+                artist: "",
+                duration: "",
+                isSeparator: true,
+                sectionId,
+                sectionTitle: group.info.displayName,
+                sectionCount: groupTracks.length,
+            });
             let sectionIndex = 0;
             for (const track of groupTracks) {
                 trackItems.push(
@@ -686,6 +708,30 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
         [trackItems],
     );
 
+    const handleSectionPlay = useCallback(
+        (sectionId: string) => {
+            const section = sectionLookup.get(sectionId);
+            if (!section || section.tracks.length === 0) {
+                return;
+            }
+
+            audioControls.queue.replace(section.tracks, { startIndex: 0, playImmediately: true });
+        },
+        [sectionLookup],
+    );
+
+    const handleSectionEnqueue = useCallback(
+        (sectionId: string) => {
+            const section = sectionLookup.get(sectionId);
+            if (!section || section.tracks.length === 0) {
+                return;
+            }
+
+            audioControls.queue.append(section.tracks);
+        },
+        [sectionLookup],
+    );
+
     const handleTrackContextMenu = useCallback(
         async (index: number, event: NativeMouseEvent) => {
             const x = event.pageX ?? event.x ?? 0;
@@ -864,6 +910,8 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
     return {
         tracks: trackItems,
         sectionLookup,
+        handleSectionPlay,
+        handleSectionEnqueue,
         selectedIndices$,
         handleTrackClick,
         handleTrackDoubleClick,

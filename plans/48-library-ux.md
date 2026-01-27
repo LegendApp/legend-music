@@ -13,7 +13,7 @@ and refine click/queue behavior for tracks and sections.
 ## Steps
 - [x] Audit current artist/album grouping data and track click handling; define section metadata needed for
       header actions and "play from here" behavior.
-- [ ] Restore artist/album headings in the library track list and render header actions (play all, enqueue all)
+- [x] Restore artist/album headings in the library track list and render header actions (play all, enqueue all)
       with hover/focus affordances and tooltips.
 - [ ] Add per-track hover "+" enqueue control; implement double-click to replace queue with section tracks
       (queued from the start of the section) while starting playback at the clicked track; keep single click

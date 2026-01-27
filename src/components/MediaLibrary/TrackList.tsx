@@ -129,6 +129,8 @@ export function TrackList(_props: TrackListProps) {
         handleTrackDoubleClick,
         handleTrackContextMenu,
         handleTrackQueueAction,
+        handleSectionPlay,
+        handleSectionEnqueue,
         syncSelectionAfterReorder,
         handleNativeDragStart,
         buildDragData,
@@ -518,7 +520,15 @@ export function TrackList(_props: TrackListProps) {
     const renderTrack = useCallback(
         ({ item, index }: { item: TrackData; index: number }) => {
             if (item.isSeparator) {
-                return <LibrarySeparatorRow title={item.title} />;
+                const sectionId = item.sectionId;
+                return (
+                    <LibrarySectionRow
+                        title={item.sectionTitle ?? item.title}
+                        count={item.sectionCount ?? 0}
+                        onPlay={sectionId ? () => handleSectionPlay(sectionId) : undefined}
+                        onEnqueue={sectionId ? () => handleSectionEnqueue(sectionId) : undefined}
+                    />
+                );
             }
 
             const trackPathForPlaylist =
@@ -566,6 +576,8 @@ export function TrackList(_props: TrackListProps) {
             handleTrackDoubleClick,
             handleTrackContextMenu,
             handleTrackQueueAction,
+            handleSectionEnqueue,
+            handleSectionPlay,
             handleNativeDragStart,
             handleDropAtPosition,
             isPlaylistEditable,
@@ -745,12 +757,55 @@ export function TrackList(_props: TrackListProps) {
     );
 }
 
-function LibrarySeparatorRow({ title }: { title: string }) {
+function LibrarySectionRow({
+    title,
+    count,
+    onPlay,
+    onEnqueue,
+}: {
+    title: string;
+    count: number;
+    onPlay?: () => void;
+    onEnqueue?: () => void;
+}) {
+    const displayTitle = title.replace(/^— (.+) —$/, "$1");
+    const hasActions = Boolean(onPlay || onEnqueue);
+    const countLabel = count === 1 ? "1 track" : `${count} tracks`;
+
     return (
-        <View className="pl-4 pt-6 pb-2 border-b border-border-primary">
-            <Text className="text-white/90 text-lg font-bold" numberOfLines={1}>
-                {title.replace(/^— (.+) —$/, "$1")}
-            </Text>
+        <View className="pl-4 pr-3 pt-5 pb-2 border-b border-border-primary flex-row items-center gap-2 group">
+            <View className="flex-1">
+                <Text className="text-white/90 text-lg font-bold" numberOfLines={1}>
+                    {displayTitle}
+                </Text>
+                <Text className="text-xs text-text-secondary" numberOfLines={1}>
+                    {countLabel}
+                </Text>
+            </View>
+            {hasActions ? (
+                <View className="flex-row items-center gap-1">
+                    {onPlay ? (
+                        <Button
+                            icon="play.fill"
+                            variant="icon"
+                            size="small"
+                            tooltip={`Play all ${displayTitle}`}
+                            className="opacity-40 group-hover:opacity-100"
+                            onClick={onPlay}
+                        />
+                    ) : null}
+                    {onEnqueue ? (
+                        <Button
+                            icon="plus"
+                            variant="icon"
+                            size="small"
+                            tooltip={`Queue all ${displayTitle}`}
+                            className="opacity-40 group-hover:opacity-100"
+                            onClick={onEnqueue}
+                        />
+                    ) : null}
+                </View>
+            ) : null}
         </View>
     );
 }
