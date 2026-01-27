@@ -1,12 +1,16 @@
 import { useMemo } from "react";
+import { Text } from "react-native";
 
+import { Button } from "@/components/Button";
 import { Checkbox } from "@/components/Checkbox";
 import { Select } from "@/components/Select";
+import { showToast } from "@/components/Toast";
 import { LOCAL_LIBRARY_PROVIDER_ID } from "@/providers/localLibrary/constants";
 import { getStreamingProvider } from "@/providers/streamingProviderRegistry";
 import { enabledSearchProviderIds$, searchProviders$ } from "@/providers/search/registry";
 import { SettingsPage, SettingsRow, SettingsSection } from "@/settings/components";
 import { settings$ } from "@/systems/Settings";
+import { clearAiSearchCache } from "@/systems/ai/searchCache";
 import {
     ensureSuggestionProvidersRegistered,
     suggestionProviderAvailability$,
@@ -109,6 +113,22 @@ export function AISettings() {
                         <Select value$={settings$.ai.preferredTrackProviderId} options={preferredServiceOptions} />
                     }
                     controlWrapperClassName="w-48"
+                />
+                <SettingsRow
+                    title="Clear AI Search Cache"
+                    description="Remove cached AI playlist search results stored on this device"
+                    control={
+                        <Button
+                            variant="secondary"
+                            size="medium"
+                            onClick={() => {
+                                clearAiSearchCache();
+                                showToast("AI search cache cleared", "info");
+                            }}
+                        >
+                            <Text className="text-text-primary text-sm font-medium">Clear Cache</Text>
+                        </Button>
+                    }
                 />
             </SettingsSection>
         </SettingsPage>

@@ -156,6 +156,7 @@ function AiPromptEditorButton({ playlist, isSelected }: { playlist: LocalPlaylis
                 prompt: trimmedPrompt,
                 count,
                 promptSource,
+                cachePrompt: trimmedPrompt,
             });
 
             if (tracks.length === 0) {

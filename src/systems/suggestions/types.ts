@@ -11,6 +11,8 @@ export type SuggestionRequest = {
     count?: number;
     prompt?: string;
     seedTracks?: LocalTrack[];
+    cachePrompt?: string;
+    excludeTrackIds?: string[];
 };
 
 export type SuggestionResult = {

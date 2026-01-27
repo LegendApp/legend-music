@@ -277,6 +277,8 @@ export function TrackList(_props: TrackListProps) {
                     prompt: promptWithContext,
                     count: DEFAULT_AI_SUGGESTION_COUNT,
                     promptSource: resolvedPromptSource,
+                    cachePrompt: trimmedPrompt,
+                    excludeTrackIds: selectedLocalPlaylist.trackPaths,
                 });
 
                 if (suggestedTracks.length === 0) {

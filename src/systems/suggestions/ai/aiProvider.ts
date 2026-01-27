@@ -5,6 +5,7 @@ import { aiAvailability$ } from "@/systems/ai/availability";
 import { readMediaLibraryCsv } from "@/systems/ai/libraryCsv";
 import { parseSuggestedTracks } from "@/systems/ai/parser";
 import { buildPlaylistPrompt, buildQueueExtensionPrompt } from "@/systems/ai/prompts";
+import { readAiSearchCache, writeAiSearchCache } from "@/systems/ai/searchCache";
 import { resolveSuggestedTracks } from "@/systems/ai/resolver";
 import { coerceAiPromptSource, type AiPromptSource } from "@/systems/ai/promptSource";
 import type { AISuggestedTrack } from "@/systems/ai/types";
@@ -16,11 +17,12 @@ import type {
     SuggestionRequest,
     SuggestionResult,
 } from "@/systems/suggestions/types";
-import type { LocalTrack } from "@/systems/LocalMusicState";
+import { localMusicState$, type LocalTrack } from "@/systems/LocalMusicState";
 
 const DEFAULT_TRACK_COUNT = 10;
 const DEFAULT_TIMEOUT_MS = 60000;
 const MAX_ERROR_OUTPUT_LENGTH = 300;
+const PLAYLIST_CACHE_TRACK_COUNT = 200;
 
 export type AiProviderConfig = {
     id: SuggestionProviderId;
@@ -81,6 +83,55 @@ const buildPromptForRequest = (
     return buildPlaylistPrompt(prompt, count, { libraryCsv: options.libraryCsv });
 };
 
+const filterTracksByExcludeList = (tracks: LocalTrack[], excludeTrackIds?: string[]): LocalTrack[] => {
+    if (!excludeTrackIds || excludeTrackIds.length === 0) {
+        return tracks;
+    }
+
+    const exclude = new Set(excludeTrackIds);
+    return tracks.filter((track) => !exclude.has(track.id));
+};
+
+const resolveCachedTracks = (trackIds: string[], count: number, excludeTrackIds?: string[]): LocalTrack[] => {
+    const localTracks = localMusicState$.tracks.peek();
+    const trackById = new Map(localTracks.map((track) => [track.id, track]));
+    const exclude = new Set(excludeTrackIds ?? []);
+    const results: LocalTrack[] = [];
+
+    for (const trackId of trackIds) {
+        if (exclude.has(trackId)) {
+            continue;
+        }
+
+        const track = trackById.get(trackId);
+        if (!track) {
+            continue;
+        }
+
+        results.push(track);
+        if (results.length >= count) {
+            break;
+        }
+    }
+
+    return results;
+};
+
+const dedupeTrackIds = (tracks: LocalTrack[]): string[] => {
+    const seen = new Set<string>();
+    const results: string[] = [];
+
+    for (const track of tracks) {
+        if (seen.has(track.id)) {
+            continue;
+        }
+        seen.add(track.id);
+        results.push(track.id);
+    }
+
+    return results;
+};
+
 const resolvePromptSource = (request: SuggestionRequest): AiPromptSource =>
     coerceAiPromptSource(request.promptSource ?? settings$.ai.promptSource.get());
 
@@ -114,7 +165,36 @@ export const createAiSuggestionProvider = (config: AiProviderConfig): Suggestion
         const promptSource = resolvePromptSource(request);
         const preferredProviderId = settings$.ai.preferredTrackProviderId.get();
         const libraryCsv = promptSource === "local-library" ? readMediaLibraryCsv() : "";
-        const prompt = buildPromptForRequest(request, count, { libraryCsv });
+        const shouldCache =
+            request.mode === "playlist" &&
+            promptSource === "local-library" &&
+            Boolean(request.cachePrompt?.trim());
+        const cachePrompt = shouldCache ? request.cachePrompt?.trim() ?? "" : "";
+        const cacheFilters = shouldCache
+            ? {
+                  mode: request.mode,
+                  promptSource,
+                  providerId: config.id,
+                  preferredTrackProviderId: preferredProviderId ?? null,
+              }
+            : null;
+
+        if (shouldCache && cacheFilters) {
+            const cached = readAiSearchCache(cachePrompt, cacheFilters);
+            if (cached) {
+                const tracks = resolveCachedTracks(cached.trackIds, count, request.excludeTrackIds);
+                return {
+                    providerId: config.id,
+                    tracks,
+                };
+            }
+        }
+
+        const targetCount = shouldCache
+            ? Math.max(count, Math.min(PLAYLIST_CACHE_TRACK_COUNT, count * 10))
+            : count;
+        const promptRequest = shouldCache && cachePrompt ? { ...request, prompt: cachePrompt } : request;
+        const prompt = buildPromptForRequest(promptRequest, targetCount, { libraryCsv });
         const timeoutMs = DEFAULT_TIMEOUT_MS;
 
         const invocation = config.buildInvocation(prompt);
@@ -138,7 +218,7 @@ export const createAiSuggestionProvider = (config: AiProviderConfig): Suggestion
             throw new Error(`${config.name} failed to run (exit ${result.exitCode}).${detailSuffix}`);
         }
 
-        const suggestions = parse(output, count);
+        const suggestions = parse(output, targetCount);
         if (suggestions.length === 0) {
             const detail = formatErrorOutput(output);
             const detailSuffix = detail ? ` Output: ${detail}` : "";
@@ -157,11 +237,18 @@ export const createAiSuggestionProvider = (config: AiProviderConfig): Suggestion
                 : buildProviderPreference(request.seedTracks, effectivePreferredProviderId);
         const restrictToProviders = promptSource === "local-library" ? [LOCAL_LIBRARY_PROVIDER_ID] : undefined;
         const resolved = await resolveSuggestedTracks(suggestions, { preferredProviders, restrictToProviders });
+        if (shouldCache && cacheFilters && cachePrompt) {
+            writeAiSearchCache(cachePrompt, cacheFilters, dedupeTrackIds(resolved.tracks));
+        }
+
+        const filteredTracks = filterTracksByExcludeList(resolved.tracks, request.excludeTrackIds);
+        const returnedTracks = shouldCache ? filteredTracks.slice(0, count) : filteredTracks;
 
         return {
             providerId: config.id,
             rawResponse: output,
-            ...resolved,
+            tracks: returnedTracks,
+            unresolved: resolved.unresolved,
         };
     };
 

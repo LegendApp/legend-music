@@ -109,6 +109,8 @@ export function AiPlaylistDropdown({
                 prompt: trimmedPrompt,
                 count: DEFAULT_SUGGESTION_COUNT,
                 promptSource,
+                cachePrompt: trimmedPrompt,
+                excludeTrackIds: targetPlaylist.trackPaths,
             });
 
             if (tracks.length === 0) {
