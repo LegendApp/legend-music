@@ -881,9 +881,16 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
                 return;
             }
 
+            const shouldEnqueueOnShift = selectedView !== "playlist";
+            if (event?.shiftKey && shouldEnqueueOnShift) {
+                handleSelectionClick(index);
+                handleTrackAction(index, "enqueue");
+                return;
+            }
+
             handleSelectionClick(index, event);
         },
-        [handleSelectionClick],
+        [handleSelectionClick, handleTrackAction, selectedView],
     );
 
     const handleTrackDoubleClick = useCallback(
@@ -893,16 +900,36 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
                 return;
             }
 
+            const shouldEnqueueOnShift = selectedView !== "playlist";
+            if (event?.shiftKey && shouldEnqueueOnShift) {
+                handleSelectionClick(index);
+                handleTrackAction(index, "enqueue");
+                return;
+            }
+
             handleSelectionClick(index, event);
 
             if (event?.metaKey || event?.ctrlKey) {
                 return;
             }
 
+            const item = trackItems[index];
+            if (item?.sectionId) {
+                const section = sectionLookup.get(item.sectionId);
+                if (section && section.tracks.length > 0) {
+                    const startIndex =
+                        typeof item.sectionIndex === "number"
+                            ? Math.max(0, Math.min(item.sectionIndex, section.tracks.length - 1))
+                            : 0;
+                    audioControls.queue.replace(section.tracks, { startIndex, playImmediately: true });
+                    return;
+                }
+            }
+
             const action = getQueueAction({ event });
             handleTrackAction(index, action);
         },
-        [handleSelectionClick, handleTrackAction],
+        [handleSelectionClick, handleTrackAction, sectionLookup, selectedView, trackItems],
     );
 
     const keyExtractor = useCallback((item: TrackListItem) => item.id, []);

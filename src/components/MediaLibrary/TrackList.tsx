@@ -545,6 +545,7 @@ export function TrackList(_props: TrackListProps) {
                     onDoubleClick={handleTrackDoubleClick}
                     onRightClick={handleTrackContextMenu}
                     onMenuAction={handleTrackQueueAction}
+                    onEnqueue={(trackIndex) => handleTrackQueueAction(trackIndex, "enqueue")}
                     selectedIndices$={selectedIndices$}
                     buildDragData={buildDragData}
                     onNativeDragStart={handleNativeDragStart}
@@ -845,6 +846,7 @@ interface LibraryTrackRowProps {
     onDoubleClick: (index: number, event?: NativeMouseEvent) => void;
     onRightClick: (index: number, event: NativeMouseEvent) => void;
     onMenuAction: (index: number, action: QueueAction) => void;
+    onEnqueue: (index: number) => void;
     selectedIndices$: Observable<Set<number>>;
     buildDragData: (activeIndex: number) => MediaLibraryDragData;
     onNativeDragStart: () => void;
@@ -881,6 +883,7 @@ function LibraryTrackRow({
     onDoubleClick,
     onRightClick,
     onMenuAction,
+    onEnqueue,
     selectedIndices$,
     buildDragData,
     onNativeDragStart,
@@ -946,9 +949,13 @@ function LibraryTrackRow({
         [index, onMenuAction, track],
     );
 
+    const handleQuickEnqueue = useCallback(() => {
+        onEnqueue(index);
+    }, [index, onEnqueue]);
+
     const row = (
         <TableRow
-            className="w-full"
+            className="w-full group"
             isSelected={isSelected}
             isActive={isPlaying}
             onClick={(event) => onClick(index, event)}
@@ -988,14 +995,25 @@ function LibraryTrackRow({
                 <Text className={listItemStyles.getMetaClassName({ className: "text-xs" })}>{track.duration}</Text>
             </TableCell>
             <TableCell column={actionsColumn} className="pl-1 pr-1">
-                <Button
-                    icon="ellipsis"
-                    variant="icon"
-                    size="small"
-                    accessibilityLabel="Track actions"
-                    onClick={handleMenuClick}
-                    className="bg-transparent hover:bg-white/10"
-                />
+                <View className="flex-row items-center gap-1">
+                    <Button
+                        icon="plus"
+                        variant="icon"
+                        size="small"
+                        accessibilityLabel="Enqueue track"
+                        tooltip="Queue track"
+                        onClick={handleQuickEnqueue}
+                        className="bg-transparent opacity-40 group-hover:opacity-100"
+                    />
+                    <Button
+                        icon="ellipsis"
+                        variant="icon"
+                        size="small"
+                        accessibilityLabel="Track actions"
+                        onClick={handleMenuClick}
+                        className="bg-transparent opacity-40 hover:opacity-100"
+                    />
+                </View>
             </TableCell>
             <TableCell column={sourceColumn} className="pl-1 pr-1">
                 {providerBadgeNode}
