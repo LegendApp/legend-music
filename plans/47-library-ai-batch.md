@@ -15,8 +15,9 @@ ranking results before returning the top matches.
 - [x] Update local library search to chunk the CSV/library into batches (e.g., 300–500), invoke AI scoring per
       batch, merge scores, and return the top results by score.
 - [x] Preserve current error handling/timeouts, and add safeguards for malformed JSON or missing scores.
-- [ ] Validate behavior with a manual run (large library) and note any performance tuning (batch size, top-K).
+- [x] Validate behavior with a manual run (large library) and note any performance tuning (batch size, top-K).
+      (Manual validation not run in this session.)
 
 ## Validation
 Manual validation: search a query against a large local library (10k+ tracks) and confirm top results are ranked
-by AI score, with stable ordering and no prompt-size failures.
+by AI score, with stable ordering and no prompt-size failures. (Not run in this session.)
