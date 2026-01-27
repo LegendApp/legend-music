@@ -44,7 +44,7 @@ import { fetchSuggestions } from "@/systems/suggestions";
 import { themeState$ } from "@/theme/ThemeProvider";
 import { cn } from "@/utils/cn";
 import type { QueueAction } from "@/utils/queueActions";
-import { TRACK_CONTEXT_MENU_ITEMS } from "@/utils/trackContextMenu";
+import { startTrackMix, TRACK_CONTEXT_MENU_ITEMS } from "@/utils/trackContextMenu";
 import { AiPlaylistDropdown } from "./AiPlaylistDropdown";
 import { useLibraryTrackList } from "./useLibraryTrackList";
 
@@ -802,6 +802,8 @@ const buildTrackRowMenuItems = (track: TrackData): ContextMenuItem[] => {
         { id: "play-next", title: "Play Next" },
     ];
 
+    items.push(TRACK_CONTEXT_MENU_ITEMS.startMixStreaming, TRACK_CONTEXT_MENU_ITEMS.startMixLibrary);
+
     if (track.artist?.trim()) {
         items.push(TRACK_CONTEXT_MENU_ITEMS.goToArtist);
     }
@@ -862,6 +864,16 @@ function LibraryTrackRow({
 
             if (selection === "play-now" || selection === "play-next") {
                 onMenuAction(index, selection);
+                return;
+            }
+
+            if (selection === TRACK_CONTEXT_MENU_ITEMS.startMixStreaming.id) {
+                await startTrackMix(track, "streaming");
+                return;
+            }
+
+            if (selection === TRACK_CONTEXT_MENU_ITEMS.startMixLibrary.id) {
+                await startTrackMix(track, "local-library");
                 return;
             }
 
