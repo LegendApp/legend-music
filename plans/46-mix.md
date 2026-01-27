@@ -22,10 +22,11 @@ replacing the queue with the selected track, then appending up to 20 AI suggesti
       show error toasts on failure.
 - [x] Ensure all track context menu entry points (library list, detail view, queue track menu) route the new IDs
       to the mix-start handler and keep menu ordering/separators consistent.
-- [ ] Update/extend tests if any menu-selection or suggestion-action coverage exists; otherwise note manual
+- [x] Update/extend tests if any menu-selection or suggestion-action coverage exists; otherwise note manual
       validation only.
 
 ## Validation
 Right-clicking a track in the library list, detail view, or queue shows the new actions. Selecting either action
 clears the queue to the chosen track, starts playback, and appends up to 20 suggested tracks. If suggestion
 fetching fails, an error toast appears; fewer than 20 additions still succeed.
+Manual validation only (no existing automated coverage found for track context menu actions).
