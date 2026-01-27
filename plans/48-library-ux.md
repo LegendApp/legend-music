@@ -18,7 +18,7 @@ and refine click/queue behavior for tracks and sections.
 - [x] Add per-track hover "+" enqueue control; implement double-click to replace queue with section tracks
       (queued from the start of the section) while starting playback at the clicked track; keep single click
       as select-only and Shift+click as enqueue-only.
-- [ ] Update any queue action helpers/tests as needed, and add/adjust UI tests for the new interactions.
+- [x] Update any queue action helpers/tests as needed, and add/adjust UI tests for the new interactions.
 
 ## Validation
 Manual validation: verify artist/album views show headings with play/queue actions, track hover "+" enqueues only

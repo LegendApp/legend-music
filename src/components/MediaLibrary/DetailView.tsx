@@ -473,6 +473,11 @@ export function MediaLibraryDetailView() {
     );
 
     const handleQueueAction = useCallback((track: LocalTrack, event?: NativeMouseEvent) => {
+        if (event?.shiftKey) {
+            audioControls.queue.append(track);
+            return;
+        }
+
         const action = getQueueAction({ event });
         if (action === "play-now") {
             audioControls.queue.insertNext(track, { playImmediately: true });

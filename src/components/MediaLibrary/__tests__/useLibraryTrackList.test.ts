@@ -1,4 +1,4 @@
-import type { LibraryTrack } from "@/systems/LibraryState";
+import { getArtistKey, type LibraryTrack } from "@/systems/LibraryState";
 import type { LocalPlaylist } from "@/systems/LocalMusicState";
 import { buildTrackItems } from "../useLibraryTrackList";
 
@@ -68,6 +68,28 @@ describe("buildTrackItems", () => {
             "Song B",
         ]);
         expect(result.trackItems.filter((item) => item.isSeparator).length).toBe(2);
+    });
+
+    it("artists view tracks include section metadata", () => {
+        const result = buildTrackItems({
+            tracks: mockTracks,
+            playlists: [],
+            selectedView: "artists",
+            selectedPlaylistId: null,
+            selectedPlaylistProvider: null,
+            searchQuery: "",
+            playlistSort: "playlist-order",
+            playlistSortDirection: "asc",
+        });
+
+        const artistKey = getArtistKey("Artist 1");
+        const sectionId = `artist:${artistKey}`;
+        const separator = result.trackItems.find((item) => item.isSeparator && item.sectionId === sectionId);
+        const firstTrack = result.trackItems.find((item) => item.title === "Song A");
+
+        expect(separator?.sectionCount).toBe(2);
+        expect(firstTrack?.sectionId).toBe(sectionId);
+        expect(firstTrack?.sectionIndex).toBe(0);
     });
 
     it("artists view orders by album then track number when available", () => {
