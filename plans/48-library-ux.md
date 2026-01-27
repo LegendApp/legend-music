@@ -11,7 +11,7 @@ and refine click/queue behavior for tracks and sections.
 - `src/utils/trackContextMenu.ts` already exposes enqueue/play-next actions and can inform UX parity.
 
 ## Steps
-- [ ] Audit current artist/album grouping data and track click handling; define section metadata needed for
+- [x] Audit current artist/album grouping data and track click handling; define section metadata needed for
       header actions and "play from here" behavior.
 - [ ] Restore artist/album headings in the library track list and render header actions (play all, enqueue all)
       with hover/focus affordances and tooltips.

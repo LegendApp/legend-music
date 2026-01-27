@@ -29,6 +29,12 @@ import { buildTrackFromPlaylistEntry, buildTrackLookup } from "@/utils/trackReso
 type TrackListItem = TrackData;
 type LibraryTrackListItem = TrackData & { sourceTrack?: LibraryTrack };
 
+type LibrarySection = {
+    id: string;
+    title: string;
+    tracks: LibraryTrack[];
+};
+
 const ADD_TO_PLAYLIST_MENU_ITEM: ContextMenuItem = { id: "add-to-playlist", title: "Add to Playlist…" };
 const isLocalProviderTrack = (track?: { provider?: StreamingProviderId | null }): boolean =>
     !track?.provider || track.provider === "local";
@@ -188,6 +194,7 @@ const sortAlbumGroupTracks = (
 
 interface UseLibraryTrackListResult {
     tracks: TrackData[];
+    sectionLookup: Map<string, LibrarySection>;
     selectedIndices$: Observable<Set<number>>;
     handleTrackClick: (index: number, event?: NativeMouseEvent) => void;
     handleTrackDoubleClick: (index: number, event?: NativeMouseEvent) => void;
@@ -234,8 +241,18 @@ export function buildTrackItems({
         return title.includes(normalizedQuery) || artist.includes(normalizedQuery) || album.includes(normalizedQuery);
     };
 
-    const toTrackItem = (track: LibraryTrack, viewIndex: number, idOverride?: string): LibraryTrackListItem => ({
-        id: idOverride ?? track.id,
+    const toTrackItem = (
+        track: LibraryTrack,
+        viewIndex: number,
+        options?: {
+            idOverride?: string;
+            sectionId?: string;
+            sectionTitle?: string;
+            sectionIndex?: number;
+            sectionCount?: number;
+        },
+    ): LibraryTrackListItem => ({
+        id: options?.idOverride ?? track.id,
         title: track.title,
         artist: track.artist,
         album: track.album,
@@ -246,6 +263,10 @@ export function buildTrackItems({
         provider: track.provider,
         index: viewIndex,
         trackIndex: track.trackNumber,
+        sectionId: options?.sectionId,
+        sectionTitle: options?.sectionTitle,
+        sectionIndex: options?.sectionIndex,
+        sectionCount: options?.sectionCount,
         sourceTrack: track,
     });
 
@@ -282,9 +303,19 @@ export function buildTrackItems({
 
         for (const [artistKey, group] of sortedGroups) {
             const groupTracks = sortArtistGroupTracks(group.tracks, playlistSort, playlistSortDirection);
+            const sectionId = `artist:${artistKey}`;
+            let sectionIndex = 0;
             for (const track of groupTracks) {
-                trackItems.push(toTrackItem(track, viewIndex));
+                trackItems.push(
+                    toTrackItem(track, viewIndex, {
+                        sectionId,
+                        sectionTitle: group.displayName,
+                        sectionIndex,
+                        sectionCount: groupTracks.length,
+                    }),
+                );
                 viewIndex += 1;
+                sectionIndex += 1;
             }
         }
 
@@ -321,9 +352,19 @@ export function buildTrackItems({
         let viewIndex = 0;
         for (const group of sortedGroups) {
             const groupTracks = sortAlbumGroupTracks(group.tracks, playlistSort, playlistSortDirection);
+            const sectionId = `album:${group.info.key}`;
+            let sectionIndex = 0;
             for (const track of groupTracks) {
-                trackItems.push(toTrackItem(track, viewIndex));
+                trackItems.push(
+                    toTrackItem(track, viewIndex, {
+                        sectionId,
+                        sectionTitle: group.info.displayName,
+                        sectionIndex,
+                        sectionCount: groupTracks.length,
+                    }),
+                );
                 viewIndex += 1;
+                sectionIndex += 1;
             }
         }
 
@@ -528,6 +569,28 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
             providerPlaylistTracks,
         ],
     );
+
+    const sectionLookup = useMemo(() => {
+        const map = new Map<string, LibrarySection>();
+        for (const item of trackItems) {
+            if (!item.sectionId || !item.sourceTrack || item.isSeparator) {
+                continue;
+            }
+
+            const existing = map.get(item.sectionId);
+            if (existing) {
+                existing.tracks.push(item.sourceTrack);
+                continue;
+            }
+
+            map.set(item.sectionId, {
+                id: item.sectionId,
+                title: item.sectionTitle ?? "",
+                tracks: [item.sourceTrack],
+            });
+        }
+        return map;
+    }, [trackItems]);
 
     const isSearchActive = searchQuery.trim().length > 0;
     const selectedPlaylist =
@@ -800,6 +863,7 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
 
     return {
         tracks: trackItems,
+        sectionLookup,
         selectedIndices$,
         handleTrackClick,
         handleTrackDoubleClick,

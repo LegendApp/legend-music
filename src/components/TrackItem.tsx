@@ -26,6 +26,10 @@ export interface TrackData {
     trackIndex?: number;
     isPlaying?: boolean;
     isSeparator?: boolean;
+    sectionId?: string;
+    sectionTitle?: string;
+    sectionIndex?: number;
+    sectionCount?: number;
     fromSuggestions?: boolean;
     queueEntryId?: string;
     isMissing?: boolean;
