@@ -33,30 +33,30 @@ const mockTracks: LibraryTrack[] = [
 ];
 
 describe("buildTrackItems", () => {
-    it("songs view returns all tracks in order", () => {
+    it("library view sorts by title as a flat list", () => {
         const result = buildTrackItems({
             tracks: mockTracks,
             playlists: [],
-            selectedView: "songs",
+            selectedView: "library",
             selectedPlaylistId: null,
             selectedPlaylistProvider: null,
             searchQuery: "",
-            playlistSort: "playlist-order",
+            playlistSort: "title",
             playlistSortDirection: "asc",
         });
 
-        expect(result.trackItems.map((track) => track.id)).toEqual(["1", "2", "3"]);
+        expect(result.trackItems.map((track) => track.id)).toEqual(["3", "1", "2"]);
     });
 
-    it("artists view inserts separators and groups by artist", () => {
+    it("library view groups by artist when sorted by artist", () => {
         const result = buildTrackItems({
             tracks: mockTracks,
             playlists: [],
-            selectedView: "artists",
+            selectedView: "library",
             selectedPlaylistId: null,
             selectedPlaylistProvider: null,
             searchQuery: "",
-            playlistSort: "playlist-order",
+            playlistSort: "artist",
             playlistSortDirection: "asc",
         });
 
@@ -70,15 +70,15 @@ describe("buildTrackItems", () => {
         expect(result.trackItems.filter((item) => item.isSeparator).length).toBe(2);
     });
 
-    it("artists view tracks include section metadata", () => {
+    it("artist grouping includes section metadata", () => {
         const result = buildTrackItems({
             tracks: mockTracks,
             playlists: [],
-            selectedView: "artists",
+            selectedView: "library",
             selectedPlaylistId: null,
             selectedPlaylistProvider: null,
             searchQuery: "",
-            playlistSort: "playlist-order",
+            playlistSort: "artist",
             playlistSortDirection: "asc",
         });
 
@@ -92,7 +92,7 @@ describe("buildTrackItems", () => {
         expect(firstTrack?.sectionIndex).toBe(0);
     });
 
-    it("artists view orders by album then track number when available", () => {
+    it("artist grouping orders by album then track number when available", () => {
         const tracks: LibraryTrack[] = [
             {
                 id: "1",
@@ -119,26 +119,72 @@ describe("buildTrackItems", () => {
         const result = buildTrackItems({
             tracks,
             playlists: [],
-            selectedView: "artists",
+            selectedView: "library",
             selectedPlaylistId: null,
             selectedPlaylistProvider: null,
             searchQuery: "",
-            playlistSort: "playlist-order",
+            playlistSort: "artist",
             playlistSortDirection: "asc",
         });
 
         expect(result.trackItems.map((item) => item.title)).toEqual(["— Artist 1 —", "Zed", "Alpha"]);
     });
 
-    it("albums view inserts separators and groups by album", () => {
+    it("artist grouping keeps unknown artists at the end even when descending", () => {
+        const tracks: LibraryTrack[] = [
+            {
+                id: "1",
+                title: "Song A",
+                artist: "",
+                album: "Album A",
+                duration: "120",
+                filePath: "/music/song-a.mp3",
+                fileName: "song-a.mp3",
+            },
+            {
+                id: "2",
+                title: "Song B",
+                artist: "Known Artist",
+                album: "Album B",
+                duration: "120",
+                filePath: "/music/song-b.mp3",
+                fileName: "song-b.mp3",
+            },
+            {
+                id: "3",
+                title: "Song C",
+                artist: "Another Artist",
+                album: "Album C",
+                duration: "120",
+                filePath: "/music/song-c.mp3",
+                fileName: "song-c.mp3",
+            },
+        ];
+
         const result = buildTrackItems({
-            tracks: mockTracks,
+            tracks,
             playlists: [],
-            selectedView: "albums",
+            selectedView: "library",
             selectedPlaylistId: null,
             selectedPlaylistProvider: null,
             searchQuery: "",
-            playlistSort: "playlist-order",
+            playlistSort: "artist",
+            playlistSortDirection: "desc",
+        });
+
+        const sectionTitles = result.trackItems.filter((item) => item.isSeparator).map((item) => item.title);
+        expect(sectionTitles).toEqual(["— Known Artist —", "— Another Artist —", "— Unknown Artist —"]);
+    });
+
+    it("library view groups by album when sorted by album", () => {
+        const result = buildTrackItems({
+            tracks: mockTracks,
+            playlists: [],
+            selectedView: "library",
+            selectedPlaylistId: null,
+            selectedPlaylistProvider: null,
+            searchQuery: "",
+            playlistSort: "album",
             playlistSortDirection: "asc",
         });
 
@@ -153,7 +199,7 @@ describe("buildTrackItems", () => {
         expect(result.trackItems.filter((item) => item.isSeparator).length).toBe(3);
     });
 
-    it("albums view pushes missing albums to the end", () => {
+    it("album grouping pushes missing albums to the end", () => {
         const tracks: LibraryTrack[] = [
             {
                 id: "1",
@@ -187,11 +233,11 @@ describe("buildTrackItems", () => {
         const result = buildTrackItems({
             tracks,
             playlists: [],
-            selectedView: "albums",
+            selectedView: "library",
             selectedPlaylistId: null,
             selectedPlaylistProvider: null,
             searchQuery: "",
-            playlistSort: "playlist-order",
+            playlistSort: "album",
             playlistSortDirection: "asc",
         });
 
@@ -205,20 +251,69 @@ describe("buildTrackItems", () => {
         ]);
     });
 
-    it("search filters within current view", () => {
+    it("search filters within the current grouping", () => {
         const result = buildTrackItems({
             tracks: mockTracks,
             playlists: [],
-            selectedView: "artists",
+            selectedView: "library",
             selectedPlaylistId: null,
             selectedPlaylistProvider: null,
             searchQuery: "album y",
-            playlistSort: "playlist-order",
+            playlistSort: "artist",
             playlistSortDirection: "asc",
         });
 
         expect(result.trackItems.map((item) => item.title)).toEqual(["— Artist 2 —", "Song B"]);
         expect(result.trackItems.filter((item) => item.isSeparator).length).toBe(1);
+    });
+
+    it("library view sorts by date added as a flat list", () => {
+        const tracks: LibraryTrack[] = [
+            {
+                id: "1",
+                title: "Old Song",
+                artist: "Artist 1",
+                album: "Album A",
+                duration: "120",
+                filePath: "/music/old.mp3",
+                fileName: "old.mp3",
+                addedAt: 1000,
+            },
+            {
+                id: "2",
+                title: "New Song",
+                artist: "Artist 2",
+                album: "Album B",
+                duration: "120",
+                filePath: "/music/new.mp3",
+                fileName: "new.mp3",
+                addedAt: 3000,
+            },
+            {
+                id: "3",
+                title: "Mid Song",
+                artist: "Artist 3",
+                album: "Album C",
+                duration: "120",
+                filePath: "/music/mid.mp3",
+                fileName: "mid.mp3",
+                addedAt: 2000,
+            },
+        ];
+
+        const result = buildTrackItems({
+            tracks,
+            playlists: [],
+            selectedView: "library",
+            selectedPlaylistId: null,
+            selectedPlaylistProvider: null,
+            searchQuery: "",
+            playlistSort: "date-added",
+            playlistSortDirection: "desc",
+        });
+
+        expect(result.trackItems.map((item) => item.id)).toEqual(["2", "3", "1"]);
+        expect(result.trackItems.some((item) => item.isSeparator)).toBe(false);
     });
 
     it("remote playlist view uses provider tracks", () => {
@@ -366,11 +461,11 @@ describe("buildTrackItems", () => {
         const result = buildTrackItems({
             tracks: mockTracks,
             playlists: [],
-            selectedView: "songs",
+            selectedView: "library",
             selectedPlaylistId: null,
             selectedPlaylistProvider: null,
             searchQuery: "",
-            playlistSort: "playlist-order",
+            playlistSort: "title",
             playlistSortDirection: "asc",
         });
 

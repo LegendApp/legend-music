@@ -15,7 +15,7 @@ outer groups follow the sort column and inner tracks follow default per-group or
       forced to the end; keep date-added as flat list; implement inner sort defaults per grouping.
 - [x] Adjust header/title display to reflect the active grouping state and ensure UI interactions still map to the
       updated view model.
-- [ ] Update and add tests for grouped ordering, unknown group placement, and flat list behavior when sorting by title
+- [x] Update and add tests for grouped ordering, unknown group placement, and flat list behavior when sorting by title
       or date-added.
 
 ## Validation
