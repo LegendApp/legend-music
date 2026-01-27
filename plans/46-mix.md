@@ -17,7 +17,7 @@ replacing the queue with the selected track, then appending up to 20 AI suggesti
 ## Steps
 - [ ] Add track context menu items for “Start Mix from Streaming” and “Start Mix from Library”, and wire their
       selection IDs to a mix-start handler.
-- [ ] Implement a mix-start helper: `queueControls.replace([track])`, then call `fetchSuggestions` with
+- [x] Implement a mix-start helper: `queueControls.replace([track])`, then call `fetchSuggestions` with
       `mode: "queue-extension"`, `source: "manual"`, `count: 20`, and the chosen `promptSource`; append results and
       show error toasts on failure.
 - [ ] Ensure all track context menu entry points (library list, detail view, queue track menu) route the new IDs

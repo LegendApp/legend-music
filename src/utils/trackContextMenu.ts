@@ -1,7 +1,13 @@
+import { queueControls } from "@/components/AudioPlayer";
+import { showToast } from "@/components/Toast";
 import type { ContextMenuItem } from "@/native-modules/ContextMenu";
 import { getStreamingProviderPlugin } from "@/providers/pluginRegistry";
+import type { AiPromptSource } from "@/systems/ai/promptSource";
 import { selectLibraryAlbum, selectLibraryArtist } from "@/systems/LibraryState";
 import type { LocalTrack } from "@/systems/LocalMusicState";
+import { fetchSuggestions } from "@/systems/suggestions";
+
+const MIX_TARGET_COUNT = 20;
 
 export const TRACK_CONTEXT_MENU_ITEMS = {
     queueAdd: { id: "queue-add", title: "Add to Queue" } as const,
@@ -9,6 +15,35 @@ export const TRACK_CONTEXT_MENU_ITEMS = {
     goToArtist: { id: "go-to-artist", title: "Go to Artist" } as const,
     goToAlbum: { id: "go-to-album", title: "Go to Album" } as const,
 };
+
+export async function startTrackMix(track: LocalTrack, promptSource: AiPromptSource): Promise<void> {
+    queueControls.replace([track]);
+
+    try {
+        const { tracks, unresolved } = await fetchSuggestions({
+            mode: "queue-extension",
+            source: "manual",
+            promptSource,
+            seedTracks: [track],
+            count: MIX_TARGET_COUNT,
+        });
+
+        if (tracks.length === 0) {
+            showToast("No tracks were suggested.", "error");
+            return;
+        }
+
+        queueControls.append(tracks);
+        const addedLabel = tracks.length === 1 ? "track" : "tracks";
+        showToast(`Added ${tracks.length} ${addedLabel} to the queue`, "info");
+        if (unresolved && unresolved.length > 0) {
+            showToast(`Skipped ${unresolved.length} tracks that could not be matched`, "info");
+        }
+    } catch (error) {
+        const message = error instanceof Error ? error.message : "Mix generation failed";
+        showToast(message, "error");
+    }
+}
 
 type BuildTrackContextMenuOptions = {
     track?: LocalTrack | null;
