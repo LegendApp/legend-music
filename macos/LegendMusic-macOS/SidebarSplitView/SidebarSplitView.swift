@@ -202,6 +202,8 @@ final class SidebarSplitView: RCTUIView {
             subview.frame = targetFrame
         }
         subview.autoresizingMask = [.width, .height]
+        // Ensure hover tracking areas match the latest frame.
+        subview.updateTrackingAreas()
     }
 
     private func updateReactShadowSizes() {
