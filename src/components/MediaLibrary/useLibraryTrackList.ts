@@ -17,6 +17,7 @@ import {
     library$,
     libraryUI$,
     normalizeArtistName,
+    resolveLibraryView,
     type PlaylistSortDirection,
     type PlaylistSortMode,
 } from "@/systems/LibraryState";
@@ -60,12 +61,16 @@ const compareTextValues = (valueA?: string, valueB?: string): number => {
     return (valueA ?? "").localeCompare(valueB ?? "");
 };
 
+const normalizeSortValue = (value?: string): string => (value ?? "").toLowerCase();
+
 const applySortDirection = (value: number, direction: PlaylistSortDirection): number => {
     if (direction === "desc") {
         return value * -1;
     }
     return value;
 };
+
+const isUnknownArtistName = (name: string): boolean => name.trim().length === 0 || name === "Unknown Artist";
 
 const sortTracksByField = (
     tracks: LibraryTrack[],
@@ -158,39 +163,10 @@ const sortTracksByTrackNumber = (tracks: LibraryTrack[], direction: PlaylistSort
         return applySortDirection(compareTextValues(a.title, b.title), direction);
     });
 
-const sortArtistGroupTracks = (
-    tracks: LibraryTrack[],
-    mode: PlaylistSortMode,
-    direction: PlaylistSortDirection,
-): LibraryTrack[] => {
-    if (mode === "title") {
-        return sortTracksByField(tracks, "title", direction);
-    }
-    if (mode === "date-added") {
-        return sortTracksByDateAdded(tracks, direction);
-    }
-    if (mode === "album" || mode === "artist" || mode === "playlist-order") {
-        return sortTracksByAlbumThenTrackNumber(tracks, direction);
-    }
-    return sortTracksByAlbumThenTrackNumber(tracks, direction);
-};
+const sortArtistGroupTracks = (tracks: LibraryTrack[]): LibraryTrack[] =>
+    sortTracksByAlbumThenTrackNumber(tracks, "asc");
 
-const sortAlbumGroupTracks = (
-    tracks: LibraryTrack[],
-    mode: PlaylistSortMode,
-    direction: PlaylistSortDirection,
-): LibraryTrack[] => {
-    if (mode === "title") {
-        return sortTracksByField(tracks, "title", direction);
-    }
-    if (mode === "artist") {
-        return sortTracksByField(tracks, "artist", direction);
-    }
-    if (mode === "date-added") {
-        return sortTracksByDateAdded(tracks, direction);
-    }
-    return sortTracksByTrackNumber(tracks, direction);
-};
+const sortAlbumGroupTracks = (tracks: LibraryTrack[]): LibraryTrack[] => sortTracksByTrackNumber(tracks, "asc");
 
 interface UseLibraryTrackListResult {
     tracks: TrackData[];
@@ -272,7 +248,9 @@ export function buildTrackItems({
         sourceTrack: track,
     });
 
-    if (selectedView === "starred") {
+    const resolvedView = resolveLibraryView(selectedView);
+
+    if (resolvedView === "starred") {
         return {
             trackItems: [] as LibraryTrackListItem[],
         };
@@ -280,7 +258,16 @@ export function buildTrackItems({
 
     const filteredTracks = normalizedQuery ? tracks.filter(matchesQuery) : tracks;
 
-    if (selectedView === "artists") {
+    const groupingMode =
+        resolvedView === "library"
+            ? playlistSort === "artist"
+                ? "artist"
+                : playlistSort === "album"
+                  ? "album"
+                  : "none"
+            : "none";
+
+    if (groupingMode === "artist") {
         const artistGroups = new Map<string, { displayName: string; tracks: LibraryTrack[] }>();
 
         for (const track of filteredTracks) {
@@ -297,14 +284,31 @@ export function buildTrackItems({
             }
         }
 
-        const sortedGroups = Array.from(artistGroups.entries()).sort((a, b) =>
-            applySortDirection(a[0].localeCompare(b[0]), playlistSortDirection),
-        );
+        const sortedGroups = Array.from(artistGroups.entries())
+            .map((entry, index) => ({ entry, index }))
+            .sort((a, b) => {
+                const groupA = a.entry[1];
+                const groupB = b.entry[1];
+                const isUnknownA = isUnknownArtistName(groupA.displayName);
+                const isUnknownB = isUnknownArtistName(groupB.displayName);
+                if (isUnknownA !== isUnknownB) {
+                    return isUnknownA ? 1 : -1;
+                }
+                const compare = compareTextValues(
+                    normalizeSortValue(groupA.displayName),
+                    normalizeSortValue(groupB.displayName),
+                );
+                if (compare !== 0) {
+                    return applySortDirection(compare, playlistSortDirection);
+                }
+                return a.index - b.index;
+            })
+            .map(({ entry }) => entry);
         const trackItems: LibraryTrackListItem[] = [];
         let viewIndex = 0;
 
         for (const [artistKey, group] of sortedGroups) {
-            const groupTracks = sortArtistGroupTracks(group.tracks, playlistSort, playlistSortDirection);
+            const groupTracks = sortArtistGroupTracks(group.tracks);
             const sectionId = `artist:${artistKey}`;
             trackItems.push({
                 id: `section-${sectionId}`,
@@ -334,7 +338,7 @@ export function buildTrackItems({
         return { trackItems };
     }
 
-    if (selectedView === "albums") {
+    if (groupingMode === "album") {
         const albumGroups = new Map<
             string,
             { info: { key: string; displayName: string; isMissing: boolean }; tracks: LibraryTrack[] }
@@ -350,20 +354,24 @@ export function buildTrackItems({
             }
         }
 
-        const sortedGroups = Array.from(albumGroups.values()).sort((a, b) => {
-            if (a.info.isMissing !== b.info.isMissing) {
-                return a.info.isMissing ? 1 : -1;
-            }
-            if (a.info.key !== b.info.key) {
-                return applySortDirection(a.info.key.localeCompare(b.info.key), playlistSortDirection);
-            }
-            return 0;
-        });
+        const sortedGroups = Array.from(albumGroups.values())
+            .map((group, index) => ({ group, index }))
+            .sort((a, b) => {
+                if (a.group.info.isMissing !== b.group.info.isMissing) {
+                    return a.group.info.isMissing ? 1 : -1;
+                }
+                const compare = compareTextValues(a.group.info.key, b.group.info.key);
+                if (compare !== 0) {
+                    return applySortDirection(compare, playlistSortDirection);
+                }
+                return a.index - b.index;
+            })
+            .map(({ group }) => group);
 
         const trackItems: LibraryTrackListItem[] = [];
         let viewIndex = 0;
         for (const group of sortedGroups) {
-            const groupTracks = sortAlbumGroupTracks(group.tracks, playlistSort, playlistSortDirection);
+            const groupTracks = sortAlbumGroupTracks(group.tracks);
             const sectionId = `album:${group.info.key}`;
             trackItems.push({
                 id: `section-${sectionId}`,
@@ -393,14 +401,14 @@ export function buildTrackItems({
         return { trackItems };
     }
 
-    if (selectedView === "songs") {
+    if (resolvedView === "library") {
         const sortedTracks = sortTracksByMode(filteredTracks, playlistSort, playlistSortDirection);
         return {
             trackItems: sortedTracks.map((track, index) => toTrackItem(track, index)),
         };
     }
 
-    if (selectedView === "playlist") {
+    if (resolvedView === "playlist") {
         if (!selectedPlaylistId) {
             return { trackItems: [] as LibraryTrackListItem[] };
         }
