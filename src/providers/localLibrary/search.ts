@@ -7,15 +7,14 @@ import type {
     StreamingProviderSearchProvider,
 } from "@/providers/search/types";
 import { aiAvailability$ } from "@/systems/ai/availability";
-import { readMediaLibraryCsv } from "@/systems/ai/libraryCsv";
-import { parseSuggestedTracks } from "@/systems/ai/parser";
-import { buildLocalLibrarySearchPrompt } from "@/systems/ai/prompts";
-import type { AISuggestedTrack } from "@/systems/ai/types";
-import { normalizeArtistName } from "@/systems/LibraryState";
+import { parseScoredTracks } from "@/systems/ai/parser";
+import { buildLocalLibraryScorePrompt } from "@/systems/ai/prompts";
 import { type LocalTrack, localMusicState$ } from "@/systems/LocalMusicState";
 import { settings$ } from "@/systems/Settings";
 
 const MAX_RESULTS = 10;
+const SCORE_BATCH_SIZE = 500;
+const MIN_SCORE = 30;
 const DEFAULT_TIMEOUT_MS = 60000;
 const MAX_ERROR_OUTPUT_LENGTH = 300;
 
@@ -61,82 +60,17 @@ const buildAiInvocation = (tool: AiTool, prompt: string): { command: string; arg
     };
 };
 
-const normalizeToken = (value: string): string =>
-    value
-        .toLowerCase()
-        .trim()
-        .replace(/[^a-z0-9]+/g, " ")
-        .replace(/\s+/g, " ");
-
-const buildLocalIndexes = (tracks: LocalTrack[]) => {
-    const byTitleArtist = new Map<string, LocalTrack[]>();
-    const byTitle = new Map<string, LocalTrack[]>();
-
-    for (const track of tracks) {
-        const titleKey = normalizeToken(track.title);
-        const artistKey = normalizeToken(normalizeArtistName(track.artist));
-
-        if (titleKey) {
-            const titleMatches = byTitle.get(titleKey) ?? [];
-            titleMatches.push(track);
-            byTitle.set(titleKey, titleMatches);
-        }
-
-        if (titleKey && artistKey) {
-            const compositeKey = `${titleKey}::${artistKey}`;
-            const matches = byTitleArtist.get(compositeKey) ?? [];
-            matches.push(track);
-            byTitleArtist.set(compositeKey, matches);
-        }
+const chunkTracks = (tracks: LocalTrack[], size: number): LocalTrack[][] => {
+    if (tracks.length === 0 || size <= 0) {
+        return [];
     }
 
-    return { byTitleArtist, byTitle };
-};
-
-const resolveLocalMatch = (
-    suggestion: AISuggestedTrack,
-    indexes: ReturnType<typeof buildLocalIndexes>,
-): LocalTrack | null => {
-    const titleKey = normalizeToken(suggestion.title);
-    const artistKey = normalizeToken(suggestion.artist ? normalizeArtistName(suggestion.artist) : "");
-
-    if (titleKey && artistKey) {
-        const matches = indexes.byTitleArtist.get(`${titleKey}::${artistKey}`);
-        if (matches && matches.length > 0) {
-            return matches[0];
-        }
+    const batches: LocalTrack[][] = [];
+    for (let index = 0; index < tracks.length; index += size) {
+        batches.push(tracks.slice(index, index + size));
     }
 
-    if (titleKey) {
-        const matches = indexes.byTitle.get(titleKey);
-        if (matches && matches.length > 0) {
-            return matches[0];
-        }
-    }
-
-    return null;
-};
-
-const buildResultsFromSuggestions = (suggestions: AISuggestedTrack[], tracks: LocalTrack[]): SearchResult[] => {
-    const indexes = buildLocalIndexes(tracks);
-    const results: SearchResult[] = [];
-    const seen = new Set<string>();
-
-    for (const suggestion of suggestions) {
-        const match = resolveLocalMatch(suggestion, indexes);
-        if (!match || seen.has(match.id)) {
-            continue;
-        }
-
-        results.push({ type: "track", item: match });
-        seen.add(match.id);
-
-        if (results.length >= MAX_RESULTS) {
-            break;
-        }
-    }
-
-    return results;
+    return batches;
 };
 
 const formatErrorOutput = (output: string): string => {
@@ -165,8 +99,8 @@ export const localLibrarySearchProvider: StreamingProviderSearchProvider = {
             return [];
         }
 
-        const csv = readMediaLibraryCsv();
-        if (!csv.trim()) {
+        const localTracks = localMusicState$.tracks.peek();
+        if (localTracks.length === 0) {
             return [];
         }
 
@@ -175,37 +109,91 @@ export const localLibrarySearchProvider: StreamingProviderSearchProvider = {
             return [];
         }
 
-        const prompt = buildLocalLibrarySearchPrompt(trimmedQuery, csv, MAX_RESULTS);
-        const invocation = buildAiInvocation(tool, prompt);
-        const timeoutMs = DEFAULT_TIMEOUT_MS;
-
-        const result = await aiCommandRunner.runCommand({
-            command: invocation.command,
-            args: invocation.args,
-            input: invocation.input,
-            timeoutMs,
-        });
-
-        const stdout = result.stdout.trim();
-        const stderr = result.stderr.trim();
-        const output = stdout || stderr;
-
-        if (result.timedOut) {
-            throw new Error(`${tool} timed out after ${Math.round(timeoutMs / 1000)}s.`);
+        const batches = chunkTracks(localTracks, SCORE_BATCH_SIZE);
+        const trackById = new Map<string, LocalTrack>();
+        const trackIndex = new Map<string, number>();
+        for (const [index, track] of localTracks.entries()) {
+            trackById.set(track.id, track);
+            trackIndex.set(track.id, index);
         }
 
-        if (result.exitCode !== 0) {
-            const detail = formatErrorOutput(stderr || stdout);
-            const detailSuffix = detail ? ` Details: ${detail}` : "";
-            throw new Error(`${tool} failed to run (exit ${result.exitCode}).${detailSuffix}`);
+        const scores = new Map<string, number>();
+
+        for (const [batchIndex, batch] of batches.entries()) {
+            const prompt = buildLocalLibraryScorePrompt(trimmedQuery, batch);
+            const invocation = buildAiInvocation(tool, prompt);
+            const timeoutMs = DEFAULT_TIMEOUT_MS;
+
+            const result = await aiCommandRunner.runCommand({
+                command: invocation.command,
+                args: invocation.args,
+                input: invocation.input,
+                timeoutMs,
+            });
+
+            const stdout = result.stdout.trim();
+            const stderr = result.stderr.trim();
+            const output = stdout || stderr;
+
+            if (result.timedOut) {
+                throw new Error(`${tool} timed out after ${Math.round(timeoutMs / 1000)}s.`);
+            }
+
+            if (result.exitCode !== 0) {
+                const detail = formatErrorOutput(stderr || stdout);
+                const detailSuffix = detail ? ` Details: ${detail}` : "";
+                throw new Error(`${tool} failed to run (exit ${result.exitCode}).${detailSuffix}`);
+            }
+
+            const batchScores = parseScoredTracks(output);
+            if (batchScores.length === 0) {
+                console.warn("localLibrarySearch: Empty AI scoring response", { batch: batchIndex + 1 });
+            }
+
+            const scoredById = new Map<string, number>();
+            for (const scored of batchScores) {
+                scoredById.set(scored.id, scored.score);
+            }
+
+            let missingCount = 0;
+            for (const track of batch) {
+                const score = scoredById.get(track.id);
+                if (score === undefined) {
+                    missingCount += 1;
+                    scores.set(track.id, 0);
+                    continue;
+                }
+
+                scores.set(track.id, score);
+            }
+
+            if (missingCount > 0) {
+                console.warn("localLibrarySearch: Missing AI scores for batch entries", {
+                    batch: batchIndex + 1,
+                    missing: missingCount,
+                });
+            }
         }
 
-        const suggestions = parseSuggestedTracks(output, MAX_RESULTS);
-        if (suggestions.length === 0) {
-            return [];
-        }
+        const ranked = Array.from(scores.entries())
+            .map(([id, score]) => {
+                const track = trackById.get(id);
+                if (!track) {
+                    return null;
+                }
 
-        const localTracks = localMusicState$.tracks.peek();
-        return buildResultsFromSuggestions(suggestions, localTracks);
+                return {
+                    track,
+                    score,
+                    index: trackIndex.get(id) ?? 0,
+                };
+            })
+            .filter((entry): entry is { track: LocalTrack; score: number; index: number } => Boolean(entry))
+            .filter((entry) => entry.score >= MIN_SCORE)
+            .sort((a, b) => (b.score !== a.score ? b.score - a.score : a.index - b.index))
+            .slice(0, MAX_RESULTS)
+            .map((entry): SearchResult => ({ type: "track", item: entry.track }));
+
+        return ranked;
     },
 };
