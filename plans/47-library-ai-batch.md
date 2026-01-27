@@ -14,7 +14,7 @@ ranking results before returning the top matches.
       across batches and JSON-only output.
 - [x] Update local library search to chunk the CSV/library into batches (e.g., 300–500), invoke AI scoring per
       batch, merge scores, and return the top results by score.
-- [ ] Preserve current error handling/timeouts, and add safeguards for malformed JSON or missing scores.
+- [x] Preserve current error handling/timeouts, and add safeguards for malformed JSON or missing scores.
 - [ ] Validate behavior with a manual run (large library) and note any performance tuning (batch size, top-K).
 
 ## Validation
