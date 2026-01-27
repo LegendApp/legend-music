@@ -2,7 +2,7 @@ import { LegendList } from "@legendapp/list";
 import { type Observable, observable } from "@legendapp/state";
 import { useObservable, useValue } from "@legendapp/state/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Platform, Pressable, Text, TextInput, View } from "react-native";
+import { Platform, Text, TextInput, View } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 import { audioPlayerState$ } from "@/components/AudioPlayer";
 import { Button } from "@/components/Button";
@@ -118,7 +118,7 @@ const getItemType = (item: TrackData) => {
 };
 
 const getFixedItemSize = (_: number, item: TrackData) => {
-    return item.isSeparator ? 72 : 32;
+    return item.isSeparator ? 32 : 32;
 };
 
 export function TrackList(_props: TrackListProps) {
@@ -407,7 +407,7 @@ export function TrackList(_props: TrackListProps) {
 
     const columns = useMemo<TableColumnSpec[]>(() => {
         const nextColumns: TableColumnSpec[] = [
-            { id: "number", label: "#", width: 36, align: "right", sortId: "playlist-order" },
+            { id: "number", label: "#", width: 28, align: "right", sortId: "playlist-order" },
             { id: "title", label: "Title", flex: 3, minWidth: 120, sortId: "title" },
             { id: "artist", label: "Artist", flex: 2, minWidth: 100, sortId: "artist" },
             { id: "album", label: "Album", flex: 2, minWidth: 100, sortId: "album" },
@@ -419,7 +419,6 @@ export function TrackList(_props: TrackListProps) {
 
         nextColumns.push(
             { id: "duration", label: "Duration", width: 64, align: "right" },
-            { id: "actions", width: 28, align: "center" },
             { id: "source", width: 28, align: "center" },
         );
 
@@ -593,104 +592,106 @@ export function TrackList(_props: TrackListProps) {
             {headerConfig ? (
                 <TitlebarAccessoryView>
                     <View className="px-3 py-2 flex-row items-center gap-3">
-                    <Text className="text-sm font-semibold text-text-primary" numberOfLines={1}>
-                        {headerConfig.title}
-                    </Text>
-                    <Text className="text-xs text-text-secondary" numberOfLines={1}>
-                        ({headerConfig.count})
-                    </Text>
-                    {showAiSummary ? (
-                        <View className="max-w-[45%] items-end">
-                            <Text className="text-xs text-text-secondary text-right" numberOfLines={1}>
-                                ✨ {aiSummary}
-                            </Text>
-                        </View>
-                    ) : null}
-                    <View className="flex-1" />
-                    {showExtendButtons ? (
-                        <DropdownMenu.Root isOpen$={extendPromptOpen$}>
-                            <DropdownMenu.Trigger asChild disabled={!canExtendWithNewPrompt}>
-                                <View collapsable={false}>
-                                    <NativeButtonGroup style={{ width: 66, height: 28 }}>
-                                        <NativeButton
-                                            sfSymbol="sparkles"
-                                            onPress={handleExtendExistingPrompt}
-                                            disabled={!canExtendWithExistingPrompt}
-                                            style={{ width: 28, height: 28 }}
-                                        />
-                                        <NativeButton
-                                            sfSymbol="wand.and.sparkles"
-                                            onPress={() => {
-                                                console.log("[TrackList] wand button onPress called");
-                                                extendPromptOpen$.set(true);
-                                            }}
-                                            disabled={!canExtendWithNewPrompt}
-                                            style={{ width: 28, height: 28 }}
-                                        />
-                                    </NativeButtonGroup>
-                                </View>
-                            </DropdownMenu.Trigger>
-                            <DropdownMenu.Content
-                                directionalHint="bottomRightEdge"
-                                minWidth={360}
-                                maxWidth={360}
-                                setInitialFocus
-                                scrolls={false}
-                            >
-                                <View className="p-3 bg-background-tertiary border border-border-primary rounded-md gap-2">
-                                    <Text className="text-text-secondary text-xs font-medium">
-                                        Extend with new prompt
-                                    </Text>
-                                    <View className="flex-row items-center justify-between gap-2">
-                                        <Text className="text-text-secondary text-xs font-medium">Source</Text>
-                                        <Select
-                                            value={extendPromptSource}
-                                            options={AI_PROMPT_SOURCE_OPTIONS}
-                                            onValueChange={(value) => setExtendPromptSource(value as AiPromptSource)}
-                                            triggerClassName="w-44"
-                                            minWidth="auto"
-                                        />
+                        <Text className="text-sm font-semibold text-text-primary" numberOfLines={1}>
+                            {headerConfig.title}
+                        </Text>
+                        <Text className="text-xs text-text-secondary" numberOfLines={1}>
+                            ({headerConfig.count})
+                        </Text>
+                        {showAiSummary ? (
+                            <View className="max-w-[45%] items-end">
+                                <Text className="text-xs text-text-secondary text-right" numberOfLines={1}>
+                                    ✨ {aiSummary}
+                                </Text>
+                            </View>
+                        ) : null}
+                        <View className="flex-1" />
+                        {showExtendButtons ? (
+                            <DropdownMenu.Root isOpen$={extendPromptOpen$}>
+                                <DropdownMenu.Trigger asChild disabled={!canExtendWithNewPrompt}>
+                                    <View collapsable={false}>
+                                        <NativeButtonGroup style={{ width: 66, height: 28 }}>
+                                            <NativeButton
+                                                sfSymbol="sparkles"
+                                                onPress={handleExtendExistingPrompt}
+                                                disabled={!canExtendWithExistingPrompt}
+                                                style={{ width: 28, height: 28 }}
+                                            />
+                                            <NativeButton
+                                                sfSymbol="wand.and.sparkles"
+                                                onPress={() => {
+                                                    console.log("[TrackList] wand button onPress called");
+                                                    extendPromptOpen$.set(true);
+                                                }}
+                                                disabled={!canExtendWithNewPrompt}
+                                                style={{ width: 28, height: 28 }}
+                                            />
+                                        </NativeButtonGroup>
                                     </View>
-                                    <View className="bg-background-secondary border border-border-primary rounded-md px-3 py-2">
-                                        <TextInput
-                                            ref={extendPromptInputRef}
-                                            value={extendPromptDraft}
-                                            onChangeText={(value) => {
-                                                setExtendPromptDraft(value);
-                                                if (extendPromptError) {
-                                                    setExtendPromptError(null);
+                                </DropdownMenu.Trigger>
+                                <DropdownMenu.Content
+                                    directionalHint="bottomRightEdge"
+                                    minWidth={360}
+                                    maxWidth={360}
+                                    setInitialFocus
+                                    scrolls={false}
+                                >
+                                    <View className="p-3 bg-background-tertiary border border-border-primary rounded-md gap-2">
+                                        <Text className="text-text-secondary text-xs font-medium">
+                                            Extend with new prompt
+                                        </Text>
+                                        <View className="flex-row items-center justify-between gap-2">
+                                            <Text className="text-text-secondary text-xs font-medium">Source</Text>
+                                            <Select
+                                                value={extendPromptSource}
+                                                options={AI_PROMPT_SOURCE_OPTIONS}
+                                                onValueChange={(value) =>
+                                                    setExtendPromptSource(value as AiPromptSource)
                                                 }
-                                            }}
-                                            placeholder={getAiPromptPlaceholder(extendPromptSource, "playlist")}
-                                            placeholderTextColor="#6b7280"
-                                            multiline
-                                            className="text-sm text-text-primary min-h-16"
-                                        />
-                                    </View>
-                                    {extendPromptError ? (
-                                        <View className="rounded-md border border-border-primary/60 bg-red-500/10 px-3 py-2">
-                                            <Text className="text-sm text-red-200">{extendPromptError}</Text>
+                                                triggerClassName="w-44"
+                                                minWidth="auto"
+                                            />
                                         </View>
-                                    ) : null}
-                                    <View className="flex-row justify-end gap-2">
-                                        <Button variant="secondary" size="small" onClick={closeExtendPrompt}>
-                                            <Text className="text-white text-sm">Cancel</Text>
-                                        </Button>
-                                        <Button
-                                            variant="primary"
-                                            size="small"
-                                            onClick={handleExtendWithNewPrompt}
-                                            disabled={isAiBusy || extendPromptDraft.trim().length === 0}
-                                        >
-                                            <Text className="text-white text-sm font-medium">
-                                                {isExtending ? "Adding..." : "Add tracks"}
-                                            </Text>
-                                        </Button>
+                                        <View className="bg-background-secondary border border-border-primary rounded-md px-3 py-2">
+                                            <TextInput
+                                                ref={extendPromptInputRef}
+                                                value={extendPromptDraft}
+                                                onChangeText={(value) => {
+                                                    setExtendPromptDraft(value);
+                                                    if (extendPromptError) {
+                                                        setExtendPromptError(null);
+                                                    }
+                                                }}
+                                                placeholder={getAiPromptPlaceholder(extendPromptSource, "playlist")}
+                                                placeholderTextColor="#6b7280"
+                                                multiline
+                                                className="text-sm text-text-primary min-h-16"
+                                            />
+                                        </View>
+                                        {extendPromptError ? (
+                                            <View className="rounded-md border border-border-primary/60 bg-red-500/10 px-3 py-2">
+                                                <Text className="text-sm text-red-200">{extendPromptError}</Text>
+                                            </View>
+                                        ) : null}
+                                        <View className="flex-row justify-end gap-2">
+                                            <Button variant="secondary" size="small" onClick={closeExtendPrompt}>
+                                                <Text className="text-white text-sm">Cancel</Text>
+                                            </Button>
+                                            <Button
+                                                variant="primary"
+                                                size="small"
+                                                onClick={handleExtendWithNewPrompt}
+                                                disabled={isAiBusy || extendPromptDraft.trim().length === 0}
+                                            >
+                                                <Text className="text-white text-sm font-medium">
+                                                    {isExtending ? "Adding..." : "Add tracks"}
+                                                </Text>
+                                            </Button>
+                                        </View>
                                     </View>
-                                </View>
-                            </DropdownMenu.Content>
-                        </DropdownMenu.Root>
-                    ) : null}
+                                </DropdownMenu.Content>
+                            </DropdownMenu.Root>
+                        ) : null}
                     </View>
                 </TitlebarAccessoryView>
             ) : null}
@@ -771,38 +772,35 @@ function LibrarySectionRow({
 }) {
     const displayTitle = title.replace(/^— (.+) —$/, "$1");
     const hasActions = Boolean(onPlay || onEnqueue);
-    const countLabel = count === 1 ? "1 track" : `${count} tracks`;
 
     return (
-        <View className="pl-4 pr-3 pt-5 pb-2 border-b border-border-primary flex-row items-center gap-2 group">
-            <View className="flex-1">
-                <Text className="text-white/90 text-lg font-bold" numberOfLines={1}>
+        <View className="border-b border-t border-border-primary flex-row items-center justify-between gap-2 group h-8">
+            <View className="pl-2 flex-1 flex-row items-center gap-2 min-w-0">
+                <Text className="text-text-tertiary shrink" numberOfLines={1}>
                     {displayTitle}
                 </Text>
-                <Text className="text-xs text-text-secondary" numberOfLines={1}>
-                    {countLabel}
+                <Text className="text-xs text-text-tertiary" numberOfLines={1}>
+                    {count}
                 </Text>
             </View>
             {hasActions ? (
-                <View className="flex-row items-center gap-1">
-                    {onPlay ? (
-                        <Button
-                            icon="play.fill"
-                            variant="icon"
-                            size="small"
-                            tooltip={`Play all ${displayTitle}`}
-                            className="opacity-40 group-hover:opacity-100"
-                            onClick={onPlay}
-                        />
-                    ) : null}
+                <View className="pr-2 flex-row items-center gap-1 opacity-0 group-hover:opacity-100">
                     {onEnqueue ? (
                         <Button
                             icon="plus"
                             variant="icon"
                             size="small"
                             tooltip={`Queue all ${displayTitle}`}
-                            className="opacity-40 group-hover:opacity-100"
                             onClick={onEnqueue}
+                        />
+                    ) : null}
+                    {onPlay ? (
+                        <Button
+                            icon="play.fill"
+                            variant="icon"
+                            size="small"
+                            tooltip={`Play all ${displayTitle}`}
+                            onClick={onPlay}
                         />
                     ) : null}
                 </View>
@@ -900,14 +898,13 @@ function LibraryTrackRow({
     });
     const accentColor = useValue(() => themeState$.customColors.dark.accent.primary.get());
     const displayIndex = track.trackIndex;
-    const numberColumn = columns.find((column) => column.id === "number") ?? columns[0];
-    const titleColumn = columns.find((column) => column.id === "title") ?? columns[1];
-    const artistColumn = columns.find((column) => column.id === "artist") ?? columns[2];
-    const albumColumn = columns.find((column) => column.id === "album") ?? columns[3];
+    const numberColumn = columns.find((column) => column.id === "number");
+    const titleColumn = columns.find((column) => column.id === "title");
+    const artistColumn = columns.find((column) => column.id === "artist");
+    const albumColumn = columns.find((column) => column.id === "album");
     const dateAddedColumn = columns.find((column) => column.id === "date-added");
-    const durationColumn = columns.find((column) => column.id === "duration") ?? columns[columns.length - 3];
-    const actionsColumn = columns.find((column) => column.id === "actions") ?? columns[columns.length - 2];
-    const sourceColumn = columns.find((column) => column.id === "source") ?? columns[columns.length - 1];
+    const durationColumn = columns.find((column) => column.id === "duration");
+    const sourceColumn = columns.find((column) => column.id === "source");
     const addedAtLabel = formatAddedDate(track.addedAt);
     const ProviderBadge = track.provider ? (getStreamingProviderPlugin(track.provider)?.ui?.badge ?? null) : null;
     const providerBadgeNode = ProviderBadge ? <ProviderBadge size={12} className="opacity-80" /> : null;
@@ -955,7 +952,7 @@ function LibraryTrackRow({
 
     const row = (
         <TableRow
-            className="w-full group"
+            className="w-full group px-0"
             isSelected={isSelected}
             isActive={isPlaying}
             onClick={(event) => onClick(index, event)}
@@ -994,30 +991,24 @@ function LibraryTrackRow({
             <TableCell column={durationColumn}>
                 <Text className={listItemStyles.getMetaClassName({ className: "text-xs" })}>{track.duration}</Text>
             </TableCell>
-            <TableCell column={actionsColumn} className="pl-1 pr-1">
-                <View className="flex-row items-center gap-1">
-                    <Button
-                        icon="plus"
-                        variant="icon"
-                        size="small"
-                        accessibilityLabel="Enqueue track"
-                        tooltip="Queue track"
-                        onClick={handleQuickEnqueue}
-                        className="bg-transparent opacity-40 group-hover:opacity-100"
-                    />
-                    <Button
-                        icon="ellipsis"
-                        variant="icon"
-                        size="small"
-                        accessibilityLabel="Track actions"
-                        onClick={handleMenuClick}
-                        className="bg-transparent opacity-40 hover:opacity-100"
-                    />
-                </View>
-            </TableCell>
-            <TableCell column={sourceColumn} className="pl-1 pr-1">
-                {providerBadgeNode}
-            </TableCell>
+            <TableCell column={sourceColumn}>{providerBadgeNode}</TableCell>
+            <View className="flex-row items-center px-1 mr-1 absolute right-0 opacity-0 group-hover:opacity-100 bg-background-secondary rounded-xl">
+                <Button
+                    icon="plus"
+                    variant="icon"
+                    size="small"
+                    accessibilityLabel="Enqueue track"
+                    tooltip="Queue track"
+                    onClick={handleQuickEnqueue}
+                />
+                <Button
+                    icon="ellipsis"
+                    variant="icon"
+                    size="small"
+                    accessibilityLabel="Track actions"
+                    onClick={handleMenuClick}
+                />
+            </View>
         </TableRow>
     );
 

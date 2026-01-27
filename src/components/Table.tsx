@@ -142,9 +142,7 @@ export function TableRow({
                 className,
             )}
         >
-            {isActive ? (
-                <PlaybackIndicator />
-            ) : null}
+            {isActive ? <PlaybackIndicator /> : null}
             {children}
         </Button>
     );
@@ -154,16 +152,9 @@ interface TableCellProps {
     column: TableColumnSpec;
     className?: string;
     textClassName?: string;
-    truncate?: boolean;
 }
 
-export function TableCell({
-    column,
-    className,
-    textClassName,
-    truncate = false,
-    children,
-}: PropsWithChildren<TableCellProps>) {
+export function TableCell({ column, className, textClassName, children }: PropsWithChildren<TableCellProps>) {
     const style: ViewStyle = {};
     if (column.width !== undefined) {
         style.width = column.width;
@@ -177,16 +168,6 @@ export function TableCell({
 
     const alignClassName =
         column.align === "right" ? "items-end" : column.align === "center" ? "items-center" : "items-start";
-
-    if (truncate && (typeof children === "string" || typeof children === "number")) {
-        return (
-            <View style={style} className={cn("justify-center px-2", alignClassName, className)}>
-                <Text className={cn("text-sm text-text-primary truncate", textClassName)} numberOfLines={1}>
-                    {children}
-                </Text>
-            </View>
-        );
-    }
 
     return (
         <View style={style} className={cn("justify-center px-2", alignClassName, className)}>
