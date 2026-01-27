@@ -520,8 +520,8 @@ export function MediaLibraryDetailView() {
         );
     }
 
-    const backView = detail.type === "artist" ? "artists" : "albums";
-    const backLabel = detail.type === "artist" ? "Back to Artists" : "Back to Albums";
+    const backView = "library";
+    const backLabel = "Back to Library";
 
     return (
         <View className="flex-1 min-h-0 gap-4 px-4 py-4">

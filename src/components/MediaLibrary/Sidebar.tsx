@@ -43,7 +43,13 @@ import { buildPlaylistEntries } from "@/systems/ai/playlistTracks";
 import { generatePlaylistSummary } from "@/systems/ai/summary";
 import { SUPPORT_PLAYLISTS } from "@/systems/constants";
 import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
-import { type LibraryView, libraryUI$, selectLibraryPlaylist, selectLibraryView } from "@/systems/LibraryState";
+import {
+    type LibraryView,
+    libraryUI$,
+    resolveLibraryView,
+    selectLibraryPlaylist,
+    selectLibraryView,
+} from "@/systems/LibraryState";
 import {
     createLocalPlaylist,
     type LocalPlaylist,
@@ -70,9 +76,7 @@ import { buildTrackLookup, resolvePlaylistTracks } from "@/utils/trackResolution
 import { MediaLibrarySearchBar } from "./SearchBar";
 
 const LIBRARY_VIEWS: { id: LibraryView; label: string; disabled?: boolean }[] = [
-    { id: "artists", label: "Artists" },
-    { id: "albums", label: "Albums" },
-    { id: "songs", label: "Songs" },
+    { id: "library", label: "Library" },
     { id: "starred", label: "Starred", disabled: true },
 ];
 
@@ -433,7 +437,7 @@ interface MediaLibrarySidebarProps {
 
 export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibrarySidebarProps) {
     perfCount("MediaLibrary.Sidebar.render");
-    const selectedView = useValue(libraryUI$.selectedView);
+    const selectedView = resolveLibraryView(useValue(libraryUI$.selectedView));
     const selectedPlaylistId = useValue(libraryUI$.selectedPlaylistId);
     const selectedPlaylistProvider = useValue(libraryUI$.selectedPlaylistProvider);
     const searchQuery = useValue(libraryUI$.searchQuery);
@@ -487,7 +491,7 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
         }
 
         if (!connectedProviderIds.has(selectedPlaylistProvider)) {
-            selectLibraryView("songs");
+            selectLibraryView("library");
         }
     }, [connectedProviderIds, selectedPlaylistProvider]);
 
@@ -535,7 +539,7 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
         setTempPlaylistName("");
 
         if (!name) {
-            selectLibraryView("songs");
+            selectLibraryView("library");
             return;
         }
 
@@ -544,7 +548,7 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
             selectLibraryPlaylist(playlist.id, "local");
         } catch (error) {
             console.error("Failed to create playlist:", error);
-            selectLibraryView("songs");
+            selectLibraryView("library");
         }
     }, [tempPlaylistId, tempPlaylistName]);
 

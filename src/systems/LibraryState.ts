@@ -21,6 +21,7 @@ export interface LibraryItem {
 export interface LibraryTrack extends LocalTrack {}
 
 export type LibraryView =
+    | "library"
     | "songs"
     | "artists"
     | "albums"
@@ -54,7 +55,7 @@ export type LibraryDetail =
 
 // Library UI state (persistent)
 export const libraryUI$ = observable<LibraryUIState>({
-    selectedView: "artists",
+    selectedView: "library",
     selectedPlaylistId: null,
     selectedPlaylistProvider: null,
     searchQuery: "",
@@ -63,13 +64,21 @@ export const libraryUI$ = observable<LibraryUIState>({
     selectedDetail: null,
 });
 
+export function resolveLibraryView(view: LibraryView): LibraryView {
+    if (view === "artists" || view === "albums" || view === "songs") {
+        return "library";
+    }
+    return view;
+}
+
 export function selectLibraryView(view: LibraryView): void {
-    libraryUI$.selectedView.set(view);
-    if (view !== "artist-detail" && view !== "album-detail") {
+    const resolvedView = resolveLibraryView(view);
+    libraryUI$.selectedView.set(resolvedView);
+    if (resolvedView !== "artist-detail" && resolvedView !== "album-detail") {
         libraryUI$.selectedDetail.set(null);
     }
 
-    if (view !== "playlist") {
+    if (resolvedView !== "playlist") {
         libraryUI$.selectedPlaylistId.set(null);
         libraryUI$.selectedPlaylistProvider.set(null);
     }

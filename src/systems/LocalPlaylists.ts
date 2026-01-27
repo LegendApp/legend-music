@@ -209,7 +209,7 @@ export async function deletePlaylist(playlistId: string): Promise<void> {
         libraryUI$.selectedPlaylistProvider.peek() === "local" &&
         libraryUI$.selectedPlaylistId.peek() === playlistId
     ) {
-        selectLibraryView("songs");
+        selectLibraryView("library");
     }
 
     await loadLocalPlaylists();
