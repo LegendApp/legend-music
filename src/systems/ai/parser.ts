@@ -1,5 +1,10 @@
 import type { AISuggestedTrack } from "@/systems/ai/types";
 
+export type AIScoredTrack = {
+    id: string;
+    score: number;
+};
+
 const normalizeText = (value: string): string =>
     value
         .toLowerCase()
@@ -76,6 +81,31 @@ const coerceTrack = (entry: unknown): AISuggestedTrack | null => {
     };
 };
 
+const coerceScoreEntry = (entry: unknown): AIScoredTrack | null => {
+    if (!entry || typeof entry !== "object") {
+        return null;
+    }
+
+    const data = entry as Record<string, unknown>;
+    const rawId = data.id ?? data.trackId ?? data.trackID;
+    const rawScore = data.score ?? data.rank ?? data.rating;
+
+    const id = typeof rawId === "string" ? rawId.trim() : "";
+    if (!id) {
+        return null;
+    }
+
+    const scoreValue =
+        typeof rawScore === "number" ? rawScore : typeof rawScore === "string" ? Number(rawScore) : Number.NaN;
+    if (!Number.isFinite(scoreValue)) {
+        return null;
+    }
+
+    const score = Math.min(100, Math.max(0, Math.round(scoreValue)));
+
+    return { id, score };
+};
+
 export const parseSuggestedTracks = (text: string, maxCount: number): AISuggestedTrack[] => {
     const parsed = parseJson(text);
     if (!parsed) {
@@ -107,6 +137,34 @@ export const parseSuggestedTracks = (text: string, maxCount: number): AISuggeste
         if (results.length >= maxCount) {
             break;
         }
+    }
+
+    return results;
+};
+
+export const parseScoredTracks = (text: string): AIScoredTrack[] => {
+    const parsed = parseJson(text);
+    if (!parsed) {
+        return [];
+    }
+
+    const entries = Array.isArray(parsed)
+        ? parsed
+        : typeof parsed === "object" && parsed && Array.isArray((parsed as { tracks?: unknown }).tracks)
+            ? (parsed as { tracks: unknown[] }).tracks
+            : [];
+
+    const results: AIScoredTrack[] = [];
+    const seen = new Set<string>();
+
+    for (const entry of entries) {
+        const scored = coerceScoreEntry(entry);
+        if (!scored || seen.has(scored.id)) {
+            continue;
+        }
+
+        seen.add(scored.id);
+        results.push(scored);
     }
 
     return results;

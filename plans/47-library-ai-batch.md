@@ -10,7 +10,7 @@ ranking results before returning the top matches.
 - `aiCommandRunner` executes CLI AI tools with a prompt-only interface.
 
 ## Steps
-- [ ] Add a batch-scoring prompt format and parser for `{id, score}` results, ensuring consistent scoring rubric
+- [x] Add a batch-scoring prompt format and parser for `{id, score}` results, ensuring consistent scoring rubric
       across batches and JSON-only output.
 - [ ] Update local library search to chunk the CSV/library into batches (e.g., 300–500), invoke AI scoring per
       batch, merge scores, and return the top results by score.
