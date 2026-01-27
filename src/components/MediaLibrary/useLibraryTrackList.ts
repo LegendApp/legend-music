@@ -249,6 +249,10 @@ export function buildTrackItems({
     });
 
     const resolvedView = resolveLibraryView(selectedView);
+    const effectiveSort =
+        resolvedView === "library" && playlistSort === "playlist-order" ? "artist" : playlistSort;
+    const effectiveSortDirection =
+        resolvedView === "library" && playlistSort === "playlist-order" ? "asc" : playlistSortDirection;
 
     if (resolvedView === "starred") {
         return {
@@ -260,9 +264,9 @@ export function buildTrackItems({
 
     const groupingMode =
         resolvedView === "library"
-            ? playlistSort === "artist"
+            ? effectiveSort === "artist"
                 ? "artist"
-                : playlistSort === "album"
+                : effectiveSort === "album"
                   ? "album"
                   : "none"
             : "none";
@@ -299,7 +303,7 @@ export function buildTrackItems({
                     normalizeSortValue(groupB.displayName),
                 );
                 if (compare !== 0) {
-                    return applySortDirection(compare, playlistSortDirection);
+                    return applySortDirection(compare, effectiveSortDirection);
                 }
                 return a.index - b.index;
             })
@@ -362,7 +366,7 @@ export function buildTrackItems({
                 }
                 const compare = compareTextValues(a.group.info.key, b.group.info.key);
                 if (compare !== 0) {
-                    return applySortDirection(compare, playlistSortDirection);
+                    return applySortDirection(compare, effectiveSortDirection);
                 }
                 return a.index - b.index;
             })
@@ -402,7 +406,7 @@ export function buildTrackItems({
     }
 
     if (resolvedView === "library") {
-        const sortedTracks = sortTracksByMode(filteredTracks, playlistSort, playlistSortDirection);
+        const sortedTracks = sortTracksByMode(filteredTracks, effectiveSort, effectiveSortDirection);
         return {
             trackItems: sortedTracks.map((track, index) => toTrackItem(track, index)),
         };

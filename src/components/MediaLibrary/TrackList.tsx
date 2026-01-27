@@ -1,7 +1,7 @@
 import { LegendList } from "@legendapp/list";
 import { type Observable, observable } from "@legendapp/state";
 import { useObservable, useValue } from "@legendapp/state/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ElementRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Platform, Text, TextInput, View } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 import { audioPlayerState$ } from "@/components/AudioPlayer";
@@ -52,6 +52,9 @@ type TrackListProps = {};
 
 const emptyProviderPlaylists$ = observable([] as StreamingProviderPlaylist[]);
 const DEFAULT_AI_SUGGESTION_COUNT = 10;
+type LegendListHandle = ElementRef<typeof LegendList> & {
+    scrollToIndex?: (params: { index: number; animated?: boolean }) => void;
+};
 
 const formatAddedDate = (timestamp?: number): string => {
     if (!timestamp) {
@@ -144,10 +147,16 @@ export function TrackList(_props: TrackListProps) {
     const searchQuery = useValue(libraryUI$.searchQuery);
     const playlistSort = useValue(libraryUI$.playlistSort);
     const playlistSortDirection = useValue(libraryUI$.playlistSortDirection);
+    const effectiveSort =
+        resolvedView === "library" && playlistSort === "playlist-order" ? "artist" : playlistSort;
+    const effectiveSortDirection =
+        resolvedView === "library" && playlistSort === "playlist-order" ? "asc" : playlistSortDirection;
     const playlists = useValue(localMusicState$.playlists);
     const aiPlaylistFillState = useValue(aiPlaylistFillState$);
     const providerPlugin = selectedPlaylistProvider ? getStreamingProviderPlugin(selectedPlaylistProvider) : null;
     const providerPlaylists = useValue(providerPlugin?.library?.playlists$ ?? emptyProviderPlaylists$);
+    const listRef = useRef<LegendListHandle>(null);
+    const didMountRef = useRef(false);
     const showAiCreateButton = resolvedView === "playlist" && selectedPlaylistProvider === "local";
     const showAiFillSpinner =
         resolvedView === "playlist" &&
@@ -401,8 +410,9 @@ export function TrackList(_props: TrackListProps) {
     const showDateAddedColumn = resolvedView === "playlist";
 
     const columns = useMemo<TableColumnSpec[]>(() => {
+        const numberSortId = resolvedView === "playlist" ? "playlist-order" : undefined;
         const nextColumns: TableColumnSpec[] = [
-            { id: "number", label: "#", width: 28, align: "right", sortId: "playlist-order" },
+            { id: "number", label: "#", width: 28, align: "right", sortId: numberSortId },
             { id: "title", label: "Title", flex: 3, minWidth: 120, sortId: "title" },
             { id: "artist", label: "Artist", flex: 2, minWidth: 100, sortId: "artist" },
             { id: "album", label: "Album", flex: 2, minWidth: 100, sortId: "album" },
@@ -418,7 +428,7 @@ export function TrackList(_props: TrackListProps) {
         );
 
         return nextColumns;
-    }, [showDateAddedColumn]);
+    }, [resolvedView, showDateAddedColumn]);
     const handleColumnSort = useCallback(
         (sortId: string) => {
             if (
@@ -443,6 +453,15 @@ export function TrackList(_props: TrackListProps) {
         },
         [playlistSort, playlistSortDirection],
     );
+
+    useEffect(() => {
+        if (!didMountRef.current) {
+            didMountRef.current = true;
+            return;
+        }
+
+        listRef.current?.scrollToIndex?.({ index: 0 });
+    }, [effectiveSort, effectiveSortDirection, resolvedView]);
 
     const allowPlaylistDrop = useCallback(
         (item: DraggedItem<DragData>) => {
@@ -694,19 +713,21 @@ export function TrackList(_props: TrackListProps) {
                 header={
                     <TableHeader
                         columns={columns}
-                        activeSortId={playlistSort}
-                        activeSortDirection={playlistSortDirection}
+                        activeSortId={effectiveSort}
+                        activeSortDirection={effectiveSortDirection}
                         onColumnClick={handleColumnSort}
                     />
                 }
             >
                 <LegendList
                     key={resolvedView}
+                    ref={listRef}
                     data={tracks}
                     keyExtractor={keyExtractor}
                     renderItem={renderTrack}
                     getItemType={getItemType}
                     getFixedItemSize={getFixedItemSize}
+                    maintainVisibleContentPosition={false}
                     ListHeaderComponent={
                         isPlaylistEditable && Platform.OS !== "macos" ? (
                             <LocalPlaylistDropZone
