@@ -28,7 +28,7 @@ export const selectedSuggestionProviderId$ = computed(() => {
 
 export const selectedSuggestionProvider$ = computed(() => {
     ensureSuggestionProvidersRegistered();
-    const providerId = request.providerIdOverride ?? selectedSuggestionProviderId$.get();
+    const providerId = selectedSuggestionProviderId$.get();
     return getSuggestionProvider(providerId) ?? null;
 });
 
@@ -75,7 +75,7 @@ export async function fetchSuggestions(request: SuggestionRequest): Promise<Sugg
         throw new Error("Queue extension is disabled in settings.");
     }
 
-    const providerId = selectedSuggestionProviderId$.get();
+    const providerId = request.providerIdOverride ?? selectedSuggestionProviderId$.get();
     const provider = getSuggestionProviderById(providerId);
 
     if (!provider.isAvailable()) {
