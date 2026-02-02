@@ -6,6 +6,7 @@ import { Playlist } from "@/components/Playlist";
 import { PlaylistSelector } from "@/components/PlaylistSelector";
 import { SkiaSpinner } from "@/components/SkiaSpinner";
 import { Unregistered } from "@/components/Unregistered";
+import { AiGenerationPopupHost } from "@/components/AiGenerationPopupHost";
 import { aiQueueFillState$ } from "@/systems/ai";
 import { SUPPORT_ACCOUNTS } from "@/systems/constants";
 import { useOnHotkeys } from "@/systems/keyboard/Keyboard";
@@ -66,6 +67,7 @@ export function MainContainer() {
                 {/* <PlaylistSelector /> */}
                 {SUPPORT_ACCOUNTS && <Unregistered />}
             </View>
+            <AiGenerationPopupHost />
             {showAiQueueSpinner ? (
                 <View pointerEvents="none" className="absolute left-4 right-4 bottom-3">
                     <View className="flex-row items-center gap-2 rounded-md bg-background-tertiary border border-border-primary px-3 py-2">

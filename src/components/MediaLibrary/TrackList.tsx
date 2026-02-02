@@ -36,7 +36,7 @@ import { AI_PROMPT_SOURCE_OPTIONS, type AiPromptSource, getAiPromptPlaceholder }
 import { generatePlaylistSummary } from "@/systems/ai/summary";
 import { Icon } from "@/systems/Icon";
 import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
-import { libraryUI$, resolveLibraryView, selectLibraryAlbum, selectLibraryArtist } from "@/systems/LibraryState";
+import { libraryUI$, resolveLibraryView } from "@/systems/LibraryState";
 import { type LocalPlaylist, localMusicState$, saveLocalPlaylistTracks } from "@/systems/LocalMusicState";
 import { addTracksToPlaylist, updatePlaylistMetadata } from "@/systems/LocalPlaylists";
 import { settings$ } from "@/systems/Settings";
@@ -44,7 +44,7 @@ import { fetchSuggestions } from "@/systems/suggestions";
 import { themeState$ } from "@/theme/ThemeProvider";
 import { cn } from "@/utils/cn";
 import type { QueueAction } from "@/utils/queueActions";
-import { startTrackMix, TRACK_CONTEXT_MENU_ITEMS } from "@/utils/trackContextMenu";
+import { handleTrackContextMenuSelection, TRACK_CONTEXT_MENU_ITEMS } from "@/utils/trackContextMenu";
 import { AiPlaylistDropdown } from "./AiPlaylistDropdown";
 import { useLibraryTrackList } from "./useLibraryTrackList";
 
@@ -875,7 +875,7 @@ const buildTrackRowMenuItems = (track: TrackData): ContextMenuItem[] => {
         { id: "play-next", title: "Play Next" },
     ];
 
-    items.push(TRACK_CONTEXT_MENU_ITEMS.startMixStreaming, TRACK_CONTEXT_MENU_ITEMS.startMixLibrary);
+    items.push(TRACK_CONTEXT_MENU_ITEMS.startMix, TRACK_CONTEXT_MENU_ITEMS.addMoreLikeThis);
 
     if (track.artist?.trim()) {
         items.push(TRACK_CONTEXT_MENU_ITEMS.goToArtist);
@@ -940,24 +940,12 @@ function LibraryTrackRow({
                 return;
             }
 
-            if (selection === TRACK_CONTEXT_MENU_ITEMS.startMixStreaming.id) {
-                await startTrackMix(track, "streaming");
-                return;
-            }
-
-            if (selection === TRACK_CONTEXT_MENU_ITEMS.startMixLibrary.id) {
-                await startTrackMix(track, "local-library");
-                return;
-            }
-
-            if (selection === TRACK_CONTEXT_MENU_ITEMS.goToArtist.id && track.artist?.trim()) {
-                selectLibraryArtist(track.artist);
-                return;
-            }
-
-            if (selection === TRACK_CONTEXT_MENU_ITEMS.goToAlbum.id && track.album?.trim()) {
-                selectLibraryAlbum(track.album, track.artist);
-            }
+            await handleTrackContextMenuSelection({
+                selection,
+                // TrackData is compatible with LocalTrack fields used by handlers.
+                track: track as any,
+                anchorRect: { screenX: x, screenY: y, width: 1, height: 1 },
+            });
         },
         [index, onMenuAction, track],
     );

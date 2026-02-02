@@ -766,6 +766,7 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
             await handleTrackContextMenuSelection({
                 selection,
                 track: sourceTrack,
+                anchorRect: { screenX: x, screenY: y, width: 1, height: 1 },
                 onQueueAction: (action) => {
                     handleTrackAction(index, action === "play-next" ? "play-next" : "enqueue");
                 },

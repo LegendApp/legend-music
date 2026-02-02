@@ -1,51 +1,18 @@
-import { queueControls } from "@/components/AudioPlayer";
-import { showToast } from "@/components/Toast";
 import type { ContextMenuItem } from "@/native-modules/ContextMenu";
 import { getStreamingProviderPlugin } from "@/providers/pluginRegistry";
-import type { AiPromptSource } from "@/systems/ai/promptSource";
+import type { AiGenerationPopupAnchorRect } from "@/systems/ai/generationPopup";
+import { openAiGenerationPopup } from "@/systems/ai/generationPopup";
 import { selectLibraryAlbum, selectLibraryArtist } from "@/systems/LibraryState";
 import type { LocalTrack } from "@/systems/LocalMusicState";
-import { fetchSuggestions } from "@/systems/suggestions";
-
-const MIX_TARGET_COUNT = 20;
 
 export const TRACK_CONTEXT_MENU_ITEMS = {
     queueAdd: { id: "queue-add", title: "Add to Queue" } as const,
     queuePlayNext: { id: "queue-play-next", title: "Play Next" } as const,
-    startMixStreaming: { id: "mix-start-streaming", title: "Start Mix from Streaming" } as const,
-    startMixLibrary: { id: "mix-start-library", title: "Start Mix from Library" } as const,
+    startMix: { id: "ai-start-mix", title: "Start mix" } as const,
+    addMoreLikeThis: { id: "ai-add-more-like-this", title: "Add more like this" } as const,
     goToArtist: { id: "go-to-artist", title: "Go to Artist" } as const,
     goToAlbum: { id: "go-to-album", title: "Go to Album" } as const,
 };
-
-export async function startTrackMix(track: LocalTrack, promptSource: AiPromptSource): Promise<void> {
-    queueControls.replace([track]);
-
-    try {
-        const { tracks, unresolved } = await fetchSuggestions({
-            mode: "queue-extension",
-            source: "manual",
-            promptSource,
-            seedTracks: [track],
-            count: MIX_TARGET_COUNT,
-        });
-
-        if (tracks.length === 0) {
-            showToast("No tracks were suggested.", "error");
-            return;
-        }
-
-        queueControls.append(tracks);
-        const addedLabel = tracks.length === 1 ? "track" : "tracks";
-        showToast(`Added ${tracks.length} ${addedLabel} to the queue`, "info");
-        if (unresolved && unresolved.length > 0) {
-            showToast(`Skipped ${unresolved.length} tracks that could not be matched`, "info");
-        }
-    } catch (error) {
-        const message = error instanceof Error ? error.message : "Mix generation failed";
-        showToast(message, "error");
-    }
-}
 
 type BuildTrackContextMenuOptions = {
     track?: LocalTrack | null;
@@ -61,7 +28,7 @@ export function buildTrackContextMenuItems(options: BuildTrackContextMenuOptions
     }
 
     if (options.track) {
-        items.push(TRACK_CONTEXT_MENU_ITEMS.startMixStreaming, TRACK_CONTEXT_MENU_ITEMS.startMixLibrary);
+        items.push(TRACK_CONTEXT_MENU_ITEMS.startMix, TRACK_CONTEXT_MENU_ITEMS.addMoreLikeThis);
 
         const artist = options.track.artist?.trim();
         if (artist) {
@@ -92,6 +59,7 @@ type QueueAction = "enqueue" | "play-next";
 interface HandleTrackContextMenuSelectionOptions {
     selection: string | null;
     track?: LocalTrack | null;
+    anchorRect?: AiGenerationPopupAnchorRect | null;
     onQueueAction?: (action: QueueAction) => void;
     onCustomSelect?: (selection: string) => void | Promise<void>;
 }
@@ -99,6 +67,7 @@ interface HandleTrackContextMenuSelectionOptions {
 export async function handleTrackContextMenuSelection({
     selection,
     track,
+    anchorRect,
     onQueueAction,
     onCustomSelect,
 }: HandleTrackContextMenuSelectionOptions): Promise<void> {
@@ -126,13 +95,23 @@ export async function handleTrackContextMenuSelection({
         return;
     }
 
-    if (selection === TRACK_CONTEXT_MENU_ITEMS.startMixStreaming.id && track) {
-        await startTrackMix(track, "streaming");
+    if (selection === TRACK_CONTEXT_MENU_ITEMS.startMix.id && track) {
+        openAiGenerationPopup({
+            title: TRACK_CONTEXT_MENU_ITEMS.startMix.title,
+            action: "start-mix",
+            seedTracks: [track],
+            anchorRect: anchorRect ?? null,
+        });
         return;
     }
 
-    if (selection === TRACK_CONTEXT_MENU_ITEMS.startMixLibrary.id && track) {
-        await startTrackMix(track, "local-library");
+    if (selection === TRACK_CONTEXT_MENU_ITEMS.addMoreLikeThis.id && track) {
+        openAiGenerationPopup({
+            title: TRACK_CONTEXT_MENU_ITEMS.addMoreLikeThis.title,
+            action: "add-more-like-this",
+            seedTracks: [track],
+            anchorRect: anchorRect ?? null,
+        });
         return;
     }
 

@@ -502,6 +502,7 @@ export function MediaLibraryDetailView() {
         await handleTrackContextMenuSelection({
             selection,
             track,
+            anchorRect: { screenX: x, screenY: y, width: 1, height: 1 },
             onQueueAction: (action) => {
                 if (action === "play-next") {
                     audioControls.queue.insertNext(track);

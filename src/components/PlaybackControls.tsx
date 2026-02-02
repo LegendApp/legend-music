@@ -50,7 +50,6 @@ export function PlaybackControls({ className }: PlaybackControlsProps = {}) {
     const { width: windowWidth } = useWindowDimensions();
     const [layoutWidth, setLayoutWidth] = useState(0);
     const dropdownMenuRef = useRef<DropdownMenuRootRef>(null);
-    const aiDropdownRef = useRef<DropdownMenuRootRef>(null);
 
     const { playlistMap, tracksByPath } = usePlaylistOptions(localMusicState);
     const { isLibraryOpen, toggleLibraryWindow } = useLibraryToggle();
@@ -180,7 +179,7 @@ export function PlaybackControls({ className }: PlaybackControlsProps = {}) {
                     case "search":
                         return (
                             <View key="search" className="flex-row items-center gap-x-1">
-                                <QueueAiDropdown ref={aiDropdownRef} />
+                                <QueueAiDropdown title="Generate queue" />
                                 <JumpSearchMenuDropdown
                                     ref={dropdownMenuRef}
                                     tracks={localMusicState.tracks}

@@ -72,7 +72,10 @@ const buildPromptForRequest = (
 ): string => {
     if (request.mode === "queue-extension") {
         const seedTracks = request.seedTracks ?? [];
-        return buildQueueExtensionPrompt(seedTracks, count, { libraryCsv: options.libraryCsv });
+        return buildQueueExtensionPrompt(seedTracks, count, {
+            libraryCsv: options.libraryCsv,
+            userPrompt: request.prompt,
+        });
     }
 
     const prompt = request.prompt?.trim();
