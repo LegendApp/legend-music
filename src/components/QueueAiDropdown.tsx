@@ -50,7 +50,6 @@ export const QueueAiDropdown = forwardRef<DropdownMenuRootRef, QueueAiDropdownPr
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const textInputRef = useRef<TextInput>(null);
     const reopenAfterErrorRef = useRef(false);
-    const lastDefaultPromptRef = useRef<string>("");
     const providerAvailability = useValue(suggestionProviderAvailability$);
     const isProviderAvailable = providerAvailability[providerId] ?? false;
     const anyProviderAvailable = Boolean(
@@ -189,11 +188,7 @@ export const QueueAiDropdown = forwardRef<DropdownMenuRootRef, QueueAiDropdownPr
             reopenAfterErrorRef.current = false;
         } else {
             const nextFrom = resolveDefaultFrom();
-            const nextPromptSource = getPromptSourceForFrom(nextFrom);
-            const defaultPrompt = getAiPromptPlaceholder(nextPromptSource, "queue");
-
-            lastDefaultPromptRef.current = defaultPrompt;
-            setPrompt(defaultPrompt);
+            setPrompt("");
             setErrorMessage(null);
             setFrom(nextFrom);
             setProviderId(defaultProviderId);
@@ -205,18 +200,6 @@ export const QueueAiDropdown = forwardRef<DropdownMenuRootRef, QueueAiDropdownPr
     }, [defaultProviderId, isOpen, resolveDefaultFrom]);
 
     const defaultPromptForSource = useMemo(() => getAiPromptPlaceholder(promptSource, "queue"), [promptSource]);
-
-    useEffect(() => {
-        if (!isOpen) {
-            return;
-        }
-
-        const lastDefault = lastDefaultPromptRef.current;
-        if (!prompt.trim() || prompt === lastDefault) {
-            setPrompt(defaultPromptForSource);
-            lastDefaultPromptRef.current = defaultPromptForSource;
-        }
-    }, [defaultPromptForSource, isOpen, prompt]);
 
     useEffect(() => {
         if (!isOpen) {
