@@ -60,8 +60,6 @@ export function QueueAiDropdown({ title, disabled = false }: QueueAiDropdownProp
             disabled={isDisabled}
             className="opacity-60 hover:opacity-100"
             onMouseDown={open}
-            onClick={open}
         />
     );
 }
-
