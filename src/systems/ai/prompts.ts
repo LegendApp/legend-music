@@ -19,6 +19,15 @@ const formatSeedTracks = (tracks: LocalTrack[]): string => {
         .join("\n");
 };
 
+const buildOptionalUserInstructions = (userPrompt?: string): string[] => {
+    const trimmed = userPrompt?.trim();
+    if (!trimmed) {
+        return [];
+    }
+
+    return ["", `Additional instructions: ${trimmed}`];
+};
+
 const buildLibraryCsvConstraint = (libraryCsv?: string): string[] => {
     const trimmed = libraryCsv?.trim();
     if (!trimmed) {
@@ -50,12 +59,13 @@ const buildLocalLibraryScoreJsonLines = (tracks: LocalTrack[]): string => {
 export const buildQueueExtensionPrompt = (
     seedTracks: LocalTrack[],
     count: number,
-    options: { libraryCsv?: string } = {},
+    options: { libraryCsv?: string; userPrompt?: string } = {},
 ): string => {
     return [
         "You are a music assistant helping extend a playback queue.",
         "Based on the recent tracks below, suggest new tracks that fit the flow.",
         "Avoid repeating any of the seed tracks or near-duplicates.",
+        ...buildOptionalUserInstructions(options.userPrompt),
         "",
         "Recent tracks:",
         formatSeedTracks(seedTracks),
@@ -68,7 +78,7 @@ export const buildQueueExtensionPrompt = (
 export const buildPlaylistPrompt = (
     userPrompt: string,
     count: number,
-    options: { libraryCsv?: string } = {},
+    options: { libraryCsv?: string; userPrompt?: string } = {},
 ): string => {
     return [
         "You are a music assistant creating a playlist.",
@@ -87,20 +97,6 @@ export const buildPlaylistSummaryPrompt = (userPrompt: string): string => {
         `User prompt: ${userPrompt.trim()}`,
         "Return exactly five words describing the playlist.",
         "No punctuation, no quotes, no extra text.",
-    ].join("\n");
-};
-
-export const buildLocalLibrarySearchPrompt = (query: string, libraryCsv: string, count: number): string => {
-    return [
-        "You are a music assistant searching a local music library.",
-        `Search query: ${query.trim()}`,
-        "Return only tracks that appear in the CSV below.",
-        'If nothing matches, return {"tracks":[]}.',
-        "",
-        buildJsonInstructions(count, { exact: false }),
-        "",
-        "Local library CSV (artist,title,album,year,genre):",
-        libraryCsv.trim(),
     ].join("\n");
 };
 

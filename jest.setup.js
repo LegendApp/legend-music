@@ -66,6 +66,21 @@ NativeModules.AICommandRunner = {
     runCommand: jest.fn(async () => ({ stdout: "", stderr: "", exitCode: 0, timedOut: false })),
 };
 
+NativeModules.AppleMusic = {
+    getDeveloperToken: jest.fn(async () => ""),
+    authorize: jest.fn(async () => ({ userToken: null })),
+    unauthorize: jest.fn(async () => {}),
+    configure: jest.fn(async () => ({ success: true })),
+    loadTrack: jest.fn(async () => ({ success: true })),
+    play: jest.fn(async () => ({ success: true })),
+    pause: jest.fn(async () => ({ success: true })),
+    seek: jest.fn(async () => ({ success: true })),
+    setVolume: jest.fn(async () => ({ success: true })),
+    getPlaybackState: jest.fn(async () => ({})),
+    addListener: jest.fn(() => ({ remove: jest.fn() })),
+    removeListeners: jest.fn(),
+};
+
 jest.mock("@/native-modules/AudioPlayer", () => ({
     __esModule: true,
     useAudioPlayer: () => ({
@@ -111,6 +126,17 @@ jest.mock("@/native-modules/WindowManager", () => ({
     },
 }));
 
+jest.mock("react-native-webview", () => ({
+    __esModule: true,
+    default: () => null,
+}));
+
+jest.mock("react-native-config", () => ({
+    __esModule: true,
+    default: {
+        YOUTUBE_CLIENT_ID: "",
+    },
+}));
 jest.mock("expo-file-system", () => ({
     __esModule: true,
     getInfoAsync: jest.fn(async () => ({ exists: true })),
@@ -124,7 +150,9 @@ jest.mock("expo-file-system/next", () => {
         if (!input) {
             return "/";
         }
-        const withoutProtocol = String(input).startsWith("file://") ? String(input).replace("file://", "") : String(input);
+        const withoutProtocol = String(input).startsWith("file://")
+            ? String(input).replace("file://", "")
+            : String(input);
         const collapsed = withoutProtocol.replace(/\/+/g, "/");
         if (collapsed === "/") {
             return "/";
@@ -256,7 +284,6 @@ jest.mock("expo-file-system/next", () => {
     };
 });
 
-
 jest.mock("react-native-reanimated", () => {
     const ReactNative = require("react-native");
 
@@ -272,7 +299,6 @@ jest.mock("react-native-reanimated", () => {
         runOnJS: jest.fn((fn) => fn),
     };
 });
-
 
 jest.mock("@legendapp/motion", () => ({
     __esModule: true,

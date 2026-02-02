@@ -1,10 +1,13 @@
-import type { LocalTrack } from "@/systems/LocalMusicState";
-import type { AISuggestedTrack } from "@/systems/ai/types";
+import type { StreamingProviderId } from "@/providers/types";
 import type { AiPromptSource } from "@/systems/ai/promptSource";
+import type { AISuggestedTrack } from "@/systems/ai/types";
+import type { LocalTrack } from "@/systems/LocalMusicState";
 
 export type SuggestionMode = "queue-extension" | "playlist";
 
 export type SuggestionRequest = {
+    providerIdOverride?: SuggestionProviderId;
+    trackProviderIdOverride?: StreamingProviderId | null;
     mode: SuggestionMode;
     source?: "auto" | "manual";
     promptSource?: AiPromptSource;

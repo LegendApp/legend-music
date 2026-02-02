@@ -28,7 +28,7 @@ export const selectedSuggestionProviderId$ = computed(() => {
 
 export const selectedSuggestionProvider$ = computed(() => {
     ensureSuggestionProvidersRegistered();
-    const providerId = selectedSuggestionProviderId$.get();
+    const providerId = request.providerIdOverride ?? selectedSuggestionProviderId$.get();
     return getSuggestionProvider(providerId) ?? null;
 });
 

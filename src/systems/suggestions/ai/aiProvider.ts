@@ -1,14 +1,15 @@
 import { aiCommandRunner } from "@/native-modules/AICommandRunner";
-import type { StreamingProviderId } from "@/providers/types";
 import { LOCAL_LIBRARY_PROVIDER_ID } from "@/providers/localLibrary/constants";
+import type { StreamingProviderId } from "@/providers/types";
 import { aiAvailability$ } from "@/systems/ai/availability";
 import { readMediaLibraryCsv } from "@/systems/ai/libraryCsv";
 import { parseSuggestedTracks } from "@/systems/ai/parser";
+import { type AiPromptSource, coerceAiPromptSource } from "@/systems/ai/promptSource";
 import { buildPlaylistPrompt, buildQueueExtensionPrompt } from "@/systems/ai/prompts";
-import { readAiSearchCache, writeAiSearchCache } from "@/systems/ai/searchCache";
 import { resolveSuggestedTracks } from "@/systems/ai/resolver";
-import { coerceAiPromptSource, type AiPromptSource } from "@/systems/ai/promptSource";
+import { readAiSearchCache, writeAiSearchCache } from "@/systems/ai/searchCache";
 import type { AISuggestedTrack } from "@/systems/ai/types";
+import { type LocalTrack, localMusicState$ } from "@/systems/LocalMusicState";
 import { settings$ } from "@/systems/Settings";
 import type { AiInvocation } from "@/systems/suggestions/ai/invocation";
 import type {
@@ -17,7 +18,6 @@ import type {
     SuggestionRequest,
     SuggestionResult,
 } from "@/systems/suggestions/types";
-import { localMusicState$, type LocalTrack } from "@/systems/LocalMusicState";
 
 const DEFAULT_TRACK_COUNT = 10;
 const DEFAULT_TIMEOUT_MS = 60000;
@@ -164,12 +164,11 @@ export const createAiSuggestionProvider = (config: AiProviderConfig): Suggestion
         const count = request.count ?? DEFAULT_TRACK_COUNT;
         const promptSource = resolvePromptSource(request);
         const preferredProviderId = settings$.ai.preferredTrackProviderId.get();
+        const trackProviderIdOverride = request.trackProviderIdOverride ?? null;
         const libraryCsv = promptSource === "local-library" ? readMediaLibraryCsv() : "";
         const shouldCache =
-            request.mode === "playlist" &&
-            promptSource === "local-library" &&
-            Boolean(request.cachePrompt?.trim());
-        const cachePrompt = shouldCache ? request.cachePrompt?.trim() ?? "" : "";
+            request.mode === "playlist" && promptSource === "local-library" && Boolean(request.cachePrompt?.trim());
+        const cachePrompt = shouldCache ? (request.cachePrompt?.trim() ?? "") : "";
         const cacheFilters = shouldCache
             ? {
                   mode: request.mode,
@@ -190,9 +189,7 @@ export const createAiSuggestionProvider = (config: AiProviderConfig): Suggestion
             }
         }
 
-        const targetCount = shouldCache
-            ? Math.max(count, Math.min(PLAYLIST_CACHE_TRACK_COUNT, count * 10))
-            : count;
+        const targetCount = shouldCache ? Math.max(count, Math.min(PLAYLIST_CACHE_TRACK_COUNT, count * 10)) : count;
         const promptRequest = shouldCache && cachePrompt ? { ...request, prompt: cachePrompt } : request;
         const prompt = buildPromptForRequest(promptRequest, targetCount, { libraryCsv });
         const timeoutMs = DEFAULT_TIMEOUT_MS;
@@ -228,14 +225,23 @@ export const createAiSuggestionProvider = (config: AiProviderConfig): Suggestion
         const effectivePreferredProviderId =
             promptSource === "local-library"
                 ? LOCAL_LIBRARY_PROVIDER_ID
-                : preferredProviderId === LOCAL_LIBRARY_PROVIDER_ID
-                  ? null
-                  : preferredProviderId;
+                : trackProviderIdOverride
+                  ? trackProviderIdOverride
+                  : preferredProviderId === LOCAL_LIBRARY_PROVIDER_ID
+                    ? null
+                    : preferredProviderId;
         const preferredProviders =
             promptSource === "local-library"
                 ? [LOCAL_LIBRARY_PROVIDER_ID]
-                : buildProviderPreference(request.seedTracks, effectivePreferredProviderId);
-        const restrictToProviders = promptSource === "local-library" ? [LOCAL_LIBRARY_PROVIDER_ID] : undefined;
+                : trackProviderIdOverride
+                  ? [trackProviderIdOverride]
+                  : buildProviderPreference(request.seedTracks, effectivePreferredProviderId);
+        const restrictToProviders =
+            promptSource === "local-library"
+                ? [LOCAL_LIBRARY_PROVIDER_ID]
+                : trackProviderIdOverride
+                  ? [trackProviderIdOverride]
+                  : undefined;
         const resolved = await resolveSuggestedTracks(suggestions, { preferredProviders, restrictToProviders });
         if (shouldCache && cacheFilters && cachePrompt) {
             writeAiSearchCache(cachePrompt, cacheFilters, dedupeTrackIds(resolved.tracks));
