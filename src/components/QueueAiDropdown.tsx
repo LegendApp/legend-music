@@ -6,6 +6,7 @@ import { useOnHotkeys } from "@/systems/keyboard/Keyboard";
 import { settings$ } from "@/systems/Settings";
 import { openAiGenerationPopup } from "@/systems/ai/generationPopup";
 import { suggestionProviderAvailability$ } from "@/systems/suggestions";
+import { useWindowId } from "@/windows/WindowProvider";
 
 type QueueAiDropdownProps = {
     title: string;
@@ -20,6 +21,7 @@ export function QueueAiDropdown({ title, disabled = false }: QueueAiDropdownProp
     const aiSettings = useValue(settings$.ai);
     const isFeatureEnabled = aiSettings.enabled;
     const isDisabled = disabled || !anyProviderAvailable || !isFeatureEnabled;
+    const windowId = useWindowId();
 
     const open = useCallback(
         (event?: NativeMouseEvent) => {
@@ -32,13 +34,14 @@ export function QueueAiDropdown({ title, disabled = false }: QueueAiDropdownProp
             openAiGenerationPopup({
                 title,
                 action: "generate-queue",
+                windowId,
                 anchorRect:
                     screenX !== null && screenY !== null
                         ? { screenX, screenY, width: 1, height: 1 }
                         : null,
             });
         },
-        [isDisabled, title],
+        [isDisabled, title, windowId],
     );
 
     const hotkeyHandlers = useMemo(

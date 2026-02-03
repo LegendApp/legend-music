@@ -60,6 +60,7 @@ interface HandleTrackContextMenuSelectionOptions {
     selection: string | null;
     track?: LocalTrack | null;
     anchorRect?: AiGenerationPopupAnchorRect | null;
+    windowId?: string | null;
     onQueueAction?: (action: QueueAction) => void;
     onCustomSelect?: (selection: string) => void | Promise<void>;
 }
@@ -68,6 +69,7 @@ export async function handleTrackContextMenuSelection({
     selection,
     track,
     anchorRect,
+    windowId,
     onQueueAction,
     onCustomSelect,
 }: HandleTrackContextMenuSelectionOptions): Promise<void> {
@@ -101,6 +103,7 @@ export async function handleTrackContextMenuSelection({
             action: "start-mix",
             seedTracks: [track],
             anchorRect: anchorRect ?? null,
+            windowId,
         });
         return;
     }
@@ -111,6 +114,7 @@ export async function handleTrackContextMenuSelection({
             action: "add-more-like-this",
             seedTracks: [track],
             anchorRect: anchorRect ?? null,
+            windowId,
         });
         return;
     }

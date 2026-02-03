@@ -5,6 +5,7 @@ import { useCallback, useState } from "react";
 import type { LayoutChangeEvent } from "react-native";
 import { Platform, Text, View } from "react-native";
 import { DragDropProvider } from "@/components/dnd";
+import { AiGenerationPopupHost } from "@/components/AiGenerationPopupHost";
 import { MediaLibraryView } from "@/components/MediaLibrary";
 import { MediaLibrarySidebar } from "@/components/MediaLibrary/Sidebar";
 import { TrackList } from "@/components/MediaLibrary/TrackList";
@@ -64,6 +65,7 @@ export default function MediaLibraryWindow() {
                             ) : (
                                 <MediaLibraryView />
                             )}
+                            <AiGenerationPopupHost />
                         </DragDropProvider>
                     </TooltipProvider>
                     {/* </View> */}

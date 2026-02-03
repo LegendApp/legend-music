@@ -34,6 +34,7 @@ import type { LocalTrack } from "@/systems/LocalMusicState";
 import { cn } from "@/utils/cn";
 import { getQueueAction } from "@/utils/queueActions";
 import { buildTrackContextMenuItems, handleTrackContextMenuSelection } from "@/utils/trackContextMenu";
+import { useWindowId } from "@/windows/WindowProvider";
 
 type SectionStatus = "idle" | "loading" | "ready" | "disabled" | "error";
 
@@ -373,6 +374,7 @@ export function MediaLibraryDetailView() {
     const spotifyEnabled = useValue(isSpotifySearchEnabled$);
     const appleMusicEnabled = useValue(isAppleMusicSearchEnabled$);
     const heading = getDetailHeading(detail);
+    const windowId = useWindowId();
 
     const localTracks = useMemo(
         () => filterTracksByQuery(filterLocalTracks(allTracks, detail), searchQuery),
@@ -503,6 +505,7 @@ export function MediaLibraryDetailView() {
             selection,
             track,
             anchorRect: { screenX: x, screenY: y, width: 1, height: 1 },
+            windowId,
             onQueueAction: (action) => {
                 if (action === "play-next") {
                     audioControls.queue.insertNext(track);
@@ -511,7 +514,7 @@ export function MediaLibraryDetailView() {
                 audioControls.queue.append(track);
             },
         });
-    }, []);
+    }, [windowId]);
 
     if (!detail) {
         return (

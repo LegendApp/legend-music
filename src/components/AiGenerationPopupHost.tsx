@@ -7,11 +7,14 @@ import { DropdownMenu } from "@/components/DropdownMenu";
 import { SegmentedButtons } from "@/components/SegmentedButtons";
 import { showToast } from "@/components/Toast";
 import type { StreamingProviderId } from "@/providers/types";
-import { finishAiQueueFill, startAiQueueFill } from "@/systems/ai";
+import { finishAiPlaylistFill, finishAiQueueFill, startAiPlaylistFill, startAiQueueFill } from "@/systems/ai";
 import { aiGenerationPopup$ } from "@/systems/ai/generationPopup";
+import { extendLocalPlaylistWithPrompt } from "@/systems/ai/playlistExtend";
 import { type AiPromptSource, getAiPromptPlaceholder } from "@/systems/ai/promptSource";
+import { localMusicState$ } from "@/systems/LocalMusicState";
 import { settings$ } from "@/systems/Settings";
 import { fetchSuggestions, selectedSuggestionProviderId$, suggestionProviderAvailability$ } from "@/systems/suggestions";
+import { useWindowId } from "@/windows/WindowProvider";
 
 const DEFAULT_COUNT = 20;
 const MIN_COUNT = 1;
@@ -40,23 +43,34 @@ export function AiGenerationPopupHost() {
     const title = useValue(aiGenerationPopup$.title);
     const action = useValue(aiGenerationPopup$.action);
     const seedTracks = useValue(aiGenerationPopup$.seedTracks);
+    const targetPlaylistId = useValue(aiGenerationPopup$.targetPlaylistId);
     const anchorRect = useValue(aiGenerationPopup$.anchorRect);
-    const initialCount = useValue(aiGenerationPopup$.initialCount);
     const initialProviderId = useValue(aiGenerationPopup$.initialProviderId);
+    const initialPromptSource = useValue(aiGenerationPopup$.initialPromptSource);
+    const targetWindowId = useValue(aiGenerationPopup$.windowId);
 
     const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
     const [prompt, setPrompt] = useState("");
+    const windowId = useWindowId();
+    const isVisible = isOpen && targetWindowId === windowId;
     const settingsPromptSource = useValue(settings$.ai.promptSource);
     const settingsPreferredTrackProviderId = useValue(settings$.ai.preferredTrackProviderId);
     const defaultProviderId = useValue(selectedSuggestionProviderId$);
     const providerAvailability = useValue(suggestionProviderAvailability$);
     const queueTracks = useValue(queue$.tracks);
+    const playlists = useValue(localMusicState$.playlists);
 
     const [providerId, setProviderId] = useState<"claude" | "codex" | "spotify">(defaultProviderId);
     const [from, setFrom] = useState<QueueAiFrom>("spotify");
     const promptSource = useMemo(() => getPromptSourceForFrom(from), [from]);
     const trackProviderIdOverride = useMemo(() => getTrackProviderOverrideForFrom(from), [from]);
+    const targetPlaylist = useMemo(() => {
+        if (!targetPlaylistId) {
+            return null;
+        }
+        return playlists.find((playlist) => playlist.id === targetPlaylistId) ?? null;
+    }, [playlists, targetPlaylistId]);
 
     const [countText, setCountText] = useState(String(DEFAULT_COUNT));
     const count = useMemo(() => {
@@ -106,12 +120,18 @@ export function AiGenerationPopupHost() {
             return false;
         }
 
-        if (action === "generate-queue") {
-            return prompt.trim().length > 0;
+        if (action === "generate-queue" || action === "extend-playlist") {
+            if (prompt.trim().length === 0) {
+                return false;
+            }
+            if (action === "extend-playlist" && !targetPlaylist) {
+                return false;
+            }
+            return true;
         }
 
         return seedTracks.length > 0;
-    }, [action, isDisabled, isProviderAvailable, isRunning, prompt, seedTracks.length]);
+    }, [action, isDisabled, isProviderAvailable, isRunning, prompt, seedTracks.length, targetPlaylist]);
 
     const handleRun = useCallback(async () => {
         if (!canRun) {
@@ -129,10 +149,44 @@ export function AiGenerationPopupHost() {
 
         setErrorMessage(null);
         setIsRunning(true);
-        startAiQueueFill();
+        const isPlaylistExtension = action === "extend-playlist";
+        if (isPlaylistExtension) {
+            if (targetPlaylist) {
+                startAiPlaylistFill(targetPlaylist.id);
+            }
+        } else {
+            startAiQueueFill();
+        }
 
         try {
             close();
+
+            if (action === "extend-playlist") {
+                if (!targetPlaylist) {
+                    setErrorMessage("Select a local playlist to extend.");
+                    isOpen$.set(true);
+                    return;
+                }
+
+                const { addedPaths, playlist, unresolved } = await extendLocalPlaylistWithPrompt(
+                    targetPlaylist,
+                    trimmedPrompt,
+                    {
+                        count,
+                        promptSource,
+                        providerIdOverride: providerId,
+                        trackProviderIdOverride,
+                        updateMetadata: true,
+                    },
+                );
+
+                const addedLabel = addedPaths.length === 1 ? "track" : "tracks";
+                showToast(`Added ${addedPaths.length} ${addedLabel} to ${playlist.name}`, "info");
+                if (unresolved && unresolved.length > 0) {
+                    showToast(`Skipped ${unresolved.length} tracks that could not be matched`, "info");
+                }
+                return;
+            }
 
             if (action === "generate-queue") {
                 const { tracks, unresolved } = await fetchSuggestions({
@@ -198,10 +252,19 @@ export function AiGenerationPopupHost() {
         } catch (error) {
             console.error("AI generation failed", error);
             const message = error instanceof Error ? error.message : "AI generation failed";
-            showToast(message, "error");
+            if (action === "extend-playlist") {
+                setErrorMessage(message);
+                isOpen$.set(true);
+            } else {
+                showToast(message, "error");
+            }
         } finally {
             setIsRunning(false);
-            finishAiQueueFill();
+            if (action === "extend-playlist") {
+                finishAiPlaylistFill();
+            } else {
+                finishAiQueueFill();
+            }
         }
     }, [
         action,
@@ -209,16 +272,34 @@ export function AiGenerationPopupHost() {
         close,
         confirmReplaceQueue,
         count,
+        extendLocalPlaylistWithPrompt,
         isOpen$,
         prompt,
         promptSource,
         providerId,
         queueTracks,
         seedTracks,
+        targetPlaylist,
         trackProviderIdOverride,
     ]);
 
     const resolveDefaultFrom = useCallback((): QueueAiFrom => {
+        if (initialPromptSource === "local-library") {
+            return "local-library";
+        }
+
+        if (initialPromptSource === "streaming") {
+            if (
+                settingsPreferredTrackProviderId === "spotify" ||
+                settingsPreferredTrackProviderId === "appleMusic" ||
+                settingsPreferredTrackProviderId === "youtubeMusic"
+            ) {
+                return settingsPreferredTrackProviderId as QueueAiFrom;
+            }
+
+            return "spotify";
+        }
+
         if (settingsPromptSource === "local-library") {
             return "local-library";
         }
@@ -232,25 +313,28 @@ export function AiGenerationPopupHost() {
         }
 
         return "spotify";
-    }, [settingsPreferredTrackProviderId, settingsPromptSource]);
+    }, [initialPromptSource, settingsPreferredTrackProviderId, settingsPromptSource]);
 
     useEffect(() => {
-        if (!isOpen) {
+        if (!isVisible) {
             return;
         }
 
         setPrompt("");
         setErrorMessage(null);
-        setCountText(String(clampCount(initialCount ?? DEFAULT_COUNT)));
+        setCountText(String(DEFAULT_COUNT));
         setFrom(resolveDefaultFrom());
         setProviderId(initialProviderId ?? defaultProviderId);
 
         setTimeout(() => {
             textInputRef.current?.focus();
         }, 0);
-    }, [defaultProviderId, initialCount, initialProviderId, isOpen, resolveDefaultFrom]);
+    }, [defaultProviderId, initialProviderId, isVisible, resolveDefaultFrom]);
 
-    const placeholder = useMemo(() => getAiPromptPlaceholder(promptSource, "queue"), [promptSource]);
+    const placeholder = useMemo(() => {
+        const mode = action === "extend-playlist" ? "playlist" : "queue";
+        return getAiPromptPlaceholder(promptSource, mode);
+    }, [action, promptSource]);
 
     const effectiveAnchorRect = useMemo(() => {
         if (anchorRect) {
@@ -265,7 +349,7 @@ export function AiGenerationPopupHost() {
         };
     }, [anchorRect, windowHeight, windowWidth]);
 
-    if (!isOpen) {
+    if (!isVisible) {
         return null;
     }
 

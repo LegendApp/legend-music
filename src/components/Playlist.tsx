@@ -34,6 +34,7 @@ import { state$, stateSaved$ } from "@/systems/State";
 import { cn } from "@/utils/cn";
 import { perfCount, perfLog } from "@/utils/perfLogger";
 import { buildTrackContextMenuItems, handleTrackContextMenuSelection } from "@/utils/trackContextMenu";
+import { useWindowId } from "@/windows/WindowProvider";
 import {
     type DragData,
     DraggableItem,
@@ -92,6 +93,7 @@ export function Playlist() {
     const hasConfiguredLibrary = libraryPaths.length > 0;
     const hasLibraryTracks = localMusicState.tracks.length > 0;
     const isDefaultPlaylistSelected = localMusicState.isLocalFilesSelected;
+    const windowId = useWindowId();
     const [isDragOver, setIsDragOver] = useState(false);
     const skipClickRef = useRef(false);
     const skipBackgroundClearRef = useRef(false);
@@ -189,6 +191,7 @@ export function Playlist() {
                 selection,
                 track,
                 anchorRect: { screenX: x, screenY: y, width: 1, height: 1 },
+                windowId,
                 onCustomSelect: async (selected) => {
                     if (selected === QUEUE_MENU_ITEMS.remove.id) {
                         queueControls.remove([index]);
@@ -196,7 +199,7 @@ export function Playlist() {
                 },
             });
         },
-        [queueTracks],
+        [queueTracks, windowId],
     );
 
     const handleTrackMouseDown = useCallback(
