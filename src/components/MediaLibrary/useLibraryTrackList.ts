@@ -14,6 +14,7 @@ import {
     getArtistKey,
     type LibraryTrack,
     type LibraryView,
+    type LibrarySortMode,
     library$,
     libraryUI$,
     normalizeArtistName,
@@ -26,6 +27,7 @@ import { addTracksToPlaylist } from "@/systems/LocalPlaylists";
 import { getQueueAction, type QueueAction } from "@/utils/queueActions";
 import { buildTrackContextMenuItems, handleTrackContextMenuSelection } from "@/utils/trackContextMenu";
 import { buildTrackFromPlaylistEntry, buildTrackLookup } from "@/utils/trackResolution";
+import { useWindowId } from "@/windows/WindowProvider";
 
 type TrackListItem = TrackData;
 type LibraryTrackListItem = TrackData & { sourceTrack?: LibraryTrack };
@@ -115,7 +117,7 @@ const sortTracksByDateAdded = (tracks: LibraryTrack[], direction: PlaylistSortDi
 
 const sortTracksByMode = (
     tracks: LibraryTrack[],
-    mode: PlaylistSortMode,
+    mode: LibrarySortMode | PlaylistSortMode,
     direction: PlaylistSortDirection,
 ): LibraryTrack[] => {
     if (mode === "playlist-order") {
@@ -179,6 +181,7 @@ interface UseLibraryTrackListResult {
     handleTrackContextMenu: (index: number, event: NativeMouseEvent) => Promise<void>;
     handleTrackQueueAction: (index: number, action: QueueAction) => void;
     syncSelectionAfterReorder: (fromIndex: number, toIndex: number) => void;
+    selectIndex: (index: number) => void;
     handleNativeDragStart: () => void;
     buildDragData: (activeIndex: number) => MediaLibraryDragData;
     keyExtractor: (item: TrackData) => string;
@@ -192,6 +195,8 @@ interface BuildTrackItemsInput {
     selectedPlaylistProvider: StreamingProviderId | null;
     selectedPlaylistTracks?: LibraryTrack[];
     searchQuery: string;
+    librarySort: LibrarySortMode;
+    librarySortDirection: PlaylistSortDirection;
     playlistSort: PlaylistSortMode;
     playlistSortDirection: PlaylistSortDirection;
 }
@@ -204,6 +209,8 @@ export function buildTrackItems({
     selectedPlaylistProvider,
     selectedPlaylistTracks,
     searchQuery,
+    librarySort,
+    librarySortDirection,
     playlistSort,
     playlistSortDirection,
 }: BuildTrackItemsInput) {
@@ -228,6 +235,7 @@ export function buildTrackItems({
             sectionTitle?: string;
             sectionIndex?: number;
             sectionCount?: number;
+            trackIndexOverride?: number | null;
         },
     ): LibraryTrackListItem => ({
         id: options?.idOverride ?? track.id,
@@ -240,7 +248,7 @@ export function buildTrackItems({
         addedAt: track.addedAt,
         provider: track.provider,
         index: viewIndex,
-        trackIndex: track.trackNumber,
+        trackIndex: options?.trackIndexOverride ?? track.trackNumber,
         sectionId: options?.sectionId,
         sectionTitle: options?.sectionTitle,
         sectionIndex: options?.sectionIndex,
@@ -249,10 +257,8 @@ export function buildTrackItems({
     });
 
     const resolvedView = resolveLibraryView(selectedView);
-    const effectiveSort =
-        resolvedView === "library" && playlistSort === "playlist-order" ? "artist" : playlistSort;
-    const effectiveSortDirection =
-        resolvedView === "library" && playlistSort === "playlist-order" ? "asc" : playlistSortDirection;
+    const effectiveSort = resolvedView === "library" ? librarySort : playlistSort;
+    const effectiveSortDirection = resolvedView === "library" ? librarySortDirection : playlistSortDirection;
 
     if (resolvedView === "starred") {
         return {
@@ -446,8 +452,23 @@ export function buildTrackItems({
         const buildPlaylistItems = (playlistTracks: LibraryTrack[]) => {
             const filteredTracks = normalizedQuery ? playlistTracks.filter(matchesQuery) : playlistTracks;
             const displayTracks = sortTracks(filteredTracks);
+            const playlistIndexQueues = new Map<LibraryTrack, number[]>();
+
+            playlistTracks.forEach((track, index) => {
+                const queue = playlistIndexQueues.get(track);
+                if (queue) {
+                    queue.push(index);
+                    return;
+                }
+                playlistIndexQueues.set(track, [index]);
+            });
+
             return displayTracks.map((track, index) => {
-                const baseItem = toTrackItem(track, index);
+                const queue = playlistIndexQueues.get(track);
+                const playlistIndex = queue?.shift();
+                const baseItem = toTrackItem(track, index, {
+                    trackIndexOverride: playlistIndex != null ? playlistIndex + 1 : null,
+                });
                 const uniqueId = makeUniqueId(baseItem.id);
                 if (uniqueId === baseItem.id) {
                     return baseItem;
@@ -524,6 +545,8 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
     const selectedPlaylistId = useValue(libraryUI$.selectedPlaylistId);
     const selectedPlaylistProvider = useValue(libraryUI$.selectedPlaylistProvider);
     const searchQuery = useValue(libraryUI$.searchQuery);
+    const librarySort = useValue(libraryUI$.librarySort);
+    const librarySortDirection = useValue(libraryUI$.librarySortDirection);
     const playlistSort = useValue(libraryUI$.playlistSort);
     const playlistSortDirection = useValue(libraryUI$.playlistSortDirection);
     const allTracks = useValue(library$.tracks);
@@ -531,6 +554,7 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
     const providerPlugin = selectedPlaylistProvider ? getStreamingProviderPlugin(selectedPlaylistProvider) : null;
     const [providerPlaylistTracks, setProviderPlaylistTracks] = useState<LibraryTrack[]>([]);
     const skipClickRef = useRef(false);
+    const windowId = useWindowId();
 
     useEffect(() => {
         if (
@@ -588,11 +612,15 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
                 selectedPlaylistProvider,
                 selectedPlaylistTracks: providerPlaylistTracks,
                 searchQuery,
+                librarySort,
+                librarySortDirection,
                 playlistSort,
                 playlistSortDirection,
             }),
         [
             allTracks,
+            librarySort,
+            librarySortDirection,
             playlists,
             playlistSort,
             playlistSortDirection,
@@ -682,12 +710,15 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
         handleTrackClick: handleSelectionClick,
         clearSelection,
         syncSelectionAfterReorder,
+        selectIndex,
     } = usePlaylistSelection(selectionOptions);
 
     useObserveEffect(() => {
         libraryUI$.selectedView.get();
         libraryUI$.selectedPlaylistId.get();
         libraryUI$.selectedPlaylistProvider.get();
+        libraryUI$.librarySort.get();
+        libraryUI$.librarySortDirection.get();
         libraryUI$.playlistSort.get();
         libraryUI$.playlistSortDirection.get();
         library$.tracks.get().length;
@@ -767,6 +798,7 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
                 selection,
                 track: sourceTrack,
                 anchorRect: { screenX: x, screenY: y, width: 1, height: 1 },
+                windowId,
                 onQueueAction: (action) => {
                     handleTrackAction(index, action === "play-next" ? "play-next" : "enqueue");
                 },
@@ -846,7 +878,7 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
                 },
             });
         },
-        [handleTrackAction, playlists, selectedIndices$, trackItems],
+        [handleTrackAction, playlists, selectedIndices$, trackItems, windowId],
     );
 
     const handleNativeDragStart = useCallback(() => {
@@ -958,6 +990,7 @@ export function useLibraryTrackList(): UseLibraryTrackListResult {
         handleTrackContextMenu,
         handleTrackQueueAction: handleTrackAction,
         syncSelectionAfterReorder,
+        selectIndex,
         handleNativeDragStart,
         buildDragData,
         keyExtractor,

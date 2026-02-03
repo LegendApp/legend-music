@@ -1,12 +1,11 @@
 import { LegendList } from "@legendapp/list";
 import { type Observable, observable } from "@legendapp/state";
-import { useObservable, useValue } from "@legendapp/state/react";
-import { type ElementRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Platform, Text, TextInput, View } from "react-native";
+import { useValue } from "@legendapp/state/react";
+import { type ElementRef, useCallback, useEffect, useMemo, useRef } from "react";
+import { Platform, Text, View } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 import { audioPlayerState$ } from "@/components/AudioPlayer";
 import { Button } from "@/components/Button";
-import { DropdownMenu } from "@/components/DropdownMenu";
 import {
     type DragData,
     DraggableItem,
@@ -17,7 +16,6 @@ import {
     MEDIA_LIBRARY_DRAG_ZONE_ID,
     type MediaLibraryDragData,
 } from "@/components/dnd";
-import { Select } from "@/components/Select";
 import { SkiaSpinner } from "@/components/SkiaSpinner";
 import { Table, TableCell, type TableColumnSpec, TableHeader, TableRow } from "@/components/Table";
 import { showToast } from "@/components/Toast";
@@ -25,26 +23,28 @@ import type { TrackData } from "@/components/TrackItem";
 import { useListItemStyles } from "@/hooks/useListItemStyles";
 import { type ContextMenuItem, showContextMenu } from "@/native-modules/ContextMenu";
 import { NativeButton } from "@/native-modules/NativeButton";
-import { NativeButtonGroup } from "@/native-modules/NativeButtonGroup";
 import { TitlebarAccessoryView } from "@/native-modules/TitlebarAccessoryView";
 import { type NativeDragTrack, TrackDragSource } from "@/native-modules/TrackDragSource";
 import { getStreamingProviderPlugin } from "@/providers/pluginRegistry";
 import type { StreamingProviderPlaylist } from "@/providers/types";
-import { aiPlaylistFillState$, finishAiPlaylistFill, startAiPlaylistFill } from "@/systems/ai";
-import { buildPlaylistEntries } from "@/systems/ai/playlistTracks";
-import { AI_PROMPT_SOURCE_OPTIONS, type AiPromptSource, getAiPromptPlaceholder } from "@/systems/ai/promptSource";
-import { generatePlaylistSummary } from "@/systems/ai/summary";
+import { aiPlaylistFillState$ } from "@/systems/ai";
+import { type AiGenerationPopupAnchorRect, openAiGenerationPopup } from "@/systems/ai/generationPopup";
 import { Icon } from "@/systems/Icon";
-import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
-import { libraryUI$, resolveLibraryView } from "@/systems/LibraryState";
-import { type LocalPlaylist, localMusicState$, saveLocalPlaylistTracks } from "@/systems/LocalMusicState";
-import { addTracksToPlaylist, updatePlaylistMetadata } from "@/systems/LocalPlaylists";
+import {
+    getArtistKey,
+    type LibrarySortMode,
+    libraryNavigation$,
+    libraryUI$,
+    type PlaylistSortMode,
+    resolveLibraryView,
+} from "@/systems/LibraryState";
+import { localMusicState$, saveLocalPlaylistTracks } from "@/systems/LocalMusicState";
 import { settings$ } from "@/systems/Settings";
-import { fetchSuggestions } from "@/systems/suggestions";
 import { themeState$ } from "@/theme/ThemeProvider";
 import { cn } from "@/utils/cn";
 import type { QueueAction } from "@/utils/queueActions";
 import { handleTrackContextMenuSelection, TRACK_CONTEXT_MENU_ITEMS } from "@/utils/trackContextMenu";
+import { useWindowId } from "@/windows/WindowProvider";
 import { AiPlaylistDropdown } from "./AiPlaylistDropdown";
 import { useLibraryTrackList } from "./useLibraryTrackList";
 
@@ -73,49 +73,6 @@ const formatAddedDate = (timestamp?: number): string => {
     });
 };
 
-const buildPlaylistExtendPrompt = (prompt: string, playlist: LocalPlaylist | null): string => {
-    if (!playlist) {
-        return prompt;
-    }
-
-    const lines: string[] = [];
-    const seen = new Set<string>();
-    const addLine = (value: string) => {
-        const trimmed = value.trim();
-        if (!trimmed) {
-            return;
-        }
-        const key = trimmed.toLowerCase();
-        if (seen.has(key)) {
-            return;
-        }
-        seen.add(key);
-        lines.push(trimmed);
-    };
-
-    const trackEntries = playlist.tracks ?? [];
-    if (trackEntries.length > 0) {
-        for (const track of trackEntries) {
-            const title = track.title?.trim() || track.filePath.split("/").pop() || track.filePath;
-            const artist = track.artist?.trim();
-            addLine(artist ? `${artist} - ${title}` : title);
-        }
-    } else if (playlist.trackPaths.length > 0) {
-        for (const path of playlist.trackPaths) {
-            const title = path.split("/").pop() || path;
-            addLine(title);
-        }
-    }
-
-    if (lines.length === 0) {
-        return prompt;
-    }
-
-    const avoidLine = "Avoid suggesting any of these tracks already in the playlist:";
-    const instructionLine = "Only suggest new, non-duplicate tracks.";
-    return `${prompt}\n\n${avoidLine}\n${lines.join("\n")}\n\n${instructionLine}`;
-};
-
 const getItemType = (item: TrackData) => {
     return item.isSeparator ? "separator" : "track";
 };
@@ -135,6 +92,7 @@ export function TrackList(_props: TrackListProps) {
         handleSectionPlay,
         handleSectionEnqueue,
         syncSelectionAfterReorder,
+        selectIndex,
         handleNativeDragStart,
         buildDragData,
         keyExtractor,
@@ -145,12 +103,13 @@ export function TrackList(_props: TrackListProps) {
     const selectedPlaylistId = useValue(libraryUI$.selectedPlaylistId);
     const selectedPlaylistProvider = useValue(libraryUI$.selectedPlaylistProvider);
     const searchQuery = useValue(libraryUI$.searchQuery);
+    const librarySort = useValue(libraryUI$.librarySort);
+    const librarySortDirection = useValue(libraryUI$.librarySortDirection);
     const playlistSort = useValue(libraryUI$.playlistSort);
     const playlistSortDirection = useValue(libraryUI$.playlistSortDirection);
-    const effectiveSort =
-        resolvedView === "library" && playlistSort === "playlist-order" ? "artist" : playlistSort;
-    const effectiveSortDirection =
-        resolvedView === "library" && playlistSort === "playlist-order" ? "asc" : playlistSortDirection;
+    const pendingJump = useValue(libraryNavigation$.pendingJump);
+    const effectiveSort = resolvedView === "library" ? librarySort : playlistSort;
+    const effectiveSortDirection = resolvedView === "library" ? librarySortDirection : playlistSortDirection;
     const playlists = useValue(localMusicState$.playlists);
     const aiPlaylistFillState = useValue(aiPlaylistFillState$);
     const providerPlugin = selectedPlaylistProvider ? getStreamingProviderPlugin(selectedPlaylistProvider) : null;
@@ -177,19 +136,14 @@ export function TrackList(_props: TrackListProps) {
         return playlists.find((pl) => pl.id === selectedPlaylistId) ?? null;
     }, [playlists, resolvedView, selectedPlaylistId, selectedPlaylistProvider]);
 
-    const extendPromptOpen$ = useObservable(false);
-    const extendPromptOpen = useValue(extendPromptOpen$);
-    const extendPromptInputRef = useRef<TextInput>(null);
-    const [extendPromptDraft, setExtendPromptDraft] = useState("");
     const defaultPromptSource = useValue(settings$.ai.promptSource);
-    const [extendPromptSource, setExtendPromptSource] = useState<AiPromptSource>(defaultPromptSource);
-    const [extendPromptError, setExtendPromptError] = useState<string | null>(null);
-    const [isExtending, setIsExtending] = useState(false);
+    const windowId = useWindowId();
     const aiPrompt = selectedLocalPlaylist?.aiPrompt?.trim() ?? "";
     const aiSummary = selectedLocalPlaylist?.aiSummary?.trim() ?? "";
     const playlistPromptSource = selectedLocalPlaylist?.aiSource ?? defaultPromptSource;
     const showAiSummary = Boolean(aiPrompt && aiSummary);
     const canModifyPlaylist = Boolean(selectedLocalPlaylist && selectedLocalPlaylist.source === "cache");
+    const extendButtonRef = useRef<View>(null);
 
     const selectedProviderPlaylist = useMemo(() => {
         if (
@@ -219,178 +173,62 @@ export function TrackList(_props: TrackListProps) {
         }
 
         if (resolvedView === "library") {
-            const title = playlistSort === "artist" ? "Artists" : playlistSort === "album" ? "Albums" : "Songs";
+            const title = librarySort === "artist" ? "Artists" : librarySort === "album" ? "Albums" : "Songs";
             return { title, count: nonSeparatorTrackCount };
         }
 
         return null;
     }, [
         nonSeparatorTrackCount,
-        playlistSort,
+        librarySort,
         selectedLocalPlaylist,
         selectedPlaylistProvider,
         selectedProviderPlaylist,
         resolvedView,
     ]);
 
-    const closeExtendPrompt = useCallback(() => {
-        extendPromptOpen$.set(false);
-    }, [extendPromptOpen$]);
-
-    const isAiBusy = isExtending;
-    const canExtendWithExistingPrompt = Boolean(aiPrompt && canModifyPlaylist && !isAiBusy);
+    const isAiBusy =
+        aiPlaylistFillState.isGenerating &&
+        Boolean(selectedPlaylistId) &&
+        aiPlaylistFillState.playlistId === selectedPlaylistId;
     const canExtendWithNewPrompt = Boolean(canModifyPlaylist && !isAiBusy);
 
-    const extendPlaylist = useCallback(
-        async (
-            promptValue: string,
-            options: {
-                updateMetadata?: boolean;
-                promptSource?: AiPromptSource;
-                onError?: (message: string) => void;
-                onSuccess?: () => void;
-            } = {},
-        ) => {
-            if (!selectedLocalPlaylist || !canModifyPlaylist) {
-                return;
-            }
+    const handleOpenExtendPrompt = useCallback(() => {
+        if (!selectedLocalPlaylist || !canModifyPlaylist) {
+            return;
+        }
 
-            const trimmedPrompt = promptValue.trim();
-            if (!trimmedPrompt) {
-                options.onError?.("Prompt cannot be empty.");
-                return;
-            }
+        const openWithAnchor = (anchorRect: AiGenerationPopupAnchorRect | null) => {
+            openAiGenerationPopup({
+                title: "Extend with new prompt",
+                action: "extend-playlist",
+                targetPlaylistId: selectedLocalPlaylist.id,
+                initialPromptSource: playlistPromptSource,
+                anchorRect,
+                windowId,
+            });
+        };
 
-            if (isAiBusy) {
-                return;
-            }
-
-            const promptWithContext = buildPlaylistExtendPrompt(trimmedPrompt, selectedLocalPlaylist);
-            const resolvedPromptSource = options.promptSource ?? playlistPromptSource;
-            const summaryPromise = options.updateMetadata
-                ? generatePlaylistSummary(trimmedPrompt).catch((error) => {
-                      console.warn("AI playlist summary failed", error);
-                      return null;
-                  })
-                : Promise.resolve(null);
-
-            setIsExtending(true);
-            try {
-                startAiPlaylistFill(selectedLocalPlaylist.id);
-
-                const { tracks: suggestedTracks, unresolved } = await fetchSuggestions({
-                    mode: "playlist",
-                    prompt: promptWithContext,
-                    count: DEFAULT_AI_SUGGESTION_COUNT,
-                    promptSource: resolvedPromptSource,
-                    cachePrompt: trimmedPrompt,
-                    excludeTrackIds: selectedLocalPlaylist.trackPaths,
-                });
-
-                if (suggestedTracks.length === 0) {
-                    options.onError?.("No tracks were suggested.");
+        const node = extendButtonRef.current;
+        if (node?.measureInWindow) {
+            node.measureInWindow((x, y, width, height) => {
+                if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(width) || !Number.isFinite(height)) {
+                    openWithAnchor(null);
                     return;
                 }
 
-                const { trackEntries, trackPaths } = buildPlaylistEntries(suggestedTracks);
-                if (trackPaths.length === 0) {
-                    options.onError?.("No resolved tracks to add.");
-                    return;
-                }
-
-                const { addedPaths, playlist } = await addTracksToPlaylist(selectedLocalPlaylist.id, trackPaths, {
-                    trackEntries,
+                openWithAnchor({
+                    screenX: Math.round(x + width / 2),
+                    screenY: Math.round(y + height),
+                    width: 1,
+                    height: 1,
                 });
-
-                if (options.updateMetadata) {
-                    const summary = await summaryPromise;
-                    try {
-                        updatePlaylistMetadata(selectedLocalPlaylist.id, {
-                            aiPrompt: trimmedPrompt,
-                            aiSummary: summary ?? selectedLocalPlaylist.aiSummary,
-                            aiSource: resolvedPromptSource,
-                        });
-                    } catch (error) {
-                        console.warn("Failed to update AI playlist metadata", error);
-                    }
-                }
-
-                const addedLabel = addedPaths.length === 1 ? "track" : "tracks";
-                showToast(`Added ${addedPaths.length} ${addedLabel} to ${playlist.name}`, "info");
-                if (unresolved && unresolved.length > 0) {
-                    showToast(`Skipped ${unresolved.length} tracks that could not be matched`, "info");
-                }
-
-                options.onSuccess?.();
-            } catch (error) {
-                console.error("AI playlist extension failed", error);
-                const message = error instanceof Error ? error.message : "Failed to extend AI playlist";
-                options.onError?.(message);
-            } finally {
-                finishAiPlaylistFill();
-                setIsExtending(false);
-            }
-        },
-        [canModifyPlaylist, isAiBusy, playlistPromptSource, selectedLocalPlaylist],
-    );
-
-    const handleExtendExistingPrompt = useCallback(() => {
-        console.log("[TrackList] handleExtendExistingPrompt called");
-        if (!aiPrompt) {
-            showToast("No AI prompt found for this playlist.", "info");
+            });
             return;
         }
 
-        void extendPlaylist(aiPrompt, { promptSource: playlistPromptSource });
-    }, [aiPrompt, extendPlaylist, playlistPromptSource]);
-
-    const handleExtendWithNewPrompt = useCallback(() => {
-        void extendPlaylist(extendPromptDraft, {
-            updateMetadata: true,
-            promptSource: extendPromptSource,
-            onError: (message) => setExtendPromptError(message),
-            onSuccess: closeExtendPrompt,
-        });
-    }, [closeExtendPrompt, extendPlaylist, extendPromptDraft, extendPromptSource]);
-
-    useEffect(() => {
-        if (!extendPromptOpen) {
-            return;
-        }
-
-        setExtendPromptDraft("");
-        setExtendPromptError(null);
-        setExtendPromptSource(playlistPromptSource);
-        setTimeout(() => {
-            extendPromptInputRef.current?.focus();
-        }, 0);
-    }, [extendPromptOpen, playlistPromptSource]);
-
-    useEffect(() => {
-        if (!extendPromptOpen) {
-            return;
-        }
-
-        return KeyboardManager.addKeyDownListener((event) => {
-            if (event.keyCode === KeyCodes.KEY_ESCAPE) {
-                closeExtendPrompt();
-                return true;
-            }
-
-            if (event.keyCode === KeyCodes.KEY_RETURN) {
-                if (!isAiBusy && extendPromptDraft.trim().length > 0) {
-                    void extendPlaylist(extendPromptDraft, {
-                        updateMetadata: true,
-                        onError: (message) => setExtendPromptError(message),
-                        onSuccess: closeExtendPrompt,
-                    });
-                    return true;
-                }
-            }
-
-            return false;
-        });
-    }, [closeExtendPrompt, extendPlaylist, extendPromptDraft, extendPromptOpen, isAiBusy]);
+        openWithAnchor(null);
+    }, [canModifyPlaylist, playlistPromptSource, selectedLocalPlaylist, windowId]);
 
     const isPlaylistEditable =
         resolvedView === "playlist" &&
@@ -431,27 +269,36 @@ export function TrackList(_props: TrackListProps) {
     }, [resolvedView, showDateAddedColumn]);
     const handleColumnSort = useCallback(
         (sortId: string) => {
-            if (
-                sortId !== "playlist-order" &&
-                sortId !== "date-added" &&
-                sortId !== "title" &&
-                sortId !== "artist" &&
-                sortId !== "album"
-            ) {
+            const isPlaylistView = resolvedView === "playlist";
+            const allowedSorts = isPlaylistView
+                ? ["playlist-order", "date-added", "title", "artist", "album"]
+                : ["title", "artist", "album"];
+            if (!allowedSorts.includes(sortId)) {
                 return;
             }
 
-            if (sortId === playlistSort) {
-                const nextDirection = playlistSortDirection === "asc" ? "desc" : "asc";
-                libraryUI$.playlistSortDirection.set(nextDirection);
+            const currentSort = isPlaylistView ? playlistSort : librarySort;
+            const currentDirection = isPlaylistView ? playlistSortDirection : librarySortDirection;
+            const updateSort = (nextSort: string, nextDirection: "asc" | "desc") => {
+                if (isPlaylistView) {
+                    libraryUI$.playlistSort.set(nextSort as PlaylistSortMode);
+                    libraryUI$.playlistSortDirection.set(nextDirection);
+                    return;
+                }
+                libraryUI$.librarySort.set(nextSort as LibrarySortMode);
+                libraryUI$.librarySortDirection.set(nextDirection);
+            };
+
+            if (sortId === currentSort) {
+                const nextDirection = currentDirection === "asc" ? "desc" : "asc";
+                updateSort(sortId, nextDirection);
                 return;
             }
 
             const defaultDirection = sortId === "date-added" ? "desc" : "asc";
-            libraryUI$.playlistSort.set(sortId);
-            libraryUI$.playlistSortDirection.set(defaultDirection);
+            updateSort(sortId, defaultDirection);
         },
-        [playlistSort, playlistSortDirection],
+        [librarySort, librarySortDirection, playlistSort, playlistSortDirection, resolvedView],
     );
 
     useEffect(() => {
@@ -460,8 +307,58 @@ export function TrackList(_props: TrackListProps) {
             return;
         }
 
+        if (pendingJump) {
+            return;
+        }
+
         listRef.current?.scrollToIndex?.({ index: 0 });
-    }, [effectiveSort, effectiveSortDirection, resolvedView]);
+    }, [effectiveSort, effectiveSortDirection, pendingJump, resolvedView]);
+
+    useEffect(() => {
+        if (!pendingJump || pendingJump.type !== "artist") {
+            return;
+        }
+
+        if (resolvedView !== "library") {
+            return;
+        }
+
+        if (tracks.length === 0) {
+            return;
+        }
+
+        const sectionId = `artist:${pendingJump.artistKey}`;
+        const sectionIndex = tracks.findIndex((item) => item.isSeparator && item.sectionId === sectionId);
+        const performJump = (scrollIndex: number, selectTrackIndex: number | null) => {
+            requestAnimationFrame(() => {
+                listRef.current?.scrollToIndex?.({ index: scrollIndex, animated: true });
+            });
+
+            if (selectTrackIndex != null && selectTrackIndex >= 0) {
+                selectIndex(selectTrackIndex);
+            }
+
+            libraryNavigation$.pendingJump.set(null);
+        };
+
+        if (sectionIndex >= 0) {
+            const firstTrackIndex = tracks.findIndex(
+                (item, index) => index > sectionIndex && !item.isSeparator && item.sectionId === sectionId,
+            );
+            performJump(sectionIndex, firstTrackIndex >= 0 ? firstTrackIndex : null);
+            return;
+        }
+
+        const fallbackIndex = tracks.findIndex(
+            (item) => !item.isSeparator && getArtistKey(item.artist) === pendingJump.artistKey,
+        );
+        if (fallbackIndex >= 0) {
+            performJump(fallbackIndex, fallbackIndex);
+            return;
+        }
+
+        libraryNavigation$.pendingJump.set(null);
+    }, [pendingJump, resolvedView, selectIndex, tracks]);
 
     const allowPlaylistDrop = useCallback(
         (item: DraggedItem<DragData>) => {
@@ -621,90 +518,14 @@ export function TrackList(_props: TrackListProps) {
                         ) : null}
                         <View className="flex-1" />
                         {showExtendButtons ? (
-                            <DropdownMenu.Root isOpen$={extendPromptOpen$}>
-                                <DropdownMenu.Trigger asChild disabled={!canExtendWithNewPrompt}>
-                                    <View collapsable={false}>
-                                        <NativeButtonGroup style={{ width: 66, height: 28 }}>
-                                            <NativeButton
-                                                sfSymbol="sparkles"
-                                                onPress={handleExtendExistingPrompt}
-                                                disabled={!canExtendWithExistingPrompt}
-                                                style={{ width: 28, height: 28 }}
-                                            />
-                                            <NativeButton
-                                                sfSymbol="wand.and.sparkles"
-                                                onPress={() => {
-                                                    console.log("[TrackList] wand button onPress called");
-                                                    extendPromptOpen$.set(true);
-                                                }}
-                                                disabled={!canExtendWithNewPrompt}
-                                                style={{ width: 28, height: 28 }}
-                                            />
-                                        </NativeButtonGroup>
-                                    </View>
-                                </DropdownMenu.Trigger>
-                                <DropdownMenu.Content
-                                    directionalHint="bottomRightEdge"
-                                    minWidth={360}
-                                    maxWidth={360}
-                                    setInitialFocus
-                                    scrolls={false}
-                                >
-                                    <View className="p-3 bg-background-tertiary border border-border-primary rounded-md gap-2">
-                                        <Text className="text-text-secondary text-xs font-medium">
-                                            Extend with new prompt
-                                        </Text>
-                                        <View className="flex-row items-center justify-between gap-2">
-                                            <Text className="text-text-secondary text-xs font-medium">Source</Text>
-                                            <Select
-                                                value={extendPromptSource}
-                                                options={AI_PROMPT_SOURCE_OPTIONS}
-                                                onValueChange={(value) =>
-                                                    setExtendPromptSource(value as AiPromptSource)
-                                                }
-                                                triggerClassName="w-44"
-                                                minWidth="auto"
-                                            />
-                                        </View>
-                                        <View className="bg-background-secondary border border-border-primary rounded-md px-3 py-2">
-                                            <TextInput
-                                                ref={extendPromptInputRef}
-                                                value={extendPromptDraft}
-                                                onChangeText={(value) => {
-                                                    setExtendPromptDraft(value);
-                                                    if (extendPromptError) {
-                                                        setExtendPromptError(null);
-                                                    }
-                                                }}
-                                                placeholder={getAiPromptPlaceholder(extendPromptSource, "playlist")}
-                                                placeholderTextColor="#6b7280"
-                                                multiline
-                                                className="text-sm text-text-primary min-h-16"
-                                            />
-                                        </View>
-                                        {extendPromptError ? (
-                                            <View className="rounded-md border border-border-primary/60 bg-red-500/10 px-3 py-2">
-                                                <Text className="text-sm text-red-200">{extendPromptError}</Text>
-                                            </View>
-                                        ) : null}
-                                        <View className="flex-row justify-end gap-2">
-                                            <Button variant="secondary" size="small" onClick={closeExtendPrompt}>
-                                                <Text className="text-white text-sm">Cancel</Text>
-                                            </Button>
-                                            <Button
-                                                variant="primary"
-                                                size="small"
-                                                onClick={handleExtendWithNewPrompt}
-                                                disabled={isAiBusy || extendPromptDraft.trim().length === 0}
-                                            >
-                                                <Text className="text-white text-sm font-medium">
-                                                    {isExtending ? "Adding..." : "Add tracks"}
-                                                </Text>
-                                            </Button>
-                                        </View>
-                                    </View>
-                                </DropdownMenu.Content>
-                            </DropdownMenu.Root>
+                            <View ref={extendButtonRef} collapsable={false}>
+                                <NativeButton
+                                    sfSymbol="wand.and.sparkles"
+                                    onPress={handleOpenExtendPrompt}
+                                    disabled={!canExtendWithNewPrompt}
+                                    style={{ width: 28, height: 28 }}
+                                />
+                            </View>
                         ) : null}
                     </View>
                 </TitlebarAccessoryView>
@@ -907,6 +728,7 @@ function LibraryTrackRow({
 }: LibraryTrackRowProps) {
     const dragData = buildDragData(index);
     const listItemStyles = useListItemStyles();
+    const windowId = useWindowId();
     const isSelected = useValue(() => selectedIndices$.get().has(index));
     const isPlaying = useValue(() => {
         const currentTrack = audioPlayerState$.currentTrack.get();
@@ -945,9 +767,10 @@ function LibraryTrackRow({
                 // TrackData is compatible with LocalTrack fields used by handlers.
                 track: track as any,
                 anchorRect: { screenX: x, screenY: y, width: 1, height: 1 },
+                windowId,
             });
         },
-        [index, onMenuAction, track],
+        [index, onMenuAction, track, windowId],
     );
 
     const handleQuickEnqueue = useCallback(() => {

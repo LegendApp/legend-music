@@ -17,6 +17,7 @@ interface UsePlaylistSelectionResult {
     handleTrackClick: (index: number, event?: NativeMouseEvent) => void;
     syncSelectionAfterReorder: (fromIndex: number, toIndex: number) => void;
     clearSelection: () => void;
+    selectIndex: (index: number) => void;
 }
 
 function createRangeSelection(start: number, end: number): Set<number> {
@@ -67,6 +68,14 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
     const applyRangeSelection = useStableCallback((anchor: number, focus: number) => {
         updateSelectionState(createRangeSelection(anchor, focus));
         selectionFocus$.set(focus);
+    });
+
+    const selectIndex = useStableCallback((index: number) => {
+        if (index < 0 || index >= itemsLength) {
+            return;
+        }
+
+        applySingleSelection(index);
     });
 
     const toggleSelection = useStableCallback((index: number) => {
@@ -361,5 +370,6 @@ export function usePlaylistSelection<T extends { isSeparator?: boolean }>(
         handleTrackClick,
         syncSelectionAfterReorder,
         clearSelection,
+        selectIndex,
     };
 }

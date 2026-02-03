@@ -32,6 +32,13 @@ const mockTracks: LibraryTrack[] = [
     },
 ];
 
+const defaultSortOptions = {
+    librarySort: "artist" as const,
+    librarySortDirection: "asc" as const,
+    playlistSort: "playlist-order" as const,
+    playlistSortDirection: "asc" as const,
+};
+
 describe("buildTrackItems", () => {
     it("library view sorts by title as a flat list", () => {
         const result = buildTrackItems({
@@ -41,8 +48,8 @@ describe("buildTrackItems", () => {
             selectedPlaylistId: null,
             selectedPlaylistProvider: null,
             searchQuery: "",
-            playlistSort: "title",
-            playlistSortDirection: "asc",
+            ...defaultSortOptions,
+            librarySort: "title",
         });
 
         expect(result.trackItems.map((track) => track.id)).toEqual(["3", "1", "2"]);
@@ -56,8 +63,8 @@ describe("buildTrackItems", () => {
             selectedPlaylistId: null,
             selectedPlaylistProvider: null,
             searchQuery: "",
-            playlistSort: "artist",
-            playlistSortDirection: "asc",
+            ...defaultSortOptions,
+            librarySort: "artist",
         });
 
         expect(result.trackItems.map((item) => item.title)).toEqual([
@@ -78,8 +85,8 @@ describe("buildTrackItems", () => {
             selectedPlaylistId: null,
             selectedPlaylistProvider: null,
             searchQuery: "",
-            playlistSort: "artist",
-            playlistSortDirection: "asc",
+            ...defaultSortOptions,
+            librarySort: "artist",
         });
 
         const artistKey = getArtistKey("Artist 1");
@@ -123,8 +130,8 @@ describe("buildTrackItems", () => {
             selectedPlaylistId: null,
             selectedPlaylistProvider: null,
             searchQuery: "",
-            playlistSort: "artist",
-            playlistSortDirection: "asc",
+            ...defaultSortOptions,
+            librarySort: "artist",
         });
 
         expect(result.trackItems.map((item) => item.title)).toEqual(["— Artist 1 —", "Zed", "Alpha"]);
@@ -168,8 +175,9 @@ describe("buildTrackItems", () => {
             selectedPlaylistId: null,
             selectedPlaylistProvider: null,
             searchQuery: "",
-            playlistSort: "artist",
-            playlistSortDirection: "desc",
+            ...defaultSortOptions,
+            librarySort: "artist",
+            librarySortDirection: "desc",
         });
 
         const sectionTitles = result.trackItems.filter((item) => item.isSeparator).map((item) => item.title);
@@ -184,8 +192,8 @@ describe("buildTrackItems", () => {
             selectedPlaylistId: null,
             selectedPlaylistProvider: null,
             searchQuery: "",
-            playlistSort: "album",
-            playlistSortDirection: "asc",
+            ...defaultSortOptions,
+            librarySort: "album",
         });
 
         expect(result.trackItems.map((item) => item.title)).toEqual([
@@ -237,8 +245,8 @@ describe("buildTrackItems", () => {
             selectedPlaylistId: null,
             selectedPlaylistProvider: null,
             searchQuery: "",
-            playlistSort: "album",
-            playlistSortDirection: "asc",
+            ...defaultSortOptions,
+            librarySort: "album",
         });
 
         expect(result.trackItems.map((item) => item.title)).toEqual([
@@ -259,8 +267,8 @@ describe("buildTrackItems", () => {
             selectedPlaylistId: null,
             selectedPlaylistProvider: null,
             searchQuery: "album y",
-            playlistSort: "artist",
-            playlistSortDirection: "asc",
+            ...defaultSortOptions,
+            librarySort: "artist",
         });
 
         expect(result.trackItems.map((item) => item.title)).toEqual(["— Artist 2 —", "Song B"]);
@@ -308,8 +316,9 @@ describe("buildTrackItems", () => {
             selectedPlaylistId: null,
             selectedPlaylistProvider: null,
             searchQuery: "",
-            playlistSort: "date-added",
-            playlistSortDirection: "desc",
+            ...defaultSortOptions,
+            librarySort: "date-added",
+            librarySortDirection: "desc",
         });
 
         expect(result.trackItems.map((item) => item.id)).toEqual(["2", "3", "1"]);
@@ -348,8 +357,7 @@ describe("buildTrackItems", () => {
             selectedPlaylistProvider: "remote",
             selectedPlaylistTracks: providerTracks,
             searchQuery: "",
-            playlistSort: "playlist-order",
-            playlistSortDirection: "asc",
+            ...defaultSortOptions,
         });
 
         expect(result.trackItems.map((item) => item.id)).toEqual(["remote:track:1", "remote:track:2"]);
@@ -374,8 +382,7 @@ describe("buildTrackItems", () => {
             selectedPlaylistId: playlists[0].id,
             selectedPlaylistProvider: "local",
             searchQuery: "",
-            playlistSort: "playlist-order",
-            playlistSortDirection: "asc",
+            ...defaultSortOptions,
         });
 
         expect(result.trackItems.map((item) => item.id)).toEqual(["2", "/music/missing.mp3", "1"]);
@@ -424,6 +431,7 @@ describe("buildTrackItems", () => {
             selectedPlaylistId: playlists[0].id,
             selectedPlaylistProvider: "local",
             searchQuery: "",
+            ...defaultSortOptions,
             playlistSort: "date-added",
             playlistSortDirection: "desc",
         });
@@ -450,8 +458,7 @@ describe("buildTrackItems", () => {
             selectedPlaylistId: playlists[0].id,
             selectedPlaylistProvider: "local",
             searchQuery: "",
-            playlistSort: "playlist-order",
-            playlistSortDirection: "asc",
+            ...defaultSortOptions,
         });
 
         expect(result.trackItems.map((item) => item.id)).toEqual(["2", "2-2", "1"]);
@@ -465,8 +472,8 @@ describe("buildTrackItems", () => {
             selectedPlaylistId: null,
             selectedPlaylistProvider: null,
             searchQuery: "",
-            playlistSort: "title",
-            playlistSortDirection: "asc",
+            ...defaultSortOptions,
+            librarySort: "title",
         });
 
         const songA = result.trackItems.find((track) => track.id === "1");

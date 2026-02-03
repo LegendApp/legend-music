@@ -30,6 +30,7 @@ export type LibraryView =
     | "artist-detail"
     | "album-detail";
 export type PlaylistSortMode = "playlist-order" | "date-added" | "title" | "artist" | "album";
+export type LibrarySortMode = "date-added" | "title" | "artist" | "album";
 export type PlaylistSortDirection = "asc" | "desc";
 
 export interface LibraryUIState {
@@ -37,6 +38,8 @@ export interface LibraryUIState {
     selectedPlaylistId: string | null;
     selectedPlaylistProvider: StreamingProviderId | null;
     searchQuery: string;
+    librarySort: LibrarySortMode;
+    librarySortDirection: PlaylistSortDirection;
     playlistSort: PlaylistSortMode;
     playlistSortDirection: PlaylistSortDirection;
     selectedDetail: LibraryDetail | null;
@@ -53,15 +56,28 @@ export type LibraryDetail =
           artist?: string | null;
       };
 
+export type LibraryJumpTarget =
+    | {
+          type: "artist";
+          artistKey: string;
+          artistName: string;
+      };
+
 // Library UI state (persistent)
 export const libraryUI$ = observable<LibraryUIState>({
     selectedView: "library",
     selectedPlaylistId: null,
     selectedPlaylistProvider: null,
     searchQuery: "",
+    librarySort: "artist",
+    librarySortDirection: "asc",
     playlistSort: "playlist-order",
     playlistSortDirection: "asc",
     selectedDetail: null,
+});
+
+export const libraryNavigation$ = observable({
+    pendingJump: null as LibraryJumpTarget | null,
 });
 
 export function resolveLibraryView(view: LibraryView): LibraryView {
@@ -92,8 +108,19 @@ export function selectLibraryPlaylist(playlistId: string | null, providerId: Str
 }
 
 export function selectLibraryArtist(artist: string): void {
-    libraryUI$.selectedView.set("artist-detail");
-    libraryUI$.selectedDetail.set({ type: "artist", name: artist });
+    const trimmed = artist.trim();
+    if (!trimmed) {
+        return;
+    }
+
+    selectLibraryView("library");
+    libraryUI$.searchQuery.set("");
+    libraryUI$.librarySort.set("artist");
+    libraryNavigation$.pendingJump.set({
+        type: "artist",
+        artistKey: getArtistKey(trimmed),
+        artistName: trimmed,
+    });
 }
 
 export function selectLibraryAlbum(album: string, artist?: string | null): void {
