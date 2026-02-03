@@ -13,7 +13,7 @@ class RNNativeButtonGroup: RCTViewManager {
 }
 
 class NativeButtonGroupView: NSView {
-    @objc var onSelectionChange: RCTBubblingEventBlock?
+    @objc var onButtonSelectionChange: RCTDirectEventBlock?
 
     private var glassContainer: NSView?
     private var contentContainer: NSView!

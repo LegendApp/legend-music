@@ -2,6 +2,6 @@
 
 @interface RCT_EXTERN_MODULE(RNNativeButtonGroup, RCTViewManager)
 
-RCT_EXPORT_VIEW_PROPERTY(onSelectionChange, RCTBubblingEventBlock)
+RCT_EXPORT_VIEW_PROPERTY(onButtonSelectionChange, RCTDirectEventBlock)
 
 @end
