@@ -3,9 +3,9 @@ import { AutoUpdaterModule } from "@/native-modules/AutoUpdater";
 const DAY_IN_SECONDS = 24 * 60 * 60;
 
 export function initializeUpdater() {
-    // if (__DEV__) {
-    //     return;
-    // }
+    if (__DEV__) {
+        return;
+    }
 
     const configure = async () => {
         try {
