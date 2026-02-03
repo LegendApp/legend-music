@@ -2,8 +2,8 @@ import "@/../global.css";
 import { PortalProvider } from "@gorhom/portal";
 import { useMount } from "@legendapp/state/react";
 import type React from "react";
-import { useRef } from "react";
-import { LogBox, View } from "react-native";
+import { useCallback, useRef } from "react";
+import { LogBox, type LayoutChangeEvent, View } from "react-native";
 import { DragDropProvider } from "@/components/dnd";
 import { EffectView } from "@/components/EffectView";
 import { MainContainer } from "@/components/MainContainer";
@@ -28,6 +28,7 @@ import { runAfterInteractionsWithLabel } from "@/utils/runAfterInteractions";
 import { VisualizerWindowManager } from "@/visualizer/VisualizerWindowManager";
 import { WindowsNavigator } from "@/windows";
 import { WindowProvider } from "@/windows/WindowProvider";
+import { useWindowLayoutReporter } from "@/windows/windowDimensions";
 import { ThemeProvider } from "./theme/ThemeProvider";
 
 LogBox.ignoreLogs(["Open debugger", "unknown error", "re-registered bubbling event"]);
@@ -36,8 +37,35 @@ perfMark("App.moduleLoad");
 initializeUpdater();
 ensureStreamingProvidersRegistered();
 
-function App(): React.JSX.Element | null {
+type MainWindowLayoutProps = {
+    className?: string;
+    children: React.ReactNode;
+};
+
+function MainWindowLayout({ className, children }: MainWindowLayoutProps) {
     const hasLoggedFirstLayout = useRef(false);
+    const reportWindowLayout = useWindowLayoutReporter();
+
+    const handleFirstLayout = useCallback(
+        (event: LayoutChangeEvent) => {
+            reportWindowLayout(event);
+            if (hasLoggedFirstLayout.current) {
+                return;
+            }
+            hasLoggedFirstLayout.current = true;
+            perfMark("App.firstLayout");
+        },
+        [reportWindowLayout],
+    );
+
+    return (
+        <View className={className} onLayout={handleFirstLayout}>
+            {children}
+        </View>
+    );
+}
+
+function App(): React.JSX.Element | null {
     const providerBridges = getStreamingProviderPlugins()
         .map((plugin) => {
             const Bridge = plugin.ui?.bridge;
@@ -103,17 +131,9 @@ function App(): React.JSX.Element | null {
         };
     });
 
-    const handleFirstLayout = () => {
-        if (hasLoggedFirstLayout.current) {
-            return;
-        }
-        hasLoggedFirstLayout.current = true;
-        perfMark("App.firstLayout");
-    };
-
     const contentClassName = IS_TAHOE ? "flex-1" : "flex-1 bg-background-primary/40";
     const content = (
-        <View className={contentClassName} onLayout={handleFirstLayout}>
+        <MainWindowLayout className={contentClassName}>
             <PortalProvider>
                 <ToastProvider />
                 <TooltipProvider>
@@ -123,7 +143,7 @@ function App(): React.JSX.Element | null {
                 </TooltipProvider>
                 {providerBridges}
             </PortalProvider>
-        </View>
+        </MainWindowLayout>
     );
 
     return (

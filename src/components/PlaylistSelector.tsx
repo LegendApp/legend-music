@@ -1,6 +1,6 @@
 import { useValue } from "@legendapp/state/react";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { type LayoutChangeEvent, Text, useWindowDimensions, View } from "react-native";
+import { type LayoutChangeEvent, Text, View } from "react-native";
 import type { SFSymbol } from "sf-symbols-typescript";
 import { Button } from "@/components/Button";
 import type { DropdownMenuRootRef } from "@/components/DropdownMenu";
@@ -14,6 +14,7 @@ import { library$ } from "@/systems/LibraryState";
 import { localMusicState$ } from "@/systems/LocalMusicState";
 import type { PlaybackControlId } from "@/systems/Settings";
 import { cn } from "@/utils/cn";
+import { useCurrentWindowDimensions } from "@/windows/windowDimensions";
 import {
     useLibraryToggle,
     usePlaylistOptions,
@@ -35,7 +36,7 @@ export function PlaylistSelector({ variant = "default", className }: PlaylistSel
     const localMusicState = useValue(localMusicState$);
     const library = useValue(library$);
     const queue = useValue(queue$);
-    const { width: windowWidth } = useWindowDimensions();
+    const { width: windowWidth } = useCurrentWindowDimensions();
     const [layoutWidth, setLayoutWidth] = useState(0);
     const handleLayout = useCallback((event: LayoutChangeEvent) => {
         const nextWidth = event.nativeEvent.layout.width;

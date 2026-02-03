@@ -22,6 +22,7 @@ import { SUPPORT_ACCOUNTS } from "@/systems/constants";
 import { state$ } from "@/systems/State";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 import { ax } from "@/utils/ax";
+import { useWindowLayoutReporter } from "@/windows/windowDimensions";
 
 export type SettingsPage = string;
 
@@ -116,6 +117,7 @@ export default function SettingsContainer() {
     const selectedItem = useValue(selectedItem$);
     const isMacOS = Platform.OS === "macos";
     const settingPages = useMemo(() => buildSettingPages(), []);
+    const reportWindowLayout = useWindowLayoutReporter();
 
     const nativeItems = useMemo(() => {
         return settingPages.map((item) => ({ id: item.id, label: item.name }));
@@ -134,7 +136,7 @@ export default function SettingsContainer() {
     );
 
     return (
-        <View className="flex-1">
+        <View className="flex-1" onLayout={reportWindowLayout}>
             <ThemeProvider>
                 <PortalProvider>
                     <TooltipProvider>

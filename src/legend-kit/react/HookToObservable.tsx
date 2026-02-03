@@ -48,7 +48,7 @@ export const HookToObservable = typedMemo(function HookToObservable<T, T2 = T>({
  *
  * This component takes the value from a React hook and sets it to an Observable.
  * It's useful for:
- * - Connecting React's built-in hooks (useWindowDimensions, useColorScheme, etc.) to Observable state
+ * - Connecting React's built-in hooks (useColorScheme, etc.) to Observable state
  * - Improving performance by not re-rendering whenever the hook updates
  * - Making hook values accessible to non-React code via Observables
  * - Conditionally updating Observable state based on hook values
@@ -59,7 +59,7 @@ export const HookToObservable = typedMemo(function HookToObservable<T, T2 = T>({
  * import { memo } from 'react';
  * import { observable } from '@legendapp/state';
  * import { HookToObservable } from '@legendapp/state/react';
- * import { useWindowDimensions } from 'react-native';
+ * import { useColorScheme } from 'react-native';
  *
  * // Create an Observable to store window dimensions
  * const windowDimensions$ = observable({ width: 0, height: 0 });
@@ -67,7 +67,7 @@ export const HookToObservable = typedMemo(function HookToObservable<T, T2 = T>({
  * export const HookWindowDimensions = memo(function HookWindowDimensions() {
  *   return (
  *     <HookToObservable
- *       hook={useWindowDimensions}
+ *       hook={useColorScheme}
  *       value$={windowDimensions$}
  *       if={() => !state$.showSettings.get()}
  *       getValue={(value) => ({ width: value.width, height: value.height })}

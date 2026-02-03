@@ -1,7 +1,7 @@
 import { LegendList } from "@legendapp/list";
 import { useValue } from "@legendapp/state/react";
 import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { type GestureResponderEvent, Text, useWindowDimensions, View } from "react-native";
+import { type GestureResponderEvent, Text, View } from "react-native";
 import type { NativeMouseEvent } from "react-native-macos";
 import { Button } from "@/components/Button";
 import { DropdownMenu, type DropdownMenuRootRef } from "@/components/DropdownMenu";
@@ -18,6 +18,7 @@ import { library$ } from "@/systems/LibraryState";
 import type { LocalPlaylist, LocalTrack } from "@/systems/LocalMusicState";
 import { cn } from "@/utils/cn";
 import { getQueueAction, type QueueAction } from "@/utils/queueActions";
+import { useCurrentWindowDimensions } from "@/windows/windowDimensions";
 import { useDropdownKeyboardNavigation, usePlaylistSearchResults, useSearchDropdownState } from "./JumpSearchMenuDropdown/hooks";
 
 const formatProviderNames = (names: string[]): string => {
@@ -49,7 +50,7 @@ export const JumpSearchMenuDropdown = forwardRef<DropdownMenuRootRef, JumpSearch
     ) {
         const { searchQuery$, searchQuery, isOpen, isOpen$, handleOpenChange } = useSearchDropdownState(onOpenChange);
         const textInputRef = useRef<TextInputSearchRef>(null);
-        const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+        const { width: windowWidth, height: windowHeight } = useCurrentWindowDimensions();
 
         const library = useValue(library$);
         const enabledSearchProviderIds = useValue(enabledSearchProviderIds$);

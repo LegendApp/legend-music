@@ -7,6 +7,7 @@ import { audioPlayerState$ } from "@/components/AudioPlayer";
 import { Select, type SelectOption } from "@/components/Select";
 import { visualizerPreferences$ } from "@/visualizer/preferences";
 import { defaultVisualizerPresetId, getVisualizerPresetById, visualizerPresets } from "@/visualizer/presets";
+import { useWindowLayoutReporter } from "@/windows/windowDimensions";
 
 export default function VisualizerWindow() {
     const track = useValue(audioPlayerState$.currentTrack);
@@ -14,6 +15,7 @@ export default function VisualizerWindow() {
     const storedPresetId = useValue(visualizerPreferences$.visualizer.selectedPresetId);
     const storedBinCount = useValue(visualizerPreferences$.visualizer.binCount);
     const binCount = storedBinCount ?? 64;
+    const reportWindowLayout = useWindowLayoutReporter();
 
     const preset = useMemo(() => {
         const fallbackId = defaultVisualizerPresetId;
@@ -64,6 +66,7 @@ export default function VisualizerWindow() {
     }, []);
 
     const handleLayout = useCallback((event: LayoutChangeEvent) => {
+        reportWindowLayout(event);
         const { width, height } = event.nativeEvent.layout;
         if (width > 0 && height > 0) {
             visualizerPreferences$.window.assign({
@@ -71,7 +74,7 @@ export default function VisualizerWindow() {
                 height: Math.round(height),
             });
         }
-    }, []);
+    }, [reportWindowLayout]);
 
     return (
         <View className="flex-1 bg-slate-950" onLayout={handleLayout}>

@@ -16,6 +16,7 @@ import { settings$ } from "@/systems/Settings";
 import { stateSaved$ } from "@/systems/State";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 import { WindowProvider } from "@/windows";
+import { useWindowLayoutReporter } from "@/windows/windowDimensions";
 
 const MEDIA_LIBRARY_WINDOW_ID = "media-library";
 
@@ -23,14 +24,16 @@ export default function MediaLibraryWindow() {
     const showHints = useValue(settings$.general.showHints);
     const isMacOS = Platform.OS === "macos";
     const [height, setHeight] = useState(0);
+    const reportWindowLayout = useWindowLayoutReporter();
     const handleLayout = useCallback((event: LayoutChangeEvent) => {
+        reportWindowLayout(event);
         const { width, height } = event.nativeEvent.layout;
         if (width > 0 && height > 0) {
             stateSaved$.libraryWindowSize.set({ width: Math.round(width), height: Math.round(height) });
 
             setHeight(height);
         }
-    }, []);
+    }, [reportWindowLayout]);
 
     return (
         <WindowProvider id={MEDIA_LIBRARY_WINDOW_ID}>
@@ -63,7 +66,9 @@ export default function MediaLibraryWindow() {
                                     </View>
                                 </SidebarSplitView>
                             ) : (
-                                <MediaLibraryView />
+                                <View className="flex-1" onLayout={handleLayout}>
+                                    <MediaLibraryView />
+                                </View>
                             )}
                             <AiGenerationPopupHost />
                         </DragDropProvider>

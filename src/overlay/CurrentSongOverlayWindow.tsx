@@ -18,6 +18,7 @@ import { setWindowBlur } from "@/native-modules/WindowManager";
 import { IS_TAHOE } from "@/systems/constants";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 import { withWindowProvider } from "@/windows";
+import { useWindowLayoutReporter } from "@/windows/windowDimensions";
 import {
     currentSongOverlay$,
     finalizeCurrentSongOverlayDismissal,
@@ -84,6 +85,7 @@ const styles = StyleSheet.create({
 function CurrentSongOverlayWindow() {
     const opacity = useSharedValue(0);
     const scale = useSharedValue(1);
+    const reportWindowLayout = useWindowLayoutReporter();
 
     const springConfig = {
         damping: OVERLAY_WINDOW_SPRING_DAMPING,
@@ -183,6 +185,7 @@ function CurrentSongOverlayWindow() {
     return (
         <Animated.View
             style={[styles.root, animatedStyle]}
+            onLayout={reportWindowLayout}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
         >

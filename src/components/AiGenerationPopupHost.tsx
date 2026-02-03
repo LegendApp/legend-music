@@ -1,6 +1,6 @@
 import { useValue } from "@legendapp/state/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Text, TextInput, useWindowDimensions, View } from "react-native";
+import { Alert, Text, TextInput, View } from "react-native";
 import { queue$, queueControls } from "@/components/AudioPlayer";
 import { Button } from "@/components/Button";
 import { DropdownMenu } from "@/components/DropdownMenu";
@@ -15,6 +15,7 @@ import { localMusicState$ } from "@/systems/LocalMusicState";
 import { settings$ } from "@/systems/Settings";
 import { fetchSuggestions, selectedSuggestionProviderId$, suggestionProviderAvailability$ } from "@/systems/suggestions";
 import { useWindowId } from "@/windows/WindowProvider";
+import { useCurrentWindowDimensions } from "@/windows/windowDimensions";
 
 const DEFAULT_COUNT = 20;
 const MIN_COUNT = 1;
@@ -49,7 +50,7 @@ export function AiGenerationPopupHost() {
     const initialPromptSource = useValue(aiGenerationPopup$.initialPromptSource);
     const targetWindowId = useValue(aiGenerationPopup$.windowId);
 
-    const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+    const { width: windowWidth, height: windowHeight } = useCurrentWindowDimensions();
 
     const [prompt, setPrompt] = useState("");
     const windowId = useWindowId();

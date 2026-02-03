@@ -1,6 +1,6 @@
 import { useValue } from "@legendapp/state/react";
 import { useCallback, useRef, useState } from "react";
-import { type LayoutChangeEvent, useWindowDimensions, View } from "react-native";
+import { type LayoutChangeEvent, View } from "react-native";
 import type { SFSymbol } from "sf-symbols-typescript";
 
 import { Button } from "@/components/Button";
@@ -16,6 +16,7 @@ import { library$ } from "@/systems/LibraryState";
 import { localMusicState$ } from "@/systems/LocalMusicState";
 import { type PlaybackControlId, settings$ } from "@/systems/Settings";
 import { cn } from "@/utils/cn";
+import { useCurrentWindowDimensions } from "@/windows/windowDimensions";
 import {
     useLibraryToggle,
     usePlaylistOptions,
@@ -47,7 +48,7 @@ export function PlaybackControls({ className }: PlaybackControlsProps = {}) {
     const localMusicState = useValue(localMusicState$);
     const library = useValue(library$);
     const queue = useValue(queue$);
-    const { width: windowWidth } = useWindowDimensions();
+    const { width: windowWidth } = useCurrentWindowDimensions();
     const [layoutWidth, setLayoutWidth] = useState(0);
     const dropdownMenuRef = useRef<DropdownMenuRootRef>(null);
 
