@@ -198,6 +198,7 @@ final class SidebarView: NSView, NSTableViewDataSource, NSTableViewDelegate {
     private var isUpdatingSelection = false
     private var usesReactChildren = false
     private var contextHighlightedRow: Int = -1
+    private var hasCompletedInitialLoad = false
 
     override var isFlipped: Bool {
         return true
@@ -361,6 +362,11 @@ final class SidebarView: NSView, NSTableViewDataSource, NSTableViewDelegate {
         // React has finished updating subviews
         tableView.reloadData()
         updateSelection()
+
+        // Mark initial load complete after first update
+        if !hasCompletedInitialLoad {
+            hasCompletedInitialLoad = true
+        }
     }
 
     // MARK: - Legacy Items Support
@@ -402,7 +408,10 @@ final class SidebarView: NSView, NSTableViewDataSource, NSTableViewDelegate {
 
         isUpdatingSelection = true
         tableView.selectRowIndexes(IndexSet(integer: index), byExtendingSelection: false)
-        tableView.scrollRowToVisible(index)
+        // Only scroll to selection after initial load to keep sidebar at top on startup
+        if hasCompletedInitialLoad {
+            tableView.scrollRowToVisible(index)
+        }
         isUpdatingSelection = false
     }
 
