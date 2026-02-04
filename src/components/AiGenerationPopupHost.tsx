@@ -7,6 +7,11 @@ import { DropdownMenu } from "@/components/DropdownMenu";
 import { TextInputMac, type TextInputMacRef } from "@/components/TextInputMac";
 import { SegmentedButtons } from "@/components/SegmentedButtons";
 import { showToast } from "@/components/Toast";
+import {
+    activeStreamingProviderId$,
+    isStreamingProviderValid,
+    streamingProviderSessions$,
+} from "@/providers/streamingProviderRegistry";
 import type { StreamingProviderId } from "@/providers/types";
 import { finishAiPlaylistFill, finishAiQueueFill, startAiPlaylistFill, startAiQueueFill } from "@/systems/ai";
 import { aiGenerationPopup$ } from "@/systems/ai/generationPopup";
@@ -21,8 +26,17 @@ import { useCurrentWindowDimensions } from "@/windows/windowDimensions";
 const DEFAULT_COUNT = 20;
 const MIN_COUNT = 1;
 const MAX_COUNT = 100;
+const QUEUE_ADD_SEED_COUNT = 10;
 
-type QueueAiFrom = "local-library" | "spotify" | "appleMusic" | "youtubeMusic";
+const QUEUE_FROM_STREAMING_OPTIONS = [
+    { value: "spotify", label: "Spotify" },
+    { value: "appleMusic", label: "Apple Music" },
+    { value: "youtubeMusic", label: "YouTube Music" },
+] as const;
+
+type QueueAiStreamingProviderId = (typeof QUEUE_FROM_STREAMING_OPTIONS)[number]["value"];
+type QueueAiFrom = "local-library" | QueueAiStreamingProviderId;
+type QueueGenerationMode = "create" | "add";
 
 const getPromptSourceForFrom = (from: QueueAiFrom): AiPromptSource =>
     from === "local-library" ? "local-library" : "streaming";
@@ -33,9 +47,16 @@ const getTrackProviderOverrideForFrom = (from: QueueAiFrom): StreamingProviderId
 const clampCount = (value: number): number => Math.max(MIN_COUNT, Math.min(MAX_COUNT, value));
 
 const coerceQueueFrom = (value?: string | null): QueueAiFrom => {
-    if (value === "local-library" || value === "spotify" || value === "appleMusic" || value === "youtubeMusic") {
+    if (value === "local-library") {
         return value;
     }
+
+    for (const option of QUEUE_FROM_STREAMING_OPTIONS) {
+        if (option.value === value) {
+            return value;
+        }
+    }
+
     return "spotify";
 };
 
@@ -62,11 +83,42 @@ export function AiGenerationPopupHost() {
     const providerAvailability = useValue(suggestionProviderAvailability$);
     const queueTracks = useValue(queue$.tracks);
     const playlists = useValue(localMusicState$.playlists);
+    const activeStreamingProviderId = useValue(activeStreamingProviderId$);
+    const providerSessions = useValue(streamingProviderSessions$);
 
     const [providerId, setProviderId] = useState<"claude" | "codex" | "spotify">(defaultProviderId);
     const [from, setFrom] = useState<QueueAiFrom>("spotify");
+    const [queueMode, setQueueMode] = useState<QueueGenerationMode>("add");
     const promptSource = useMemo(() => getPromptSourceForFrom(from), [from]);
     const trackProviderIdOverride = useMemo(() => getTrackProviderOverrideForFrom(from), [from]);
+    const validStreamingProviderIds = useMemo(
+        () =>
+            QUEUE_FROM_STREAMING_OPTIONS.map((option) => option.value).filter((providerId) =>
+                isStreamingProviderValid(providerId, {
+                    activeProviderId: activeStreamingProviderId,
+                    session: providerSessions[providerId] ?? null,
+                }),
+            ),
+        [activeStreamingProviderId, providerSessions],
+    );
+    const validStreamingProviderSet = useMemo(
+        () => new Set<QueueAiStreamingProviderId>(validStreamingProviderIds),
+        [validStreamingProviderIds],
+    );
+    const fromOptions = useMemo(() => {
+        const isSpotifyProvider = providerId === "spotify";
+        const options = [
+            { value: "local-library" as const, label: "Library", disabled: isSpotifyProvider },
+            ...QUEUE_FROM_STREAMING_OPTIONS.filter((option) => validStreamingProviderSet.has(option.value)).map(
+                (option) => ({
+                    value: option.value,
+                    label: option.label,
+                    disabled: isSpotifyProvider && option.value !== "spotify",
+                }),
+            ),
+        ];
+        return options;
+    }, [providerId, validStreamingProviderSet]);
     const targetPlaylist = useMemo(() => {
         if (!targetPlaylistId) {
             return null;
@@ -94,6 +146,12 @@ export function AiGenerationPopupHost() {
     const aiSettings = useValue(settings$.ai);
     const isFeatureEnabled = aiSettings.enabled;
     const isDisabled = !anyProviderAvailable || !isFeatureEnabled;
+    const queueHasTracks = queueTracks.length > 0;
+    const shouldShowQueueMode = action === "generate-queue" && queueHasTracks;
+    const effectiveQueueMode: QueueGenerationMode | null =
+        action === "generate-queue" ? (shouldShowQueueMode ? queueMode : "add") : null;
+    const isQueueCreateMode = effectiveQueueMode === "create";
+    const isQueueAddMode = effectiveQueueMode === "add";
 
     const close = useCallback(() => {
         isOpen$.set(false);
@@ -122,7 +180,14 @@ export function AiGenerationPopupHost() {
             return false;
         }
 
-        if (action === "generate-queue" || action === "extend-playlist") {
+        if (action === "generate-queue") {
+            if (isQueueCreateMode) {
+                return prompt.trim().length > 0;
+            }
+            return queueHasTracks || prompt.trim().length > 0;
+        }
+
+        if (action === "extend-playlist") {
             if (prompt.trim().length === 0) {
                 return false;
             }
@@ -133,7 +198,17 @@ export function AiGenerationPopupHost() {
         }
 
         return seedTracks.length > 0;
-    }, [action, isDisabled, isProviderAvailable, isRunning, prompt, seedTracks.length, targetPlaylist]);
+    }, [
+        action,
+        isDisabled,
+        isProviderAvailable,
+        isQueueCreateMode,
+        isRunning,
+        prompt,
+        queueHasTracks,
+        seedTracks.length,
+        targetPlaylist,
+    ]);
 
     const handleRun = useCallback(async () => {
         if (!canRun) {
@@ -141,7 +216,7 @@ export function AiGenerationPopupHost() {
         }
 
         const trimmedPrompt = prompt.trim();
-        const replaceQueue = action === "generate-queue" || action === "start-mix";
+        const replaceQueue = (action === "generate-queue" && isQueueCreateMode) || action === "start-mix";
         if (replaceQueue) {
             const confirmed = await confirmReplaceQueue();
             if (!confirmed) {
@@ -190,7 +265,7 @@ export function AiGenerationPopupHost() {
                 return;
             }
 
-            if (action === "generate-queue") {
+            if (action === "generate-queue" && isQueueCreateMode) {
                 const { tracks, unresolved } = await fetchSuggestions({
                     providerIdOverride: providerId,
                     trackProviderIdOverride,
@@ -210,6 +285,45 @@ export function AiGenerationPopupHost() {
                 queueControls.replace(tracks);
                 const trackLabel = tracks.length === 1 ? "track" : "tracks";
                 showToast(`Created queue with ${tracks.length} ${trackLabel}`, "info");
+                if (unresolved && unresolved.length > 0) {
+                    showToast(`Skipped ${unresolved.length} tracks that could not be matched`, "info");
+                }
+                return;
+            }
+
+            if (action === "generate-queue" && isQueueAddMode) {
+                const seedTracksForAdd = queueTracks.slice(
+                    Math.max(0, queueTracks.length - QUEUE_ADD_SEED_COUNT),
+                );
+                const needsPrompt = seedTracksForAdd.length === 0;
+                if (needsPrompt && trimmedPrompt.length === 0) {
+                    setErrorMessage("Describe what you want to add.");
+                    isOpen$.set(true);
+                    return;
+                }
+
+                const usePlaylistMode = seedTracksForAdd.length === 0;
+                const { tracks, unresolved } = await fetchSuggestions({
+                    providerIdOverride: providerId,
+                    trackProviderIdOverride,
+                    mode: usePlaylistMode ? "playlist" : "queue-extension",
+                    source: usePlaylistMode ? undefined : "manual",
+                    prompt: usePlaylistMode ? trimmedPrompt : trimmedPrompt || undefined,
+                    promptSource,
+                    seedTracks: usePlaylistMode ? undefined : seedTracksForAdd,
+                    count,
+                    excludeTrackIds: queueTracks.map((track) => track.id),
+                });
+
+                if (tracks.length === 0) {
+                    setErrorMessage("No tracks were suggested.");
+                    isOpen$.set(true);
+                    return;
+                }
+
+                queueControls.append(tracks);
+                const addedLabel = tracks.length === 1 ? "track" : "tracks";
+                showToast(`Added ${tracks.length} ${addedLabel} to the queue`, "info");
                 if (unresolved && unresolved.length > 0) {
                     showToast(`Skipped ${unresolved.length} tracks that could not be matched`, "info");
                 }
@@ -276,6 +390,8 @@ export function AiGenerationPopupHost() {
         count,
         extendLocalPlaylistWithPrompt,
         isOpen$,
+        isQueueAddMode,
+        isQueueCreateMode,
         prompt,
         promptSource,
         providerId,
@@ -286,36 +402,38 @@ export function AiGenerationPopupHost() {
     ]);
 
     const resolveDefaultFrom = useCallback((): QueueAiFrom => {
+        const resolveStreamingFrom = (value?: StreamingProviderId | "auto" | null): QueueAiFrom => {
+            if (value && value !== "auto") {
+                if (value === "spotify" || value === "appleMusic" || value === "youtubeMusic") {
+                    if (validStreamingProviderSet.has(value)) {
+                        return value;
+                    }
+                }
+            }
+
+            return validStreamingProviderIds[0] ?? "local-library";
+        };
+
         if (initialPromptSource === "local-library") {
             return "local-library";
         }
 
         if (initialPromptSource === "streaming") {
-            if (
-                settingsPreferredTrackProviderId === "spotify" ||
-                settingsPreferredTrackProviderId === "appleMusic" ||
-                settingsPreferredTrackProviderId === "youtubeMusic"
-            ) {
-                return settingsPreferredTrackProviderId as QueueAiFrom;
-            }
-
-            return "spotify";
+            return resolveStreamingFrom(settingsPreferredTrackProviderId);
         }
 
         if (settingsPromptSource === "local-library") {
             return "local-library";
         }
 
-        if (
-            settingsPreferredTrackProviderId === "spotify" ||
-            settingsPreferredTrackProviderId === "appleMusic" ||
-            settingsPreferredTrackProviderId === "youtubeMusic"
-        ) {
-            return settingsPreferredTrackProviderId as QueueAiFrom;
-        }
-
-        return "spotify";
-    }, [initialPromptSource, settingsPreferredTrackProviderId, settingsPromptSource]);
+        return resolveStreamingFrom(settingsPreferredTrackProviderId);
+    }, [
+        initialPromptSource,
+        settingsPreferredTrackProviderId,
+        settingsPromptSource,
+        validStreamingProviderIds,
+        validStreamingProviderSet,
+    ]);
 
     useEffect(() => {
         if (!isVisible) {
@@ -327,6 +445,7 @@ export function AiGenerationPopupHost() {
         setCountText(String(DEFAULT_COUNT));
         setFrom(resolveDefaultFrom());
         setProviderId(initialProviderId ?? defaultProviderId);
+        setQueueMode("add");
 
         setTimeout(() => {
             textInputRef.current?.focus();
@@ -334,9 +453,28 @@ export function AiGenerationPopupHost() {
     }, [defaultProviderId, initialProviderId, isVisible, resolveDefaultFrom]);
 
     const placeholder = useMemo(() => {
+        if (action === "generate-queue" && isQueueAddMode) {
+            if (!queueHasTracks) {
+                return getAiPromptPlaceholder(promptSource, "queue");
+            }
+            return promptSource === "local-library"
+                ? "Optionally describe what to add from your library"
+                : "Optionally describe what to add";
+        }
+
         const mode = action === "extend-playlist" ? "playlist" : "queue";
         return getAiPromptPlaceholder(promptSource, mode);
-    }, [action, promptSource]);
+    }, [action, isQueueAddMode, promptSource, queueHasTracks]);
+
+    const promptLabel = useMemo(() => {
+        if (action === "generate-queue" && isQueueAddMode && queueHasTracks) {
+            return "Prompt (optional)";
+        }
+        if (action === "start-mix" || action === "add-more-like-this") {
+            return "Prompt (optional)";
+        }
+        return "Prompt";
+    }, [action, isQueueAddMode, queueHasTracks]);
 
     const effectiveAnchorRect = useMemo(() => {
         if (anchorRect) {
@@ -367,16 +505,24 @@ export function AiGenerationPopupHost() {
             >
                 <View className="p-3 bg-background-tertiary border border-border-primary rounded-md gap-2">
                     <Text className="text-text-primary text-sm font-semibold">{title}</Text>
+                    {shouldShowQueueMode ? (
+                        <View className="gap-1">
+                            <Text className="text-text-secondary text-xs font-medium">Mode</Text>
+                            <SegmentedButtons
+                                value={queueMode}
+                                options={[
+                                    { value: "create", label: "Create" },
+                                    { value: "add", label: "Add" },
+                                ]}
+                                onValueChange={setQueueMode}
+                            />
+                        </View>
+                    ) : null}
                     <View className="gap-1">
                         <Text className="text-text-secondary text-xs font-medium">From</Text>
                         <SegmentedButtons
                             value={from}
-                            options={[
-                                { value: "local-library", label: "Library", disabled: providerId === "spotify" },
-                                { value: "spotify", label: "Spotify" },
-                                { value: "appleMusic", label: "Apple Music", disabled: providerId === "spotify" },
-                                { value: "youtubeMusic", label: "YouTube Music", disabled: providerId === "spotify" },
-                            ]}
+                            options={fromOptions}
                             onValueChange={(value) => setFrom(coerceQueueFrom(value))}
                         />
                     </View>
@@ -416,23 +562,26 @@ export function AiGenerationPopupHost() {
                             />
                         </View>
                     </View>
-                    <View className="bg-background-secondary border border-border-primary rounded-md px-3 py-2">
-                        <TextInputMac
-                            ref={textInputRef}
-                            value={prompt}
-                            onChangeText={(value) => {
-                                setPrompt(value);
-                                if (errorMessage) {
-                                    setErrorMessage(null);
-                                }
-                            }}
-                            placeholder={placeholder}
-                            placeholderTextColor="#6b7280"
-                            fontSize={14}
-                            multiline
-                            className="text-text-primary"
-                            style={{ minHeight: 64 }}
-                        />
+                    <View className="gap-1">
+                        <Text className="text-text-secondary text-xs font-medium">{promptLabel}</Text>
+                        <View className="bg-background-secondary border border-border-primary rounded-md px-3 py-2">
+                            <TextInputMac
+                                ref={textInputRef}
+                                value={prompt}
+                                onChangeText={(value) => {
+                                    setPrompt(value);
+                                    if (errorMessage) {
+                                        setErrorMessage(null);
+                                    }
+                                }}
+                                placeholder={placeholder}
+                                placeholderTextColor="#6b7280"
+                                fontSize={14}
+                                multiline
+                                className="text-text-primary"
+                                style={{ minHeight: 64 }}
+                            />
+                        </View>
                     </View>
                     {errorMessage ? (
                         <View className="rounded-md border border-border-primary/60 bg-red-500/10 px-3 py-2">
@@ -445,7 +594,13 @@ export function AiGenerationPopupHost() {
                         </Button>
                         <Button variant="primary" size="small" onClick={handleRun} disabled={!canRun}>
                             <Text className="text-white text-sm font-medium">
-                                {isRunning ? "Generating..." : "Generate"}
+                                {isRunning
+                                    ? "Generating..."
+                                    : action === "generate-queue" && isQueueAddMode
+                                      ? "Add"
+                                      : action === "generate-queue" && isQueueCreateMode
+                                        ? "Create"
+                                        : "Generate"}
                             </Text>
                         </Button>
                     </View>

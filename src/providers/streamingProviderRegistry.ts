@@ -60,3 +60,20 @@ export function setStreamingProviderSession(providerId: StreamingProviderId, ses
 export function isStreamingProviderEnabled(providerId: StreamingProviderId): boolean {
     return activeStreamingProviderId$.get() === providerId;
 }
+
+export function isStreamingProviderValid(
+    providerId: StreamingProviderId,
+    options: { activeProviderId?: StreamingProviderId; session?: StreamingProviderSession | null } = {},
+): boolean {
+    const activeProviderId = options.activeProviderId ?? activeStreamingProviderId$.get();
+    if (activeProviderId !== providerId) {
+        return false;
+    }
+
+    const session =
+        options.session ??
+        streamingProviderSessions$[providerId].get() ??
+        getStreamingProvider(providerId)?.getSession() ??
+        null;
+    return Boolean(session?.isAuthenticated);
+}

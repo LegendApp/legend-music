@@ -1,5 +1,5 @@
 import { computed, observable } from "@legendapp/state";
-import { isStreamingProviderEnabled } from "@/providers/streamingProviderRegistry";
+import { isStreamingProviderValid } from "@/providers/streamingProviderRegistry";
 import { LOCAL_LIBRARY_PROVIDER_ID } from "@/providers/localLibrary/constants";
 import type { StreamingProviderId } from "@/providers/types";
 import type { StreamingProviderSearchProvider } from "./types";
@@ -27,7 +27,7 @@ export const enabledSearchProviderIds$ = computed(() => {
             if (
                 provider.id !== "local" &&
                 provider.id !== LOCAL_LIBRARY_PROVIDER_ID &&
-                !isStreamingProviderEnabled(provider.id)
+                !isStreamingProviderValid(provider.id)
             ) {
                 return false;
             }
