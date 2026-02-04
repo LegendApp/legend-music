@@ -44,6 +44,8 @@ const SubmenuContext = createContext<SubmenuContextValue>({
     level: 0,
 });
 
+const openDropdownIds = new Set<string>();
+
 function useDropdownContext() {
     const context = useContext(DropdownContext);
     if (!context) {
@@ -74,12 +76,29 @@ const Root = forwardRef<DropdownMenuRootRef, RootProps>(function Root(
     const isOpen$ = isOpen$Prop ?? useObservable(false);
     const openedWithMouseDown$ = useObservable(false);
     const triggerRef = useRef<View>(null);
+    const dropdownId = useId();
+
+    const syncDropdownOpenState = useCallback(
+        (nextOpen: boolean, previousOpen: boolean) => {
+            if (nextOpen === previousOpen) {
+                return;
+            }
+
+            if (nextOpen) {
+                openDropdownIds.add(dropdownId);
+            } else {
+                openDropdownIds.delete(dropdownId);
+            }
+
+            state$.isDropdownOpen.set(openDropdownIds.size > 0);
+        },
+        [dropdownId],
+    );
 
     const close = useCallback(() => {
         setTimeout(() => {
             isOpen$.set(false);
             openedWithMouseDown$.set(false);
-            state$.isDropdownOpen.set(false);
         }, 60);
         onOpenChange?.(false);
     }, [onOpenChange]);
@@ -98,14 +117,23 @@ const Root = forwardRef<DropdownMenuRootRef, RootProps>(function Root(
     );
 
     useObserveEffect(isOpen$, (e) => {
+        const value = !!e.value;
+        const previousValue = e.previous !== undefined ? !!e.previous : false;
+        syncDropdownOpenState(value, previousValue);
         if (e.previous !== undefined) {
-            const value = !!e.value;
-            state$.isDropdownOpen.set(value);
             onOpenChange?.(value);
-            if (!value) {
-                openedWithMouseDown$.set(false);
-            }
         }
+        if (!value) {
+            openedWithMouseDown$.set(false);
+        }
+    });
+
+    useMount(() => {
+        return () => {
+            if (openDropdownIds.delete(dropdownId)) {
+                state$.isDropdownOpen.set(openDropdownIds.size > 0);
+            }
+        };
     });
 
     const contextValue: DropdownContextValue = {
