@@ -234,6 +234,21 @@ export function Playlist() {
         [clearSelection, selectedIndices$, skipBackgroundClearRef],
     );
 
+    const handlePlaylistEmptySpaceClick = useCallback(
+        (event: NativeMouseEvent) => {
+            if (event.button !== 0) {
+                return;
+            }
+
+            if (selectedIndices$.get().size === 0) {
+                return;
+            }
+
+            clearSelection();
+        },
+        [clearSelection, selectedIndices$],
+    );
+
     const handleReorderDragStart = useCallback(() => {
         skipClickRef.current = true;
     }, []);
@@ -859,7 +874,7 @@ export function Playlist() {
                         ref={listRef}
                         data={playlist}
                         keyExtractor={(item, index) => `queue-${item.queueEntryId ?? item.id ?? index}`}
-                        contentContainerStyle={styles.container}
+                        contentContainerStyle={[styles.container, { flexGrow: 1 }]}
                         waitForInitialLayout={false}
                         getFixedItemSize={getFixedItemSize}
                         ListHeaderComponent={
@@ -869,6 +884,12 @@ export function Playlist() {
                                 onDrop={handleDropAtPosition}
                             />
                         }
+                        ListFooterComponent={
+                            playlist.length ? (
+                                <Button className="flex-1" onClick={handlePlaylistEmptySpaceClick} />
+                            ) : null
+                        }
+                        ListFooterComponentStyle={playlist.length ? { flexGrow: 1 } : undefined}
                         recycleItems
                         renderItem={({ item: track, index }) => {
                             const trackContent = (

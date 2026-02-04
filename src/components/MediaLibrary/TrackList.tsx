@@ -92,6 +92,7 @@ export function TrackList(_props: TrackListProps) {
         handleSectionPlay,
         handleSectionEnqueue,
         syncSelectionAfterReorder,
+        clearSelection,
         selectIndex,
         handleNativeDragStart,
         buildDragData,
@@ -229,6 +230,22 @@ export function TrackList(_props: TrackListProps) {
 
         openWithAnchor(null);
     }, [canModifyPlaylist, playlistPromptSource, selectedLocalPlaylist, windowId]);
+
+    const handleEmptySpaceClick = useCallback(
+        (event: NativeMouseEvent) => {
+            if (event.button !== 0) {
+                return;
+            }
+
+            const selectedCount = selectedIndices$.get().size;
+            if (selectedCount === 0 || selectedCount !== nonSeparatorTrackCount) {
+                return;
+            }
+
+            clearSelection();
+        },
+        [clearSelection, nonSeparatorTrackCount, selectedIndices$],
+    );
 
     const isPlaylistEditable =
         resolvedView === "playlist" &&
@@ -561,7 +578,7 @@ export function TrackList(_props: TrackListProps) {
                     style={{ flex: 1 }}
                     contentContainerStyle={
                         tracks.length
-                            ? undefined
+                            ? { flexGrow: 1 }
                             : {
                                   flexGrow: 1,
                                   justifyContent: "center",
@@ -569,6 +586,10 @@ export function TrackList(_props: TrackListProps) {
                                   paddingVertical: 16,
                               }
                     }
+                    ListFooterComponent={
+                        tracks.length ? <Button className="flex-1" onClick={handleEmptySpaceClick} /> : null
+                    }
+                    ListFooterComponentStyle={tracks.length ? { flexGrow: 1 } : undefined}
                     recycleItems
                     ListEmptyComponent={
                         <View className="items-center justify-center py-4 px-2.5 w-full gap-2">
