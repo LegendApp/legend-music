@@ -1,21 +1,26 @@
 import { useObservable, useValue } from "@legendapp/state/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Text, TextInput, View } from "react-native";
+import { Text, View } from "react-native";
 
 import { Button } from "@/components/Button";
 import { DropdownMenu } from "@/components/DropdownMenu";
 import { Select } from "@/components/Select";
+import { TextInputMac, type TextInputMacRef } from "@/components/TextInputMac";
 import { showToast } from "@/components/Toast";
-import { AI_PROMPT_SOURCE_OPTIONS, getAiPromptPlaceholder, type AiPromptSource } from "@/systems/ai/promptSource";
-import { fetchSuggestions, isSelectedSuggestionProviderAvailable$, selectedSuggestionProvider$ } from "@/systems/suggestions";
-import { addTracksToPlaylist, updatePlaylistMetadata } from "@/systems/LocalPlaylists";
-import { localMusicState$ } from "@/systems/LocalMusicState";
-import { libraryUI$ } from "@/systems/LibraryState";
 import { finishAiPlaylistFill, startAiPlaylistFill } from "@/systems/ai";
 import { buildPlaylistEntries } from "@/systems/ai/playlistTracks";
+import { AI_PROMPT_SOURCE_OPTIONS, type AiPromptSource, getAiPromptPlaceholder } from "@/systems/ai/promptSource";
 import { generatePlaylistSummary } from "@/systems/ai/summary";
 import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
+import { libraryUI$ } from "@/systems/LibraryState";
+import { localMusicState$ } from "@/systems/LocalMusicState";
+import { addTracksToPlaylist, updatePlaylistMetadata } from "@/systems/LocalPlaylists";
 import { settings$ } from "@/systems/Settings";
+import {
+    fetchSuggestions,
+    isSelectedSuggestionProviderAvailable$,
+    selectedSuggestionProvider$,
+} from "@/systems/suggestions";
 import type { SFSymbols } from "@/types/SFSymbols";
 
 const DEFAULT_SUGGESTION_COUNT = 10;
@@ -44,7 +49,7 @@ export function AiPlaylistDropdown({
     const [promptSource, setPromptSource] = useState<AiPromptSource>(defaultPromptSource);
     const [isCreating, setIsCreating] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
-    const textInputRef = useRef<TextInput>(null);
+    const textInputRef = useRef<TextInputMacRef>(null);
     const reopenAfterErrorRef = useRef(false);
     const selectedView = useValue(libraryUI$.selectedView);
     const selectedPlaylistId = useValue(libraryUI$.selectedPlaylistId);
@@ -57,13 +62,11 @@ export function AiPlaylistDropdown({
     const isFeatureEnabled = aiSettings.enabled;
     const targetPlaylist =
         selectedView === "playlist" && selectedPlaylistProvider === "local"
-            ? localPlaylists.find((playlist) => playlist.id === selectedPlaylistId) ?? null
+            ? (localPlaylists.find((playlist) => playlist.id === selectedPlaylistId) ?? null)
             : null;
     const isTargetEditable = Boolean(targetPlaylist && targetPlaylist.source === "cache" && targetPlaylist.filePath);
     const isDisabled = disabled || !providerAvailable || !isFeatureEnabled || !isTargetEditable;
-    const dialogTitle = targetPlaylist
-        ? `Add tracks to ${targetPlaylist.name}`
-        : `Add tracks with ${providerName}`;
+    const dialogTitle = targetPlaylist ? `Add tracks to ${targetPlaylist.name}` : `Add tracks with ${providerName}`;
     const triggerIcon = buttonIcon ?? "sparkles";
     const triggerLabel = buttonLabel?.trim();
 
@@ -229,7 +232,7 @@ export function AiPlaylistDropdown({
                         />
                     </View>
                     <View className="bg-background-secondary border border-border-primary rounded-md px-3 py-2">
-                        <TextInput
+                        <TextInputMac
                             ref={textInputRef}
                             value={prompt}
                             onChangeText={(value) => {
@@ -240,8 +243,10 @@ export function AiPlaylistDropdown({
                             }}
                             placeholder={getAiPromptPlaceholder(promptSource, "playlist")}
                             placeholderTextColor="#6b7280"
+                            textColor="#ffffff"
+                            fontSize={14}
                             multiline
-                            className="text-sm text-text-primary min-h-16"
+                            style={{ minHeight: 64 }}
                         />
                     </View>
                     {errorMessage ? (

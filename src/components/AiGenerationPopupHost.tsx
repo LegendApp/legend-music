@@ -1,9 +1,10 @@
 import { useValue } from "@legendapp/state/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Text, TextInput, View } from "react-native";
+import { Alert, Text, View } from "react-native";
 import { queue$, queueControls } from "@/components/AudioPlayer";
 import { Button } from "@/components/Button";
 import { DropdownMenu } from "@/components/DropdownMenu";
+import { TextInputMac, type TextInputMacRef } from "@/components/TextInputMac";
 import { SegmentedButtons } from "@/components/SegmentedButtons";
 import { showToast } from "@/components/Toast";
 import type { StreamingProviderId } from "@/providers/types";
@@ -84,7 +85,7 @@ export function AiGenerationPopupHost() {
 
     const [isRunning, setIsRunning] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
-    const textInputRef = useRef<TextInput>(null);
+    const textInputRef = useRef<TextInputMacRef>(null);
 
     const isProviderAvailable = providerAvailability[providerId] ?? false;
     const anyProviderAvailable = Boolean(
@@ -398,8 +399,8 @@ export function AiGenerationPopupHost() {
                     </View>
                     <View className="flex-row items-center justify-between gap-2">
                         <Text className="text-text-secondary text-xs font-medium">Number</Text>
-                        <View className="bg-background-secondary border border-border-primary rounded-md px-3 py-2 w-20">
-                            <TextInput
+                        <View className="bg-background-secondary border border-border-primary rounded-md px-3 w-20 h-8 justify-center">
+                            <TextInputMac
                                 value={countText}
                                 onChangeText={(value) => {
                                     const digits = value.replace(/[^\d]/g, "");
@@ -410,13 +411,13 @@ export function AiGenerationPopupHost() {
                                 }}
                                 placeholder={String(DEFAULT_COUNT)}
                                 placeholderTextColor="#6b7280"
-                                selectTextOnFocus
-                                className="text-sm text-text-primary text-right"
+                                textColor="#ffffff"
+                                fontSize={14}
                             />
                         </View>
                     </View>
                     <View className="bg-background-secondary border border-border-primary rounded-md px-3 py-2">
-                        <TextInput
+                        <TextInputMac
                             ref={textInputRef}
                             value={prompt}
                             onChangeText={(value) => {
@@ -427,9 +428,10 @@ export function AiGenerationPopupHost() {
                             }}
                             placeholder={placeholder}
                             placeholderTextColor="#6b7280"
-                            selectTextOnFocus
+                            textColor="#ffffff"
+                            fontSize={14}
                             multiline
-                            className="text-sm text-text-primary min-h-16"
+                            style={{ minHeight: 64 }}
                         />
                     </View>
                     {errorMessage ? (

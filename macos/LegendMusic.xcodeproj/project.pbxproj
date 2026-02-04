@@ -20,6 +20,7 @@
 		696BC82C2E0EFA2500FFFA66 /* WindowControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 696BC8292E0EFA2500FFFA66 /* WindowControls.swift */; };
 		696BC82D2E0EFA2500FFFA66 /* WindowControlsBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 696BC82A2E0EFA2500FFFA66 /* WindowControlsBridge.m */; };
 		697C9C7D2E7D4F6400AB8492 /* TextInputSearch.m in Sources */ = {isa = PBXBuildFile; fileRef = 697C9C7B2E7D4F6400AB8492 /* TextInputSearch.m */; };
+		697C9C802E7D4F6400AB8493 /* TextInputMac.m in Sources */ = {isa = PBXBuildFile; fileRef = 697C9C7F2E7D4F6400AB8493 /* TextInputMac.m */; };
 		698A69F42E1838D0001B4A90 /* RNKeyboardManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 698A69F22E1838D0001B4A90 /* RNKeyboardManager.swift */; };
 		698A69F52E1838D0001B4A90 /* KeyboardManagerBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 698A69F12E1838D0001B4A90 /* KeyboardManagerBridge.m */; };
 		698A69F62E1838D0001B4A90 /* KeyboardManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 698A69F02E1838D0001B4A90 /* KeyboardManager.swift */; };
@@ -81,6 +82,8 @@
 		696BC82A2E0EFA2500FFFA66 /* WindowControlsBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = WindowControlsBridge.m; sourceTree = "<group>"; };
 		697C9C7A2E7D4F6400AB8492 /* TextInputSearch.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TextInputSearch.h; sourceTree = "<group>"; };
 		697C9C7B2E7D4F6400AB8492 /* TextInputSearch.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TextInputSearch.m; sourceTree = "<group>"; };
+		697C9C7E2E7D4F6400AB8493 /* TextInputMac.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TextInputMac.h; sourceTree = "<group>"; };
+		697C9C7F2E7D4F6400AB8493 /* TextInputMac.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TextInputMac.m; sourceTree = "<group>"; };
 		698A69F02E1838D0001B4A90 /* KeyboardManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardManager.swift; sourceTree = "<group>"; };
 		698A69F12E1838D0001B4A90 /* KeyboardManagerBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KeyboardManagerBridge.m; sourceTree = "<group>"; };
 		698A69F22E1838D0001B4A90 /* RNKeyboardManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RNKeyboardManager.swift; sourceTree = "<group>"; };
@@ -183,6 +186,7 @@
 				69118FE82E7F652300F00B75 /* DragDrop */,
 				007C706263464B1C9C26F193 /* GlassEffect */,
 				697C9C7C2E7D4F6400AB8492 /* TextInputSearch */,
+				697C9C812E7D4F6400AB8493 /* TextInputMac */,
 				690B85532E7C1B4C009B767D /* SplitView */,
 				A0B1C2D3E4F5678901234575 /* SidebarSplitView */,
 				A0B1C2D3E4F5678901234576 /* Sidebar */,
@@ -260,6 +264,15 @@
 				697C9C7B2E7D4F6400AB8492 /* TextInputSearch.m */,
 			);
 			path = TextInputSearch;
+			sourceTree = "<group>";
+		};
+		697C9C812E7D4F6400AB8493 /* TextInputMac */ = {
+			isa = PBXGroup;
+			children = (
+				697C9C7E2E7D4F6400AB8493 /* TextInputMac.h */,
+				697C9C7F2E7D4F6400AB8493 /* TextInputMac.m */,
+			);
+			path = TextInputMac;
 			sourceTree = "<group>";
 		};
 		698A69F32E1838D0001B4A90 /* KeyboardManager */ = {
@@ -729,6 +742,7 @@
 				69B7C91D2E9C2A9000980C4D /* TrackDraggableView.swift in Sources */,
 				69B7C91F2E9C2AD800980C4D /* TrackDragSourceBridge.m in Sources */,
 				697C9C7D2E7D4F6400AB8492 /* TextInputSearch.m in Sources */,
+				697C9C802E7D4F6400AB8493 /* TextInputMac.m in Sources */,
 				698A69F62E1838D0001B4A90 /* KeyboardManager.swift in Sources */,
 				70A8C0012F12340000ABC001 /* GlobalHotkey.swift in Sources */,
 				690B85542E7C1B4C009B767D /* RNSplitView.m in Sources */,
