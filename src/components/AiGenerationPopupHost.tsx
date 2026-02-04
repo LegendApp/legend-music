@@ -457,9 +457,7 @@ export function AiGenerationPopupHost() {
             if (!queueHasTracks) {
                 return getAiPromptPlaceholder(promptSource, "queue");
             }
-            return promptSource === "local-library"
-                ? "Optionally describe what to add from your library"
-                : "Optionally describe what to add";
+            return "Optionally describe what to add";
         }
 
         const mode = action === "extend-playlist" ? "playlist" : "queue";
