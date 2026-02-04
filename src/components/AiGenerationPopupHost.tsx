@@ -411,8 +411,8 @@ export function AiGenerationPopupHost() {
                                 }}
                                 placeholder={String(DEFAULT_COUNT)}
                                 placeholderTextColor="#6b7280"
-                                textColor="#ffffff"
                                 fontSize={14}
+                                className="text-text-primary"
                             />
                         </View>
                     </View>
@@ -428,9 +428,9 @@ export function AiGenerationPopupHost() {
                             }}
                             placeholder={placeholder}
                             placeholderTextColor="#6b7280"
-                            textColor="#ffffff"
                             fontSize={14}
                             multiline
+                            className="text-text-primary"
                             style={{ minHeight: 64 }}
                         />
                     </View>

@@ -243,9 +243,9 @@ export function AiPlaylistDropdown({
                             }}
                             placeholder={getAiPromptPlaceholder(promptSource, "playlist")}
                             placeholderTextColor="#6b7280"
-                            textColor="#ffffff"
                             fontSize={14}
                             multiline
+                            className="text-text-primary"
                             style={{ minHeight: 64 }}
                         />
                     </View>

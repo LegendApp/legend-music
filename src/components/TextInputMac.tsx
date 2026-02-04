@@ -1,9 +1,11 @@
 import type { Observable } from "@legendapp/state";
+import { cssInterop } from "nativewind";
 import { forwardRef, memo, useCallback, useImperativeHandle, useMemo, useRef } from "react";
 import {
     findNodeHandle,
     NativeModules,
     type NativeSyntheticEvent,
+    processColor,
     requireNativeComponent,
     type StyleProp,
     type ViewProps,
@@ -28,6 +30,15 @@ interface TextInputMacNativeProps extends ViewProps {
 }
 
 const TextInputMacNative = requireNativeComponent<TextInputMacNativeProps>("TextInputMac");
+
+cssInterop(TextInputMacNative, {
+    className: {
+        target: "style",
+        nativeStyleToProp: {
+            color: "textColor",
+        },
+    },
+});
 
 export interface TextInputMacProps
     extends Omit<
