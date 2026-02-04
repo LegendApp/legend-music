@@ -15,7 +15,6 @@ import type { NativeMouseEvent } from "react-native-macos";
 import { audioControls } from "@/components/AudioPlayer";
 import { Button } from "@/components/Button";
 import { DropdownMenu } from "@/components/DropdownMenu";
-import { Select } from "@/components/Select";
 import {
     type DraggedItem,
     DroppableZone,
@@ -24,6 +23,7 @@ import {
 } from "@/components/dnd";
 import { AiPlaylistDropdown } from "@/components/MediaLibrary/AiPlaylistDropdown";
 import { NativeSidebar, SidebarItem } from "@/components/NativeSidebar";
+import { Select } from "@/components/Select";
 import type { TextInputSearchRef } from "@/components/TextInputSearch";
 import { showToast } from "@/components/Toast";
 import { useListItemStyles } from "@/hooks/useListItemStyles";
@@ -38,8 +38,8 @@ import {
 import { streamingProviderSessions$ } from "@/providers/streamingProviderRegistry";
 import type { StreamingProviderId, StreamingProviderPlaylist } from "@/providers/types";
 import { finishAiPlaylistFill, startAiPlaylistFill } from "@/systems/ai";
-import { AI_PROMPT_SOURCE_OPTIONS, getAiPromptPlaceholder, type AiPromptSource } from "@/systems/ai/promptSource";
 import { buildPlaylistEntries } from "@/systems/ai/playlistTracks";
+import { AI_PROMPT_SOURCE_OPTIONS, type AiPromptSource, getAiPromptPlaceholder } from "@/systems/ai/promptSource";
 import { generatePlaylistSummary } from "@/systems/ai/summary";
 import { SUPPORT_PLAYLISTS } from "@/systems/constants";
 import KeyboardManager, { KeyCodes } from "@/systems/keyboard/KeyboardManager";
@@ -332,7 +332,7 @@ function ProviderPlaylistSection({
     const playlists = useValue(plugin.library?.playlists$ ?? emptyProviderPlaylists$);
     const status = useValue(plugin.library?.status$ ?? emptyLibraryStatus$);
     const listPlaylists = plugin.library?.listPlaylists;
-    const headerLabel = `${providerName} Playlists`;
+    const headerLabel = providerName;
 
     useEffect(() => {
         if (!listPlaylists) {
@@ -366,11 +366,11 @@ function ProviderPlaylistSection({
                 ) : (
                     playlists.map((playlist) => (
                         <SidebarItem key={playlist.id} itemId={buildPlaylistItemId(providerId, playlist.id)}>
-                            <View className="flex-row items-center justify-between">
-                                <Text className="text-sm text-text-primary flex-1 py-1" numberOfLines={1}>
+                            <View className="flex-row items-center justify-between overflow-hidden">
+                                <Text className="text-sm text-text-primary flex-1 flex-shrink py-1" numberOfLines={1}>
                                     {playlist.name}
                                 </Text>
-                                <Text className="text-xs text-white/40">{playlist.trackCount ?? 0}</Text>
+                                <Text className="text-xs text-white/40 flex-shrink-0">{playlist.trackCount ?? 0}</Text>
                             </View>
                         </SidebarItem>
                     ))
@@ -875,11 +875,11 @@ export function MediaLibrarySidebar({ useNativeLibraryList = false }: MediaLibra
                                   itemId={buildPlaylistItemId("local", playlist.id)}
                                   onRightClick={(event) => handlePlaylistContextMenu(playlist, event, "basic")}
                               >
-                                  <View className="flex-row items-center justify-between">
-                                      <Text className="text-sm text-text-primary flex-1 py-1" numberOfLines={1}>
+                                  <View className="flex-row items-center justify-between overflow-hidden">
+                                      <Text className="text-sm text-text-primary flex-1 flex-shrink py-1" numberOfLines={1}>
                                           {playlistLabel}
                                       </Text>
-                                      <View className="flex-row items-center gap-2">
+                                      <View className="flex-row items-center gap-2 flex-shrink-0">
                                           <Text className="text-xs text-white/40">{playlist.trackCount}</Text>
                                           <AiPromptEditorButton playlist={playlist} isSelected={isSelected} />
                                       </View>
