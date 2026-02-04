@@ -63,6 +63,12 @@ const PLAYBACK_CONTROL_DEFINITIONS: ControlDefinition<PlaybackControlId>[] = [
         icon: "repeat",
     },
     {
+        id: "queueAi",
+        label: "AI Queue",
+        // description: "Generate a queue with AI",
+        icon: "sparkles",
+    },
+    {
         id: "search",
         label: "Search",
         // description: "Open the search dialog",

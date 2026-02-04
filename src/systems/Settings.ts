@@ -34,6 +34,7 @@ export type PlaybackControlId =
     | "next"
     | "shuffle"
     | "repeat"
+    | "queueAi"
     | "search"
     | "savePlaylist"
     | "toggleVisualizer"
@@ -138,6 +139,7 @@ export const settings$ = createJSONManager<AppSettings>({
                     "playPause",
                     "next",
                     "spacer",
+                    "queueAi",
                     "search",
                     "savePlaylist",
                     "toggleVisualizer",

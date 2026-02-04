@@ -30,6 +30,7 @@ const DEFAULT_PLAYBACK_BUTTONS: PlaybackControlId[] = [
     "playPause",
     "next",
     "spacer",
+    "queueAi",
     "search",
     "savePlaylist",
     "toggleVisualizer",
@@ -177,20 +178,20 @@ export function PlaybackControls({ className }: PlaybackControlsProps = {}) {
                             />
                         );
                     }
+                    case "queueAi":
+                        return <QueueAiDropdown key="queueAi" title="Generate queue" />;
                     case "search":
                         return (
-                            <View key="search" className="flex-row items-center gap-x-1">
-                                <QueueAiDropdown title="Generate queue" />
-                                <JumpSearchMenuDropdown
-                                    ref={dropdownMenuRef}
-                                    tracks={localMusicState.tracks}
-                                    playlists={localMusicState.playlists}
-                                    onSelectTrack={handleTrackSelect}
-                                    onSelectLibraryItem={handleLibraryItemSelect}
-                                    onSelectPlaylist={handleSearchPlaylistSelect}
-                                    dropdownWidth={dropdownWidth}
-                                />
-                            </View>
+                            <JumpSearchMenuDropdown
+                                key="search"
+                                ref={dropdownMenuRef}
+                                tracks={localMusicState.tracks}
+                                playlists={localMusicState.playlists}
+                                onSelectTrack={handleTrackSelect}
+                                onSelectLibraryItem={handleLibraryItemSelect}
+                                onSelectPlaylist={handleSearchPlaylistSelect}
+                                dropdownWidth={dropdownWidth}
+                            />
                         );
                     case "savePlaylist":
                         return SUPPORT_PLAYLISTS ? (
