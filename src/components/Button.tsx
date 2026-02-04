@@ -153,13 +153,13 @@ export function Button({
             className={cn(
                 icon && children && "flex-row items-center gap-x-2",
                 icon && !children && "items-center justify-center",
-                icon && !children && active && "text-blue-500",
+                icon && !children && active && "rounded-md bg-white/15 opacity-100",
                 size === "xs" && isIcon && "size-6",
                 size === "small" && isIcon && "size-7",
                 size === "medium" && isIcon && "size-9",
                 size === "large" && isIcon && "p-4",
                 variant === "icon" && "rounded-md hover:bg-white/10",
-                variant === "icon-hover" && "opacity-25 hover:opacity-100",
+                variant === "icon-hover" && "opacity-60 hover:opacity-100",
                 variant === "icon-bg" &&
                     "rounded-md bg-background-secondary border border-border-primary hover:bg-white/10",
                 size === "small" && !isIcon && "h-7 px-2 justify-center items-center",

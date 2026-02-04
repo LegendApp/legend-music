@@ -214,6 +214,7 @@ export function PlaybackControls({ className }: PlaybackControlsProps = {}) {
                                 iconYOffset={1}
                                 onClick={toggleVisualizer}
                                 tooltip={isVisualizerOpen ? "Hide visualizer" : "Show visualizer"}
+                                active={isVisualizerOpen}
                             />
                         );
                     }
@@ -231,6 +232,7 @@ export function PlaybackControls({ className }: PlaybackControlsProps = {}) {
                                 iconYOffset={1}
                                 onClick={toggleLibraryWindow}
                                 tooltip={isLibraryOpen ? "Hide library" : "Show library"}
+                                active={isLibraryOpen}
                             />
                         );
                     }

@@ -2,9 +2,9 @@ import { useValue } from "@legendapp/state/react";
 import { useCallback, useMemo } from "react";
 import type { NativeMouseEvent } from "react-native-macos";
 import { Button } from "@/components/Button";
+import { openAiGenerationPopup } from "@/systems/ai/generationPopup";
 import { useOnHotkeys } from "@/systems/keyboard/Keyboard";
 import { settings$ } from "@/systems/Settings";
-import { openAiGenerationPopup } from "@/systems/ai/generationPopup";
 import { suggestionProviderAvailability$ } from "@/systems/suggestions";
 import { useWindowId } from "@/windows/WindowProvider";
 
@@ -35,10 +35,7 @@ export function QueueAiDropdown({ title, disabled = false }: QueueAiDropdownProp
                 title,
                 action: "generate-queue",
                 windowId,
-                anchorRect:
-                    screenX !== null && screenY !== null
-                        ? { screenX, screenY, width: 1, height: 1 }
-                        : null,
+                anchorRect: screenX !== null && screenY !== null ? { screenX, screenY, width: 1, height: 1 } : null,
             });
         },
         [isDisabled, title, windowId],
@@ -57,7 +54,7 @@ export function QueueAiDropdown({ title, disabled = false }: QueueAiDropdownProp
             icon="sparkles"
             variant="icon-hover"
             size="xs"
-            iconSize={14}
+            iconSize={16}
             accessibilityLabel={title}
             tooltip="AI queue (a)"
             disabled={isDisabled}
