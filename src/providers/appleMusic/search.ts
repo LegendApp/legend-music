@@ -2,6 +2,7 @@ import { computed } from "@legendapp/state";
 import type { StreamingProviderSearchInput, StreamingProviderSearchProvider } from "@/providers/search/types";
 import type { StreamingProviderTrack } from "@/providers/types";
 import { ensureAppleMusicDeveloperToken } from "@/providers/appleMusic/auth";
+import { isStreamingProviderEnabled } from "@/providers/streamingProviderRegistry";
 import { appleMusicAuthState$, isAppleMusicAuthorized$ } from "@/providers/appleMusic/authState";
 import { APPLE_MUSIC_API_BASE } from "@/providers/appleMusic/constants";
 import { buildAppleMusicLocalTrack } from "@/providers/appleMusic/trackMapping";
@@ -124,7 +125,9 @@ export async function fetchAppleMusicAlbumTracks(
     return searchAppleMusicTracks(query, options?.limit ?? DETAIL_SEARCH_LIMIT);
 }
 
-export const isAppleMusicSearchEnabled$ = computed(() => isAppleMusicAuthorized$.get());
+export const isAppleMusicSearchEnabled$ = computed(
+    () => isStreamingProviderEnabled("appleMusic") && isAppleMusicAuthorized$.get(),
+);
 
 export const appleMusicSearchProvider: StreamingProviderSearchProvider = {
     id: "appleMusic",

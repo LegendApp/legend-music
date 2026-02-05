@@ -10,20 +10,18 @@ import {
     hasAppleMusicDeveloperToken$,
     isAppleMusicAuthorized$,
 } from "@/providers/appleMusic/authState";
-import { streamingProviderSettings$, setActiveStreamingProvider } from "@/providers/streamingProviderRegistry";
+import { setStreamingProviderEnabled, streamingProviderSettings$ } from "@/providers/streamingProviderRegistry";
 import { SettingsPage, SettingsRow, SettingsSection } from "@/settings/components";
 
 export function AppleMusicSettings() {
-    const providerSettings = useValue(streamingProviderSettings$);
+    const isAppleMusicEnabled = Boolean(useValue(streamingProviderSettings$.enabledProviders.appleMusic));
     const auth = useValue(appleMusicAuthState$);
     const hasDeveloperToken = useValue(hasAppleMusicDeveloperToken$);
     const isAuthorized = useValue(isAppleMusicAuthorized$);
-    const activeProvider = providerSettings.activeProviderId;
-    const isAppleMusicEnabled = activeProvider === "appleMusic";
     const [isLoggingIn, setIsLoggingIn] = useState(false);
 
     const handleAppleMusicToggle = useCallback((enabled: boolean) => {
-        setActiveStreamingProvider(enabled ? "appleMusic" : "local");
+        setStreamingProviderEnabled("appleMusic", enabled);
     }, []);
 
     const handleLogin = useCallback(async () => {
@@ -55,8 +53,13 @@ export function AppleMusicSettings() {
             <SettingsSection title="Apple Music" description="Enable Apple Music playback and search." first>
                 <SettingsRow
                     title="Enable Apple Music"
-                    description="Use Apple Music as the active streaming provider."
-                    control={<Checkbox checked={isAppleMusicEnabled} onChange={handleAppleMusicToggle} />}
+                    description="Enable Apple Music playback and search."
+                    control={
+                        <Checkbox
+                            $checked={streamingProviderSettings$.enabledProviders.appleMusic}
+                            onChange={handleAppleMusicToggle}
+                        />
+                    }
                 />
                 <SettingsRow
                     title="Developer Token"

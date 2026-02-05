@@ -5,7 +5,7 @@ import { Linking, Text, View } from "react-native";
 import { Button } from "@/components/Button";
 import { Checkbox } from "@/components/Checkbox";
 import { showToast } from "@/components/Toast";
-import { streamingProviderSettings$, setActiveStreamingProvider } from "@/providers/streamingProviderRegistry";
+import { setStreamingProviderEnabled, streamingProviderSettings$ } from "@/providers/streamingProviderRegistry";
 import { completeSpotifyLogin, logoutSpotify, spotifyAuthState$, startSpotifyLogin } from "@/providers/spotify";
 import { SettingsPage, SettingsRow, SettingsSection } from "@/settings/components";
 import { stateSaved$ } from "@/systems/State";
@@ -24,7 +24,7 @@ const parseAuthParams = (url: string): { code?: string; state?: string } => {
 
 export function SpotifySettings() {
     const auth = useValue(spotifyAuthState$);
-    const providerSettings = useValue(streamingProviderSettings$);
+    const isSpotifyEnabled = Boolean(useValue(streamingProviderSettings$.enabledProviders.spotify));
     const spotifyClientId = useValue(stateSaved$.spotifyClientId);
     const [isLoggingIn, setIsLoggingIn] = useState(false);
 
@@ -79,20 +79,29 @@ export function SpotifySettings() {
         }
     }, []);
 
-    const activeProvider = providerSettings.activeProviderId;
-    const isSpotifyEnabled = activeProvider === "spotify";
     const isAuthenticated = Boolean(auth.accessToken && auth.refreshToken);
     const handleSpotifyToggle = useCallback((enabled: boolean) => {
-        setActiveStreamingProvider(enabled ? "spotify" : "local");
+        setStreamingProviderEnabled("spotify", enabled);
     }, []);
+    const accountName = auth.user?.displayName ?? auth.user?.email ?? auth.user?.id ?? "Unknown";
+    const accountStatus = !isSpotifyEnabled
+        ? "Spotify is disabled."
+        : isAuthenticated
+          ? `Signed in as ${accountName}`
+          : "Not signed in";
 
     return (
         <SettingsPage>
             <SettingsSection title="Spotify" description="Enable or disable Spotify playback and search." first>
                 <SettingsRow
                     title="Enable Spotify"
-                    description="Use Spotify as the active streaming provider."
-                    control={<Checkbox checked={isSpotifyEnabled} onChange={handleSpotifyToggle} />}
+                    description="Enable Spotify playback and search."
+                    control={
+                        <Checkbox
+                            $checked={streamingProviderSettings$.enabledProviders.spotify}
+                            onChange={handleSpotifyToggle}
+                        />
+                    }
                 />
                 <SettingsRow
                     title="Client ID"
@@ -100,7 +109,10 @@ export function SpotifySettings() {
                     control={
                         <View className="flex flex-row items-center gap-2 w-full">
                             <$TextInput
-                                className="flex-1 rounded-md border border-border-primary bg-background-tertiary px-2 py-2 text-text-primary"
+                                className={
+                                    "flex-1 rounded-md border border-border-primary bg-background-tertiary px-2 " +
+                                    "py-2 text-text-primary"
+                                }
                                 placeholder="Spotify Client ID"
                                 placeholderTextColor="#9ca3af"
                                 $value={stateSaved$.spotifyClientId}
@@ -124,7 +136,10 @@ export function SpotifySettings() {
 
             <SettingsSection
                 title="Spotify Account"
-                description="Login uses PKCE and the Spotify Web Playback SDK (Premium required). Redirect URI must match app config."
+                description={
+                    "Login uses PKCE and the Spotify Web Playback SDK (Premium required). " +
+                    "Redirect URI must match app config."
+                }
             >
                 <SettingsRow
                     title="Connection"
@@ -167,11 +182,7 @@ export function SpotifySettings() {
                     control={
                         <View className="items-end gap-1">
                             <Text className="text-sm text-text-secondary">
-                                {!isSpotifyEnabled
-                                    ? "Spotify is disabled."
-                                    : isAuthenticated
-                                      ? `Signed in as ${auth.user?.displayName ?? auth.user?.email ?? auth.user?.id ?? "Unknown"}`
-                                      : "Not signed in"}
+                                {accountStatus}
                             </Text>
                             {isSpotifyEnabled && auth.user?.product ? (
                                 <Text className="text-sm text-text-secondary">Plan: {auth.user.product}</Text>

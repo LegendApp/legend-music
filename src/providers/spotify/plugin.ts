@@ -4,6 +4,7 @@ import type { ContextMenuItem } from "@/native-modules/ContextMenu";
 import type { StreamingProviderPlugin } from "@/providers/pluginRegistry";
 import type { LocalTrack } from "@/systems/LocalMusicState";
 import { isSpotifyAuthenticated$ } from "@/providers/spotify/authState";
+import { isStreamingProviderEnabled } from "@/providers/streamingProviderRegistry";
 import { spotifyPlaybackProvider } from "@/providers/spotify/playbackProvider";
 import { fetchSpotifyPlaylistTracks, fetchSpotifyPlaylists } from "@/providers/spotify/playlists";
 import { spotifyPlaylists$, spotifyPlaylistsStatus$ } from "@/providers/spotify/playlistsState";
@@ -44,7 +45,7 @@ export const spotifyPlugin: StreamingProviderPlugin = {
     playback: spotifyPlaybackProvider,
     library: {
         sync: async () => {
-            if (!isSpotifyAuthenticated$.get()) {
+            if (!isStreamingProviderEnabled("spotify") || !isSpotifyAuthenticated$.get()) {
                 return;
             }
 

@@ -3,6 +3,7 @@ import type { StreamingProviderSearchInput, StreamingProviderSearchProvider } fr
 import type { StreamingProviderTrack } from "@/providers/types";
 import { buildYoutubeMusicLocalTrack, buildYoutubeMusicUri } from "@/providers/youtubeMusic/trackMapping";
 import type { YoutubeSearchItem, YoutubeSearchResponse, YoutubeVideoResponse } from "@/providers/youtubeMusic/types";
+import { isStreamingProviderEnabled } from "@/providers/streamingProviderRegistry";
 import { ensureYoutubeMusicAccessToken } from "@/providers/youtubeMusic/auth";
 import { youtubeAuthState$ } from "@/providers/youtubeMusic/authState";
 
@@ -12,7 +13,7 @@ const DEFAULT_SEARCH_LIMIT = 20;
 export const isYoutubeMusicSearchEnabled$ = computed(() => {
     const auth = youtubeAuthState$.get();
     const hasValidAccessToken = Boolean(auth.accessToken && auth.expiresAt && auth.expiresAt > Date.now());
-    return Boolean(auth.refreshToken || hasValidAccessToken);
+    return isStreamingProviderEnabled("youtubeMusic") && Boolean(auth.refreshToken || hasValidAccessToken);
 });
 
 const pickThumbnail = (item: YoutubeSearchItem): string | undefined => {

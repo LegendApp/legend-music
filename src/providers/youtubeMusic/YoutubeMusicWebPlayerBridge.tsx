@@ -12,7 +12,6 @@ import {
     type YoutubeMusicWebPlayerHandle,
 } from "@/providers/youtubeMusic/YoutubeMusicWebPlayerHost";
 import { audioPlayerState$ } from "@/components/AudioPlayer";
-import { activeStreamingProviderId$ } from "@/providers/streamingProviderRegistry";
 
 type YoutubeMusicWebCommand =
     | { type: "load"; payload: { url: string } }
@@ -128,8 +127,8 @@ export function YoutubeMusicWebPlayerBridge() {
     }, []);
 
     const handleState = useCallback((state: YoutubeMusicPlaybackState) => {
-        const activeProviderId = activeStreamingProviderId$.peek();
         const currentTrack = audioPlayerState$.currentTrack.peek();
+        const activeProviderId = currentTrack ? (currentTrack.provider ?? "local") : null;
         const isPlaying = audioPlayerState$.isPlaying.peek();
         const isYoutubePlaybackActive =
             activeProviderId === "youtubeMusic" && currentTrack?.provider === "youtubeMusic" && isPlaying;

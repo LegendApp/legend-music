@@ -5,7 +5,7 @@ import Config from "react-native-config";
 import { Button } from "@/components/Button";
 import { Checkbox } from "@/components/Checkbox";
 import { showToast } from "@/components/Toast";
-import { streamingProviderSettings$, setActiveStreamingProvider } from "@/providers/streamingProviderRegistry";
+import { setStreamingProviderEnabled, streamingProviderSettings$ } from "@/providers/streamingProviderRegistry";
 import {
     completeYoutubeMusicLogin,
     isYoutubeMusicAuthenticated$,
@@ -28,17 +28,15 @@ const parseAuthParams = (url: string): { code?: string; state?: string } => {
 };
 
 export function YoutubeMusicSettings() {
-    const providerSettings = useValue(streamingProviderSettings$);
     const auth = useValue(youtubeAuthState$);
-    const activeProvider = providerSettings.activeProviderId;
-    const isYoutubeMusicEnabled = activeProvider === "youtubeMusic";
+    const isYoutubeMusicEnabled = Boolean(useValue(streamingProviderSettings$.enabledProviders.youtubeMusic));
     const hasYoutubeMusicClientId = Boolean((Config.YOUTUBE_CLIENT_ID ?? "").trim());
     const [isLoggingIn, setIsLoggingIn] = useState(false);
     const isAuthenticated = useValue(isYoutubeMusicAuthenticated$);
     const displayName = auth.user?.displayName ?? auth.user?.email ?? auth.user?.id ?? "Unknown";
 
     const handleYoutubeMusicToggle = useCallback((enabled: boolean) => {
-        setActiveStreamingProvider(enabled ? "youtubeMusic" : "local");
+        setStreamingProviderEnabled("youtubeMusic", enabled);
     }, []);
 
     const handleAuthUrl = useCallback(async (url: string) => {
@@ -99,8 +97,13 @@ export function YoutubeMusicSettings() {
             >
                 <SettingsRow
                     title="Enable YouTube Music"
-                    description="Use YouTube Music as the active streaming provider."
-                    control={<Checkbox checked={isYoutubeMusicEnabled} onChange={handleYoutubeMusicToggle} />}
+                    description="Enable YouTube Music playback and search."
+                    control={
+                        <Checkbox
+                            $checked={streamingProviderSettings$.enabledProviders.youtubeMusic}
+                            onChange={handleYoutubeMusicToggle}
+                        />
+                    }
                 />
                 <SettingsRow
                     title="Status"

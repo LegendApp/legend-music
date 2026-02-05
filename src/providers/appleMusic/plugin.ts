@@ -1,6 +1,7 @@
 import type { StreamingProviderPlugin } from "@/providers/pluginRegistry";
 import { AppleMusicSourceBadge } from "@/components/AppleMusicSourceBadge";
 import { isAppleMusicAuthorized$ } from "@/providers/appleMusic/authState";
+import { isStreamingProviderEnabled } from "@/providers/streamingProviderRegistry";
 import { appleMusicPlaybackProvider } from "@/providers/appleMusic/playbackProvider";
 import { fetchAppleMusicPlaylistTracks, fetchAppleMusicPlaylists } from "@/providers/appleMusic/playlists";
 import { appleMusicPlaylists$, appleMusicPlaylistsStatus$ } from "@/providers/appleMusic/playlistsState";
@@ -15,7 +16,7 @@ export const appleMusicPlugin: StreamingProviderPlugin = {
     playback: appleMusicPlaybackProvider,
     library: {
         sync: async () => {
-            if (!isAppleMusicAuthorized$.get()) {
+            if (!isStreamingProviderEnabled("appleMusic") || !isAppleMusicAuthorized$.get()) {
                 return;
             }
 

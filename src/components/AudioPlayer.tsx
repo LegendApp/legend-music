@@ -1471,8 +1471,8 @@ export function initializeAudioPlayer(): void {
         }
         provider.onStateChange((update) => {
             const currentTrack = audioPlayerState$.currentTrack.peek();
-            const activeProviderId = currentTrack?.provider ?? "local";
-            if (activeProviderId !== provider.id) {
+            const activeProviderId = currentTrack ? (currentTrack.provider ?? "local") : null;
+            if (!activeProviderId || activeProviderId !== provider.id) {
                 return;
             }
             applyPlaybackStateUpdate(update);

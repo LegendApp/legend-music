@@ -4,6 +4,7 @@ import { spotifyAuthState$ } from "@/providers/spotify/authState";
 import { logSpotifyDebug } from "@/providers/spotify/logging";
 import { buildSpotifyLocalTrack } from "@/providers/spotify/trackMapping";
 import type { StreamingProviderTrack } from "@/providers/types";
+import { isStreamingProviderEnabled } from "@/providers/streamingProviderRegistry";
 import { ensureSpotifyAccessToken } from "./auth";
 import { SPOTIFY_API_BASE } from "./constants";
 
@@ -147,7 +148,7 @@ const SPOTIFY_SEARCH_LIMIT = 20;
 export const isSpotifySearchEnabled$ = computed(() => {
     const auth = spotifyAuthState$.get();
     const hasValidAccessToken = Boolean(auth.accessToken && auth.expiresAt && auth.expiresAt > Date.now());
-    return Boolean(auth.refreshToken || hasValidAccessToken);
+    return isStreamingProviderEnabled("spotify") && Boolean(auth.refreshToken || hasValidAccessToken);
 });
 
 export const spotifySearchProvider: StreamingProviderSearchProvider = {

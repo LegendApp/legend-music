@@ -8,8 +8,8 @@ import { TextInputMac, type TextInputMacRef } from "@/components/TextInputMac";
 import { SegmentedButtons } from "@/components/SegmentedButtons";
 import { showToast } from "@/components/Toast";
 import {
-    activeStreamingProviderId$,
     isStreamingProviderValid,
+    preferredStreamingProviderId$,
     streamingProviderSessions$,
 } from "@/providers/streamingProviderRegistry";
 import type { StreamingProviderId } from "@/providers/types";
@@ -19,7 +19,11 @@ import { extendLocalPlaylistWithPrompt } from "@/systems/ai/playlistExtend";
 import { type AiPromptSource, getAiPromptPlaceholder } from "@/systems/ai/promptSource";
 import { localMusicState$ } from "@/systems/LocalMusicState";
 import { settings$ } from "@/systems/Settings";
-import { fetchSuggestions, selectedSuggestionProviderId$, suggestionProviderAvailability$ } from "@/systems/suggestions";
+import {
+    fetchSuggestions,
+    selectedSuggestionProviderId$,
+    suggestionProviderAvailability$,
+} from "@/systems/suggestions";
 import { useWindowId } from "@/windows/WindowProvider";
 import { useCurrentWindowDimensions } from "@/windows/windowDimensions";
 
@@ -79,11 +83,11 @@ export function AiGenerationPopupHost() {
     const isVisible = isOpen && targetWindowId === windowId;
     const settingsPromptSource = useValue(settings$.ai.promptSource);
     const settingsPreferredTrackProviderId = useValue(settings$.ai.preferredTrackProviderId);
+    const preferredStreamingProviderId = useValue(preferredStreamingProviderId$);
     const defaultProviderId = useValue(selectedSuggestionProviderId$);
     const providerAvailability = useValue(suggestionProviderAvailability$);
     const queueTracks = useValue(queue$.tracks);
     const playlists = useValue(localMusicState$.playlists);
-    const activeStreamingProviderId = useValue(activeStreamingProviderId$);
     const providerSessions = useValue(streamingProviderSessions$);
 
     const [providerId, setProviderId] = useState<"claude" | "codex" | "spotify">(defaultProviderId);
@@ -95,11 +99,10 @@ export function AiGenerationPopupHost() {
         () =>
             QUEUE_FROM_STREAMING_OPTIONS.map((option) => option.value).filter((providerId) =>
                 isStreamingProviderValid(providerId, {
-                    activeProviderId: activeStreamingProviderId,
                     session: providerSessions[providerId] ?? null,
                 }),
             ),
-        [activeStreamingProviderId, providerSessions],
+        [providerSessions],
     );
     const validStreamingProviderSet = useMemo(
         () => new Set<QueueAiStreamingProviderId>(validStreamingProviderIds),
@@ -426,9 +429,14 @@ export function AiGenerationPopupHost() {
             return "local-library";
         }
 
-        return resolveStreamingFrom(settingsPreferredTrackProviderId);
+        const preferredProviderId =
+            settingsPreferredTrackProviderId === "auto"
+                ? preferredStreamingProviderId
+                : settingsPreferredTrackProviderId;
+        return resolveStreamingFrom(preferredProviderId);
     }, [
         initialPromptSource,
+        preferredStreamingProviderId,
         settingsPreferredTrackProviderId,
         settingsPromptSource,
         validStreamingProviderIds,
@@ -543,7 +551,12 @@ export function AiGenerationPopupHost() {
                     </View>
                     <View className="flex-row items-center justify-between gap-2">
                         <Text className="text-text-secondary text-xs font-medium">Number</Text>
-                        <View className="bg-background-secondary border border-border-primary rounded-md px-3 w-20 h-8 justify-center">
+                        <View
+                            className={
+                                "bg-background-secondary border border-border-primary rounded-md px-3 " +
+                                "w-20 h-8 justify-center"
+                            }
+                        >
                             <TextInputMac
                                 value={countText}
                                 onChangeText={(value) => {
