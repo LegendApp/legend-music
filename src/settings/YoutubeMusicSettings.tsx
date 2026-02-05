@@ -139,16 +139,18 @@ export function YoutubeMusicSettings() {
                     }
                     control={
                         <View className="flex flex-row flex-wrap gap-2">
-                            <Button
-                                variant="primary"
-                                size="medium"
-                                disabled={isLoggingIn || !isYoutubeMusicEnabled || !hasYoutubeMusicClientId}
-                                onClick={handleLogin}
-                            >
-                                <Text className="text-text-primary text-sm font-medium">
-                                    {isAuthenticated ? "Re-authenticate" : "Log in to YouTube Music"}
-                                </Text>
-                            </Button>
+                            {!isAuthenticated ? (
+                                <Button
+                                    variant="primary"
+                                    size="medium"
+                                    disabled={isLoggingIn || !isYoutubeMusicEnabled || !hasYoutubeMusicClientId}
+                                    onClick={handleLogin}
+                                >
+                                    <Text className="text-text-primary text-sm font-medium">
+                                        Log in to YouTube Music
+                                    </Text>
+                                </Button>
+                            ) : null}
                             <Button
                                 variant="secondary"
                                 size="medium"

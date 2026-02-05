@@ -89,6 +89,7 @@ export function SpotifySettings() {
         : isAuthenticated
           ? `Signed in as ${accountName}`
           : "Not signed in";
+    const canLogin = !isSpotifyEnabled || !hasSpotifyClientId ? false : !isLoggingIn;
 
     return (
         <SettingsPage>
@@ -106,6 +107,7 @@ export function SpotifySettings() {
                 <SettingsRow
                     title="Client ID"
                     description="Create a Spotify app and paste its Client ID to enable login."
+                    disabled={!isSpotifyEnabled}
                     control={
                         <View className="flex flex-row items-center gap-2 w-full">
                             <$TextInput
@@ -118,10 +120,12 @@ export function SpotifySettings() {
                                 $value={stateSaved$.spotifyClientId}
                                 autoCapitalize="none"
                                 autoCorrect={false}
+                                editable={isSpotifyEnabled}
                             />
                             <Button
                                 variant="secondary"
                                 size="medium"
+                                disabled={!isSpotifyEnabled}
                                 onClick={() => Linking.openURL("https://developer.spotify.com/dashboard")}
                             >
                                 <Text className="text-text-primary text-sm font-medium">Get ID</Text>
@@ -154,16 +158,16 @@ export function SpotifySettings() {
                     }
                     control={
                         <View className="flex flex-row flex-wrap gap-2">
-                            <Button
-                                variant="primary"
-                                size="medium"
-                                disabled={isLoggingIn || !isSpotifyEnabled || !hasSpotifyClientId}
-                                onClick={handleLogin}
-                            >
-                                <Text className="text-text-primary text-sm font-medium">
-                                    {isAuthenticated ? "Re-authenticate" : "Log in to Spotify"}
-                                </Text>
-                            </Button>
+                            {!isAuthenticated ? (
+                                <Button
+                                    variant="primary"
+                                    size="medium"
+                                    disabled={!canLogin}
+                                    onClick={handleLogin}
+                                >
+                                    <Text className="text-text-primary text-sm font-medium">Log in to Spotify</Text>
+                                </Button>
+                            ) : null}
                             <Button
                                 variant="secondary"
                                 size="medium"

@@ -7,7 +7,6 @@ import { showToast } from "@/components/Toast";
 import { authorizeAppleMusic, logoutAppleMusic } from "@/providers/appleMusic/auth";
 import {
     appleMusicAuthState$,
-    hasAppleMusicDeveloperToken$,
     isAppleMusicAuthorized$,
 } from "@/providers/appleMusic/authState";
 import { setStreamingProviderEnabled, streamingProviderSettings$ } from "@/providers/streamingProviderRegistry";
@@ -16,7 +15,6 @@ import { SettingsPage, SettingsRow, SettingsSection } from "@/settings/component
 export function AppleMusicSettings() {
     const isAppleMusicEnabled = Boolean(useValue(streamingProviderSettings$.enabledProviders.appleMusic));
     const auth = useValue(appleMusicAuthState$);
-    const hasDeveloperToken = useValue(hasAppleMusicDeveloperToken$);
     const isAuthorized = useValue(isAppleMusicAuthorized$);
     const [isLoggingIn, setIsLoggingIn] = useState(false);
 
@@ -61,22 +59,6 @@ export function AppleMusicSettings() {
                         />
                     }
                 />
-                <SettingsRow
-                    title="Developer Token"
-                    description="Generated automatically on-device by MusicKit; no backend required."
-                    control={
-                        <View className="items-end gap-1">
-                            <Text className="text-sm text-text-secondary">
-                                {!isAppleMusicEnabled
-                                    ? "Apple Music is disabled."
-                                    : hasDeveloperToken
-                                      ? "Developer token ready."
-                                      : "Developer token will be generated automatically."}
-                            </Text>
-                        </View>
-                    }
-                    controlWrapperClassName="ml-6"
-                />
             </SettingsSection>
             <SettingsSection
                 title="Apple Music Account"
@@ -93,16 +75,18 @@ export function AppleMusicSettings() {
                     }
                     control={
                         <View className="flex flex-row flex-wrap gap-2">
-                            <Button
-                                variant="primary"
-                                size="medium"
-                                disabled={isLoggingIn || !isAppleMusicEnabled}
-                                onClick={handleLogin}
-                            >
-                                <Text className="text-text-primary text-sm font-medium">
-                                    {isAuthorized ? "Re-authenticate" : "Sign in to Apple Music"}
-                                </Text>
-                            </Button>
+                            {!isAuthorized ? (
+                                <Button
+                                    variant="primary"
+                                    size="medium"
+                                    disabled={isLoggingIn || !isAppleMusicEnabled}
+                                    onClick={handleLogin}
+                                >
+                                    <Text className="text-text-primary text-sm font-medium">
+                                        Sign in to Apple Music
+                                    </Text>
+                                </Button>
+                            ) : null}
                             <Button variant="secondary" size="medium" onClick={handleLogout} disabled={!isAuthorized}>
                                 <Text className="text-text-primary text-sm font-medium">Log out</Text>
                             </Button>

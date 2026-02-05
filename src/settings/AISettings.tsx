@@ -27,6 +27,7 @@ export function AISettings() {
     const enabledSearchProviderIds = useValue(enabledSearchProviderIds$);
     const providerAvailability = useValue(suggestionProviderAvailability$);
     const selectedPreferredProviderId = useValue(settings$.ai.preferredTrackProviderId);
+    const isAiEnabled = useValue(settings$.ai.enabled);
 
     const providerOptions = useMemo(
         () =>
@@ -92,27 +93,47 @@ export function AISettings() {
                 <SettingsRow
                     title="Auto-Extend Queue"
                     description="When the last song plays, extend the queue with suggestions"
-                    control={<Checkbox $checked={settings$.ai.autoExtendQueue} />}
+                    control={<Checkbox $checked={settings$.ai.autoExtendQueue} disabled={!isAiEnabled} />}
+                    disabled={!isAiEnabled}
                 />
                 <SettingsRow
                     title="Suggestion Provider"
                     description="Choose which provider to use for suggestions"
-                    control={<Select value$={settings$.ai.suggestionProviderId} options={providerOptions} />}
+                    control={
+                        <Select
+                            value$={settings$.ai.suggestionProviderId}
+                            options={providerOptions}
+                            disabled={!isAiEnabled}
+                        />
+                    }
                     controlWrapperClassName="w-48"
+                    disabled={!isAiEnabled}
                 />
                 <SettingsRow
                     title="AI Prompt Source"
                     description="Use streaming services for AI prompts or limit suggestions to your Local Library"
-                    control={<Select value$={settings$.ai.promptSource} options={AI_PROMPT_SOURCE_OPTIONS} />}
+                    control={
+                        <Select
+                            value$={settings$.ai.promptSource}
+                            options={AI_PROMPT_SOURCE_OPTIONS}
+                            disabled={!isAiEnabled}
+                        />
+                    }
                     controlWrapperClassName="w-48"
+                    disabled={!isAiEnabled}
                 />
                 <SettingsRow
                     title="Preferred Service"
                     description="Prefer this service when resolving AI-suggested tracks"
                     control={
-                        <Select value$={settings$.ai.preferredTrackProviderId} options={preferredServiceOptions} />
+                        <Select
+                            value$={settings$.ai.preferredTrackProviderId}
+                            options={preferredServiceOptions}
+                            disabled={!isAiEnabled}
+                        />
                     }
                     controlWrapperClassName="w-48"
+                    disabled={!isAiEnabled}
                 />
                 <SettingsRow
                     title="Clear AI Search Cache"
@@ -121,6 +142,7 @@ export function AISettings() {
                         <Button
                             variant="secondary"
                             size="medium"
+                            disabled={!isAiEnabled}
                             onClick={() => {
                                 clearAiSearchCache();
                                 showToast("AI search cache cleared", "info");
